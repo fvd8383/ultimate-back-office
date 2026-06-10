@@ -435,6 +435,10 @@ final class BusinessFoundation
                 $sources[$moduleKey] = 'full_os';
             }
         } elseif (count($sources) > 0) {
+            if (isset($sources['kyn']) && !isset($sources['ssp'])) {
+                $sources['ssp'] = 'manual';
+            }
+
             $sources['lead_hub'] = 'manual';
         }
 

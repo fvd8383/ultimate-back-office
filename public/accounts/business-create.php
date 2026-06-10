@@ -147,14 +147,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && count($errors) === 0) {
 
             $postedModules = $_POST['modules'] ?? [];
             $postedModules = is_array($postedModules) ? $postedModules : [];
-            $hasFullAccess = in_array('full_os', $postedModules, true) || in_array('enterprise', $postedModules, true);
 
             if (count($postedModules) === 0) {
                 $errors[] = 'Select at least one module or platform tier.';
-            }
-
-            if (in_array('kyn', $postedModules, true) && !in_array('ssp', $postedModules, true) && !$hasFullAccess) {
-                $errors[] = 'Know Your Numbers requires Super Simple Payments.';
             }
 
             if (count($errors) === 0) {
@@ -351,7 +346,7 @@ require __DIR__ . '/../../private/views/header.php';
                     <input type="checkbox" name="modules[]" value="<?= e($module['module_key']) ?>"<?= module_checked($module['module_key'], $_POST['modules'] ?? $selectedModuleKeys) ?>>
                     <strong><?= e($module['name']) ?></strong>
                     <?php if ($module['module_key'] === 'kyn'): ?>
-                        <span>KYN requires SSP.</span>
+                        <span>KYN requires SSP. If SSP is not selected, it will be included automatically.</span>
                     <?php elseif ($module['module_key'] === 'full_os'): ?>
                         <span>Activates Lead Hub and all current modules.</span>
                     <?php elseif ($module['module_key'] === 'enterprise'): ?>
