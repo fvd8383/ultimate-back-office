@@ -73,6 +73,26 @@ foreach ($allSubServices as $service) {
     $serviceCategoryById[(int) $service['id']] = (int) $service['category_id'];
 }
 
+function business_onboarding_debug_enabled(): bool
+{
+    try {
+        return (bool) Database::config('APP_DEBUG', false);
+    } catch (Throwable $exception) {
+        return false;
+    }
+}
+
+function report_business_onboarding_exception(Throwable $exception, array &$errors): void
+{
+    if (!business_onboarding_debug_enabled()) {
+        return;
+    }
+
+    error_log('Business onboarding exception: ' . (string) $exception);
+
+    $errors[] = 'Debug exception: ' . $exception->getMessage();
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && count($errors) === 0) {
     try {
         if ($step === 'business_info') {
@@ -172,6 +192,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && count($errors) === 0) {
         }
     } catch (Throwable $exception) {
         $errors[] = 'Business onboarding could not be saved. Check the database setup and try again.';
+        report_business_onboarding_exception($exception, $errors);
     }
 }
 
