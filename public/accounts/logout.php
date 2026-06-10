@@ -2,12 +2,7 @@
 
 require_once __DIR__ . '/../../private/classes/Session.php';
 
-Session::start();
-
-if (Session::isAuthenticated()) {
-    header('Location: dashboard.php');
-    exit;
-}
+Session::logout();
 
 header('Location: login.php');
 exit;

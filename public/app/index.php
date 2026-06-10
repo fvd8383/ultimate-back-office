@@ -1,1 +1,4 @@
-<h1>Lead Hub</h1>
+<?php
+
+header('Location: dashboard.php');
+exit;
