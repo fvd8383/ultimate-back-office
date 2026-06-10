@@ -208,13 +208,16 @@ final class BusinessFoundation
                  ) VALUES (
                     :business_name, :slug, :legal_name, :owner_user_id, :phone, :email,
                     :address_line_1, :address_line_2, :city, :state, :postal_code, :country,
-                    :is_public_physical_location, :legal_structure_id, "active", "incomplete", "services",
+                    :is_public_physical_location, :legal_structure_id, :status, :setup_status, :setup_step,
                     NOW(), NOW()
                  )'
             );
             $statement->execute($data + [
                 'slug' => $slug,
                 'owner_user_id' => $userId,
+                'status' => 'active',
+                'setup_status' => 'incomplete',
+                'setup_step' => 'services',
             ]);
 
             $businessId = (int) Database::connection()->lastInsertId();
@@ -239,14 +242,18 @@ final class BusinessFoundation
                  country = :country,
                  is_public_physical_location = :is_public_physical_location,
                  legal_structure_id = :legal_structure_id,
-                 setup_status = IF(setup_status = "complete", setup_status, "incomplete"),
-                 setup_step = IF(setup_step = "completed", setup_step, "services"),
+                 setup_status = IF(setup_status = :complete_status, setup_status, :incomplete_status),
+                 setup_step = IF(setup_step = :completed_step, setup_step, :services_step),
                  updated_at = NOW()
              WHERE id = :business_id'
         );
         $statement->execute($data + [
             'slug' => $slug,
             'business_id' => $businessId,
+            'complete_status' => 'complete',
+            'incomplete_status' => 'incomplete',
+            'completed_step' => 'completed',
+            'services_step' => 'services',
         ]);
 
         self::logActivity($businessId, $userId, 'business_updated', 'Business information updated');
@@ -264,14 +271,18 @@ final class BusinessFoundation
             $statement = Database::connection()->prepare(
                 'UPDATE businesses
                  SET primary_category_id = :category_id,
-                     setup_status = IF(setup_status = "complete", setup_status, "incomplete"),
-                     setup_step = IF(setup_step = "completed", setup_step, "modules"),
+                     setup_status = IF(setup_status = :complete_status, setup_status, :incomplete_status),
+                     setup_step = IF(setup_step = :completed_step, setup_step, :modules_step),
                      updated_at = NOW()
                  WHERE id = :business_id'
             );
             $statement->execute([
                 'category_id' => $categoryId,
                 'business_id' => $businessId,
+                'complete_status' => 'complete',
+                'incomplete_status' => 'incomplete',
+                'completed_step' => 'completed',
+                'modules_step' => 'modules',
             ]);
 
             $delete = Database::connection()->prepare('DELETE FROM business_sub_services WHERE business_id = :business_id');
@@ -306,22 +317,25 @@ final class BusinessFoundation
         try {
             $deactivate = Database::connection()->prepare(
                 'UPDATE business_modules
-                 SET status = "inactive", deactivated_at = NOW(), updated_at = NOW()
+                 SET status = :inactive_status, deactivated_at = NOW(), updated_at = NOW()
                  WHERE business_id = :business_id'
             );
-            $deactivate->execute(['business_id' => $businessId]);
+            $deactivate->execute([
+                'inactive_status' => 'inactive',
+                'business_id' => $businessId,
+            ]);
 
             $insert = Database::connection()->prepare(
                 'INSERT INTO business_modules (
                     business_id, module_id, status, activated_at, deactivated_at,
                     activated_by_user_id, activation_source, created_at, updated_at
                  )
-                 SELECT :business_id, id, "active", NOW(), NULL,
+                 SELECT :business_id, id, :active_status, NOW(), NULL,
                         :activated_by_user_id, :activation_source, NOW(), NOW()
                  FROM modules
                  WHERE module_key = :module_key
                  ON DUPLICATE KEY UPDATE
-                    status = "active",
+                    status = VALUES(status),
                     activated_at = VALUES(activated_at),
                     deactivated_at = NULL,
                     activated_by_user_id = VALUES(activated_by_user_id),
@@ -332,6 +346,7 @@ final class BusinessFoundation
             foreach ($moduleSources as $moduleKey => $source) {
                 $insert->execute([
                     'business_id' => $businessId,
+                    'active_status' => 'active',
                     'activated_by_user_id' => $userId,
                     'activation_source' => $source,
                     'module_key' => $moduleKey,
@@ -340,12 +355,18 @@ final class BusinessFoundation
 
             $statement = Database::connection()->prepare(
                 'UPDATE businesses
-                 SET setup_status = IF(setup_status = "complete", setup_status, "incomplete"),
-                     setup_step = IF(setup_step = "completed", setup_step, "completed"),
+                 SET setup_status = IF(setup_status = :complete_status, setup_status, :incomplete_status),
+                     setup_step = IF(setup_step = :completed_step_check, setup_step, :completed_step_value),
                      updated_at = NOW()
                  WHERE id = :business_id'
             );
-            $statement->execute(['business_id' => $businessId]);
+            $statement->execute([
+                'complete_status' => 'complete',
+                'incomplete_status' => 'incomplete',
+                'completed_step_check' => 'completed',
+                'completed_step_value' => 'completed',
+                'business_id' => $businessId,
+            ]);
 
             self::logActivity($businessId, $userId, 'business_modules_updated', 'Business modules updated');
             Database::connection()->commit();
@@ -359,12 +380,16 @@ final class BusinessFoundation
     {
         $statement = Database::connection()->prepare(
             'UPDATE businesses
-             SET setup_status = "complete",
-                 setup_step = "completed",
+             SET setup_status = :setup_status,
+                 setup_step = :setup_step,
                  updated_at = NOW()
              WHERE id = :business_id'
         );
-        $statement->execute(['business_id' => $businessId]);
+        $statement->execute([
+            'setup_status' => 'complete',
+            'setup_step' => 'completed',
+            'business_id' => $businessId,
+        ]);
 
         self::logActivity($businessId, $userId, 'business_onboarding_completed', 'Business onboarding completed');
     }
@@ -472,20 +497,24 @@ final class BusinessFoundation
     private static function linkOwner(int $businessId, int $userId): void
     {
         $role = Database::connection()->prepare(
-            'SELECT id FROM roles WHERE name = "Owner" AND scope = "business" LIMIT 1'
+            'SELECT id FROM roles WHERE name = :role_name AND scope = :role_scope LIMIT 1'
         );
-        $role->execute();
+        $role->execute([
+            'role_name' => 'Owner',
+            'role_scope' => 'business',
+        ]);
         $roleId = $role->fetchColumn() ?: null;
 
         $statement = Database::connection()->prepare(
             'INSERT INTO business_users (business_id, user_id, role_id, status, is_owner, created_at, updated_at)
-             VALUES (:business_id, :user_id, :role_id, "active", 1, NOW(), NOW())
-             ON DUPLICATE KEY UPDATE status = "active", is_owner = 1, updated_at = NOW()'
+             VALUES (:business_id, :user_id, :role_id, :status, 1, NOW(), NOW())
+             ON DUPLICATE KEY UPDATE status = VALUES(status), is_owner = 1, updated_at = NOW()'
         );
         $statement->execute([
             'business_id' => $businessId,
             'user_id' => $userId,
             'role_id' => $roleId,
+            'status' => 'active',
         ]);
     }
 
