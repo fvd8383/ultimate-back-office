@@ -20,11 +20,9 @@ final class Database
             $config['DB_NAME']
         );
 
-        self::$connection = new PDO($dsn, $config['DB_USER'], $config['DB_PASSWORD'], [
-            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-            PDO::ATTR_EMULATE_PREPARES => false,
-        ]);
+        $options = self::pdoOptions($config);
+
+        self::$connection = new PDO($dsn, $config['DB_USER'], $config['DB_PASSWORD'], $options);
 
         return self::$connection;
     }
@@ -71,6 +69,34 @@ final class Database
         }
 
         return self::$config[$key] ?? $default;
+    }
+
+    private static function pdoOptions(array $config): array
+    {
+        $options = [
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+            PDO::ATTR_EMULATE_PREPARES => false,
+        ];
+
+        $sslMode = strtoupper(trim((string) ($config['DB_SSL_MODE'] ?? '')));
+
+        if ($sslMode !== 'REQUIRED') {
+            return $options;
+        }
+
+        $sslCa = trim((string) ($config['DB_SSL_CA'] ?? ''));
+
+        if ($sslCa !== '' && defined('PDO::MYSQL_ATTR_SSL_CA')) {
+            $options[constant('PDO::MYSQL_ATTR_SSL_CA')] = $sslCa;
+            return $options;
+        }
+
+        if (defined('PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT')) {
+            $options[constant('PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT')] = false;
+        }
+
+        return $options;
     }
 
     private static function applyErrorDisplaySetting(): void

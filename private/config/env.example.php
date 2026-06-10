@@ -6,6 +6,8 @@ return [
     'DB_NAME' => 'ultimate_back_office',
     'DB_USER' => 'your_database_user',
     'DB_PASSWORD' => 'your_database_password',
+    'DB_SSL_MODE' => '',
+    'DB_SSL_CA' => '',
     'APP_ENV' => 'staging',
     'APP_DEBUG' => true,
     'APP_BASE_URL' => 'https://staging-app.ultimatebackoffice.com',

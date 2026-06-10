@@ -24,6 +24,8 @@ DB_PORT
 DB_NAME
 DB_USER
 DB_PASSWORD
+DB_SSL_MODE
+DB_SSL_CA
 APP_ENV
 APP_DEBUG
 APP_BASE_URL
@@ -41,6 +43,8 @@ mysql -h DB_HOST -P DB_PORT -u DB_USER -p DB_NAME < database/migrations/001_crea
 ```
 
 Replace the placeholders with the values from `private/config/env.php`.
+
+DigitalOcean Managed MySQL commonly uses port `25060` and requires SSL. For that setup, set `DB_PORT` to `25060` and set `DB_SSL_MODE` to `REQUIRED`. If you download DigitalOcean's CA certificate, set `DB_SSL_CA` to the full server path for that CA file. Local MySQL can leave `DB_SSL_MODE` and `DB_SSL_CA` empty.
 
 The migration creates the platform foundation tables for users, OTPs, businesses, roles, permissions, modules, payment providers, contacts, notes, tasks, and activity logs. It also seeds the required modules, Stripe payment provider, system roles, and default contact statuses.
 
