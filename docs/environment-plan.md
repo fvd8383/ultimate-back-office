@@ -1,0 +1,21 @@
+Pending Credentials
+
+STAGING
+--------
+STRIPE_WEBHOOK_SECRET
+NAMECHEAP_API_USER
+NAMECHEAP_API_KEY
+NAMECHEAP_USERNAME
+NAMECHEAP_CLIENT_IP
+
+PRODUCTION
+----------
+STRIPE_WEBHOOK_SECRET
+NAMECHEAP_API_USER
+NAMECHEAP_API_KEY
+NAMECHEAP_USERNAME
+NAMECHEAP_CLIENT_IP
+
+Notes:
+- Stripe webhook secret created during SSP build.
+- Namecheap credentials created during 24/7 Sales Partner build.
