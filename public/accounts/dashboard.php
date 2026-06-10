@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/../../private/classes/Auth.php';
+require_once __DIR__ . '/../../private/classes/BusinessFoundation.php';
 
 Session::requireAuth('login.php');
 
@@ -13,7 +14,7 @@ try {
         exit;
     }
 
-    $businesses = Auth::linkedBusinesses((int) $user['id']);
+    $businesses = BusinessFoundation::businessesForDashboard((int) $user['id']);
     $loadError = '';
 } catch (Throwable $exception) {
     $user = null;
@@ -49,6 +50,7 @@ require __DIR__ . '/../../private/views/header.php';
 
     <?php if (count($businesses) === 0): ?>
         <p class="muted">No business is linked to this account yet. Business setup is required before Lead Hub can be used.</p>
+        <a class="button-link" href="business-create.php">Create Business</a>
     <?php else: ?>
         <div class="business-list">
             <?php foreach ($businesses as $business): ?>
@@ -56,16 +58,31 @@ require __DIR__ . '/../../private/views/header.php';
                     <div>
                         <h3><?= e($business['business_name']) ?></h3>
                         <p><?= e($business['city']) ?>, <?= e($business['state']) ?></p>
+                        <p class="muted">Status: <?= e($business['setup_status']) ?> · Profile <?= e($business['profile_completion']) ?>%</p>
+                        <div class="pill-list">
+                            <?php foreach ($business['active_modules'] as $module): ?>
+                                <span><?= e($module['name']) ?></span>
+                            <?php endforeach; ?>
+                            <?php if (count($business['active_modules']) === 0): ?>
+                                <span>No active modules</span>
+                            <?php endif; ?>
+                        </div>
                     </div>
                     <div class="business-list__meta">
                         <span><?= e($business['role_name'] ?? 'No role') ?></span>
                         <?php if ((int) $business['is_owner'] === 1): ?>
                             <span>Owner</span>
                         <?php endif; ?>
+                        <a href="business.php?business_id=<?= e($business['id']) ?>">Edit</a>
+                        <?php if ($business['setup_status'] !== 'complete'): ?>
+                            <?php $nextStep = $business['setup_step'] === 'completed' ? 'confirmation' : ($business['setup_step'] ?: 'business_info'); ?>
+                            <a href="business-create.php?business_id=<?= e($business['id']) ?>&step=<?= e($nextStep) ?>">Continue setup</a>
+                        <?php endif; ?>
                     </div>
                 </article>
             <?php endforeach; ?>
         </div>
+        <p class="secondary-link"><a class="button-link" href="business-create.php">Create Business</a></p>
     <?php endif; ?>
 </section>
 <?php require __DIR__ . '/../../private/views/footer.php'; ?>
