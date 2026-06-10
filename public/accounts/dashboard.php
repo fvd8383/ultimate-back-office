@@ -73,16 +73,15 @@ require __DIR__ . '/../../private/views/header.php';
                         <?php if ((int) $business['is_owner'] === 1): ?>
                             <span>Owner</span>
                         <?php endif; ?>
-                        <a href="business.php?business_id=<?= e($business['id']) ?>">Edit</a>
+                        <a href="business.php?business_id=<?= e($business['id']) ?>">Edit Profile</a>
+                        <a href="business-create.php?business_id=<?= e($business['id']) ?>&step=modules">Manage Modules</a>
                         <?php if ($business['setup_status'] !== 'complete'): ?>
-                            <?php $nextStep = $business['setup_step'] === 'completed' ? 'confirmation' : ($business['setup_step'] ?: 'business_info'); ?>
-                            <a href="business-create.php?business_id=<?= e($business['id']) ?>&step=<?= e($nextStep) ?>">Continue setup</a>
+                            <a href="business-create.php?business_id=<?= e($business['id']) ?>">Continue Setup</a>
                         <?php endif; ?>
                     </div>
                 </article>
             <?php endforeach; ?>
         </div>
-        <p class="secondary-link"><a class="button-link" href="business-create.php">Create Business</a></p>
     <?php endif; ?>
 </section>
 <?php require __DIR__ . '/../../private/views/footer.php'; ?>
