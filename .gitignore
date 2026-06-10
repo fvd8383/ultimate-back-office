@@ -1,6 +1,7 @@
 .env
 .env.*
 !.env.example
+private/config/env.php
 /vendor/
 /node_modules/
 .DS_Store
