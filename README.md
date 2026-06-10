@@ -1,6 +1,6 @@
 # Ultimate Back Office
 
-Ultimate Back Office is a raw PHP/LAMP business operating platform for service businesses. Sprint 1 builds the Accounts OTP login foundation and the first Lead Hub shell.
+Ultimate Back Office is a raw PHP/LAMP business operating platform for service businesses. Sprint 1 builds the Accounts OTP login foundation and the first Lead Hub shell. Sprint 2 adds the business onboarding, service selection, and module activation foundation.
 
 ## Environment Configuration
 
@@ -48,6 +48,14 @@ DigitalOcean Managed MySQL commonly uses port `25060` and requires SSL. For that
 
 The migration creates the platform foundation tables for users, OTPs, businesses, roles, permissions, modules, payment providers, contacts, notes, tasks, and activity logs. It also seeds the required modules, Stripe payment provider, system roles, and default contact statuses.
 
+Then run the Sprint 2 migration:
+
+```bash
+mysql -h DB_HOST -P DB_PORT -u DB_USER -p DB_NAME < database/migrations/002_business_foundation.sql
+```
+
+The Sprint 2 migration adds business slugs, onboarding status fields, legal structures, categories, sub-services, selected business services, and module activation tracking fields.
+
 ## Testing OTP Login In Staging
 
 1. Insert an active test user into the `users` table.
@@ -67,3 +75,43 @@ The deployed web roots are:
 - `public/app`
 
 `public/accounts` handles OTP login, verification, logout, and account-level dashboard access. `public/app` contains the authenticated Lead Hub shell.
+
+## Business Onboarding
+
+After login, open `public/accounts/business-create.php` or use the Create Business link on the accounts dashboard.
+
+The onboarding wizard saves progress across four steps:
+
+1. Business information, address, physical location flag, and legal structure.
+2. One primary category and multiple selected sub-services.
+3. Module or tier selection.
+4. Confirmation and onboarding completion.
+
+Business slugs are generated automatically from the business name and stored in `businesses.slug`.
+
+## Business Profile Management
+
+Use `public/accounts/business.php` to edit a linked business profile after creation. Editable fields include business name, legal name, phone, email, address, physical location, legal structure, category, and services.
+
+Authenticated users can only create, edit, and complete onboarding for businesses linked to their account through `business_users`.
+
+## Category and Service Structure
+
+Sprint 2 uses:
+
+- `categories` for one primary business category.
+- `sub_services` for selectable services under each category.
+- `business_sub_services` for the services selected by each business.
+
+Seed data includes common service business categories such as Plumbing, Electrical, HVAC, Landscaping, Cleaning, Roofing, Painting, Handyman, Pest Control, Pool Service, Pressure Washing, Auto Detailing, General Contractor, and Other.
+
+## Module Activation Framework
+
+The onboarding wizard activates records in `business_modules` and records `activated_by_user_id` and `activation_source`.
+
+Rules currently enforced:
+
+- KYN requires SSP unless Full OS or Enterprise is selected.
+- Full OS activates Lead Hub, 247SP, EMD, SSP, TUHWD, and KYN.
+- Enterprise activates Full OS for the business.
+- Standalone module selections include Lead Hub access.
