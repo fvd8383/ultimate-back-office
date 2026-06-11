@@ -10,7 +10,7 @@ if (Session::isAuthenticated()) {
 }
 
 $email = trim($_GET['email'] ?? '');
-$notice = '';
+$notice = isset($_GET['signup']) ? 'Account created. Request a one-time code to sign in.' : '';
 $error = '';
 $displayCode = null;
 
@@ -63,6 +63,9 @@ require __DIR__ . '/../../private/views/header.php';
 
         <p class="secondary-link">
             Already have a code? <a href="verify.php<?= $email !== '' ? '?email=' . urlencode($email) : '' ?>">Verify it</a>
+        </p>
+        <p class="secondary-link">
+            New to Ultimate Back Office? <a href="signup.php<?= $email !== '' ? '?email=' . urlencode($email) : '' ?>">Create account</a>
         </p>
     </div>
 </section>
