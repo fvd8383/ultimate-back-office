@@ -6,6 +6,40 @@ require_once __DIR__ . '/Session.php';
 
 final class Auth
 {
+    public static function createActiveUser(string $firstName, string $lastName, string $email): array
+    {
+        $firstName = trim($firstName);
+        $lastName = trim($lastName);
+        $email = self::normalizeEmail($email);
+
+        if ($firstName === '' || $lastName === '' || $email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            throw new InvalidArgumentException('First name, last name, and a valid email are required.');
+        }
+
+        if (self::emailExists($email)) {
+            throw new RuntimeException('An account with that email already exists.');
+        }
+
+        $statement = Database::connection()->prepare(
+            'INSERT INTO users (first_name, last_name, email, phone, status, created_at, updated_at)
+             VALUES (:first_name, :last_name, :email, NULL, :status, NOW(), NOW())'
+        );
+        $statement->execute([
+            'first_name' => $firstName,
+            'last_name' => $lastName,
+            'email' => $email,
+            'status' => 'active',
+        ]);
+
+        return [
+            'id' => (int) Database::connection()->lastInsertId(),
+            'first_name' => $firstName,
+            'last_name' => $lastName,
+            'email' => $email,
+            'status' => 'active',
+        ];
+    }
+
     public static function requestLoginCode(string $email): array
     {
         $email = self::normalizeEmail($email);
@@ -128,6 +162,16 @@ final class Auth
         $user = $statement->fetch();
 
         return $user ?: null;
+    }
+
+    private static function emailExists(string $email): bool
+    {
+        $statement = Database::connection()->prepare(
+            'SELECT COUNT(*) FROM users WHERE LOWER(email) = LOWER(:email)'
+        );
+        $statement->execute(['email' => $email]);
+
+        return (int) $statement->fetchColumn() > 0;
     }
 
     private static function logSuccessfulLogin(int $userId): void

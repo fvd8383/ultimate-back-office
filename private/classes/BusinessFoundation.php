@@ -423,6 +423,39 @@ final class BusinessFoundation
         }
     }
 
+    public static function setEnterpriseAccessForUser(int $userId, int $businessId, bool $enabled): bool
+    {
+        if (self::businessForUser($businessId, $userId) === null) {
+            return false;
+        }
+
+        if ($enabled) {
+            self::activateModule($businessId, $userId, 'enterprise', 'enterprise');
+            self::ensureEnterpriseUserBusinessesUseFullOs($userId);
+            return true;
+        }
+
+        $statement = Database::connection()->prepare(
+            'UPDATE business_modules bm
+             INNER JOIN modules m ON m.id = bm.module_id
+             INNER JOIN business_users bu ON bu.business_id = bm.business_id
+             SET bm.status = :inactive_status,
+                 bm.deactivated_at = NOW(),
+                 bm.updated_at = NOW()
+             WHERE bu.user_id = :user_id
+               AND bu.status = :link_status
+               AND m.module_key = :module_key'
+        );
+        $statement->execute([
+            'inactive_status' => 'inactive',
+            'user_id' => $userId,
+            'link_status' => 'active',
+            'module_key' => 'enterprise',
+        ]);
+
+        return true;
+    }
+
     public static function completeOnboarding(int $businessId, int $userId): void
     {
         $statement = Database::connection()->prepare(
