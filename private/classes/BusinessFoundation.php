@@ -88,9 +88,11 @@ final class BusinessFoundation
         return $business ?: null;
     }
 
-    public static function businessesForDashboard(int $userId): array
+    public static function businessesForDashboard(int $userId, bool $normalizeEnterprise = true): array
     {
-        self::ensureEnterpriseUserBusinessesUseFullOs($userId);
+        if ($normalizeEnterprise) {
+            self::ensureEnterpriseUserBusinessesUseFullOs($userId);
+        }
 
         $statement = Database::connection()->prepare(
             'SELECT b.id,
@@ -437,6 +439,42 @@ final class BusinessFoundation
         ]);
 
         self::logActivity($businessId, $userId, 'business_onboarding_completed', 'Business onboarding completed');
+    }
+
+    public static function resetOnboardingForTesting(int $businessId, int $userId): bool
+    {
+        if (self::businessForUser($businessId, $userId) === null) {
+            return false;
+        }
+
+        $statement = Database::connection()->prepare(
+            'UPDATE businesses
+             SET setup_status = :setup_status,
+                 setup_step = :setup_step,
+                 updated_at = NOW()
+             WHERE id = :business_id'
+        );
+        $statement->execute([
+            'setup_status' => 'incomplete',
+            'setup_step' => 'business_info',
+            'business_id' => $businessId,
+        ]);
+
+        return true;
+    }
+
+    public static function removeModuleAssignmentsForTesting(int $businessId, int $userId): bool
+    {
+        if (self::businessForUser($businessId, $userId) === null) {
+            return false;
+        }
+
+        $statement = Database::connection()->prepare(
+            'DELETE FROM business_modules WHERE business_id = :business_id'
+        );
+        $statement->execute(['business_id' => $businessId]);
+
+        return true;
     }
 
     public static function leadHubSummary(int $businessId): array
