@@ -27,10 +27,8 @@ try {
 function dashboard_has_enterprise_access(array $businesses): bool
 {
     foreach ($businesses as $business) {
-        foreach ($business['active_modules'] ?? [] as $module) {
-            if (($module['module_key'] ?? '') === 'enterprise') {
-                return true;
-            }
+        if (!empty($business['has_enterprise'])) {
+            return true;
         }
     }
 
@@ -67,6 +65,9 @@ require __DIR__ . '/../../private/views/header.php';
         <p class="muted">No business is linked to this account yet. Business setup is required before Lead Hub can be used.</p>
         <a class="button-link" href="business-create.php">Create Business</a>
     <?php else: ?>
+        <?php if ($canAddBusiness): ?>
+            <div class="notice">Account Plan: Enterprise</div>
+        <?php endif; ?>
         <div class="business-list">
             <?php foreach ($businesses as $business): ?>
                 <article class="business-list__item">

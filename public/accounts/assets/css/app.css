@@ -311,6 +311,7 @@ button:hover,
 }
 
 .service-groups fieldset,
+.package-options,
 .module-option {
     border: 1px solid var(--line);
     border-radius: 8px;
@@ -318,10 +319,25 @@ button:hover,
     padding: 16px;
 }
 
-.service-groups legend {
+.service-groups legend,
+.package-options legend {
     color: var(--accent);
     font-weight: 700;
     padding: 0 6px;
+}
+
+.package-options {
+    display: grid;
+    gap: 14px;
+}
+
+.module-selection {
+    display: grid;
+    gap: 12px;
+}
+
+.module-selection[hidden] {
+    display: none;
 }
 
 .module-option {

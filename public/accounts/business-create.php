@@ -39,8 +39,17 @@ $businessId = isset($_POST['business_id']) ? (int) $_POST['business_id'] : (int)
 $business = null;
 $errors = [];
 $notice = '';
+$hasEnterpriseAccess = false;
+$fullOsIncludedModules = [];
+$packageType = 'modular';
 
 try {
+    $hasEnterpriseAccess = BusinessFoundation::userHasEnterpriseAccess((int) $user['id']);
+
+    if ($hasEnterpriseAccess) {
+        BusinessFoundation::ensureEnterpriseUserBusinessesUseFullOs((int) $user['id']);
+    }
+
     if ($businessId > 0) {
         $business = BusinessFoundation::businessForUser($businessId, (int) $user['id']);
 
@@ -54,17 +63,22 @@ try {
     $categories = BusinessFoundation::categories();
     $allSubServices = BusinessFoundation::subServices();
     $availableModules = BusinessFoundation::availableModules();
+    $fullOsIncludedModules = BusinessFoundation::fullOsIncludedModules();
     $selectedSubServiceIds = $businessId > 0 ? BusinessFoundation::selectedSubServiceIds($businessId) : [];
     $activeModules = $businessId > 0 ? BusinessFoundation::activeModules($businessId) : [];
     $selectedModuleKeys = BusinessFoundation::selectedModuleKeysFromActiveModules($activeModules);
+    $packageType = $hasEnterpriseAccess ? 'full_os' : BusinessFoundation::packageTypeFromActiveModules($activeModules);
 } catch (Throwable $exception) {
+    $hasEnterpriseAccess = false;
     $legalStructures = [];
     $categories = [];
     $allSubServices = [];
     $availableModules = [];
+    $fullOsIncludedModules = [];
     $selectedSubServiceIds = [];
     $activeModules = [];
     $selectedModuleKeys = [];
+    $packageType = 'modular';
     $errors[] = 'Business onboarding data could not be loaded.';
 }
 
@@ -165,15 +179,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && count($errors) === 0) {
                 $errors[] = 'Complete business information first.';
             }
 
-            $postedModules = $_POST['modules'] ?? [];
+            $packageType = $hasEnterpriseAccess ? 'full_os' : (string) ($_POST['package_type'] ?? 'modular');
+
+            if (!in_array($packageType, ['modular', 'full_os'], true)) {
+                $packageType = 'modular';
+            }
+
+            $postedModules = $packageType === 'modular' ? ($_POST['modules'] ?? []) : [];
             $postedModules = is_array($postedModules) ? $postedModules : [];
 
-            if (count($postedModules) === 0) {
+            if ($packageType === 'modular' && count($postedModules) === 0) {
                 $errors[] = 'Select at least one module or platform tier.';
             }
 
             if (count($errors) === 0) {
-                BusinessFoundation::saveModules($businessId, (int) $user['id'], $postedModules);
+                BusinessFoundation::saveModules($businessId, (int) $user['id'], $postedModules, $packageType, $hasEnterpriseAccess);
                 header('Location: business-create.php?step=confirmation&business_id=' . $businessId);
                 exit;
             }
@@ -202,6 +222,7 @@ if ($businessId > 0) {
         $selectedSubServiceIds = BusinessFoundation::selectedSubServiceIds($businessId);
         $activeModules = BusinessFoundation::activeModules($businessId);
         $selectedModuleKeys = BusinessFoundation::selectedModuleKeysFromActiveModules($activeModules);
+        $packageType = $hasEnterpriseAccess ? 'full_os' : BusinessFoundation::packageTypeFromActiveModules($activeModules);
         $selectedServices = BusinessFoundation::selectedServices($businessId);
     } catch (Throwable $exception) {
         $selectedServices = [];
@@ -361,23 +382,54 @@ require __DIR__ . '/../../private/views/header.php';
         <input type="hidden" name="step" value="modules">
         <input type="hidden" name="business_id" value="<?= e($businessId) ?>">
 
-        <div class="module-grid">
-            <?php foreach ($availableModules as $module): ?>
+        <?php if ($hasEnterpriseAccess): ?>
+            <div class="notice">
+                Account Plan: Enterprise. Every business uses Full OS, so modular package selection is unavailable.
+            </div>
+            <input type="hidden" name="package_type" value="full_os">
+        <?php else: ?>
+            <fieldset class="package-options">
+                <legend>Business Package</legend>
                 <label class="module-option">
-                    <input type="checkbox" name="modules[]" value="<?= e($module['module_key']) ?>"<?= module_checked($module['module_key'], $_POST['modules'] ?? $selectedModuleKeys) ?>>
-                    <strong><?= e($module['name']) ?></strong>
-                    <?php if ($module['module_key'] === 'kyn'): ?>
-                        <span>KYN requires SSP. If SSP is not selected, it will be included automatically.</span>
-                    <?php elseif ($module['module_key'] === 'full_os'): ?>
-                        <span>Activates Lead Hub and all current modules.</span>
-                    <?php elseif ($module['module_key'] === 'enterprise'): ?>
-                        <span>Activates Full OS access for the business.</span>
-                    <?php else: ?>
-                        <span>Includes Lead Hub access.</span>
-                    <?php endif; ?>
+                    <input type="radio" name="package_type" value="modular" <?= $packageType !== 'full_os' ? 'checked' : '' ?>>
+                    <strong>Modular package</strong>
+                    <span>Select individual business modules. Lead Hub is included automatically.</span>
                 </label>
-            <?php endforeach; ?>
-        </div>
+                <label class="module-option">
+                    <input type="radio" name="package_type" value="full_os" <?= $packageType === 'full_os' ? 'checked' : '' ?>>
+                    <strong>Full OS</strong>
+                    <span>Automatically activates Lead Hub, 247SP, EMD, SSP, TUHWD, and KYN.</span>
+                </label>
+            </fieldset>
+        <?php endif; ?>
+
+        <section class="module-selection" data-package-panel="modular" <?= (!$hasEnterpriseAccess && $packageType !== 'full_os') ? '' : 'hidden' ?>>
+            <h2>Modular package modules</h2>
+            <div class="module-grid">
+                <?php foreach ($availableModules as $module): ?>
+                    <label class="module-option">
+                        <input type="checkbox" name="modules[]" value="<?= e($module['module_key']) ?>"<?= module_checked($module['module_key'], $_POST['modules'] ?? $selectedModuleKeys) ?> <?= (!$hasEnterpriseAccess && $packageType !== 'full_os') ? '' : 'disabled' ?>>
+                        <strong><?= e($module['name']) ?></strong>
+                        <?php if ($module['module_key'] === 'kyn'): ?>
+                            <span>KYN requires SSP. If SSP is not selected, it will be included automatically.</span>
+                        <?php else: ?>
+                            <span>Includes Lead Hub access.</span>
+                        <?php endif; ?>
+                    </label>
+                <?php endforeach; ?>
+            </div>
+        </section>
+
+        <section class="module-selection" data-package-panel="full_os" <?= ($hasEnterpriseAccess || $packageType === 'full_os') ? '' : 'hidden' ?>>
+            <h2>Full OS included modules</h2>
+            <p class="muted">Individual module selection is not needed with Full OS.</p>
+            <div class="pill-list">
+                <span>Full OS</span>
+                <?php foreach ($fullOsIncludedModules as $module): ?>
+                    <span><?= e($module['name']) ?></span>
+                <?php endforeach; ?>
+            </div>
+        </section>
 
         <div class="button-row">
             <a class="button-link button-link--secondary" href="business-create.php?step=services&business_id=<?= e($businessId) ?>">Back</a>
@@ -419,5 +471,27 @@ require __DIR__ . '/../../private/views/header.php';
         <?php endif; ?>
     </section>
 <?php endif; ?>
+
+<script>
+document.querySelectorAll('input[name="package_type"]').forEach(function (input) {
+    input.addEventListener('change', updatePackagePanels);
+});
+
+function updatePackagePanels() {
+    var selected = document.querySelector('input[name="package_type"]:checked');
+    var packageType = selected ? selected.value : '<?= $hasEnterpriseAccess ? 'full_os' : e($packageType) ?>';
+
+    document.querySelectorAll('[data-package-panel]').forEach(function (panel) {
+        var isActive = panel.getAttribute('data-package-panel') === packageType;
+        panel.hidden = !isActive;
+
+        panel.querySelectorAll('input').forEach(function (input) {
+            input.disabled = !isActive;
+        });
+    });
+}
+
+updatePackagePanels();
+</script>
 
 <?php require __DIR__ . '/../../private/views/footer.php'; ?>

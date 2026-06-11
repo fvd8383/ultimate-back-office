@@ -14,6 +14,8 @@ final class BusinessFoundation
         'enterprise' => 'Enterprise',
     ];
 
+    private const FULL_OS_INCLUDED_MODULE_KEYS = ['lead_hub', '247sp', 'emd', 'ssp', 'tuhwd', 'kyn'];
+
     public static function legalStructures(): array
     {
         return self::fetchActiveRows('legal_structures');
@@ -88,6 +90,8 @@ final class BusinessFoundation
 
     public static function businessesForDashboard(int $userId): array
     {
+        self::ensureEnterpriseUserBusinessesUseFullOs($userId);
+
         $statement = Database::connection()->prepare(
             'SELECT b.id,
                     b.business_name,
@@ -117,6 +121,7 @@ final class BusinessFoundation
 
         foreach ($businesses as &$business) {
             $business['active_modules'] = self::activeModules((int) $business['id']);
+            $business['has_enterprise'] = self::businessHasActiveModule((int) $business['id'], 'enterprise');
             $business['profile_completion'] = self::profileCompletion($business);
         }
 
@@ -150,12 +155,17 @@ final class BusinessFoundation
 
     public static function activeModules(int $businessId): array
     {
+        if (self::businessHasActiveModule($businessId, 'enterprise')) {
+            self::activateEnterpriseFullOsModules($businessId, null);
+        }
+
         $statement = Database::connection()->prepare(
             "SELECT m.module_key, m.name, bm.activation_source
              FROM business_modules bm
              INNER JOIN modules m ON m.id = bm.module_id
              WHERE bm.business_id = :business_id
                AND bm.status = :status
+               AND m.module_key IN ('lead_hub', '247sp', 'emd', 'ssp', 'tuhwd', 'kyn', 'full_os')
              ORDER BY FIELD(m.module_key, 'lead_hub', '247sp', 'emd', 'ssp', 'tuhwd', 'kyn', 'full_os', 'enterprise'), m.name"
         );
         $statement->execute([
@@ -172,11 +182,49 @@ final class BusinessFoundation
             "SELECT module_key, name
              FROM modules
              WHERE is_active = 1
-               AND module_key IN ('247sp', 'emd', 'ssp', 'tuhwd', 'kyn', 'full_os', 'enterprise')
-             ORDER BY FIELD(module_key, '247sp', 'emd', 'ssp', 'tuhwd', 'kyn', 'full_os', 'enterprise')"
+               AND module_key IN ('247sp', 'emd', 'ssp', 'tuhwd', 'kyn')
+             ORDER BY FIELD(module_key, '247sp', 'emd', 'ssp', 'tuhwd', 'kyn')"
         );
 
         return $statement->fetchAll();
+    }
+
+    public static function fullOsIncludedModules(): array
+    {
+        $statement = Database::connection()->query(
+            "SELECT module_key, name
+             FROM modules
+             WHERE is_active = 1
+               AND module_key IN ('lead_hub', '247sp', 'emd', 'ssp', 'tuhwd', 'kyn')
+             ORDER BY FIELD(module_key, 'lead_hub', '247sp', 'emd', 'ssp', 'tuhwd', 'kyn')"
+        );
+
+        return $statement->fetchAll();
+    }
+
+    public static function userHasEnterpriseAccess(int $userId): bool
+    {
+        $statement = Database::connection()->prepare(
+            'SELECT COUNT(*)
+             FROM business_users bu
+             INNER JOIN business_modules bm ON bm.business_id = bu.business_id
+             INNER JOIN modules m ON m.id = bm.module_id
+             INNER JOIN businesses b ON b.id = bu.business_id
+             WHERE bu.user_id = :user_id
+               AND bu.status = :link_status
+               AND b.status = :business_status
+               AND bm.status = :module_status
+               AND m.module_key = :module_key'
+        );
+        $statement->execute([
+            'user_id' => $userId,
+            'link_status' => 'active',
+            'business_status' => 'active',
+            'module_status' => 'active',
+            'module_key' => 'enterprise',
+        ]);
+
+        return (int) $statement->fetchColumn() > 0;
     }
 
     public static function saveBusinessInfo(int $userId, array $input, ?int $businessId = null): int
@@ -222,6 +270,11 @@ final class BusinessFoundation
 
             $businessId = (int) Database::connection()->lastInsertId();
             self::linkOwner($businessId, $userId);
+
+            if (self::userHasEnterpriseAccess($userId)) {
+                self::activateEnterpriseFullOsModules($businessId, $userId);
+            }
+
             self::logActivity($businessId, $userId, 'business_created', 'Business created');
 
             return $businessId;
@@ -257,6 +310,10 @@ final class BusinessFoundation
         ]);
 
         self::logActivity($businessId, $userId, 'business_updated', 'Business information updated');
+
+        if (self::userHasEnterpriseAccess($userId)) {
+            self::activateEnterpriseFullOsModules($businessId, $userId);
+        }
 
         return $businessId;
     }
@@ -308,9 +365,17 @@ final class BusinessFoundation
         }
     }
 
-    public static function saveModules(int $businessId, int $userId, array $selectedKeys): void
+    public static function saveModules(int $businessId, int $userId, array $selectedKeys, string $packageType = 'modular', bool $forceFullOs = false): void
     {
-        $moduleSources = self::moduleSources($selectedKeys);
+        $enterpriseForced = $forceFullOs || self::businessHasActiveModule($businessId, 'enterprise');
+
+        if ($enterpriseForced) {
+            $moduleSources = self::enterpriseFullOsModuleSources();
+        } elseif ($packageType === 'full_os') {
+            $moduleSources = self::moduleSources(['full_os']);
+        } else {
+            $moduleSources = self::moduleSources($selectedKeys);
+        }
 
         Database::connection()->beginTransaction();
 
@@ -318,39 +383,19 @@ final class BusinessFoundation
             $deactivate = Database::connection()->prepare(
                 'UPDATE business_modules
                  SET status = :inactive_status, deactivated_at = NOW(), updated_at = NOW()
-                 WHERE business_id = :business_id'
+                 WHERE business_id = :business_id
+                   AND module_id NOT IN (
+                       SELECT id FROM modules WHERE module_key = :enterprise_module_key
+                   )'
             );
             $deactivate->execute([
                 'inactive_status' => 'inactive',
                 'business_id' => $businessId,
+                'enterprise_module_key' => 'enterprise',
             ]);
 
-            $insert = Database::connection()->prepare(
-                'INSERT INTO business_modules (
-                    business_id, module_id, status, activated_at, deactivated_at,
-                    activated_by_user_id, activation_source, created_at, updated_at
-                 )
-                 SELECT :business_id, id, :active_status, NOW(), NULL,
-                        :activated_by_user_id, :activation_source, NOW(), NOW()
-                 FROM modules
-                 WHERE module_key = :module_key
-                 ON DUPLICATE KEY UPDATE
-                    status = VALUES(status),
-                    activated_at = VALUES(activated_at),
-                    deactivated_at = NULL,
-                    activated_by_user_id = VALUES(activated_by_user_id),
-                    activation_source = VALUES(activation_source),
-                    updated_at = NOW()'
-            );
-
             foreach ($moduleSources as $moduleKey => $source) {
-                $insert->execute([
-                    'business_id' => $businessId,
-                    'active_status' => 'active',
-                    'activated_by_user_id' => $userId,
-                    'activation_source' => $source,
-                    'module_key' => $moduleKey,
-                ]);
+                self::activateModule($businessId, $userId, $moduleKey, $source);
             }
 
             $statement = Database::connection()->prepare(
@@ -448,11 +493,11 @@ final class BusinessFoundation
                 continue;
             }
 
-            $sources[$moduleKey] = 'manual';
-        }
+            if ($moduleKey === 'enterprise') {
+                continue;
+            }
 
-        if (isset($sources['enterprise'])) {
-            $sources['full_os'] = 'enterprise';
+            $sources[$moduleKey] = 'manual';
         }
 
         if (isset($sources['full_os'])) {
@@ -468,6 +513,17 @@ final class BusinessFoundation
         }
 
         return $sources;
+    }
+
+    public static function packageTypeFromActiveModules(array $activeModules): string
+    {
+        foreach ($activeModules as $module) {
+            if (($module['module_key'] ?? '') === 'full_os') {
+                return 'full_os';
+            }
+        }
+
+        return 'modular';
     }
 
     public static function selectedModuleKeysFromActiveModules(array $activeModules): array
@@ -516,6 +572,96 @@ final class BusinessFoundation
             'role_id' => $roleId,
             'status' => 'active',
         ]);
+    }
+
+    public static function ensureEnterpriseUserBusinessesUseFullOs(int $userId): void
+    {
+        if (!self::userHasEnterpriseAccess($userId)) {
+            return;
+        }
+
+        $statement = Database::connection()->prepare(
+            'SELECT b.id
+             FROM businesses b
+             INNER JOIN business_users bu ON bu.business_id = b.id
+             WHERE bu.user_id = :user_id
+               AND bu.status = :link_status
+               AND b.status = :business_status'
+        );
+        $statement->execute([
+            'user_id' => $userId,
+            'link_status' => 'active',
+            'business_status' => 'active',
+        ]);
+
+        foreach ($statement->fetchAll() as $business) {
+            self::activateEnterpriseFullOsModules((int) $business['id'], $userId);
+        }
+    }
+
+    private static function activateEnterpriseFullOsModules(int $businessId, ?int $userId): void
+    {
+        foreach (self::enterpriseFullOsModuleSources() as $moduleKey => $source) {
+            self::activateModule($businessId, $userId, $moduleKey, $source);
+        }
+    }
+
+    private static function enterpriseFullOsModuleSources(): array
+    {
+        $sources = ['full_os' => 'enterprise'];
+
+        foreach (self::FULL_OS_INCLUDED_MODULE_KEYS as $moduleKey) {
+            $sources[$moduleKey] = 'full_os';
+        }
+
+        return $sources;
+    }
+
+    private static function activateModule(int $businessId, ?int $userId, string $moduleKey, string $activationSource): void
+    {
+        $statement = Database::connection()->prepare(
+            'INSERT INTO business_modules (
+                business_id, module_id, status, activated_at, deactivated_at,
+                activated_by_user_id, activation_source, created_at, updated_at
+             )
+             SELECT :business_id, id, :active_status, NOW(), NULL,
+                    :activated_by_user_id, :activation_source, NOW(), NOW()
+             FROM modules
+             WHERE module_key = :module_key
+             ON DUPLICATE KEY UPDATE
+                status = VALUES(status),
+                activated_at = VALUES(activated_at),
+                deactivated_at = NULL,
+                activated_by_user_id = COALESCE(VALUES(activated_by_user_id), activated_by_user_id),
+                activation_source = VALUES(activation_source),
+                updated_at = NOW()'
+        );
+        $statement->execute([
+            'business_id' => $businessId,
+            'active_status' => 'active',
+            'activated_by_user_id' => $userId,
+            'activation_source' => $activationSource,
+            'module_key' => $moduleKey,
+        ]);
+    }
+
+    private static function businessHasActiveModule(int $businessId, string $moduleKey): bool
+    {
+        $statement = Database::connection()->prepare(
+            'SELECT COUNT(*)
+             FROM business_modules bm
+             INNER JOIN modules m ON m.id = bm.module_id
+             WHERE bm.business_id = :business_id
+               AND bm.status = :status
+               AND m.module_key = :module_key'
+        );
+        $statement->execute([
+            'business_id' => $businessId,
+            'status' => 'active',
+            'module_key' => $moduleKey,
+        ]);
+
+        return (int) $statement->fetchColumn() > 0;
     }
 
     private static function slugify(string $value): string
