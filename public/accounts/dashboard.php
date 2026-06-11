@@ -15,11 +15,26 @@ try {
     }
 
     $businesses = BusinessFoundation::businessesForDashboard((int) $user['id']);
+    $canAddBusiness = dashboard_has_enterprise_access($businesses);
     $loadError = '';
 } catch (Throwable $exception) {
     $user = null;
     $businesses = [];
+    $canAddBusiness = false;
     $loadError = 'Dashboard data could not be loaded. Check the environment and database setup.';
+}
+
+function dashboard_has_enterprise_access(array $businesses): bool
+{
+    foreach ($businesses as $business) {
+        foreach ($business['active_modules'] ?? [] as $module) {
+            if (($module['module_key'] ?? '') === 'enterprise') {
+                return true;
+            }
+        }
+    }
+
+    return false;
 }
 
 $pageTitle = 'Accounts Dashboard - Ultimate Back Office';
@@ -69,8 +84,12 @@ require __DIR__ . '/../../private/views/header.php';
                         </div>
                     </div>
                     <div class="business-list__meta">
-                        <span><?= e($business['role_name'] ?? 'No role') ?></span>
-                        <?php if ((int) $business['is_owner'] === 1): ?>
+                        <?php $roleName = (string) ($business['role_name'] ?? 'No role'); ?>
+                        <?php $isOwner = (int) $business['is_owner'] === 1; ?>
+                        <?php if (!($isOwner && strcasecmp($roleName, 'Owner') === 0)): ?>
+                            <span><?= e($roleName) ?></span>
+                        <?php endif; ?>
+                        <?php if ($isOwner): ?>
                             <span>Owner</span>
                         <?php endif; ?>
                         <a href="business.php?business_id=<?= e($business['id']) ?>">Edit Profile</a>
@@ -82,6 +101,9 @@ require __DIR__ . '/../../private/views/header.php';
                 </article>
             <?php endforeach; ?>
         </div>
+        <?php if ($canAddBusiness): ?>
+            <p class="secondary-link"><a class="button-link" href="business-create.php">Add Business</a></p>
+        <?php endif; ?>
     <?php endif; ?>
 </section>
 <?php require __DIR__ . '/../../private/views/footer.php'; ?>
