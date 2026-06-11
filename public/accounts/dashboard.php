@@ -5,6 +5,9 @@ require_once __DIR__ . '/../../private/classes/BusinessFoundation.php';
 
 Session::requireAuth('login.php');
 
+$testingNotice = '';
+$normalizeEnterpriseModules = true;
+
 try {
     $user = Auth::currentUser();
 
@@ -14,14 +17,45 @@ try {
         exit;
     }
 
-    $businesses = BusinessFoundation::businessesForDashboard((int) $user['id']);
+    $showTestingTools = dashboard_testing_tools_enabled();
+
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['testing_action'] ?? '') !== '' && $showTestingTools) {
+        $businessId = (int) ($_POST['business_id'] ?? 0);
+        $testingAction = (string) ($_POST['testing_action'] ?? '');
+
+        if ($testingAction === 'reset_onboarding') {
+            $testingNotice = BusinessFoundation::resetOnboardingForTesting($businessId, (int) $user['id'])
+                ? 'Onboarding status was reset.'
+                : 'That business could not be found for this account.';
+        } elseif ($testingAction === 'remove_modules') {
+            if (BusinessFoundation::removeModuleAssignmentsForTesting($businessId, (int) $user['id'])) {
+                $testingNotice = 'Module assignments were removed.';
+                $normalizeEnterpriseModules = false;
+            } else {
+                $testingNotice = 'That business could not be found for this account.';
+            }
+        }
+    }
+
+    $businesses = BusinessFoundation::businessesForDashboard((int) $user['id'], $normalizeEnterpriseModules);
     $canAddBusiness = dashboard_has_enterprise_access($businesses);
     $loadError = '';
 } catch (Throwable $exception) {
     $user = null;
     $businesses = [];
+    $showTestingTools = false;
     $canAddBusiness = false;
     $loadError = 'Dashboard data could not be loaded. Check the environment and database setup.';
+}
+
+function dashboard_testing_tools_enabled(): bool
+{
+    try {
+        return strtolower((string) Database::config('APP_ENV', 'production')) === 'staging'
+            && (bool) Database::config('APP_DEBUG', false);
+    } catch (Throwable $exception) {
+        return false;
+    }
 }
 
 function dashboard_has_enterprise_access(array $businesses): bool
@@ -56,6 +90,10 @@ require __DIR__ . '/../../private/views/header.php';
 
 <?php if ($loadError !== ''): ?>
     <div class="error"><?= e($loadError) ?></div>
+<?php endif; ?>
+
+<?php if ($testingNotice !== ''): ?>
+    <div class="notice"><?= e($testingNotice) ?></div>
 <?php endif; ?>
 
 <section class="dashboard-card">
@@ -107,4 +145,33 @@ require __DIR__ . '/../../private/views/header.php';
         <?php endif; ?>
     <?php endif; ?>
 </section>
+
+<?php if ($showTestingTools && count($businesses) > 0): ?>
+    <section class="dashboard-card">
+        <p class="eyebrow">Staging only</p>
+        <h2>Testing Tools</h2>
+        <div class="business-list">
+            <?php foreach ($businesses as $business): ?>
+                <article class="business-list__item">
+                    <div>
+                        <h3><?= e($business['business_name']) ?></h3>
+                        <p class="muted">Use these tools only for staging onboarding tests.</p>
+                    </div>
+                    <div class="business-list__meta">
+                        <form method="post" action="dashboard.php">
+                            <input type="hidden" name="business_id" value="<?= e($business['id']) ?>">
+                            <input type="hidden" name="testing_action" value="reset_onboarding">
+                            <button type="submit">Reset onboarding status</button>
+                        </form>
+                        <form method="post" action="dashboard.php" onsubmit="return confirm('Remove all module assignments for this business?');">
+                            <input type="hidden" name="business_id" value="<?= e($business['id']) ?>">
+                            <input type="hidden" name="testing_action" value="remove_modules">
+                            <button type="submit">Remove module assignments</button>
+                        </form>
+                    </div>
+                </article>
+            <?php endforeach; ?>
+        </div>
+    </section>
+<?php endif; ?>
 <?php require __DIR__ . '/../../private/views/footer.php'; ?>
