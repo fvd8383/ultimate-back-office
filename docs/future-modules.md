@@ -471,3 +471,18 @@ White-label reseller accounts
 ```
 
 The v1 foundation should make these possible later.
+
+Plan Types
+
+Modular
+- Select individual modules
+- Single business
+
+Full OS
+- All modules included
+- Single business
+
+Enterprise
+- Multiple businesses
+- Full OS required for every business
+- Centralized management (future sprint)

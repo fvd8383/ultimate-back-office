@@ -2823,3 +2823,18 @@ Codex must follow these rules:
 27. Preserve future support for field tech workflows.
 28. Preserve future support for mobile apps and APIs.
 29. Keep the schema understandable and maintainable for a solo founder.
+
+Enterprise is an account-level plan, not a business module.
+
+Future architecture:
+
+accounts
+  └─ account_plans
+
+account_plans
+  ├─ modular
+  ├─ full_os
+  └─ enterprise
+
+businesses
+  └─ linked to account
