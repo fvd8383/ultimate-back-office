@@ -1,6 +1,6 @@
 <?php
 
-require_once __DIR__ . '/../../private/classes/AdminPortal.php';
+require_once __DIR__ . '/../../../private/classes/AdminPortal.php';
 
 function admin_bootstrap(): array
 {
@@ -41,7 +41,7 @@ function admin_begin(string $title, string $current, array $context): void
     $layoutLogoutHref = $accountsBaseUrl . '/logout.php';
     $designSystemPath = '/assets/css/design-system.css';
 
-    require __DIR__ . '/../../private/views/header.php';
+    require __DIR__ . '/../../../private/views/header.php';
     ?>
     <section class="app-layout admin-layout">
         <?= ui_sidebar('Admin Portal', [
@@ -60,7 +60,7 @@ function admin_end(): void
         </div>
     </section>
     <?php
-    require __DIR__ . '/../../private/views/footer.php';
+    require __DIR__ . '/../../../private/views/footer.php';
 }
 
 function admin_access_denied(array $context): void
