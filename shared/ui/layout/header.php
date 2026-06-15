@@ -2,7 +2,7 @@
 
 $pageTitle = $pageTitle ?? 'Ultimate Back Office';
 $bodyClass = $bodyClass ?? '';
-$designSystemPath = $designSystemPath ?? '../../shared/ui/design-system.css';
+$designSystemPath = $designSystemPath ?? '/assets/css/design-system.css';
 $layoutUserName = $layoutUserName ?? '';
 $layoutLogoutHref = $layoutLogoutHref ?? '';
 ?>
