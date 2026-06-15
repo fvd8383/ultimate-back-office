@@ -76,6 +76,14 @@ mysql -h DB_HOST -P DB_PORT -u DB_USER -p DB_NAME < database/migrations/004_247s
 
 The Sprint 4 migration adds the 24/7 Sales Partner site generator tables for the starter template, template assignments, generated website records, and generated page records.
 
+Then run the Sprint 5 migration:
+
+```bash
+mysql -h DB_HOST -P DB_PORT -u DB_USER -p DB_NAME < database/migrations/005_admin_portal.sql
+```
+
+The Sprint 5 migration adds `admin_notes`, business suspension/test/internal status fields, and the internal Admin role.
+
 ## Testing OTP Login In Staging
 
 1. Insert an active test user into the `users` table.
@@ -202,6 +210,41 @@ Website status flow:
 The private preview is available at `public/app/247sp/site-preview.php` for authenticated users linked to a business with active 247SP access.
 
 Sprint 4 creates website records and private preview pages only. It does not register domains, modify DNS, provision email, add Stripe billing, add analytics, add media uploads, or generate AI content.
+
+## Admin Portal
+
+The internal admin portal lives in `public/admin`.
+
+Admin pages:
+
+- `dashboard.php`
+- `users.php`
+- `user.php`
+- `businesses.php`
+- `business.php`
+- `websites.php`
+- `website.php`
+
+Only active users assigned an internal `Super Admin` or internal `Admin` role may access these pages. Other authenticated users receive Access Denied.
+
+The admin dashboard shows platform metrics, recent signups, recent businesses, and recent website generations.
+
+Business controls support:
+
+- Enable and disable modules.
+- Suspend and unsuspend businesses.
+- Mark a business as a test account.
+- Add and view internal admin notes.
+
+Website controls support:
+
+- View generated website details.
+- View a read-only asset summary.
+- Generate websites from completed 247SP onboarding.
+- Regenerate websites from the latest 247SP onboarding data.
+- Open the existing private preview.
+
+Sprint 5 does not add website editing, domain automation, email provisioning, Stripe billing, AI content generation, public website publishing, customer CMS, support ticketing, Apache changes, DNS changes, SSL changes, server config changes, or credential changes.
 
 ## Design System
 
