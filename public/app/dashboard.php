@@ -65,10 +65,18 @@ require __DIR__ . '/../../private/views/header.php';
 ?>
 <section class="app-layout">
     <?php
+    $accountsDashboardHref = $accountsBaseUrl . '/dashboard.php';
+    $businessesHref = $business
+        ? $accountsBaseUrl . '/business.php?business_id=' . urlencode((string) $business['id'])
+        : $accountsDashboardHref;
+    $modulesHref = $business
+        ? $accountsBaseUrl . '/business-create.php?business_id=' . urlencode((string) $business['id']) . '&step=modules'
+        : $accountsDashboardHref;
+
     $sidebarItems = [
         ['label' => 'Dashboard', 'href' => 'dashboard.php', 'current' => true],
-        ['label' => 'Businesses'],
-        ['label' => 'Modules'],
+        ['label' => 'Businesses', 'href' => $businessesHref],
+        ['label' => 'Modules', 'href' => $modulesHref],
     ];
 
     if ($business && $has247spAccess) {
