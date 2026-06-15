@@ -115,7 +115,7 @@ require __DIR__ . '/../../private/views/header.php';
                     <p class="eyebrow">Active module</p>
                     <h2>24/7 Sales Partner</h2>
                     <p class="muted">Open the website onboarding dashboard for this business.</p>
-                    <?= ui_button('Open 24/7 Sales Partner', '247sp/dashboard.php?business_id=' . urlencode((string) $business['id'])) ?>
+                    <?= ui_button('Open 24/7 Sales Partner', '247sp/dashboard.php?business_id=' . urlencode((string) $business['id']), 'primary', ['class' => 'ubo-dashboard-action ubo-dashboard-action--247sp']) ?>
                 </section>
             <?php endif; ?>
 

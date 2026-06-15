@@ -150,10 +150,10 @@ require __DIR__ . '/../../private/views/header.php';
                         <a href="business.php?business_id=<?= e($business['id']) ?>">Edit Profile</a>
                         <a href="business-create.php?business_id=<?= e($business['id']) ?>&step=modules">Manage Modules</a>
                         <?php if (dashboard_business_has_module($business, 'lead_hub')): ?>
-                            <?= ui_button('Open Lead Hub', $appBaseUrl . '/dashboard.php?business_id=' . urlencode((string) $business['id']), 'secondary', ['class' => 'ubo-button--compact']) ?>
+                            <?= ui_button('Open Lead Hub', $appBaseUrl . '/dashboard.php?business_id=' . urlencode((string) $business['id']), 'secondary', ['class' => 'ubo-dashboard-action ubo-dashboard-action--lead']) ?>
                         <?php endif; ?>
                         <?php if (dashboard_business_has_module($business, '247sp')): ?>
-                            <?= ui_button('Open 24/7 Sales Partner', $appBaseUrl . '/247sp/dashboard.php?business_id=' . urlencode((string) $business['id']), 'primary', ['class' => 'ubo-button--compact']) ?>
+                            <?= ui_button('Open 24/7 Sales Partner', $appBaseUrl . '/247sp/dashboard.php?business_id=' . urlencode((string) $business['id']), 'primary', ['class' => 'ubo-dashboard-action ubo-dashboard-action--247sp']) ?>
                         <?php endif; ?>
                         <?php if ($business['setup_status'] !== 'complete'): ?>
                             <a href="business-create.php?business_id=<?= e($business['id']) ?>">Continue Setup</a>
@@ -183,12 +183,12 @@ require __DIR__ . '/../../private/views/header.php';
                         <form method="post" action="dashboard.php">
                             <input type="hidden" name="business_id" value="<?= e($business['id']) ?>">
                             <input type="hidden" name="testing_action" value="reset_onboarding">
-                            <?= ui_button('Reset onboarding status', '', 'primary', ['class' => 'ubo-button--compact']) ?>
+                            <?= ui_button('Reset onboarding status', '', 'primary', ['class' => 'ubo-dashboard-action']) ?>
                         </form>
                         <form method="post" action="dashboard.php" onsubmit="return confirm('Remove all module assignments for this business?');">
                             <input type="hidden" name="business_id" value="<?= e($business['id']) ?>">
                             <input type="hidden" name="testing_action" value="remove_modules">
-                            <?= ui_button('Remove module assignments', '', 'secondary', ['class' => 'ubo-button--compact']) ?>
+                            <?= ui_button('Remove module assignments', '', 'secondary', ['class' => 'ubo-dashboard-action']) ?>
                         </form>
                     </div>
                 </article>

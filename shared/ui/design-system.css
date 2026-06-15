@@ -180,6 +180,36 @@ button:hover,
     padding: 8px 14px;
 }
 
+.ubo-dashboard-action {
+    min-height: 44px;
+    border-radius: 8px;
+    font-size: 14px;
+    padding: 10px 16px;
+}
+
+.ubo-dashboard-action--lead {
+    border-color: rgba(59, 108, 122, .42);
+    color: var(--ubo-primary);
+}
+
+.ubo-dashboard-action--lead:hover {
+    border-color: var(--ubo-primary);
+    background: rgba(59, 108, 122, .08);
+    color: var(--ubo-primary);
+}
+
+.ubo-dashboard-action--247sp {
+    border-color: var(--ubo-247sp-primary);
+    background: var(--ubo-247sp-primary);
+    color: #FFFFFF;
+}
+
+.ubo-dashboard-action--247sp:hover {
+    border-color: #2636B5;
+    background: #2636B5;
+    color: #FFFFFF;
+}
+
 .ubo-card,
 .auth-panel__content,
 .dashboard-card,
@@ -244,7 +274,7 @@ button:hover,
 .ubo-badge,
 .pill-list span,
 .business-list__meta span,
-.business-list__meta a,
+.business-list__meta a:not(.ubo-button),
 .step-nav span,
 .step-nav a {
     display: inline-flex;
@@ -451,7 +481,19 @@ button:hover,
     flex-wrap: wrap;
     align-content: flex-start;
     justify-content: flex-end;
-    gap: 8px;
+    gap: 10px;
+}
+
+.business-list__meta .ubo-dashboard-action {
+    flex: 1 1 190px;
+}
+
+.business-list__meta form {
+    flex: 1 1 190px;
+}
+
+.business-list__meta form .ubo-dashboard-action {
+    width: 100%;
 }
 
 .step-nav {
