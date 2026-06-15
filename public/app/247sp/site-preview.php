@@ -105,6 +105,17 @@ function sp247_preview_tel_href(string $phone): string
     return $digits !== '' ? 'tel:' . $digits : '#';
 }
 
+function sp247_preview_service_reasons(string $serviceName): array
+{
+    $serviceLabel = strtolower($serviceName !== '' ? $serviceName : 'service');
+
+    return [
+        'You need a clear assessment before a small ' . $serviceLabel . ' issue becomes a bigger problem.',
+        'You want reliable help from a local business that explains the next step clearly.',
+        'You are ready to schedule ' . $serviceLabel . ' and want the job handled professionally.',
+    ];
+}
+
 $businessIdForLinks = $business ? (int) $business['id'] : 0;
 $content = sp247_preview_content($currentPage);
 $homeContent = sp247_preview_page_content($pages, 'home');
@@ -137,7 +148,7 @@ require __DIR__ . '/../../../private/views/header.php';
         <section class="hero-panel product-hero product-hero--247sp">
             <p class="eyebrow">Private website preview</p>
             <h1><?= $business ? e($business['business_name']) : '247SP preview' ?></h1>
-            <p class="muted">Review generated pages before any future publishing workflow.</p>
+            <p class="muted">Review the generated website pages and page-specific content.</p>
         </section>
 
         <?php if ($loadError !== ''): ?>
@@ -208,70 +219,195 @@ require __DIR__ . '/../../../private/views/header.php';
                     </aside>
                 </section>
 
-                <section class="site-preview-section site-preview-services" id="services">
-                    <div class="site-preview-section-heading">
-                        <p class="site-preview-kicker">Services</p>
-                        <h3>How <?= e($business['business_name']) ?> can help</h3>
-                    </div>
-                    <div class="site-preview-card-grid">
-                        <?php foreach ($previewServices as $service): ?>
-                            <article class="site-preview-service-card">
-                                <h4><?= e($service['title']) ?></h4>
-                                <p><?= e($service['description']) ?></p>
-                                <a href="<?= e(sp247_preview_href($businessIdForLinks, $service['slug'])) ?>">View service</a>
-                            </article>
-                        <?php endforeach; ?>
-                    </div>
-                </section>
-
-                <section class="site-preview-section site-preview-trust">
-                    <div class="site-preview-section-heading">
-                        <p class="site-preview-kicker">Why choose us</p>
-                        <h3>Built around fast, clear service</h3>
-                    </div>
-                    <div class="site-preview-trust-grid">
-                        <article>
-                            <strong><?= e((string) ($aboutContent['years_in_business'] ?? 'Local')) ?></strong>
-                            <span><?= isset($aboutContent['years_in_business']) ? 'Years in business' : 'Local experience' ?></span>
-                        </article>
-                        <article>
-                            <strong><?= e(count($previewServices)) ?></strong>
-                            <span>Core services available</span>
-                        </article>
-                        <article>
-                            <strong><?= ($homeContent['financing_available'] ?? false) === true ? 'Yes' : 'Clear' ?></strong>
-                            <span><?= ($homeContent['financing_available'] ?? false) === true ? 'Financing available' : 'Communication from request to service' ?></span>
-                        </article>
-                    </div>
-                </section>
-
-                <section class="site-preview-section site-preview-area">
-                    <div>
-                        <p class="site-preview-kicker">Service area</p>
-                        <h3><?= e($serviceArea !== '' ? $serviceArea : 'Local service area') ?></h3>
-                        <p><?= e($business['business_name']) ?> provides reliable local service with a simple way to call, request help, and choose the service you need.</p>
-                    </div>
-                    <a class="site-preview-button site-preview-button--secondary" href="<?= e(sp247_preview_href($businessIdForLinks, 'contact')) ?>">Get In Touch</a>
-                </section>
-
-                <section class="site-preview-section site-preview-contact">
-                    <div>
-                        <p class="site-preview-kicker">Contact</p>
-                        <h3>Ready to schedule service?</h3>
-                        <p>Call now or send a request through the contact form placeholder.</p>
-                    </div>
-                    <div class="site-preview-contact-card">
-                        <a href="<?= e($phoneHref) ?>"><?= e($phone ?: 'Phone pending') ?></a>
-                        <span><?= e($email ?: 'Email pending') ?></span>
-                        <div class="site-preview-form-placeholder">
-                            <div class="form-grid">
-                                <label>Name<input disabled value=""></label>
-                                <label>Phone<input disabled value=""></label>
-                            </div>
-                            <label>How can we help?<textarea disabled rows="4"></textarea></label>
+                <?php if ($currentPageType === 'service'): ?>
+                    <?php
+                    $serviceName = (string) ($content['service_name'] ?? $currentPage['title']);
+                    $serviceReasons = sp247_preview_service_reasons($serviceName);
+                    ?>
+                    <section class="site-preview-section site-preview-feature">
+                        <div>
+                            <p class="site-preview-kicker">What is included</p>
+                            <h3><?= e($serviceName) ?> made straightforward</h3>
+                            <p><?= e($business['business_name']) ?> helps customers understand the issue, choose a practical next step, and get service scheduled without confusion.</p>
                         </div>
-                    </div>
-                </section>
+                        <ul class="site-preview-check-list">
+                            <?php foreach ($serviceReasons as $reason): ?>
+                                <li><?= e($reason) ?></li>
+                            <?php endforeach; ?>
+                        </ul>
+                    </section>
+
+                    <section class="site-preview-section site-preview-trust site-preview-trust--focused">
+                        <div class="site-preview-section-heading">
+                            <p class="site-preview-kicker">Why choose us</p>
+                            <h3>Why choose <?= e($business['business_name']) ?> for <?= e($serviceName) ?></h3>
+                        </div>
+                        <div class="site-preview-trust-grid">
+                            <article>
+                                <strong>Local</strong>
+                                <span><?= e($serviceArea !== '' ? 'Serving ' . $serviceArea : 'Service near you') ?></span>
+                            </article>
+                            <article>
+                                <strong>Clear</strong>
+                                <span>Simple communication before work begins</span>
+                            </article>
+                            <article>
+                                <strong>Ready</strong>
+                                <span>Call or request service when you need help</span>
+                            </article>
+                        </div>
+                    </section>
+
+                    <section class="site-preview-section site-preview-contact site-preview-contact--compact">
+                        <div>
+                            <p class="site-preview-kicker">Request service</p>
+                            <h3>Need <?= e(strtolower($serviceName)) ?>?</h3>
+                            <p>Call now or send a request and <?= e($business['business_name']) ?> will help with the next step.</p>
+                        </div>
+                        <div class="site-preview-contact-card">
+                            <a href="<?= e($phoneHref) ?>"><?= e($phone ?: 'Phone pending') ?></a>
+                            <span><?= e($email ?: 'Email pending') ?></span>
+                        </div>
+                    </section>
+                <?php elseif ($currentPageType === 'about'): ?>
+                    <section class="site-preview-section site-preview-story">
+                        <div class="site-preview-section-heading">
+                            <p class="site-preview-kicker">Company story</p>
+                            <h3>Local service with a personal touch</h3>
+                        </div>
+                        <p><?= e($content['company_description'] ?? '') ?></p>
+                    </section>
+
+                    <section class="site-preview-section site-preview-experience">
+                        <article>
+                            <strong><?= e((string) ($content['years_in_business'] ?? '0')) ?></strong>
+                            <span>Years in business</span>
+                        </article>
+                        <div>
+                            <p class="site-preview-kicker">Service area</p>
+                            <h3><?= e($serviceArea !== '' ? $serviceArea : 'Local service area') ?></h3>
+                            <p><?= e($business['business_name']) ?> is built to serve nearby homeowners and small businesses with clear communication and dependable service.</p>
+                        </div>
+                    </section>
+
+                    <section class="site-preview-section site-preview-trust site-preview-trust--focused">
+                        <div class="site-preview-section-heading">
+                            <p class="site-preview-kicker">Trust</p>
+                            <h3>What customers can expect</h3>
+                        </div>
+                        <div class="site-preview-trust-grid">
+                            <article><strong>Local</strong><span>Focused on nearby customers</span></article>
+                            <article><strong>Helpful</strong><span>Simple answers and clear next steps</span></article>
+                            <article><strong>Responsive</strong><span>Easy phone and request options</span></article>
+                        </div>
+                    </section>
+
+                    <section class="site-preview-section site-preview-area">
+                        <div>
+                            <p class="site-preview-kicker">Get started</p>
+                            <h3>Ready to talk with <?= e($business['business_name']) ?>?</h3>
+                            <p>Reach out with your service need and get a simple path forward.</p>
+                        </div>
+                        <a class="site-preview-button" href="<?= e(sp247_preview_href($businessIdForLinks, 'contact')) ?>">Contact Us</a>
+                    </section>
+                <?php elseif ($currentPageType === 'contact'): ?>
+                    <section class="site-preview-section site-preview-contact site-preview-contact--primary">
+                        <div>
+                            <p class="site-preview-kicker">Contact details</p>
+                            <h3>Call or send a service request</h3>
+                            <p><?= e($business['business_name']) ?> is ready to hear what you need and help you take the next step.</p>
+                            <div class="site-preview-contact-list">
+                                <a href="<?= e($phoneHref) ?>"><?= e($phone ?: 'Phone pending') ?></a>
+                                <span><?= e($email ?: 'Email pending') ?></span>
+                            </div>
+                        </div>
+                        <div class="site-preview-contact-card">
+                            <strong>Service request</strong>
+                            <div class="site-preview-form-placeholder">
+                                <div class="form-grid">
+                                    <label>Name<input disabled value=""></label>
+                                    <label>Phone<input disabled value=""></label>
+                                </div>
+                                <label>Email<input disabled value=""></label>
+                                <label>How can we help?<textarea disabled rows="5"></textarea></label>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="site-preview-section site-preview-area">
+                        <div>
+                            <p class="site-preview-kicker">Service area</p>
+                            <h3><?= e($serviceArea !== '' ? $serviceArea : 'Local service area') ?></h3>
+                            <p>Use this page to call, email, or request help for service in the local area.</p>
+                        </div>
+                        <a class="site-preview-button site-preview-button--secondary" href="<?= e($phoneHref) ?>">Call <?= e($phone ?: 'Today') ?></a>
+                    </section>
+                <?php else: ?>
+                    <section class="site-preview-section site-preview-services" id="services">
+                        <div class="site-preview-section-heading">
+                            <p class="site-preview-kicker">Services</p>
+                            <h3>How <?= e($business['business_name']) ?> can help</h3>
+                        </div>
+                        <div class="site-preview-card-grid">
+                            <?php foreach ($previewServices as $service): ?>
+                                <article class="site-preview-service-card">
+                                    <h4><?= e($service['title']) ?></h4>
+                                    <p><?= e($service['description']) ?></p>
+                                    <a href="<?= e(sp247_preview_href($businessIdForLinks, $service['slug'])) ?>">View service</a>
+                                </article>
+                            <?php endforeach; ?>
+                        </div>
+                    </section>
+
+                    <section class="site-preview-section site-preview-trust">
+                        <div class="site-preview-section-heading">
+                            <p class="site-preview-kicker">Why choose us</p>
+                            <h3>Built around fast, clear service</h3>
+                        </div>
+                        <div class="site-preview-trust-grid">
+                            <article>
+                                <strong><?= e((string) ($aboutContent['years_in_business'] ?? 'Local')) ?></strong>
+                                <span><?= isset($aboutContent['years_in_business']) ? 'Years in business' : 'Local experience' ?></span>
+                            </article>
+                            <article>
+                                <strong><?= e(count($previewServices)) ?></strong>
+                                <span>Core services available</span>
+                            </article>
+                            <article>
+                                <strong><?= ($homeContent['financing_available'] ?? false) === true ? 'Yes' : 'Clear' ?></strong>
+                                <span><?= ($homeContent['financing_available'] ?? false) === true ? 'Financing available' : 'Communication from request to service' ?></span>
+                            </article>
+                        </div>
+                    </section>
+
+                    <section class="site-preview-section site-preview-area">
+                        <div>
+                            <p class="site-preview-kicker">Service area</p>
+                            <h3><?= e($serviceArea !== '' ? $serviceArea : 'Local service area') ?></h3>
+                            <p><?= e($business['business_name']) ?> provides reliable local service with a simple way to call, request help, and choose the service you need.</p>
+                        </div>
+                        <a class="site-preview-button site-preview-button--secondary" href="<?= e(sp247_preview_href($businessIdForLinks, 'contact')) ?>">Get In Touch</a>
+                    </section>
+
+                    <section class="site-preview-section site-preview-contact">
+                        <div>
+                            <p class="site-preview-kicker">Contact</p>
+                            <h3>Ready to schedule service?</h3>
+                            <p>Call now or send a request through the contact form placeholder.</p>
+                        </div>
+                        <div class="site-preview-contact-card">
+                            <a href="<?= e($phoneHref) ?>"><?= e($phone ?: 'Phone pending') ?></a>
+                            <span><?= e($email ?: 'Email pending') ?></span>
+                            <div class="site-preview-form-placeholder">
+                                <div class="form-grid">
+                                    <label>Name<input disabled value=""></label>
+                                    <label>Phone<input disabled value=""></label>
+                                </div>
+                                <label>How can we help?<textarea disabled rows="4"></textarea></label>
+                            </div>
+                        </div>
+                    </section>
+                <?php endif; ?>
 
                 <footer class="site-preview-footer">
                     <strong><?= e($business['business_name']) ?></strong>

@@ -246,6 +246,7 @@ require __DIR__ . '/../../../private/views/header.php';
                 <form method="post" action="onboarding.php" class="dashboard-card form-stack">
                     <input type="hidden" name="step" value="services">
                     <input type="hidden" name="business_id" value="<?= e($businessIdForLinks) ?>">
+                    <p class="form-guidance">Choose the three most important services you want customers to find you for. These will become individual website pages.</p>
 
                     <label>Primary Service Category
                         <select name="primary_category_id" required>
@@ -264,10 +265,11 @@ require __DIR__ . '/../../../private/views/header.php';
                             <fieldset>
                                 <legend>Service <?= e($i) ?></legend>
                                 <label>Service Name
-                                    <input name="service_<?= e($i) ?>_name" required value="<?= e(sp247_service_value($bundle['service_pages'], $i, 'service_name')) ?>">
+                                    <input name="service_<?= e($i) ?>_name" required value="<?= e(sp247_service_value($bundle['service_pages'], $i, 'service_name')) ?>" placeholder="Example: Drain Cleaning">
                                 </label>
                                 <label>Short Description
-                                    <textarea name="service_<?= e($i) ?>_description" required rows="4"><?= e(sp247_service_value($bundle['service_pages'], $i, 'short_description')) ?></textarea>
+                                    <textarea name="service_<?= e($i) ?>_description" required rows="4" placeholder="Example: We clear clogged sinks, tubs, toilets, and main sewer lines quickly and professionally."><?= e(sp247_service_value($bundle['service_pages'], $i, 'short_description')) ?></textarea>
+                                    <span class="form-help">Write one or two customer-friendly sentences about what this service solves.</span>
                                 </label>
                             </fieldset>
                         <?php endfor; ?>
@@ -282,19 +284,23 @@ require __DIR__ . '/../../../private/views/header.php';
                 <form method="post" action="onboarding.php" class="dashboard-card form-stack">
                     <input type="hidden" name="step" value="website_content">
                     <input type="hidden" name="business_id" value="<?= e($businessIdForLinks) ?>">
+                    <p class="form-guidance">Write this as if a customer is reading it on your website. Keep it simple, clear, and service-focused.</p>
 
                     <label>Business Description
-                        <textarea name="business_description" required rows="4"><?= e(sp247_form_value($content, 'business_description')) ?></textarea>
+                        <textarea name="business_description" required rows="4" placeholder="Example: We help homeowners in Albany with fast, reliable plumbing repairs, drain cleaning, and water heater service."><?= e(sp247_form_value($content, 'business_description')) ?></textarea>
+                        <span class="form-help">Use this for the home page. Say who you help, where you work, and what services you provide.</span>
                     </label>
                     <label>About Company
-                        <textarea name="about_company" required rows="4"><?= e(sp247_form_value($content, 'about_company')) ?></textarea>
+                        <textarea name="about_company" required rows="4" placeholder="Example: Family-owned local service business with 10 years of experience helping homeowners and small businesses."><?= e(sp247_form_value($content, 'about_company')) ?></textarea>
+                        <span class="form-help">Use this for the about page. Mention local roots, experience, and what customers can expect.</span>
                     </label>
                     <div class="form-grid">
                         <label>Years In Business
-                            <input name="years_in_business" inputmode="numeric" required value="<?= e(sp247_form_value($content, 'years_in_business')) ?>">
+                            <input name="years_in_business" inputmode="numeric" required value="<?= e(sp247_form_value($content, 'years_in_business')) ?>" placeholder="Example: 10">
                         </label>
                         <label>Special Offer
-                            <input name="special_offer" value="<?= e(sp247_form_value($content, 'special_offer')) ?>">
+                            <input name="special_offer" value="<?= e(sp247_form_value($content, 'special_offer')) ?>" placeholder="Example: $25 off first service call">
+                            <span class="form-help">Optional. Leave blank if there is no current offer.</span>
                         </label>
                         <label class="checkbox-line">
                             <input type="checkbox" name="financing_available" value="1" <?= (int) sp247_form_value($content, 'financing_available') === 1 ? 'checked' : '' ?>>
@@ -330,9 +336,11 @@ require __DIR__ . '/../../../private/views/header.php';
                     <div class="form-grid">
                         <label data-domain-field="existing">Domain Name
                             <input name="existing_domain_name" value="<?= e($domainType === 'existing' ? sp247_form_value($domain, 'domain_name') : '') ?>" placeholder="example.com">
+                            <span class="form-help">Enter the domain you already own. Do not include https://.</span>
                         </label>
                         <label data-domain-field="purchase">Desired Domain Name
                             <input name="desired_domain_name" value="<?= e($domainType === 'purchase' ? sp247_form_value($domain, 'domain_name') : '') ?>" placeholder="example.com">
+                            <span class="form-help">Enter the domain you would like 247SP to review later. No domain is registered from this form.</span>
                         </label>
                     </div>
 
@@ -348,6 +356,7 @@ require __DIR__ . '/../../../private/views/header.php';
 
                     <label>Primary Mailbox Name
                         <input name="primary_mailbox_name" required value="<?= e(sp247_form_value($email, 'primary_mailbox_name', 'info')) ?>" placeholder="info">
+                        <span class="form-help">Use only the mailbox name before the @ symbol, such as info, support, or office.</span>
                     </label>
                     <p class="muted">This stores the mailbox request only. Email is not provisioned in Sprint 3.</p>
 
