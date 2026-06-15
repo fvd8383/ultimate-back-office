@@ -8,3 +8,7 @@ private/config/env.php
 *.log
 storage/
 uploads/
+
+# Database backups
+backups/
+*.sql
