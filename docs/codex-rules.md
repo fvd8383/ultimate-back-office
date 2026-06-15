@@ -981,3 +981,95 @@ Hardcode production credentials
 Build future modules early
 Make assumptions that contradict docs
 ```
+# Codex Environment Constraints
+
+The Codex environment does not have access to the staging server.
+
+The Codex environment does not have:
+
+* PHP CLI
+* MySQL CLI
+* Apache
+* Browser automation
+* DigitalOcean access
+
+Do not spend effort attempting:
+
+* php -l validation
+* mysql migration execution
+* browser verification
+* deployment verification
+
+Instead:
+
+* Perform static code review.
+* Run git diff --check before commits.
+* Verify file paths logically.
+* Note when runtime validation must occur on staging.
+
+---
+
+# UBO Web Root Structure
+
+Accounts application document root:
+
+public/accounts
+
+App application document root:
+
+public/app
+
+Rules:
+
+* Customer account pages belong under public/accounts.
+* Lead Hub pages belong under public/app.
+* 247SP pages belong under public/app/247sp.
+* Admin pages belong under public/app/admin.
+
+Never create admin pages under:
+
+public/admin
+
+unless specifically instructed.
+
+Always verify new routes align with the existing document root structure before creating pages.
+
+---
+
+# Staging Validation Responsibility
+
+Runtime validation occurs on staging after deployment.
+
+Codex should:
+
+* Build features.
+* Verify file references.
+* Verify includes.
+* Verify route structure.
+
+Human validation on staging will verify:
+
+* Authentication
+* Sessions
+* Database migrations
+* Rendering
+* Navigation
+* Permissions
+
+---
+
+# Pull Request Requirements
+
+Every PR summary should include:
+
+* Files added
+* Files modified
+* Database changes
+* Routing changes
+* New URLs introduced
+
+This allows staging validation to be performed quickly.
+
+Do not claim runtime verification was performed unless it actually occurred.
+
+Before implementing routes or pages, inspect the existing application structure and ensure new files are created within the correct document root hierarchy.

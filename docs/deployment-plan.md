@@ -1,0 +1,371 @@
+# Deployment Plan
+
+## Purpose
+
+This document defines how Ultimate Back Office code is deployed to staging and production.
+
+It exists to keep deployment predictable, prevent accidental production changes, and document the server/web root structure.
+
+---
+
+# Environments
+
+## Local Development
+
+Used for:
+
+* Editing files
+* Committing changes
+* Creating sprint specs
+* Reviewing code
+
+Local development does not currently run the full PHP/MySQL stack.
+
+Runtime validation happens on staging.
+
+---
+
+## Staging
+
+Used for:
+
+* Running PHP lint checks
+* Running database migrations
+* Testing authentication
+* Testing dashboards
+* Testing onboarding flows
+* Testing generated website previews
+* Verifying user permissions
+* Verifying UI behavior
+
+Staging is the primary runtime validation environment.
+
+---
+
+## Production
+
+Production should only receive code after staging validation is complete.
+
+Production is not used for experimental testing.
+
+---
+
+# Git Branching
+
+## main
+
+`main` must represent code that has passed staging validation or is ready for staging deployment.
+
+Do not commit directly to `main` unless adding documentation or approved sprint specs.
+
+---
+
+## Sprint Branches
+
+Each sprint should use its own branch.
+
+Examples:
+
+* sprint-3-247sp-onboarding
+* sprint-4-site-generator
+* sprint-5-admin-portal
+
+All sprint branches should open a pull request into `main`.
+
+---
+
+## Follow-Up Fix Branches
+
+Small fixes after sprint deployment should use descriptive branches.
+
+Examples:
+
+* fix-sprint-4-preview-layout
+* fix-sprint-5-admin-routing
+
+---
+
+# Pull Request Flow
+
+1. Codex creates sprint branch.
+2. Codex opens draft PR into `main`.
+3. PR is reviewed.
+4. PR is merged into `main`.
+5. Staging pulls latest `main`.
+6. PHP lint is run on staging.
+7. Database migration is run on staging if needed.
+8. Feature is manually tested on staging.
+9. Follow-up PRs are created if needed.
+10. Sprint is tagged complete/verified after validation.
+
+---
+
+# Staging Deployment Commands
+
+Run on staging server:
+
+```bash
+cd /var/www/ubo-repo
+git checkout main
+git pull origin main
+```
+
+Then run PHP lint:
+
+```bash
+find private public shared -name "*.php" -print0 | xargs -0 -n1 php -l
+```
+
+If a migration exists for the sprint, run it manually.
+
+Example:
+
+```bash
+mysql \
+-h ubo-stage-mysql-do-user-18803129-0.g.db.ondigitalocean.com \
+-P 25060 \
+-u ubo_stage_user \
+-p \
+--ssl-mode=REQUIRED \
+ubo_staging < database/migrations/005_admin_portal.sql
+```
+
+Reload Apache:
+
+```bash
+systemctl reload apache2
+```
+
+---
+
+# Web Root Structure
+
+## Accounts Subdomain
+
+URL:
+
+```text
+staging-accounts.ultimatebackoffice.com
+```
+
+Document root:
+
+```text
+public/accounts
+```
+
+Accounts pages belong here.
+
+Examples:
+
+```text
+public/accounts/login.php
+public/accounts/dashboard.php
+public/accounts/business.php
+public/accounts/business-create.php
+```
+
+---
+
+## App Subdomain
+
+URL:
+
+```text
+staging-app.ultimatebackoffice.com
+```
+
+Document root:
+
+```text
+public/app
+```
+
+App pages belong here.
+
+Examples:
+
+```text
+public/app/dashboard.php
+public/app/247sp/dashboard.php
+public/app/247sp/onboarding.php
+public/app/247sp/site-preview.php
+public/app/admin/dashboard.php
+```
+
+---
+
+# Important Routing Rules
+
+Because Apache document roots point directly to subfolders:
+
+Do not place browser-accessible app routes in:
+
+```text
+public/
+```
+
+unless there is a configured web root for that folder.
+
+Do not place admin routes in:
+
+```text
+public/admin
+```
+
+Admin routes must live under:
+
+```text
+public/app/admin
+```
+
+Do not place shared CSS only in:
+
+```text
+shared/ui
+```
+
+Browser-accessible CSS must exist under the active document root.
+
+Current public CSS locations:
+
+```text
+public/accounts/assets/css/design-system.css
+public/app/assets/css/design-system.css
+```
+
+---
+
+# Configuration Files
+
+Environment-specific config lives in:
+
+```text
+private/config/env.php
+```
+
+This file is not committed to Git.
+
+Template/example config lives in:
+
+```text
+private/config/env.example.php
+```
+
+Do not commit real credentials.
+
+---
+
+# Database Migrations
+
+Migrations live in:
+
+```text
+database/migrations
+```
+
+Migrations are run manually on staging.
+
+Do not assume Codex can run migrations.
+
+Do not edit previously-run migrations unless specifically approved.
+
+Create a new migration for each sprint that changes database structure.
+
+---
+
+# Staging Validation Checklist
+
+After every deploy:
+
+* Run PHP lint.
+* Run new migration if applicable.
+* Reload Apache.
+* Test changed URLs.
+* Test authentication.
+* Test access control.
+* Test role permissions.
+* Test database writes.
+* Check Apache logs if errors occur.
+
+Logs:
+
+```bash
+tail -n 100 /var/www/ubo-staging/logs/staging-app-error.log
+tail -n 100 /var/www/ubo-staging/logs/staging-accounts-error.log
+```
+
+---
+
+# Production Deployment Rules
+
+Production deployment should not begin until:
+
+* Staging validation passes.
+* Database backup is complete.
+* Sprint is tagged verified.
+* No known blocking bugs exist.
+
+Production should use separate:
+
+* Droplet
+* Database
+* Environment config
+* Backups
+
+Production should never share the staging database.
+
+---
+
+# Tags
+
+Each completed sprint should receive:
+
+```text
+sprint-X-complete
+sprint-X-verified
+```
+
+Example:
+
+```bash
+git tag sprint-5-complete
+git push origin sprint-5-complete
+
+git tag sprint-5-verified
+git push origin sprint-5-verified
+```
+
+---
+
+# Backups
+
+Before closing each sprint, create a staging database backup.
+
+Example:
+
+```bash
+mysqldump \
+-h ubo-stage-mysql-do-user-18803129-0.g.db.ondigitalocean.com \
+-P 25060 \
+-u ubo_stage_user \
+-p \
+--ssl-mode=REQUIRED \
+ubo_staging > /root/sprint5_verified.sql
+```
+
+Verify:
+
+```bash
+ls -lh /root/sprint5_verified.sql
+```
+
+---
+
+# Current Deployment Philosophy
+
+Staging is for proving features.
+
+Production is for customers.
+
+No feature should go to production until it has passed staging validation.
