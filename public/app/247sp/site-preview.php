@@ -3,6 +3,7 @@
 require_once __DIR__ . '/../../../private/classes/Auth.php';
 require_once __DIR__ . '/../../../private/classes/TwentyFourSevenSalesPartner.php';
 require_once __DIR__ . '/../../../private/classes/SiteGenerator.php';
+require_once __DIR__ . '/../../../private/classes/AdminPortal.php';
 
 try {
     $accountsBaseUrl = rtrim((string) Database::config('ACCOUNTS_BASE_URL'), '/');
@@ -31,6 +32,10 @@ try {
 
     $requestedBusinessId = (int) ($_GET['business_id'] ?? 0);
     $business = TwentyFourSevenSalesPartner::businessForUser($requestedBusinessId > 0 ? $requestedBusinessId : null, (int) $user['id']);
+
+    if ($business === null && $requestedBusinessId > 0 && AdminPortal::currentUserIsAdmin((int) $user['id'])) {
+        $business = AdminPortal::business($requestedBusinessId);
+    }
 
     if ($business !== null) {
         $businessId = (int) $business['id'];
