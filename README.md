@@ -118,7 +118,7 @@ Rules currently enforced:
 
 ## Design System
 
-Shared platform styling is maintained in `shared/ui/design-system.css` and published for browsers at `public/assets/css/design-system.css`. The shared layout loads `/assets/css/design-system.css`, so Accounts and Lead Hub pages do not depend on a relative path outside the public web root.
+Shared platform styling is maintained in `shared/ui/design-system.css` and published for browsers under each public web root: `public/accounts/assets/css/design-system.css` and `public/app/assets/css/design-system.css`. The shared layout loads `/assets/css/design-system.css`, which resolves inside the active subdomain document root.
 
 Reusable PHP UI helpers live in `shared/ui/components`:
 
