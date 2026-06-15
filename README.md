@@ -30,9 +30,13 @@ APP_ENV
 APP_DEBUG
 APP_BASE_URL
 ACCOUNTS_BASE_URL
+SESSION_COOKIE_NAME
+SESSION_COOKIE_DOMAIN
 ```
 
 Keep `private/config/env.php` out of Git. It is ignored because it contains environment-specific credentials.
+
+`SESSION_COOKIE_NAME` and `SESSION_COOKIE_DOMAIN` may stay empty for local development. When the domain is empty, the app derives a shared cookie domain from `APP_BASE_URL` and `ACCOUNTS_BASE_URL` when they are sibling subdomains, such as staging accounts and staging app hosts.
 
 ## Database Setup
 
