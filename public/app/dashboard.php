@@ -22,6 +22,13 @@ try {
 
     $business = BusinessFoundation::firstBusinessForUser((int) $user['id']);
     $activeModules = $business ? BusinessFoundation::activeModules((int) $business['id']) : [];
+    $has247spAccess = false;
+    foreach ($activeModules as $module) {
+        if (($module['module_key'] ?? '') === '247sp') {
+            $has247spAccess = true;
+            break;
+        }
+    }
     $summary = $business ? BusinessFoundation::leadHubSummary((int) $business['id']) : [
         'contact_count' => 0,
         'task_count' => 0,
@@ -32,6 +39,7 @@ try {
     $user = null;
     $business = null;
     $activeModules = [];
+    $has247spAccess = false;
     $summary = [
         'contact_count' => 0,
         'task_count' => 0,
@@ -48,11 +56,18 @@ $layoutLogoutHref = $accountsBaseUrl . '/logout.php';
 require __DIR__ . '/../../private/views/header.php';
 ?>
 <section class="app-layout">
-    <?= ui_sidebar('Lead Hub', [
+    <?php
+    $sidebarItems = [
         ['label' => 'Dashboard', 'href' => 'dashboard.php', 'current' => true],
         ['label' => 'Businesses'],
         ['label' => 'Modules'],
-    ], 'Lead Hub') ?>
+    ];
+
+    if ($business && $has247spAccess) {
+        $sidebarItems[] = ['label' => '24/7 Sales Partner', 'href' => '247sp/dashboard.php?business_id=' . urlencode((string) $business['id'])];
+    }
+    ?>
+    <?= ui_sidebar('Lead Hub', $sidebarItems, 'Lead Hub') ?>
 
     <div class="app-content">
         <section class="hero-panel">

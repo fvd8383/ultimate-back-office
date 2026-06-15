@@ -56,6 +56,14 @@ mysql -h DB_HOST -P DB_PORT -u DB_USER -p DB_NAME < database/migrations/002_busi
 
 The Sprint 2 migration adds business slugs, onboarding status fields, legal structures, categories, sub-services, selected business services, and module activation tracking fields.
 
+Then run the Sprint 3 migration:
+
+```bash
+mysql -h DB_HOST -P DB_PORT -u DB_USER -p DB_NAME < database/migrations/003_247sp_onboarding.sql
+```
+
+The Sprint 3 migration adds the 24/7 Sales Partner onboarding storage tables for setup progress, website configuration, business content, service page content, domain selection, and email mailbox requests.
+
 ## Testing OTP Login In Staging
 
 1. Insert an active test user into the `users` table.
@@ -115,6 +123,39 @@ Rules currently enforced:
 - Full OS activates Lead Hub, 247SP, EMD, SSP, TUHWD, and KYN.
 - Enterprise activates Full OS for the business.
 - Standalone module selections include Lead Hub access.
+
+## 24/7 Sales Partner Onboarding
+
+Businesses with an active `247sp` module can open `public/app/247sp/dashboard.php`.
+
+The Sprint 3 onboarding workflow is:
+
+1. Business information.
+2. Service area and service-area-business visibility.
+3. Primary service category and three service pages.
+4. Website content.
+5. Domain selection.
+6. Email mailbox request.
+7. Review and submit.
+
+Submitting onboarding sets `setup_status` to `complete` and website status to `ready_for_build`.
+
+New database tables:
+
+- `247sp_onboarding`
+- `247sp_website_configurations`
+- `247sp_business_content`
+- `247sp_service_pages`
+- `247sp_domain_selections`
+- `247sp_email_requests`
+
+Status flow:
+
+- Website: `not_started`, `in_progress`, `ready_for_build`, `published` future.
+- Domain: `not_selected`, `pending`, `registered` future.
+- Email: `not_selected`, `pending`, `active` future.
+
+Sprint 3 stores onboarding data only. It does not generate websites, register domains, provision DNS, provision email, add Stripe billing, add analytics, or generate AI content.
 
 ## Design System
 
