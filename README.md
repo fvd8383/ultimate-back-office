@@ -68,6 +68,14 @@ mysql -h DB_HOST -P DB_PORT -u DB_USER -p DB_NAME < database/migrations/003_247s
 
 The Sprint 3 migration adds the 24/7 Sales Partner onboarding storage tables for setup progress, website configuration, business content, service page content, domain selection, and email mailbox requests.
 
+Then run the Sprint 4 migration:
+
+```bash
+mysql -h DB_HOST -P DB_PORT -u DB_USER -p DB_NAME < database/migrations/004_247sp_site_generator.sql
+```
+
+The Sprint 4 migration adds the 24/7 Sales Partner site generator tables for the starter template, template assignments, generated website records, and generated page records.
+
 ## Testing OTP Login In Staging
 
 1. Insert an active test user into the `users` table.
@@ -160,6 +168,40 @@ Status flow:
 - Email: `not_selected`, `pending`, `active` future.
 
 Sprint 3 stores onboarding data only. It does not generate websites, register domains, provision DNS, provision email, add Stripe billing, add analytics, or generate AI content.
+
+## 24/7 Sales Partner Site Generation
+
+After 247SP onboarding is marked complete, use the 247SP dashboard to generate a private website preview.
+
+The site generator:
+
+- Reads completed Sprint 3 onboarding data.
+- Assigns the single `starter_local_service` template, displayed as Starter Local Service.
+- Creates one generated website record.
+- Creates six generated pages: Home, Service 1, Service 2, Service 3, About, and Contact.
+- Stores generated page content as structured JSON.
+- Sets website status to `generated` and records `generated_at`.
+
+Regeneration replaces the existing generated pages with new pages built from the current onboarding data.
+
+New database tables:
+
+- `247sp_templates`
+- `247sp_template_assignments`
+- `247sp_generated_websites`
+- `247sp_generated_pages`
+
+Website status flow:
+
+- `not_started`
+- `in_progress`
+- `ready_for_build`
+- `generated`
+- `published` future.
+
+The private preview is available at `public/app/247sp/site-preview.php` for authenticated users linked to a business with active 247SP access.
+
+Sprint 4 creates website records and private preview pages only. It does not register domains, modify DNS, provision email, add Stripe billing, add analytics, add media uploads, or generate AI content.
 
 ## Design System
 

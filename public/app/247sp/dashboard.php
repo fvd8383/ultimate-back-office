@@ -2,6 +2,7 @@
 
 require_once __DIR__ . '/../../../private/classes/Auth.php';
 require_once __DIR__ . '/../../../private/classes/TwentyFourSevenSalesPartner.php';
+require_once __DIR__ . '/../../../private/classes/SiteGenerator.php';
 
 try {
     $accountsBaseUrl = rtrim((string) Database::config('ACCOUNTS_BASE_URL'), '/');
@@ -14,9 +15,13 @@ Session::requireAuth($accountsBaseUrl . '/login.php');
 $user = null;
 $business = null;
 $summary = [];
+$website = null;
 $loadError = '';
+$actionError = '';
 $accessDenied = false;
 $completed = isset($_GET['completed']);
+$generated = isset($_GET['generated']);
+$regenerated = isset($_GET['regenerated']);
 
 try {
     $user = Auth::currentUser();
@@ -27,13 +32,47 @@ try {
         exit;
     }
 
-    $requestedBusinessId = isset($_GET['business_id']) ? (int) $_GET['business_id'] : null;
+    $requestedBusinessId = (int) ($_POST['business_id'] ?? $_GET['business_id'] ?? 0);
+    $requestedBusinessId = $requestedBusinessId > 0 ? $requestedBusinessId : null;
     $business = TwentyFourSevenSalesPartner::businessForUser($requestedBusinessId, (int) $user['id']);
 
     if ($business !== null) {
         $businessId = (int) $business['id'];
         $accessDenied = !TwentyFourSevenSalesPartner::businessHasAccess($businessId);
-        $summary = $accessDenied ? [] : TwentyFourSevenSalesPartner::dashboardSummary($businessId);
+
+        if (!$accessDenied && $_SERVER['REQUEST_METHOD'] === 'POST') {
+            if (isset($_POST['generate_website'])) {
+                SiteGenerator::generateWebsite($businessId, (int) $user['id']);
+                header('Location: dashboard.php?business_id=' . $businessId . '&generated=1');
+                exit;
+            }
+
+            if (isset($_POST['regenerate_website'])) {
+                SiteGenerator::regenerateWebsite($businessId, (int) $user['id']);
+                header('Location: dashboard.php?business_id=' . $businessId . '&regenerated=1');
+                exit;
+            }
+        }
+
+        if (!$accessDenied) {
+            $summary = TwentyFourSevenSalesPartner::dashboardSummary($businessId);
+            $website = SiteGenerator::websiteForBusiness($businessId);
+
+            if ($website !== null) {
+                $summary['website_status'] = (string) $website['status'];
+            }
+        }
+    }
+} catch (InvalidArgumentException $exception) {
+    $actionError = $exception->getMessage();
+
+    if ($business !== null && !$accessDenied) {
+        $summary = TwentyFourSevenSalesPartner::dashboardSummary((int) $business['id']);
+        $website = SiteGenerator::websiteForBusiness((int) $business['id']);
+
+        if ($website !== null) {
+            $summary['website_status'] = (string) $website['status'];
+        }
     }
 } catch (Throwable $exception) {
     $loadError = '24/7 Sales Partner could not be loaded. Check the environment and database setup.';
@@ -45,6 +84,7 @@ function sp247_status_label(string $status): string
         'not_started' => 'Not Started',
         'in_progress' => 'In Progress',
         'ready_for_build' => 'Ready For Build',
+        'generated' => 'Generated',
         'published' => 'Published',
         'not_selected' => 'Not Selected',
         'pending' => 'Pending',
@@ -69,6 +109,7 @@ require __DIR__ . '/../../../private/views/header.php';
         ['label' => '247SP Dashboard', 'href' => 'dashboard.php' . ($businessIdForLinks > 0 ? '?business_id=' . urlencode((string) $businessIdForLinks) : ''), 'current' => true],
         ['label' => 'Onboarding', 'href' => $businessIdForLinks > 0 ? 'onboarding.php?business_id=' . urlencode((string) $businessIdForLinks) : 'onboarding.php'],
         ['label' => 'Review', 'href' => $businessIdForLinks > 0 ? 'review.php?business_id=' . urlencode((string) $businessIdForLinks) : 'review.php'],
+        ['label' => 'Preview', 'href' => $businessIdForLinks > 0 ? 'site-preview.php?business_id=' . urlencode((string) $businessIdForLinks) : 'site-preview.php'],
         ['label' => 'Lead Hub', 'href' => '../dashboard.php'],
     ], '24/7 Sales Partner') ?>
 
@@ -81,6 +122,15 @@ require __DIR__ . '/../../../private/views/header.php';
 
         <?php if ($completed): ?>
             <?= ui_alert('247SP onboarding is complete and ready for build.', 'success') ?>
+        <?php endif; ?>
+        <?php if ($generated): ?>
+            <?= ui_alert('Website generated. Preview is available inside 247SP.', 'success') ?>
+        <?php endif; ?>
+        <?php if ($regenerated): ?>
+            <?= ui_alert('Website regenerated from the latest onboarding data.', 'success') ?>
+        <?php endif; ?>
+        <?php if ($actionError !== ''): ?>
+            <?= ui_alert($actionError, 'error') ?>
         <?php endif; ?>
 
         <?php if ($loadError !== ''): ?>
@@ -120,6 +170,8 @@ require __DIR__ . '/../../../private/views/header.php';
                     <div><dt>Setup Status</dt><dd><?= e(sp247_status_label((string) $summary['setup_status'])) ?></dd></div>
                     <div><dt>Current Step</dt><dd><?= e(sp247_status_label((string) $summary['current_step'])) ?></dd></div>
                     <div><dt>Completed At</dt><dd><?= e($summary['completed_at'] ?: 'Not complete') ?></dd></div>
+                    <div><dt>Template</dt><dd><?= e($website['template_name'] ?? 'Not assigned') ?></dd></div>
+                    <div><dt>Generation Date</dt><dd><?= e($website['generated_at'] ?? 'Not generated') ?></dd></div>
                 </div>
                 <div class="button-row">
                     <?= ui_button($summary['setup_status'] === 'complete' ? 'Review onboarding' : 'Continue onboarding', $summary['setup_status'] === 'complete'
@@ -127,6 +179,20 @@ require __DIR__ . '/../../../private/views/header.php';
                         : 'onboarding.php?business_id=' . urlencode((string) $businessIdForLinks) . '&step=' . urlencode((string) $summary['current_step'])) ?>
                     <?= ui_button('Lead Hub included', '../dashboard.php', 'secondary') ?>
                 </div>
+            </section>
+
+            <section class="business-switcher">
+                <h2>Website Generation</h2>
+                <p class="muted">Generate a six-page private preview from completed onboarding data. This does not register domains, update DNS, provision email, add analytics, or generate AI content.</p>
+                <form method="post" action="dashboard.php" class="button-row">
+                    <input type="hidden" name="business_id" value="<?= e($businessIdForLinks) ?>">
+                    <?php if ($website === null): ?>
+                        <?= ui_button('Generate Website', '', 'primary', ['name' => 'generate_website', 'value' => '1', 'disabled' => $summary['setup_status'] !== 'complete']) ?>
+                    <?php else: ?>
+                        <?= ui_button('Regenerate Website', '', 'primary', ['name' => 'regenerate_website', 'value' => '1']) ?>
+                        <?= ui_button('Preview Website', 'site-preview.php?business_id=' . urlencode((string) $businessIdForLinks), 'secondary') ?>
+                    <?php endif; ?>
+                </form>
             </section>
 
             <section class="business-switcher">
