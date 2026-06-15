@@ -36,6 +36,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 $pageTitle = 'Create Account - Ultimate Back Office';
 $bodyClass = 'accounts-page';
+$layoutHomeHref = 'login.php';
 require __DIR__ . '/../../private/views/header.php';
 ?>
 <section class="auth-panel">
@@ -45,7 +46,7 @@ require __DIR__ . '/../../private/views/header.php';
         <p class="muted">Create your account, then sign in with a one-time code. No password is required.</p>
 
         <?php if ($error !== ''): ?>
-            <div class="error"><?= e($error) ?></div>
+            <?= ui_alert($error, 'error') ?>
         <?php endif; ?>
 
         <form method="post" action="signup.php" class="form-stack">
@@ -58,7 +59,7 @@ require __DIR__ . '/../../private/views/header.php';
             <label for="email">Email</label>
             <input id="email" name="email" type="email" autocomplete="email" required value="<?= e($email) ?>">
 
-            <button type="submit">Create account</button>
+            <?= ui_button('Create account') ?>
         </form>
 
         <p class="secondary-link">

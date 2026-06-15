@@ -20,9 +20,10 @@ try {
 if ($user === null) {
     $pageTitle = 'Create Business - Ultimate Back Office';
     $bodyClass = 'accounts-dashboard';
+    $layoutHomeHref = 'login.php';
     require __DIR__ . '/../../private/views/header.php';
     ?>
-    <div class="error">Business onboarding could not be loaded. Check the environment and database setup.</div>
+    <?= ui_alert('Business onboarding could not be loaded. Check the environment and database setup.', 'error') ?>
     <?php
     require __DIR__ . '/../../private/views/footer.php';
     exit;
@@ -275,6 +276,9 @@ function module_checked(string $moduleKey, array $selected): string
 
 $pageTitle = 'Create Business - Ultimate Back Office';
 $bodyClass = 'accounts-dashboard';
+$layoutHomeHref = 'dashboard.php';
+$layoutUserName = trim((string) $user['first_name'] . ' ' . (string) $user['last_name']);
+$layoutLogoutHref = 'logout.php';
 require __DIR__ . '/../../private/views/header.php';
 ?>
 <section class="dashboard-card dashboard-card--wide">
@@ -284,11 +288,11 @@ require __DIR__ . '/../../private/views/header.php';
 </section>
 
 <?php if ($notice !== ''): ?>
-    <div class="notice"><?= e($notice) ?></div>
+    <?= ui_alert($notice, 'success') ?>
 <?php endif; ?>
 
 <?php foreach ($errors as $error): ?>
-    <div class="error"><?= e($error) ?></div>
+    <?= ui_alert($error, 'error') ?>
 <?php endforeach; ?>
 
 <nav class="step-nav" aria-label="Business onboarding steps">
@@ -352,7 +356,7 @@ require __DIR__ . '/../../private/views/header.php';
             </label>
         </div>
 
-        <button type="submit">Save and continue</button>
+        <?= ui_button('Save and continue') ?>
     </form>
 <?php elseif ($step === 'services'): ?>
     <form method="post" action="business-create.php" class="dashboard-card form-stack">
@@ -386,8 +390,8 @@ require __DIR__ . '/../../private/views/header.php';
         </div>
 
         <div class="button-row">
-            <a class="button-link button-link--secondary" href="business-create.php?step=business_info&business_id=<?= e($businessId) ?>">Back</a>
-            <button type="submit">Save and continue</button>
+            <?= ui_button('Back', 'business-create.php?step=business_info&business_id=' . urlencode((string) $businessId), 'secondary') ?>
+            <?= ui_button('Save and continue') ?>
         </div>
     </form>
 <?php elseif ($step === 'modules'): ?>
@@ -423,9 +427,7 @@ require __DIR__ . '/../../private/views/header.php';
             </label>
         </fieldset>
 
-        <div class="notice" data-enterprise-notice <?= $accountPlan === 'enterprise' ? '' : 'hidden' ?>>
-            Account Plan: Enterprise. Every business uses Full OS, so modular package selection is unavailable.
-        </div>
+        <?= ui_alert('Account Plan: Enterprise. Every business uses Full OS, so modular package selection is unavailable.', 'info', ['data-enterprise-notice' => true, 'hidden' => $accountPlan !== 'enterprise']) ?>
 
         <section class="module-selection" data-package-panel="modular" <?= ($accountPlan !== 'enterprise' && $packageType !== 'full_os') ? '' : 'hidden' ?>>
             <h2>Modular package modules</h2>
@@ -448,16 +450,16 @@ require __DIR__ . '/../../private/views/header.php';
             <h2>Full OS included modules</h2>
             <p class="muted">Individual module selection is not needed with Full OS.</p>
             <div class="pill-list">
-                <span>Full OS</span>
+                <?= ui_badge('Full OS', 'module') ?>
                 <?php foreach ($fullOsIncludedModules as $module): ?>
-                    <span><?= e($module['name']) ?></span>
+                    <?= ui_badge((string) $module['name'], 'module') ?>
                 <?php endforeach; ?>
             </div>
         </section>
 
         <div class="button-row">
-            <a class="button-link button-link--secondary" href="business-create.php?step=services&business_id=<?= e($businessId) ?>">Back</a>
-            <button type="submit">Save and continue</button>
+            <?= ui_button('Back', 'business-create.php?step=services&business_id=' . urlencode((string) $businessId), 'secondary') ?>
+            <?= ui_button('Save and continue') ?>
         </div>
     </form>
 <?php else: ?>
@@ -475,22 +477,22 @@ require __DIR__ . '/../../private/views/header.php';
             <h3>Selected Services</h3>
             <div class="pill-list">
                 <?php foreach ($selectedServices as $service): ?>
-                    <span><?= e($service['name']) ?></span>
+                    <?= ui_badge((string) $service['name'], 'module') ?>
                 <?php endforeach; ?>
             </div>
 
             <h3>Selected Modules</h3>
             <div class="pill-list">
                 <?php foreach ($activeModules as $module): ?>
-                    <span><?= e($module['name']) ?></span>
+                    <?= ui_badge((string) $module['name'], 'module') ?>
                 <?php endforeach; ?>
             </div>
 
             <form method="post" action="business-create.php" class="button-row">
                 <input type="hidden" name="step" value="confirmation">
                 <input type="hidden" name="business_id" value="<?= e($businessId) ?>">
-                <a class="button-link button-link--secondary" href="business-create.php?step=modules&business_id=<?= e($businessId) ?>">Back</a>
-                <button type="submit" name="complete_onboarding" value="1">Complete onboarding</button>
+                <?= ui_button('Back', 'business-create.php?step=modules&business_id=' . urlencode((string) $businessId), 'secondary') ?>
+                <?= ui_button('Complete onboarding', '', 'primary', ['name' => 'complete_onboarding', 'value' => '1']) ?>
             </form>
         <?php endif; ?>
     </section>
