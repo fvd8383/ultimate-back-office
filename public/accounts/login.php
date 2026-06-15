@@ -32,6 +32,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 $pageTitle = 'Login - Ultimate Back Office';
 $bodyClass = 'accounts-page';
+$layoutHomeHref = 'login.php';
 require __DIR__ . '/../../private/views/header.php';
 ?>
 <section class="auth-panel">
@@ -41,7 +42,7 @@ require __DIR__ . '/../../private/views/header.php';
         <p class="muted">Enter your email address to request a secure login code.</p>
 
         <?php if ($notice !== ''): ?>
-            <div class="notice"><?= e($notice) ?></div>
+            <?= ui_alert($notice, 'success') ?>
         <?php endif; ?>
 
         <?php if ($displayCode !== null): ?>
@@ -52,13 +53,13 @@ require __DIR__ . '/../../private/views/header.php';
         <?php endif; ?>
 
         <?php if ($error !== ''): ?>
-            <div class="error"><?= e($error) ?></div>
+            <?= ui_alert($error, 'error') ?>
         <?php endif; ?>
 
         <form method="post" action="login.php" class="form-stack">
             <label for="email">Email</label>
             <input id="email" name="email" type="email" autocomplete="email" required value="<?= e($email) ?>">
-            <button type="submit">Request code</button>
+            <?= ui_button('Request code') ?>
         </form>
 
         <p class="secondary-link">

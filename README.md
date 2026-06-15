@@ -115,3 +115,22 @@ Rules currently enforced:
 - Full OS activates Lead Hub, 247SP, EMD, SSP, TUHWD, and KYN.
 - Enterprise activates Full OS for the business.
 - Standalone module selections include Lead Hub access.
+
+## Design System
+
+Shared platform styling lives in `shared/ui/design-system.css`. It loads Poppins from Google Fonts, sets the global `#F5F5F5` page background, uses `#222222` as the charcoal standard, and defines the Ultimate Back Office brand colors from `docs/brand-guidelines.md`.
+
+Reusable PHP UI helpers live in `shared/ui/components`:
+
+- `buttons.php` for primary and secondary actions.
+- `cards.php` for standard content containers.
+- `badges.php` for module, status, and role pills.
+- `alerts.php` for success, warning, error, and info messages.
+
+Shared layout files live in `shared/ui/layout`:
+
+- `header.php` supports the logo area, current user display, and logout link.
+- `sidebar.php` renders simple dashboard navigation.
+- `footer.php` renders the shared footer.
+
+Accounts and Lead Hub pages should use these shared styles, components, and layouts before adding product-specific presentation. Product modules should keep business logic separate from these UI helpers.

@@ -71,6 +71,9 @@ function dashboard_has_enterprise_access(array $businesses): bool
 
 $pageTitle = 'Accounts Dashboard - Ultimate Back Office';
 $bodyClass = 'accounts-dashboard';
+$layoutHomeHref = 'dashboard.php';
+$layoutUserName = $user ? trim((string) $user['first_name'] . ' ' . (string) $user['last_name']) : '';
+$layoutLogoutHref = 'logout.php';
 require __DIR__ . '/../../private/views/header.php';
 ?>
 <section class="dashboard-grid">
@@ -84,16 +87,16 @@ require __DIR__ . '/../../private/views/header.php';
 
     <div class="dashboard-card">
         <h2>Session</h2>
-        <a class="button-link" href="logout.php">Log out</a>
+        <?= ui_button('Log out', 'logout.php') ?>
     </div>
 </section>
 
 <?php if ($loadError !== ''): ?>
-    <div class="error"><?= e($loadError) ?></div>
+    <?= ui_alert($loadError, 'error') ?>
 <?php endif; ?>
 
 <?php if ($testingNotice !== ''): ?>
-    <div class="notice"><?= e($testingNotice) ?></div>
+    <?= ui_alert($testingNotice, 'info') ?>
 <?php endif; ?>
 
 <section class="dashboard-card">
@@ -101,10 +104,10 @@ require __DIR__ . '/../../private/views/header.php';
 
     <?php if (count($businesses) === 0): ?>
         <p class="muted">No business is linked to this account yet. Business setup is required before Lead Hub can be used.</p>
-        <a class="button-link" href="business-create.php">Create Business</a>
+        <?= ui_button('Create Business', 'business-create.php') ?>
     <?php else: ?>
         <?php if ($canAddBusiness): ?>
-            <div class="notice">Account Plan: Enterprise</div>
+            <?= ui_alert('Account Plan: Enterprise', 'info') ?>
         <?php endif; ?>
         <div class="business-list">
             <?php foreach ($businesses as $business): ?>
@@ -115,10 +118,10 @@ require __DIR__ . '/../../private/views/header.php';
                         <p class="muted">Status: <?= e($business['setup_status']) ?> · Profile <?= e($business['profile_completion']) ?>%</p>
                         <div class="pill-list">
                             <?php foreach ($business['active_modules'] as $module): ?>
-                                <span><?= e($module['name']) ?></span>
+                                <?= ui_badge((string) $module['name'], 'module') ?>
                             <?php endforeach; ?>
                             <?php if (count($business['active_modules']) === 0): ?>
-                                <span>No active modules</span>
+                                <?= ui_badge('No active modules', 'status') ?>
                             <?php endif; ?>
                         </div>
                     </div>
@@ -126,10 +129,10 @@ require __DIR__ . '/../../private/views/header.php';
                         <?php $roleName = (string) ($business['role_name'] ?? 'No role'); ?>
                         <?php $isOwner = (int) $business['is_owner'] === 1; ?>
                         <?php if (!($isOwner && strcasecmp($roleName, 'Owner') === 0)): ?>
-                            <span><?= e($roleName) ?></span>
+                            <?= ui_badge($roleName, 'role') ?>
                         <?php endif; ?>
                         <?php if ($isOwner): ?>
-                            <span>Owner</span>
+                            <?= ui_badge('Owner', 'role') ?>
                         <?php endif; ?>
                         <a href="business.php?business_id=<?= e($business['id']) ?>">Edit Profile</a>
                         <a href="business-create.php?business_id=<?= e($business['id']) ?>&step=modules">Manage Modules</a>
@@ -141,7 +144,7 @@ require __DIR__ . '/../../private/views/header.php';
             <?php endforeach; ?>
         </div>
         <?php if ($canAddBusiness): ?>
-            <p class="secondary-link"><a class="button-link" href="business-create.php">Add Business</a></p>
+            <p class="secondary-link"><?= ui_button('Add Business', 'business-create.php') ?></p>
         <?php endif; ?>
     <?php endif; ?>
 </section>
@@ -161,12 +164,12 @@ require __DIR__ . '/../../private/views/header.php';
                         <form method="post" action="dashboard.php">
                             <input type="hidden" name="business_id" value="<?= e($business['id']) ?>">
                             <input type="hidden" name="testing_action" value="reset_onboarding">
-                            <button type="submit">Reset onboarding status</button>
+                            <?= ui_button('Reset onboarding status', '', 'primary', ['class' => 'ubo-button--compact']) ?>
                         </form>
                         <form method="post" action="dashboard.php" onsubmit="return confirm('Remove all module assignments for this business?');">
                             <input type="hidden" name="business_id" value="<?= e($business['id']) ?>">
                             <input type="hidden" name="testing_action" value="remove_modules">
-                            <button type="submit">Remove module assignments</button>
+                            <?= ui_button('Remove module assignments', '', 'secondary', ['class' => 'ubo-button--compact']) ?>
                         </form>
                     </div>
                 </article>

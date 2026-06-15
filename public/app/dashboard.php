@@ -42,18 +42,17 @@ try {
 
 $pageTitle = 'Lead Hub - Ultimate Back Office';
 $bodyClass = 'app-dashboard';
+$layoutHomeHref = 'dashboard.php';
+$layoutUserName = $user ? trim((string) $user['first_name'] . ' ' . (string) $user['last_name']) : '';
+$layoutLogoutHref = $accountsBaseUrl . '/logout.php';
 require __DIR__ . '/../../private/views/header.php';
 ?>
 <section class="app-layout">
-    <aside class="app-sidebar">
-        <h2>Lead Hub</h2>
-        <nav aria-label="Lead Hub">
-            <a href="dashboard.php" aria-current="page">Dashboard</a>
-            <span>Contacts</span>
-            <span>Tasks</span>
-            <span>Activity</span>
-        </nav>
-    </aside>
+    <?= ui_sidebar('Lead Hub', [
+        ['label' => 'Dashboard', 'href' => 'dashboard.php', 'current' => true],
+        ['label' => 'Businesses'],
+        ['label' => 'Modules'],
+    ], 'Lead Hub') ?>
 
     <div class="app-content">
         <section class="hero-panel">
@@ -65,7 +64,7 @@ require __DIR__ . '/../../private/views/header.php';
         </section>
 
         <?php if ($loadError !== ''): ?>
-            <div class="error"><?= e($loadError) ?></div>
+            <?= ui_alert($loadError, 'error') ?>
         <?php elseif ($business === null): ?>
             <section class="empty-state">
                 <h2>Business setup required</h2>
@@ -76,10 +75,10 @@ require __DIR__ . '/../../private/views/header.php';
                 <h2>Module Status</h2>
                 <div class="pill-list">
                     <?php foreach ($activeModules as $module): ?>
-                        <span><?= e($module['name']) ?> · <?= e($module['activation_source']) ?></span>
+                        <?= ui_badge((string) $module['name'] . ' · ' . (string) $module['activation_source'], 'module') ?>
                     <?php endforeach; ?>
                     <?php if (count($activeModules) === 0): ?>
-                        <span>No active modules</span>
+                        <?= ui_badge('No active modules', 'status') ?>
                     <?php endif; ?>
                 </div>
             </section>

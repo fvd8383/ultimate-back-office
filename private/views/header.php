@@ -8,22 +8,11 @@ if (!function_exists('e')) {
 }
 
 $pageTitle = $pageTitle ?? 'Ultimate Back Office';
-$assetPath = $assetPath ?? 'assets/css/app.css';
 $bodyClass = $bodyClass ?? '';
-?>
-<!doctype html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title><?= e($pageTitle) ?></title>
-    <link rel="stylesheet" href="<?= e($assetPath) ?>">
-</head>
-<body class="<?= e($bodyClass) ?>">
-<header class="site-header">
-    <div class="site-header__brand">
-        <span class="site-header__mark">UBO</span>
-        <span>Ultimate Back Office</span>
-    </div>
-</header>
-<main class="page-shell">
+
+require_once __DIR__ . '/../../shared/ui/components/buttons.php';
+require_once __DIR__ . '/../../shared/ui/components/cards.php';
+require_once __DIR__ . '/../../shared/ui/components/badges.php';
+require_once __DIR__ . '/../../shared/ui/components/alerts.php';
+require_once __DIR__ . '/../../shared/ui/layout/sidebar.php';
+require __DIR__ . '/../../shared/ui/layout/header.php';

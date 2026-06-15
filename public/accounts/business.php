@@ -123,6 +123,9 @@ function profile_checked($value, array $selected): string
 
 $pageTitle = 'Business Profile - Ultimate Back Office';
 $bodyClass = 'accounts-dashboard';
+$layoutHomeHref = 'dashboard.php';
+$layoutUserName = $user ? trim((string) $user['first_name'] . ' ' . (string) $user['last_name']) : '';
+$layoutLogoutHref = 'logout.php';
 require __DIR__ . '/../../private/views/header.php';
 ?>
 <section class="dashboard-card dashboard-card--wide">
@@ -132,11 +135,11 @@ require __DIR__ . '/../../private/views/header.php';
 </section>
 
 <?php if ($notice !== ''): ?>
-    <div class="notice"><?= e($notice) ?></div>
+    <?= ui_alert($notice, 'success') ?>
 <?php endif; ?>
 
 <?php foreach ($errors as $error): ?>
-    <div class="error"><?= e($error) ?></div>
+    <?= ui_alert($error, 'error') ?>
 <?php endforeach; ?>
 
 <?php if ($business): ?>
@@ -215,8 +218,8 @@ require __DIR__ . '/../../private/views/header.php';
         </div>
 
         <div class="button-row">
-            <a class="button-link button-link--secondary" href="dashboard.php">Back to dashboard</a>
-            <button type="submit">Save business profile</button>
+            <?= ui_button('Back to dashboard', 'dashboard.php', 'secondary') ?>
+            <?= ui_button('Save business profile') ?>
         </div>
     </form>
 <?php endif; ?>
