@@ -118,7 +118,7 @@ Rules currently enforced:
 
 ## Design System
 
-Shared platform styling lives in `shared/ui/design-system.css`. It loads Poppins from Google Fonts, sets the global `#F5F5F5` page background, uses `#222222` as the charcoal standard, and defines the Ultimate Back Office brand colors from `docs/brand-guidelines.md`.
+Shared platform styling is maintained in `shared/ui/design-system.css` and published for browsers at `public/assets/css/design-system.css`. The shared layout loads `/assets/css/design-system.css`, so Accounts and Lead Hub pages do not depend on a relative path outside the public web root.
 
 Reusable PHP UI helpers live in `shared/ui/components`:
 
