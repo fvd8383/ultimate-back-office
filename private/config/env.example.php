@@ -12,4 +12,6 @@ return [
     'APP_DEBUG' => true,
     'APP_BASE_URL' => 'https://staging-app.ultimatebackoffice.com',
     'ACCOUNTS_BASE_URL' => 'https://staging-accounts.ultimatebackoffice.com',
+    'SESSION_COOKIE_NAME' => '',
+    'SESSION_COOKIE_DOMAIN' => '',
 ];

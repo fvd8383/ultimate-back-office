@@ -20,13 +20,20 @@ try {
         exit;
     }
 
-    $business = BusinessFoundation::firstBusinessForUser((int) $user['id']);
+    $requestedBusinessId = (int) ($_GET['business_id'] ?? 0);
+    $business = $requestedBusinessId > 0
+        ? BusinessFoundation::businessForUser($requestedBusinessId, (int) $user['id'])
+        : BusinessFoundation::firstBusinessForUser((int) $user['id']);
     $activeModules = $business ? BusinessFoundation::activeModules((int) $business['id']) : [];
+    $hasLeadHubAccess = false;
     $has247spAccess = false;
     foreach ($activeModules as $module) {
+        if (($module['module_key'] ?? '') === 'lead_hub') {
+            $hasLeadHubAccess = true;
+        }
+
         if (($module['module_key'] ?? '') === '247sp') {
             $has247spAccess = true;
-            break;
         }
     }
     $summary = $business ? BusinessFoundation::leadHubSummary((int) $business['id']) : [
@@ -39,6 +46,7 @@ try {
     $user = null;
     $business = null;
     $activeModules = [];
+    $hasLeadHubAccess = false;
     $has247spAccess = false;
     $summary = [
         'contact_count' => 0,
@@ -83,9 +91,13 @@ require __DIR__ . '/../../private/views/header.php';
         <?php elseif ($business === null): ?>
             <section class="empty-state">
                 <h2>Business setup required</h2>
-                <p>No business is linked to this account yet. Lead Hub will become available after a business is created and connected to this user.</p>
+                <p>No matching business is linked to this account. Lead Hub is available only for businesses connected to the signed-in user.</p>
             </section>
         <?php else: ?>
+            <?php if (!$hasLeadHubAccess): ?>
+                <?= ui_alert('Lead Hub is not active for this business.', 'warning') ?>
+            <?php endif; ?>
+
             <section class="business-switcher">
                 <h2>Module Status</h2>
                 <div class="pill-list">
@@ -97,6 +109,15 @@ require __DIR__ . '/../../private/views/header.php';
                     <?php endif; ?>
                 </div>
             </section>
+
+            <?php if ($has247spAccess): ?>
+                <section class="business-switcher product-action-card">
+                    <p class="eyebrow">Active module</p>
+                    <h2>24/7 Sales Partner</h2>
+                    <p class="muted">Open the website onboarding dashboard for this business.</p>
+                    <?= ui_button('Open 24/7 Sales Partner', '247sp/dashboard.php?business_id=' . urlencode((string) $business['id'])) ?>
+                </section>
+            <?php endif; ?>
 
             <section class="metrics-grid" aria-label="Lead Hub summary">
                 <article>

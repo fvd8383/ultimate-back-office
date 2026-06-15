@@ -7,8 +7,10 @@ Session::requireAuth('login.php');
 
 $testingNotice = '';
 $normalizeEnterpriseModules = true;
+$appBaseUrl = '../app';
 
 try {
+    $appBaseUrl = rtrim((string) Database::config('APP_BASE_URL', '../app'), '/');
     $user = Auth::currentUser();
 
     if ($user === null) {
@@ -62,6 +64,17 @@ function dashboard_has_enterprise_access(array $businesses): bool
 {
     foreach ($businesses as $business) {
         if (!empty($business['has_enterprise'])) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+function dashboard_business_has_module(array $business, string $moduleKey): bool
+{
+    foreach ($business['active_modules'] ?? [] as $module) {
+        if (($module['module_key'] ?? '') === $moduleKey) {
             return true;
         }
     }
@@ -136,6 +149,12 @@ require __DIR__ . '/../../private/views/header.php';
                         <?php endif; ?>
                         <a href="business.php?business_id=<?= e($business['id']) ?>">Edit Profile</a>
                         <a href="business-create.php?business_id=<?= e($business['id']) ?>&step=modules">Manage Modules</a>
+                        <?php if (dashboard_business_has_module($business, 'lead_hub')): ?>
+                            <?= ui_button('Open Lead Hub', $appBaseUrl . '/dashboard.php?business_id=' . urlencode((string) $business['id']), 'secondary', ['class' => 'ubo-button--compact']) ?>
+                        <?php endif; ?>
+                        <?php if (dashboard_business_has_module($business, '247sp')): ?>
+                            <?= ui_button('Open 24/7 Sales Partner', $appBaseUrl . '/247sp/dashboard.php?business_id=' . urlencode((string) $business['id']), 'primary', ['class' => 'ubo-button--compact']) ?>
+                        <?php endif; ?>
                         <?php if ($business['setup_status'] !== 'complete'): ?>
                             <a href="business-create.php?business_id=<?= e($business['id']) ?>">Continue Setup</a>
                         <?php endif; ?>

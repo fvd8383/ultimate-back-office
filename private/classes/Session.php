@@ -2,6 +2,8 @@
 
 final class Session
 {
+    private static ?array $config = null;
+
     public static function start(): void
     {
         if (session_status() === PHP_SESSION_ACTIVE) {
@@ -11,11 +13,11 @@ final class Session
         $isHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
             || (($_SERVER['SERVER_PORT'] ?? null) === '443');
 
-        session_name('UBO_SESSION');
+        session_name(self::cookieName());
         session_set_cookie_params([
             'lifetime' => 0,
             'path' => '/',
-            'domain' => '',
+            'domain' => self::cookieDomain(),
             'secure' => $isHttps,
             'httponly' => true,
             'samesite' => 'Lax',
@@ -61,5 +63,72 @@ final class Session
             header("Location: {$redirectTo}");
             exit;
         }
+    }
+
+    private static function cookieDomain(): string
+    {
+        $configuredDomain = trim((string) (self::config('SESSION_COOKIE_DOMAIN') ?? ''));
+
+        if ($configuredDomain !== '') {
+            return $configuredDomain;
+        }
+
+        $appHost = self::hostFromUrl((string) (self::config('APP_BASE_URL') ?? ''));
+        $accountsHost = self::hostFromUrl((string) (self::config('ACCOUNTS_BASE_URL') ?? ''));
+
+        if ($appHost === '' || $accountsHost === '' || $appHost === $accountsHost) {
+            return '';
+        }
+
+        if (self::isLocalHost($appHost) || self::isLocalHost($accountsHost)) {
+            return '';
+        }
+
+        $appParts = array_reverse(explode('.', $appHost));
+        $accountParts = array_reverse(explode('.', $accountsHost));
+        $common = [];
+
+        foreach ($appParts as $index => $part) {
+            if (($accountParts[$index] ?? null) !== $part) {
+                break;
+            }
+
+            $common[] = $part;
+        }
+
+        if (count($common) < 2) {
+            return '';
+        }
+
+        return '.' . implode('.', array_reverse($common));
+    }
+
+    private static function cookieName(): string
+    {
+        $configuredName = trim((string) (self::config('SESSION_COOKIE_NAME') ?? ''));
+
+        return $configuredName !== '' ? $configuredName : 'UBO_SHARED_SESSION';
+    }
+
+    private static function config(string $key)
+    {
+        if (self::$config === null) {
+            $path = dirname(__DIR__) . '/config/env.php';
+            self::$config = file_exists($path) ? (array) require $path : [];
+        }
+
+        return self::$config[$key] ?? null;
+    }
+
+    private static function hostFromUrl(string $url): string
+    {
+        $host = parse_url($url, PHP_URL_HOST);
+
+        return is_string($host) ? strtolower($host) : '';
+    }
+
+    private static function isLocalHost(string $host): bool
+    {
+        return in_array($host, ['localhost', '127.0.0.1', '::1'], true);
     }
 }
