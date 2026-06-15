@@ -213,17 +213,17 @@ Sprint 4 creates website records and private preview pages only. It does not reg
 
 ## Admin Portal
 
-The internal admin portal lives in `public/admin`.
+The internal admin portal lives in `public/app/admin` because `staging-app.ultimatebackoffice.com` uses `public/app` as its document root.
 
 Admin pages:
 
-- `dashboard.php`
-- `users.php`
-- `user.php`
-- `businesses.php`
-- `business.php`
-- `websites.php`
-- `website.php`
+- `/admin/dashboard.php`
+- `/admin/users.php`
+- `/admin/user.php`
+- `/admin/businesses.php`
+- `/admin/business.php`
+- `/admin/websites.php`
+- `/admin/website.php`
 
 Only active users assigned an internal `Super Admin` or internal `Admin` role may access these pages. Other authenticated users receive Access Denied.
 
