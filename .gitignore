@@ -12,3 +12,4 @@ uploads/
 # Database backups
 backups/
 *.sql
+!database/migrations/*.sql
