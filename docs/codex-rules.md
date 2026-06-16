@@ -1128,3 +1128,7 @@ Open Pull Request
 ```
 
 Never create a sprint branch from an outdated local copy of main.
+
+read these:
+docs/first-customer-checklist.md
+docs/sprint-7.md
