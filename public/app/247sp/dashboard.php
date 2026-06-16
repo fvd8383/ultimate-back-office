@@ -2,6 +2,7 @@
 
 require_once __DIR__ . '/../../../private/classes/Auth.php';
 require_once __DIR__ . '/../../../private/classes/BillingFoundation.php';
+require_once __DIR__ . '/../../../private/classes/DomainAutomation.php';
 require_once __DIR__ . '/../../../private/classes/TwentyFourSevenSalesPartner.php';
 require_once __DIR__ . '/../../../private/classes/SiteGenerator.php';
 
@@ -93,6 +94,11 @@ function sp247_status_label(string $status): string
         'not_selected' => 'Not Selected',
         'pending' => 'Pending',
         'registered' => 'Registered',
+        'requested' => 'Requested',
+        'pending_purchase' => 'Pending Purchase',
+        'transferred' => 'Transferred',
+        'expired' => 'Expired',
+        'cancelled' => 'Cancelled',
         'active' => 'Active',
         'complete' => 'Complete',
     ];
@@ -214,6 +220,12 @@ require __DIR__ . '/../../../private/views/header.php';
             <section class="business-switcher">
                 <h2>Lead Hub Included</h2>
                 <p class="muted">24/7 Sales Partner includes Lead Hub access. Website leads will flow into Lead Hub in a future sprint after site generation and lead capture are built.</p>
+            </section>
+
+            <section class="business-switcher">
+                <h2>Domain Workflow</h2>
+                <p class="muted">Domain requests are managed manually by the internal team. This dashboard only shows status; it does not register domains, modify DNS, configure SSL, provision email, or publish websites.</p>
+                <?= ui_button('View Account Domains', $accountsBaseUrl . '/domains.php', 'secondary') ?>
             </section>
         <?php endif; ?>
     </div>

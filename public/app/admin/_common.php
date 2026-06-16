@@ -50,6 +50,7 @@ function admin_begin(string $title, string $current, array $context): void
             ['label' => 'Businesses', 'href' => 'businesses.php', 'current' => $current === 'businesses'],
             ['label' => 'Websites', 'href' => 'websites.php', 'current' => $current === 'websites'],
             ['label' => 'Billing', 'href' => 'billing.php', 'current' => $current === 'billing'],
+            ['label' => 'Domains', 'href' => 'domains.php', 'current' => $current === 'domains'],
         ], 'Admin navigation') ?>
         <div class="app-content">
     <?php

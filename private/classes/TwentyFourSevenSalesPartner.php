@@ -2,6 +2,7 @@
 
 require_once __DIR__ . '/Database.php';
 require_once __DIR__ . '/BusinessFoundation.php';
+require_once __DIR__ . '/DomainAutomation.php';
 
 final class TwentyFourSevenSalesPartner
 {
@@ -72,10 +73,11 @@ final class TwentyFourSevenSalesPartner
         $domain = $bundle['domain'];
         $email = $bundle['email'];
         $configuration = $bundle['configuration'];
+        $domainWorkflow = DomainAutomation::currentDomainForBusiness($businessId);
 
         return [
             'website_status' => self::websiteStatus($onboarding, $configuration),
-            'domain_status' => $domain['status'] ?? 'not_selected',
+            'domain_status' => $domainWorkflow['domain_status'] ?? ($domain['status'] ?? 'not_selected'),
             'email_status' => $email['status'] ?? 'not_selected',
             'current_step' => $onboarding['current_step'] ?? 'business_information',
             'setup_status' => $onboarding['setup_status'] ?? 'not_started',
@@ -352,6 +354,7 @@ final class TwentyFourSevenSalesPartner
             'status' => 'pending',
         ]);
 
+        DomainAutomation::ensureRequestForBusiness($businessId, $domainName);
         self::advance($businessId, self::NEXT_STEP['domain_selection']);
         self::logActivity($businessId, $userId, '247sp_domain_selection_saved', '247SP domain selection saved');
     }

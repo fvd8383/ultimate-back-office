@@ -108,6 +108,14 @@ mysql -h DB_HOST -P DB_PORT -u DB_USER -p DB_NAME < database/migrations/008_bill
 
 The Sprint 6 migration adds local billing foundation tables for `plans`, `subscriptions`, and `payments`. It seeds the 24/7 Sales Partner plan with a $100.00 setup fee and $27.00 monthly fee, then creates trial subscription records for existing businesses with active 247SP access.
 
+Then run the Sprint 7 domain workflow migration:
+
+```bash
+mysql -h DB_HOST -P DB_PORT -u DB_USER -p DB_NAME < database/migrations/009_domain_automation.sql
+```
+
+The Sprint 7 migration adds manual domain workflow tables for `domain_requests`, `domain_assignments`, and `website_domains`. It also creates request records from existing 247SP onboarding domain selections when they exist.
+
 ## Testing OTP Login In Staging
 
 1. Insert an active test user into the `users` table.
@@ -319,6 +327,19 @@ Billing controls support:
 - Manually set subscription status to trial, pending payment, active, past due, or cancelled.
 
 Customer billing visibility lives at `public/accounts/billing.php` and shows each linked business, current plan, setup fee, monthly fee, subscription status, and start date.
+
+Domain controls support:
+
+- View 24/7 Sales Partner domain requests.
+- Track requested, pending purchase, active, transferred, expired, and cancelled lifecycle states.
+- Store registrar, annual cost, purchase date, and expiration date.
+- Assign an active or transferred domain to the business.
+- Associate assigned domains with generated 247SP websites through `website_domains`.
+- Set website-domain publish status to `ready` when a generated website has an active assigned domain.
+
+Customer domain visibility lives at `public/accounts/domains.php` and shows each linked business domain request, status, assigned domain, registrar, annual cost, purchase date, expiration date, and publish-readiness state.
+
+Sprint 7 adds the admin route `/admin/domains.php` under the app document root. It does not add Namecheap API integration, Cloudflare integration, DNS automation, SSL automation, email provisioning, payment processing, website publishing, Apache changes, DNS changes, SSL changes, server config changes, or credential changes.
 
 Sprint 6 does not add Stripe integration, ACH integration, credit card processing, automatic renewals, automated invoicing, tax calculations, refund workflows, collections workflows, domain automation, email provisioning, Apache changes, DNS changes, SSL changes, server config changes, or credential changes.
 

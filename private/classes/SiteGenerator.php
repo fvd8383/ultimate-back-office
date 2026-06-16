@@ -2,6 +2,7 @@
 
 require_once __DIR__ . '/Database.php';
 require_once __DIR__ . '/TwentyFourSevenSalesPartner.php';
+require_once __DIR__ . '/DomainAutomation.php';
 require_once __DIR__ . '/WebsiteManager.php';
 
 final class SiteGenerator
@@ -95,6 +96,7 @@ final class SiteGenerator
             }
 
             self::markConfigurationGenerated($businessId);
+            DomainAutomation::syncWebsiteDomainForBusiness($businessId);
             self::logActivity(
                 $businessId,
                 $userId,
