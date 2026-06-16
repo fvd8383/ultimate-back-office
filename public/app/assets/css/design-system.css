@@ -1236,6 +1236,12 @@ button:hover,
     grid-template-columns: 1.2fr 1fr .8fr .7fr .7fr 1fr 1.2fr;
 }
 
+.admin-table--domains .admin-table__head,
+.admin-table--domains .admin-table__row {
+    min-width: 1400px;
+    grid-template-columns: 1.1fr 1.2fr .8fr .8fr .8fr .7fr 1.8fr;
+}
+
 .admin-table__head {
     border-bottom: 1px solid var(--ubo-line);
     color: var(--ubo-muted);
@@ -1264,6 +1270,30 @@ button:hover,
 
 .billing-status-form select {
     min-width: 150px;
+}
+
+.domain-status-form {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(110px, 1fr)) auto;
+    gap: 8px;
+    align-items: end;
+}
+
+.domain-status-form label {
+    display: grid;
+    gap: 4px;
+}
+
+.domain-status-form label span {
+    color: var(--ubo-muted);
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.domain-status-form input,
+.domain-status-form select {
+    min-height: 38px;
+    min-width: 0;
 }
 
 .admin-module-grid {

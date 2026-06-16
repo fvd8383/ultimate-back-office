@@ -60,6 +60,7 @@ require __DIR__ . '/../../private/views/header.php';
         <div class="button-row">
             <?= ui_button('Dashboard', 'dashboard.php', 'secondary') ?>
             <?= ui_button('Businesses', 'business.php', 'secondary') ?>
+            <?= ui_button('Domains', 'domains.php', 'secondary') ?>
             <?= ui_button('Logout', 'logout.php') ?>
         </div>
     </div>
