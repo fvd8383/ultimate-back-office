@@ -51,3 +51,34 @@ free -h
 echo
 echo "===== LOAD ====="
 uptime
+
+
+
+# Sprint 5
+
+## Completed
+
+- Internal admin portal
+- Admin role system
+- User management
+- Business management
+- Website management
+- Website preview controls
+- Internal permissions
+
+## Lessons Learned
+
+- App routes must live under public/app
+- Accounts routes must live under public/accounts
+- Admin portal requires user_roles mapping
+- Codex environment constraints reduce routing mistakes
+- Product structure and deployment documentation are required for future sprints
+
+## Backup
+
+Database backup:
+sprint5_verified.sql
+
+Git tags:
+sprint-5-complete
+sprint-5-verified
