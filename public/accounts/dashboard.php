@@ -99,8 +99,13 @@ require __DIR__ . '/../../private/views/header.php';
     </div>
 
     <div class="dashboard-card">
-        <h2>Session</h2>
-        <?= ui_button('Log out', 'logout.php') ?>
+        <h2>Account Navigation</h2>
+        <div class="button-row">
+            <?= ui_button('Dashboard', 'dashboard.php', 'secondary') ?>
+            <?= ui_button('Businesses', count($businesses) > 0 ? 'business.php' : 'business-create.php', 'secondary') ?>
+            <?= ui_button('Billing', 'billing.php', 'secondary') ?>
+            <?= ui_button('Log out', 'logout.php') ?>
+        </div>
     </div>
 </section>
 

@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/Database.php';
+require_once __DIR__ . '/BillingFoundation.php';
 
 final class BusinessFoundation
 {
@@ -714,6 +715,10 @@ final class BusinessFoundation
             'activation_source' => $activationSource,
             'module_key' => $moduleKey,
         ]);
+
+        if ($moduleKey === '247sp') {
+            BillingFoundation::ensureSubscriptionForBusiness($businessId);
+        }
     }
 
     private static function businessHasActiveModule(int $businessId, string $moduleKey): bool
