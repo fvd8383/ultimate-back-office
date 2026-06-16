@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/../../../private/classes/Auth.php';
+require_once __DIR__ . '/../../../private/classes/BillingFoundation.php';
 require_once __DIR__ . '/../../../private/classes/TwentyFourSevenSalesPartner.php';
 require_once __DIR__ . '/../../../private/classes/SiteGenerator.php';
 
@@ -16,6 +17,7 @@ $user = null;
 $business = null;
 $summary = [];
 $website = null;
+$billing = null;
 $loadError = '';
 $actionError = '';
 $accessDenied = false;
@@ -57,6 +59,7 @@ try {
         if (!$accessDenied) {
             $summary = TwentyFourSevenSalesPartner::dashboardSummary($businessId);
             $website = SiteGenerator::websiteForBusiness($businessId);
+            $billing = BillingFoundation::subscriptionForBusiness($businessId);
 
             if ($website !== null) {
                 $summary['website_status'] = (string) $website['status'];
@@ -69,6 +72,7 @@ try {
     if ($business !== null && !$accessDenied) {
         $summary = TwentyFourSevenSalesPartner::dashboardSummary((int) $business['id']);
         $website = SiteGenerator::websiteForBusiness((int) $business['id']);
+        $billing = BillingFoundation::subscriptionForBusiness((int) $business['id']);
 
         if ($website !== null) {
             $summary['website_status'] = (string) $website['status'];
@@ -139,6 +143,9 @@ require __DIR__ . '/../../../private/views/header.php';
         <?php if ($actionError !== ''): ?>
             <?= ui_alert($actionError, 'error') ?>
         <?php endif; ?>
+        <?php if ($billing !== null && in_array((string) $billing['status'], ['pending_payment', 'past_due'], true)): ?>
+            <?= ui_alert('Billing status is ' . sp247_status_label((string) $billing['status']) . '. 24/7 Sales Partner remains available while billing is handled manually.', 'warning') ?>
+        <?php endif; ?>
 
         <?php if ($loadError !== ''): ?>
             <?= ui_alert($loadError, 'error') ?>
@@ -179,6 +186,7 @@ require __DIR__ . '/../../../private/views/header.php';
                     <div><dt>Completed At</dt><dd><?= e($summary['completed_at'] ?: 'Not complete') ?></dd></div>
                     <div><dt>Template</dt><dd><?= e($website['template_name'] ?? 'Not assigned') ?></dd></div>
                     <div><dt>Generation Date</dt><dd><?= e($website['generated_at'] ?? 'Not generated') ?></dd></div>
+                    <div><dt>Billing Status</dt><dd><?= e($billing ? sp247_status_label((string) $billing['status']) : 'No Subscription') ?></dd></div>
                 </div>
                 <div class="button-row">
                     <?= ui_button($summary['setup_status'] === 'complete' ? 'Review onboarding' : 'Continue onboarding', $summary['setup_status'] === 'complete'

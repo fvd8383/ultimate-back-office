@@ -100,6 +100,14 @@ mysql -h DB_HOST -P DB_PORT -u DB_USER -p DB_NAME < database/migrations/007_247s
 
 The Sprint 5.5 migration adds 247SP website branding, service image, and editable content override tables.
 
+Then run the Sprint 6 billing foundation migration:
+
+```bash
+mysql -h DB_HOST -P DB_PORT -u DB_USER -p DB_NAME < database/migrations/008_billing_foundation.sql
+```
+
+The Sprint 6 migration adds local billing foundation tables for `plans`, `subscriptions`, and `payments`. It seeds the 24/7 Sales Partner plan with a $100.00 setup fee and $27.00 monthly fee, then creates trial subscription records for existing businesses with active 247SP access.
+
 ## Testing OTP Login In Staging
 
 1. Insert an active test user into the `users` table.
@@ -272,6 +280,7 @@ Admin pages:
 - `/admin/business.php`
 - `/admin/websites.php`
 - `/admin/website.php`
+- `/admin/billing.php`
 
 Only active users assigned an internal `Super Admin` or internal `Admin` role through `user_roles` may access these pages. Business-scoped Admin roles do not grant admin portal access. Other authenticated users receive Access Denied.
 
@@ -301,6 +310,17 @@ Website controls support:
 - Generate websites from completed 247SP onboarding.
 - Regenerate websites from the latest 247SP onboarding data.
 - Open the existing private preview.
+
+Billing controls support:
+
+- View 24/7 Sales Partner subscriptions.
+- View active, trial, and past-due counts.
+- View manual MRR calculated from active subscriptions.
+- Manually set subscription status to trial, pending payment, active, past due, or cancelled.
+
+Customer billing visibility lives at `public/accounts/billing.php` and shows each linked business, current plan, setup fee, monthly fee, subscription status, and start date.
+
+Sprint 6 does not add Stripe integration, ACH integration, credit card processing, automatic renewals, automated invoicing, tax calculations, refund workflows, collections workflows, domain automation, email provisioning, Apache changes, DNS changes, SSL changes, server config changes, or credential changes.
 
 Sprint 5 does not add website editing, domain automation, email provisioning, Stripe billing, AI content generation, public website publishing, customer CMS, support ticketing, Apache changes, DNS changes, SSL changes, server config changes, or credential changes.
 

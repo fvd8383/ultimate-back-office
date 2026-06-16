@@ -2,6 +2,7 @@
 
 require_once __DIR__ . '/Auth.php';
 require_once __DIR__ . '/BusinessFoundation.php';
+require_once __DIR__ . '/BillingFoundation.php';
 require_once __DIR__ . '/SiteGenerator.php';
 require_once __DIR__ . '/WebsiteManager.php';
 
@@ -453,6 +454,10 @@ final class AdminPortal
             'activation_source' => $activationSource,
             'module_key' => $moduleKey,
         ]);
+
+        if ($moduleKey === '247sp') {
+            BillingFoundation::ensureSubscriptionForBusiness($businessId);
+        }
     }
 
     private static function deactivateModule(int $businessId, string $moduleKey): void

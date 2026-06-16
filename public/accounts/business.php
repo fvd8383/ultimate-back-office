@@ -219,6 +219,7 @@ require __DIR__ . '/../../private/views/header.php';
 
         <div class="button-row">
             <?= ui_button('Back to dashboard', 'dashboard.php', 'secondary') ?>
+            <?= ui_button('View billing', 'billing.php', 'secondary') ?>
             <?= ui_button('Save business profile') ?>
         </div>
     </form>
