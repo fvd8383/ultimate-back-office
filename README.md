@@ -84,6 +84,14 @@ mysql -h DB_HOST -P DB_PORT -u DB_USER -p DB_NAME < database/migrations/005_admi
 
 The Sprint 5 migration adds `admin_notes`, business suspension/test/internal status fields, and the internal Admin role.
 
+Then run the Sprint 5 admin role assignment migration:
+
+```bash
+mysql -h DB_HOST -P DB_PORT -u DB_USER -p DB_NAME < database/migrations/006_admin_user_roles.sql
+```
+
+The Sprint 5 admin role assignment migration adds `user_roles` for internal platform roles that are not tied to one business.
+
 ## Testing OTP Login In Staging
 
 1. Insert an active test user into the `users` table.
@@ -225,7 +233,17 @@ Admin pages:
 - `/admin/websites.php`
 - `/admin/website.php`
 
-Only active users assigned an internal `Super Admin` or internal `Admin` role may access these pages. Other authenticated users receive Access Denied.
+Only active users assigned an internal `Super Admin` or internal `Admin` role through `user_roles` may access these pages. Business-scoped Admin roles do not grant admin portal access. Other authenticated users receive Access Denied.
+
+To manually promote a staging user, replace `{USER_ID}` with the user's ID:
+
+```sql
+INSERT INTO user_roles (user_id, role_id)
+SELECT {USER_ID}, id
+FROM roles
+WHERE name = 'Super Admin'
+  AND scope = 'internal';
+```
 
 The admin dashboard shows platform metrics, recent signups, recent businesses, and recent website generations.
 

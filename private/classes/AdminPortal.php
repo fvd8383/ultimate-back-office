@@ -15,10 +15,11 @@ final class AdminPortal
         $placeholders = implode(',', array_fill(0, count(self::ADMIN_ROLE_NAMES), '?'));
         $statement = Database::connection()->prepare(
             "SELECT COUNT(*)
-             FROM business_users bu
-             INNER JOIN roles r ON r.id = bu.role_id
-             WHERE bu.user_id = ?
-               AND bu.status = 'active'
+             FROM user_roles ur
+             INNER JOIN users u ON u.id = ur.user_id
+             INNER JOIN roles r ON r.id = ur.role_id
+             WHERE u.id = ?
+               AND u.status = 'active'
                AND r.scope = 'internal'
                AND r.name IN ({$placeholders})"
         );
