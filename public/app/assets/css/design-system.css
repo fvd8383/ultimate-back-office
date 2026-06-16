@@ -731,6 +731,7 @@ button:hover,
 .site-preview-shell {
     --preview-blue: #3144D3;
     --preview-blue-dark: #2636B5;
+    --preview-accent: #3144D3;
     --preview-charcoal: #222222;
     --preview-muted: #5F6673;
     --preview-line: #E2E6F0;
@@ -776,6 +777,13 @@ button:hover,
     color: #ffffff;
     font-weight: 700;
     place-items: center;
+}
+
+.site-preview-logo {
+    width: 100%;
+    height: 100%;
+    border-radius: 8px;
+    object-fit: contain;
 }
 
 .site-preview-nav {
@@ -824,15 +832,15 @@ button:hover,
 }
 
 .site-preview-button--secondary {
-    border: 1px solid rgba(49, 68, 211, .28);
+    border: 1px solid var(--preview-accent);
     background: #ffffff;
-    color: var(--preview-blue);
+    color: var(--preview-accent);
 }
 
 .site-preview-button--secondary:hover {
-    border-color: var(--preview-blue);
+    border-color: var(--preview-accent);
     background: rgba(49, 68, 211, .08);
-    color: var(--preview-blue);
+    color: var(--preview-accent);
 }
 
 .site-preview-hero {
@@ -887,6 +895,23 @@ button:hover,
     display: grid;
     gap: 10px;
     padding: 24px;
+}
+
+.site-preview-image,
+.site-preview-story-image {
+    display: block;
+    width: 100%;
+    border-radius: 12px;
+    object-fit: cover;
+}
+
+.site-preview-image {
+    max-height: 280px;
+}
+
+.site-preview-story-image {
+    max-height: 360px;
+    margin-bottom: 22px;
 }
 
 .site-preview-hero-card strong {
@@ -998,6 +1023,11 @@ button:hover,
 
 .site-preview-feature {
     background: #ffffff;
+}
+
+.site-preview-feature-stack {
+    display: grid;
+    gap: 16px;
 }
 
 .site-preview-check-list {
@@ -1244,6 +1274,93 @@ button:hover,
     grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
+.admin-branding-grid {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.admin-branding-grid article {
+    display: grid;
+    gap: 10px;
+    align-content: start;
+    border: 1px solid var(--ubo-line);
+    border-radius: var(--ubo-radius-control);
+    padding: 16px;
+}
+
+.admin-branding-grid span {
+    color: var(--ubo-muted);
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.admin-branding-grid img {
+    width: 100%;
+    max-height: 120px;
+    border-radius: 8px;
+    object-fit: contain;
+}
+
+.admin-branding-grid strong {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: 8px;
+    overflow-wrap: anywhere;
+}
+
+.admin-branding-grid i {
+    display: inline-block;
+    width: 24px;
+    height: 24px;
+    flex: 0 0 auto;
+    border: 1px solid var(--ubo-line);
+    border-radius: 999px;
+}
+
+.website-manager-form,
+.website-manager-section {
+    display: grid;
+    gap: 18px;
+}
+
+.website-manager-upload-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.website-manager-preview {
+    display: grid;
+    min-height: 150px;
+    align-items: center;
+    justify-items: center;
+    border: 1px dashed var(--ubo-line-strong);
+    border-radius: var(--ubo-radius-control);
+    background: var(--ubo-bg);
+    color: var(--ubo-muted);
+    font-size: 13px;
+    font-weight: 400;
+    margin: 8px 0;
+    padding: 12px;
+}
+
+.website-manager-preview img {
+    display: block;
+    max-width: 100%;
+    max-height: 180px;
+    border-radius: 8px;
+    object-fit: contain;
+}
+
+.website-manager-empty {
+    color: var(--ubo-muted);
+}
+
+.website-manager-services fieldset {
+    display: grid;
+    gap: 14px;
+}
+
 @media (max-width: 820px) {
     .page-shell {
         margin: 24px auto;
@@ -1289,6 +1406,8 @@ button:hover,
     .admin-panels,
     .admin-module-grid,
     .admin-assets-grid,
+    .admin-branding-grid,
+    .website-manager-upload-grid,
     .site-preview-header,
     .site-preview-hero,
     .site-preview-card-grid,

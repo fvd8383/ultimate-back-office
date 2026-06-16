@@ -131,6 +131,19 @@ function sp247_step_href(string $step, int $businessId): string
 }
 
 $businessIdForLinks = $business ? (int) $business['id'] : 0;
+$sp247NavItems = [
+    ['label' => '247SP Dashboard', 'href' => $businessIdForLinks > 0 ? 'dashboard.php?business_id=' . urlencode((string) $businessIdForLinks) : 'dashboard.php'],
+    ['label' => 'Onboarding', 'href' => $businessIdForLinks > 0 ? 'onboarding.php?business_id=' . urlencode((string) $businessIdForLinks) : 'onboarding.php', 'current' => true],
+    ['label' => 'Review', 'href' => $businessIdForLinks > 0 ? 'review.php?business_id=' . urlencode((string) $businessIdForLinks) : 'review.php'],
+    ['label' => 'Preview', 'href' => $businessIdForLinks > 0 ? 'site-preview.php?business_id=' . urlencode((string) $businessIdForLinks) : 'site-preview.php'],
+    ['label' => 'Lead Hub', 'href' => '../dashboard.php'],
+];
+if ($businessIdForLinks > 0 && !$accessDenied) {
+    array_splice($sp247NavItems, 4, 0, [[
+        'label' => 'Website Manager',
+        'href' => 'website-manager.php?business_id=' . urlencode((string) $businessIdForLinks),
+    ]]);
+}
 $configuration = $bundle['configuration'];
 $content = $bundle['content'];
 $domain = $bundle['domain'];
@@ -145,13 +158,7 @@ $layoutLogoutHref = $accountsBaseUrl . '/logout.php';
 require __DIR__ . '/../../../private/views/header.php';
 ?>
 <section class="app-layout">
-    <?= ui_sidebar('24/7 Sales Partner', [
-        ['label' => '247SP Dashboard', 'href' => $businessIdForLinks > 0 ? 'dashboard.php?business_id=' . urlencode((string) $businessIdForLinks) : 'dashboard.php'],
-        ['label' => 'Onboarding', 'href' => $businessIdForLinks > 0 ? 'onboarding.php?business_id=' . urlencode((string) $businessIdForLinks) : 'onboarding.php', 'current' => true],
-        ['label' => 'Review', 'href' => $businessIdForLinks > 0 ? 'review.php?business_id=' . urlencode((string) $businessIdForLinks) : 'review.php'],
-        ['label' => 'Preview', 'href' => $businessIdForLinks > 0 ? 'site-preview.php?business_id=' . urlencode((string) $businessIdForLinks) : 'site-preview.php'],
-        ['label' => 'Lead Hub', 'href' => '../dashboard.php'],
-    ], '24/7 Sales Partner') ?>
+    <?= ui_sidebar('24/7 Sales Partner', $sp247NavItems, '24/7 Sales Partner') ?>
 
     <div class="app-content">
         <section class="hero-panel product-hero product-hero--247sp">

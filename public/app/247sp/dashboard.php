@@ -97,6 +97,19 @@ function sp247_status_label(string $status): string
 }
 
 $businessIdForLinks = $business ? (int) $business['id'] : 0;
+$sp247NavItems = [
+    ['label' => '247SP Dashboard', 'href' => 'dashboard.php' . ($businessIdForLinks > 0 ? '?business_id=' . urlencode((string) $businessIdForLinks) : ''), 'current' => true],
+    ['label' => 'Onboarding', 'href' => $businessIdForLinks > 0 ? 'onboarding.php?business_id=' . urlencode((string) $businessIdForLinks) : 'onboarding.php'],
+    ['label' => 'Review', 'href' => $businessIdForLinks > 0 ? 'review.php?business_id=' . urlencode((string) $businessIdForLinks) : 'review.php'],
+    ['label' => 'Preview', 'href' => $businessIdForLinks > 0 ? 'site-preview.php?business_id=' . urlencode((string) $businessIdForLinks) : 'site-preview.php'],
+    ['label' => 'Lead Hub', 'href' => '../dashboard.php'],
+];
+if ($businessIdForLinks > 0 && !$accessDenied) {
+    array_splice($sp247NavItems, 4, 0, [[
+        'label' => 'Website Manager',
+        'href' => 'website-manager.php?business_id=' . urlencode((string) $businessIdForLinks),
+    ]]);
+}
 $pageTitle = '24/7 Sales Partner - Ultimate Back Office';
 $bodyClass = 'app-dashboard theme-247sp';
 $layoutHomeHref = '../dashboard.php';
@@ -105,13 +118,7 @@ $layoutLogoutHref = $accountsBaseUrl . '/logout.php';
 require __DIR__ . '/../../../private/views/header.php';
 ?>
 <section class="app-layout">
-    <?= ui_sidebar('24/7 Sales Partner', [
-        ['label' => '247SP Dashboard', 'href' => 'dashboard.php' . ($businessIdForLinks > 0 ? '?business_id=' . urlencode((string) $businessIdForLinks) : ''), 'current' => true],
-        ['label' => 'Onboarding', 'href' => $businessIdForLinks > 0 ? 'onboarding.php?business_id=' . urlencode((string) $businessIdForLinks) : 'onboarding.php'],
-        ['label' => 'Review', 'href' => $businessIdForLinks > 0 ? 'review.php?business_id=' . urlencode((string) $businessIdForLinks) : 'review.php'],
-        ['label' => 'Preview', 'href' => $businessIdForLinks > 0 ? 'site-preview.php?business_id=' . urlencode((string) $businessIdForLinks) : 'site-preview.php'],
-        ['label' => 'Lead Hub', 'href' => '../dashboard.php'],
-    ], '24/7 Sales Partner') ?>
+    <?= ui_sidebar('24/7 Sales Partner', $sp247NavItems, '24/7 Sales Partner') ?>
 
     <div class="app-content">
         <section class="hero-panel product-hero product-hero--247sp">
@@ -191,6 +198,7 @@ require __DIR__ . '/../../../private/views/header.php';
                     <?php else: ?>
                         <?= ui_button('Regenerate Website', '', 'primary', ['name' => 'regenerate_website', 'value' => '1']) ?>
                         <?= ui_button('Preview Website', 'site-preview.php?business_id=' . urlencode((string) $businessIdForLinks), 'secondary') ?>
+                        <?= ui_button('Website Manager', 'website-manager.php?business_id=' . urlencode((string) $businessIdForLinks), 'secondary') ?>
                     <?php endif; ?>
                 </form>
             </section>

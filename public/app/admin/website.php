@@ -55,6 +55,10 @@ $assets = [
     'secondary_color_assigned' => false,
     'image_count' => 0,
 ];
+$brandingDetails = [
+    'branding' => [],
+    'service_images' => [],
+];
 
 try {
     if ($websiteId > 0) {
@@ -62,6 +66,7 @@ try {
         if ($website !== null) {
             $businessId = (int) $website['business_id'];
             $assets = AdminPortal::websiteAssetsSummary((int) $website['id']);
+            $brandingDetails = AdminPortal::websiteBrandingForBusiness($businessId);
         }
     }
 
@@ -74,6 +79,7 @@ try {
                 $assets = AdminPortal::websiteAssetsSummary((int) $website['id']);
             }
         }
+        $brandingDetails = AdminPortal::websiteBrandingForBusiness($businessId);
     }
 } catch (Throwable $exception) {
     $loadError = 'Website detail could not be loaded.';
@@ -123,6 +129,49 @@ admin_begin('Website Detail', 'websites', $context);
             <article><span>Primary Color Assigned</span><strong><?= e(admin_yes_no($assets['primary_color_assigned'])) ?></strong></article>
             <article><span>Secondary Color Assigned</span><strong><?= e(admin_yes_no($assets['secondary_color_assigned'])) ?></strong></article>
             <article><span>Image Count</span><strong><?= e($assets['image_count']) ?></strong></article>
+        </div>
+    </section>
+
+    <section class="business-switcher">
+        <h2>Website Branding</h2>
+        <?php $branding = $brandingDetails['branding']; ?>
+        <div class="admin-branding-grid">
+            <article>
+                <span>Logo</span>
+                <?php if (($branding['logo_path'] ?? '') !== ''): ?>
+                    <img src="<?= e($branding['logo_path']) ?>" alt="Website logo">
+                <?php else: ?>
+                    <strong>Not uploaded</strong>
+                <?php endif; ?>
+            </article>
+            <article>
+                <span>Primary Color</span>
+                <strong><i style="background: <?= e($branding['primary_color'] ?? '#3144D3') ?>"></i><?= e($branding['primary_color'] ?? '#3144D3') ?></strong>
+            </article>
+            <article>
+                <span>Secondary Color</span>
+                <?php if (($branding['secondary_color'] ?? '') !== ''): ?>
+                    <strong><i style="background: <?= e($branding['secondary_color']) ?>"></i><?= e($branding['secondary_color']) ?></strong>
+                <?php else: ?>
+                    <strong>Not set</strong>
+                <?php endif; ?>
+            </article>
+            <article>
+                <span>Hero Image</span>
+                <?php if (($branding['hero_image_path'] ?? '') !== ''): ?>
+                    <img src="<?= e($branding['hero_image_path']) ?>" alt="Hero image">
+                <?php else: ?>
+                    <strong>Not uploaded</strong>
+                <?php endif; ?>
+            </article>
+            <article>
+                <span>About Image</span>
+                <?php if (($branding['about_image_path'] ?? '') !== ''): ?>
+                    <img src="<?= e($branding['about_image_path']) ?>" alt="About image">
+                <?php else: ?>
+                    <strong>Not uploaded</strong>
+                <?php endif; ?>
+            </article>
         </div>
     </section>
 

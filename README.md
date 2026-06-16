@@ -92,6 +92,14 @@ mysql -h DB_HOST -P DB_PORT -u DB_USER -p DB_NAME < database/migrations/006_admi
 
 The Sprint 5 admin role assignment migration adds `user_roles` for internal platform roles that are not tied to one business.
 
+Then run the Sprint 5.5 website branding migration:
+
+```bash
+mysql -h DB_HOST -P DB_PORT -u DB_USER -p DB_NAME < database/migrations/007_247sp_branding.sql
+```
+
+The Sprint 5.5 migration adds 247SP website branding, service image, and editable content override tables.
+
 ## Testing OTP Login In Staging
 
 1. Insert an active test user into the `users` table.
@@ -219,6 +227,38 @@ The private preview is available at `public/app/247sp/site-preview.php` for auth
 
 Sprint 4 creates website records and private preview pages only. It does not register domains, modify DNS, provision email, add Stripe billing, add analytics, add media uploads, or generate AI content.
 
+## 24/7 Sales Partner Website Management
+
+Sprint 5.5 adds `public/app/247sp/website-manager.php` for customers with active 247SP access.
+
+The Website Manager supports:
+
+- Logo upload.
+- Primary and secondary brand color selection.
+- Hero image, about image, and one optional image per service.
+- Homepage headline, subheadline, and call-to-action edits.
+- About page heading and description edits.
+- Contact page heading and description edits.
+- Service title and description edits.
+- Save & Regenerate Website, which rebuilds the private preview and returns to `site-preview.php`.
+
+New database tables:
+
+- `247sp_website_branding`
+- `247sp_website_service_images`
+- `247sp_website_content_overrides`
+
+Sprint 5.5 stores uploads locally under browser-accessible app document-root paths:
+
+- `public/app/uploads/logos/`
+- `public/app/uploads/hero-images/`
+- `public/app/uploads/about-images/`
+- `public/app/uploads/service-images/`
+
+Uploads are validated by extension, MIME type, size, and business ownership before paths are stored. Public publishing is still not active.
+
+Sprint 5.5 does not add domain automation, DNS management, email provisioning, Stripe billing, AI content generation, public publishing, blog/CMS/media library functionality, analytics, SEO tooling, Apache changes, DNS changes, SSL changes, server config changes, or credential changes.
+
 ## Admin Portal
 
 The internal admin portal lives in `public/app/admin` because `staging-app.ultimatebackoffice.com` uses `public/app` as its document root.
@@ -257,7 +297,7 @@ Business controls support:
 Website controls support:
 
 - View generated website details.
-- View a read-only asset summary.
+- View a read-only asset and branding summary.
 - Generate websites from completed 247SP onboarding.
 - Regenerate websites from the latest 247SP onboarding data.
 - Open the existing private preview.

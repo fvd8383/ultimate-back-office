@@ -2,6 +2,7 @@
 
 require_once __DIR__ . '/Database.php';
 require_once __DIR__ . '/TwentyFourSevenSalesPartner.php';
+require_once __DIR__ . '/WebsiteManager.php';
 
 final class SiteGenerator
 {
@@ -137,6 +138,9 @@ final class SiteGenerator
             'service_pages' => $bundle['service_pages'],
             'domain' => $bundle['domain'],
             'email' => $bundle['email'],
+            'branding' => WebsiteManager::brandingForBusiness($businessId),
+            'content_overrides' => WebsiteManager::contentOverridesForBusiness($businessId),
+            'service_images' => WebsiteManager::serviceImagesForBusiness($businessId),
         ];
     }
 
@@ -146,6 +150,9 @@ final class SiteGenerator
         $configuration = $source['configuration'];
         $content = $source['content'];
         $services = $source['service_pages'];
+        $branding = $source['branding'];
+        $overrides = $source['content_overrides'];
+        $serviceImages = $source['service_images'];
 
         $businessName = (string) $business['business_name'];
         $serviceArea = self::serviceArea($configuration);
@@ -158,8 +165,9 @@ final class SiteGenerator
                 'slug' => 'home',
                 'sort_order' => 10,
                 'content' => [
-                    'headline' => $businessName,
-                    'business_description' => (string) $content['business_description'],
+                    'headline' => self::override($overrides, 'home', 'headline', $businessName),
+                    'subheadline' => self::override($overrides, 'home', 'subheadline', (string) $content['business_description']),
+                    'business_description' => self::override($overrides, 'home', 'subheadline', (string) $content['business_description']),
                     'service_area' => $serviceArea,
                     'service_highlights' => array_map(static function (array $service): array {
                         return [
@@ -169,25 +177,33 @@ final class SiteGenerator
                     }, $services),
                     'special_offer' => (string) ($content['special_offer'] ?? ''),
                     'financing_available' => (int) ($content['financing_available'] ?? 0) === 1,
-                    'call_to_action' => $cta,
+                    'call_to_action' => self::override($overrides, 'home', 'call_to_action', $cta),
+                    'hero_image_path' => (string) ($branding['hero_image_path'] ?? ''),
                 ],
             ],
         ];
 
         $sortOrder = 20;
         foreach ($services as $service) {
-            $serviceSlug = self::uniqueSlug(self::slugify((string) $service['service_name']), $usedSlugs);
+            $serviceNumber = (int) $service['service_number'];
+            $serviceKey = 'service_' . $serviceNumber;
+            $serviceName = self::override($overrides, $serviceKey, 'title', (string) $service['service_name']);
+            $serviceDescription = self::override($overrides, $serviceKey, 'description', (string) $service['short_description']);
+            $serviceSlug = self::uniqueSlug(self::slugify($serviceName), $usedSlugs);
             $usedSlugs[] = $serviceSlug;
 
             $pages[] = [
                 'page_type' => 'service',
-                'title' => (string) $service['service_name'],
+                'title' => $serviceName,
                 'slug' => $serviceSlug,
                 'sort_order' => $sortOrder,
                 'content' => [
-                    'service_name' => (string) $service['service_name'],
-                    'service_description' => (string) $service['short_description'],
+                    'service_number' => $serviceNumber,
+                    'service_name' => $serviceName,
+                    'service_description' => $serviceDescription,
                     'call_to_action' => $cta,
+                    'hero_image_path' => (string) ($branding['hero_image_path'] ?? ''),
+                    'service_image_path' => (string) ($serviceImages[$serviceNumber] ?? ''),
                 ],
             ];
             $sortOrder += 10;
@@ -199,9 +215,11 @@ final class SiteGenerator
             'slug' => 'about',
             'sort_order' => 50,
             'content' => [
-                'company_description' => (string) $content['about_company'],
+                'about_heading' => self::override($overrides, 'about', 'heading', 'About ' . $businessName),
+                'company_description' => self::override($overrides, 'about', 'description', (string) $content['about_company']),
                 'years_in_business' => (int) $content['years_in_business'],
                 'service_area' => $serviceArea,
+                'about_image_path' => (string) ($branding['about_image_path'] ?? ''),
             ],
         ];
 
@@ -211,6 +229,8 @@ final class SiteGenerator
             'slug' => 'contact',
             'sort_order' => 60,
             'content' => [
+                'contact_heading' => self::override($overrides, 'contact', 'heading', 'Contact ' . $businessName),
+                'contact_description' => self::override($overrides, 'contact', 'description', 'Tell us what you need and we will help you take the next step.'),
                 'phone' => (string) $business['phone'],
                 'email' => (string) $business['email'],
                 'service_area' => $serviceArea,
@@ -356,6 +376,13 @@ final class SiteGenerator
             $configuration['service_area_state'] ?? '',
             $configuration['service_area_postal_code'] ?? '',
         ])));
+    }
+
+    private static function override(array $overrides, string $pageKey, string $fieldKey, string $fallback): string
+    {
+        $value = trim((string) ($overrides[$pageKey][$fieldKey] ?? ''));
+
+        return $value !== '' ? $value : $fallback;
     }
 
     private static function slugify(string $value): string
