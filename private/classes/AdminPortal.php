@@ -3,6 +3,7 @@
 require_once __DIR__ . '/Auth.php';
 require_once __DIR__ . '/BusinessFoundation.php';
 require_once __DIR__ . '/SiteGenerator.php';
+require_once __DIR__ . '/WebsiteManager.php';
 
 final class AdminPortal
 {
@@ -379,27 +380,28 @@ final class AdminPortal
 
     public static function websiteAssetsSummary(int $websiteId): array
     {
-        $pages = SiteGenerator::pagesForWebsite($websiteId);
-        $imageCount = 0;
-
-        foreach ($pages as $page) {
-            $content = json_decode((string) $page['content_json'], true);
-            if (!is_array($content)) {
-                continue;
-            }
-
-            array_walk_recursive($content, static function ($value) use (&$imageCount): void {
-                if (is_string($value) && preg_match('/\.(png|jpe?g|gif|webp|svg)(\?.*)?$/i', $value)) {
-                    $imageCount++;
-                }
-            });
-        }
+        $website = self::website($websiteId);
+        $businessId = (int) ($website['business_id'] ?? 0);
+        $branding = $businessId > 0 ? WebsiteManager::brandingForBusiness($businessId) : [];
+        $serviceImages = $businessId > 0 ? WebsiteManager::serviceImagesForBusiness($businessId) : [];
+        $imageCount = count(array_filter([
+            $branding['hero_image_path'] ?? '',
+            $branding['about_image_path'] ?? '',
+        ])) + count(array_filter($serviceImages));
 
         return [
-            'logo_assigned' => false,
-            'primary_color_assigned' => false,
-            'secondary_color_assigned' => false,
+            'logo_assigned' => ($branding['logo_path'] ?? '') !== '',
+            'primary_color_assigned' => ($branding['primary_color'] ?? '') !== '',
+            'secondary_color_assigned' => ($branding['secondary_color'] ?? '') !== '',
             'image_count' => $imageCount,
+        ];
+    }
+
+    public static function websiteBrandingForBusiness(int $businessId): array
+    {
+        return [
+            'branding' => WebsiteManager::brandingForBusiness($businessId),
+            'service_images' => WebsiteManager::serviceImagesForBusiness($businessId),
         ];
     }
 
