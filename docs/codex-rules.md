@@ -1073,3 +1073,58 @@ This allows staging validation to be performed quickly.
 Do not claim runtime verification was performed unless it actually occurred.
 
 Before implementing routes or pages, inspect the existing application structure and ensure new files are created within the correct document root hierarchy.
+
+# Repository Synchronization
+
+Before creating a branch or making any code changes:
+
+1. Check current branch and repository status.
+
+2. If on `main` and the worktree is clean:
+
+```bash
+git fetch origin
+git checkout main
+git pull --ff-only origin main
+```
+
+3. If the worktree is not clean:
+
+* Stop immediately.
+* Report the status.
+* Do not stash changes.
+* Do not create commits.
+* Do not overwrite files.
+
+4. Verify all required sprint documents exist locally after synchronization.
+
+Examples:
+
+```text
+docs/sprint-5.md
+docs/sprint-5.5.md
+docs/deployment-plan.md
+docs/product-structure.md
+```
+
+5. Only after synchronization is complete should a sprint branch be created.
+
+---
+
+# Branch Creation Order
+
+Always follow:
+
+```text
+Synchronize Main
+↓
+Read Required Documentation
+↓
+Create Sprint Branch
+↓
+Implement Changes
+↓
+Open Pull Request
+```
+
+Never create a sprint branch from an outdated local copy of main.
