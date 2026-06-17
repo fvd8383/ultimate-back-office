@@ -3,6 +3,7 @@
 require_once __DIR__ . '/Database.php';
 require_once __DIR__ . '/BusinessFoundation.php';
 require_once __DIR__ . '/DomainAutomation.php';
+require_once __DIR__ . '/EmailProvisioningFoundation.php';
 
 final class TwentyFourSevenSalesPartner
 {
@@ -78,7 +79,7 @@ final class TwentyFourSevenSalesPartner
         return [
             'website_status' => self::websiteStatus($onboarding, $configuration),
             'domain_status' => $domainWorkflow['domain_status'] ?? ($domain['status'] ?? 'not_selected'),
-            'email_status' => $email['status'] ?? 'not_selected',
+            'email_status' => EmailProvisioningFoundation::currentEmailStatusForBusiness($businessId) ?: ($email['status'] ?? 'not_selected'),
             'current_step' => $onboarding['current_step'] ?? 'business_information',
             'setup_status' => $onboarding['setup_status'] ?? 'not_started',
             'completed_at' => $onboarding['completed_at'] ?? null,
@@ -386,6 +387,7 @@ final class TwentyFourSevenSalesPartner
             'status' => 'pending',
         ]);
 
+        EmailProvisioningFoundation::ensureRequestForBusiness($businessId);
         self::advance($businessId, self::NEXT_STEP['email_selection']);
         self::logActivity($businessId, $userId, '247sp_email_selection_saved', '247SP email request saved');
     }

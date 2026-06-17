@@ -105,6 +105,7 @@ require __DIR__ . '/../../private/views/header.php';
             <?= ui_button('Businesses', count($businesses) > 0 ? 'business.php' : 'business-create.php', 'secondary') ?>
             <?= ui_button('Billing', 'billing.php', 'secondary') ?>
             <?= ui_button('Domains', 'domains.php', 'secondary') ?>
+            <?= ui_button('Email', 'email.php', 'secondary') ?>
             <?= ui_button('Log out', 'logout.php') ?>
         </div>
     </div>
