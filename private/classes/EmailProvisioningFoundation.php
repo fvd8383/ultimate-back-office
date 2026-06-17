@@ -83,7 +83,37 @@ final class EmailProvisioningFoundation
                         )
                     ) AS domain_name,
                     COALESCE(bmc.included_mailbox_count, 1) AS included_mailbox_count,
-                    COALESCE(bmc.additional_mailbox_count, 0) AS additional_mailbox_count
+                    COALESCE(bmc.additional_mailbox_count, 0) AS additional_mailbox_count,
+                    (
+                        SELECT COUNT(*)
+                        FROM mailbox_requests mr
+                        WHERE mr.business_id = b.id
+                          AND mr.status = 'requested'
+                    ) AS requested_mailbox_count,
+                    (
+                        SELECT COUNT(*)
+                        FROM mailbox_requests mr
+                        WHERE mr.business_id = b.id
+                          AND mr.status = 'pending_setup'
+                    ) AS pending_setup_mailbox_count,
+                    (
+                        SELECT COUNT(*)
+                        FROM mailbox_assignments ma
+                        WHERE ma.business_id = b.id
+                          AND ma.status = 'active'
+                    ) AS active_mailbox_count,
+                    (
+                        SELECT COUNT(*)
+                        FROM mailbox_requests mr
+                        WHERE mr.business_id = b.id
+                          AND mr.status = 'suspended'
+                    ) AS suspended_mailbox_count,
+                    (
+                        SELECT COUNT(*)
+                        FROM mailbox_requests mr
+                        WHERE mr.business_id = b.id
+                          AND mr.status = 'cancelled'
+                    ) AS cancelled_mailbox_count
              FROM businesses b
              INNER JOIN business_users bu ON bu.business_id = b.id
              INNER JOIN business_modules bm ON bm.business_id = b.id AND bm.status = :module_status
@@ -138,12 +168,14 @@ final class EmailProvisioningFoundation
              WHERE bu.user_id = :user_id
                AND bu.status = :link_status
                AND b.status = :business_status
+               AND ma.status = :assignment_status
              ORDER BY ma.created_at DESC, ma.id DESC'
         );
         $statement->execute([
             'user_id' => $userId,
             'link_status' => 'active',
             'business_status' => 'active',
+            'assignment_status' => 'active',
         ]);
 
         return $statement->fetchAll();
