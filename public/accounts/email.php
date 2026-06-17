@@ -46,6 +46,11 @@ try {
     $loadError = 'Email information could not be loaded. Run the Sprint 8 migration and check the database setup.';
 }
 
+function accounts_email_count(array $business, string $key): int
+{
+    return (int) ($business[$key] ?? 0);
+}
+
 $pageTitle = 'Email - Ultimate Back Office';
 $bodyClass = 'accounts-dashboard';
 $layoutHomeHref = 'dashboard.php';
@@ -114,7 +119,7 @@ require __DIR__ . '/../../private/views/header.php';
     </section>
 
     <section class="dashboard-card">
-        <h2>Mailbox Counts</h2>
+        <h2>Mailbox Summary</h2>
         <?php if (count($businesses) === 0): ?>
             <p class="muted">No 24/7 Sales Partner businesses found.</p>
         <?php else: ?>
@@ -126,8 +131,13 @@ require __DIR__ . '/../../private/views/header.php';
                             <p class="muted"><?= e($business['domain_name'] ?: 'No domain selected') ?></p>
                         </div>
                         <div class="summary-list billing-summary-list">
-                            <div><dt>Included Mailboxes</dt><dd><?= e($business['included_mailbox_count']) ?></dd></div>
-                            <div><dt>Additional Mailboxes</dt><dd><?= e($business['additional_mailbox_count']) ?></dd></div>
+                            <div><dt>Included Allowance</dt><dd><?= e($business['included_mailbox_count']) ?></dd></div>
+                            <div><dt>Additional Purchased</dt><dd><?= e($business['additional_mailbox_count']) ?></dd></div>
+                            <div><dt>Requested</dt><dd><?= e(accounts_email_count($business, 'requested_mailbox_count')) ?></dd></div>
+                            <div><dt>Pending Setup</dt><dd><?= e(accounts_email_count($business, 'pending_setup_mailbox_count')) ?></dd></div>
+                            <div><dt>Active Mailboxes</dt><dd><?= e(accounts_email_count($business, 'active_mailbox_count')) ?></dd></div>
+                            <div><dt>Suspended</dt><dd><?= e(accounts_email_count($business, 'suspended_mailbox_count')) ?></dd></div>
+                            <div><dt>Cancelled</dt><dd><?= e(accounts_email_count($business, 'cancelled_mailbox_count')) ?></dd></div>
                         </div>
                     </article>
                 <?php endforeach; ?>
@@ -161,7 +171,7 @@ require __DIR__ . '/../../private/views/header.php';
     <section class="dashboard-card">
         <h2>Active Mailboxes</h2>
         <?php if (count($assignments) === 0): ?>
-            <p class="muted">No mailbox assignments have been created yet.</p>
+            <p class="muted">No active mailbox assignments have been created yet.</p>
         <?php else: ?>
             <div class="business-list">
                 <?php foreach ($assignments as $assignment): ?>
