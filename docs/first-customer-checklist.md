@@ -102,6 +102,16 @@ This checklist tracks every requirement that must be completed before accepting 
 
 ---
 
+# Remaining Critical Path
+
+- [ ] Email Provisioning
+- [ ] Payment Processor Integration
+- [ ] Production Environment
+- [ ] Legal Documents
+- [ ] First Customer SOP
+
+---
+
 # Operational Readiness
 
 * [ ] First Customer SOP
