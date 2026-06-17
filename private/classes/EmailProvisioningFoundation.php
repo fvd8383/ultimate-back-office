@@ -57,7 +57,7 @@ final class EmailProvisioningFoundation
     public static function customerBusinessesForUser(int $userId): array
     {
         $statement = Database::connection()->prepare(
-            'SELECT b.id,
+            "SELECT b.id,
                     b.business_name,
                     COALESCE(
                         (
@@ -122,7 +122,7 @@ final class EmailProvisioningFoundation
              WHERE bu.user_id = :user_id
                AND bu.status = :link_status
                AND b.status = :business_status
-             ORDER BY b.business_name ASC'
+             ORDER BY b.business_name ASC"
         );
         $statement->execute([
             'user_id' => $userId,
