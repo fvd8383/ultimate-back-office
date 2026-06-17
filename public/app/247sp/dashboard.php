@@ -227,6 +227,12 @@ require __DIR__ . '/../../../private/views/header.php';
                 <p class="muted">Domain requests are managed manually by the internal team. This dashboard only shows status; it does not register domains, modify DNS, configure SSL, provision email, or publish websites.</p>
                 <?= ui_button('View Account Domains', $accountsBaseUrl . '/domains.php', 'secondary') ?>
             </section>
+
+            <section class="business-switcher">
+                <h2>Email Workflow</h2>
+                <p class="muted">Mailbox requests are managed manually by the internal team. This dashboard only shows status; it does not create mailboxes, configure DNS mail records, send email, collect payment, or manage passwords.</p>
+                <?= ui_button('View Account Email', $accountsBaseUrl . '/email.php', 'secondary') ?>
+            </section>
         <?php endif; ?>
     </div>
 </section>
