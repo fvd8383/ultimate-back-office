@@ -234,6 +234,32 @@ public/accounts/assets/css/design-system.css
 public/app/assets/css/design-system.css
 ```
 
+Current public branding asset locations:
+
+```text
+public/accounts/assets/img/ubo-logo.svg
+public/accounts/assets/img/favicon.svg
+public/accounts/assets/img/247sp-logo.svg
+public/accounts/assets/img/emd-logo.svg
+public/accounts/assets/img/ssp-logo.svg
+public/accounts/assets/img/tuhwd-logo.svg
+public/app/assets/img/ubo-logo.svg
+public/app/assets/img/favicon.svg
+public/app/assets/img/247sp-logo.svg
+public/app/assets/img/emd-logo.svg
+public/app/assets/img/ssp-logo.svg
+public/app/assets/img/tuhwd-logo.svg
+```
+
+The shared layout loads:
+
+```text
+/assets/img/ubo-logo.svg
+/assets/img/favicon.svg
+```
+
+Those paths resolve inside whichever document root is serving the current subdomain. Do not move these platform branding assets to DigitalOcean Spaces unless a supported public asset pipeline is added.
+
 ---
 
 # Configuration Files

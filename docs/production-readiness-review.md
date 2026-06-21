@@ -116,7 +116,7 @@ Completed:
 * Legal Structure = Other now captures a specified legal structure.
 * Service options are expanded with Other choices and a custom service field.
 * Customer module selection is limited to the active launch module: 24/7 Sales Partner.
-* Onboarding confirmation summarizes business info, services, modules, website package, domain path, included email, and billing plan.
+* Onboarding confirmation summarizes business info, services, selected launch modules, and module handoff guidance.
 
 Remaining:
 

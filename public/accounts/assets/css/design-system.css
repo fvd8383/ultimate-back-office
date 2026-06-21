@@ -509,8 +509,32 @@ button:hover,
     gap: 10px;
 }
 
+.business-list__roles {
+    display: flex;
+    width: 100%;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+.business-actions {
+    display: grid;
+    width: min(360px, 100%);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.business-actions h4 {
+    grid-column: 1 / -1;
+    margin: 0;
+    color: var(--ubo-muted);
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
 .business-list__meta .ubo-dashboard-action {
-    flex: 1 1 190px;
+    width: 100%;
 }
 
 .business-list__meta form {
@@ -567,6 +591,10 @@ button:hover,
 .module-selection {
     display: grid;
     gap: 12px;
+}
+
+.module-selection .module-grid {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 520px));
 }
 
 .module-selection[hidden] {
@@ -645,10 +673,25 @@ button:hover,
 
 .module-option {
     grid-template-columns: auto minmax(0, 1fr);
+    column-gap: 12px;
+    row-gap: 4px;
     align-items: start;
 }
 
+.module-option input {
+    grid-column: 1;
+    grid-row: 1 / span 2;
+    margin-top: 4px;
+}
+
+.module-option strong {
+    grid-column: 2;
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
 .module-option span {
+    grid-column: 2;
     color: var(--ubo-muted);
     font-size: 14px;
 }
@@ -1403,6 +1446,15 @@ button:hover,
 
     .business-list__meta {
         justify-content: flex-start;
+    }
+
+    .business-list__roles {
+        justify-content: flex-start;
+    }
+
+    .business-actions {
+        width: 100%;
+        grid-template-columns: 1fr;
     }
 
     .app-sidebar {
