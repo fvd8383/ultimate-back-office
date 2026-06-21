@@ -1,193 +1,407 @@
-# Sprint 8.5 – Production Readiness Review
+# Sprint 8.5 – Production Readiness & UX Polish
 
 ## Objective
 
-Conduct a comprehensive review of Ultimate Back Office and 24/7 Sales Partner to identify all remaining blockers before onboarding the first paying customer.
+Refine the Ultimate Back Office user experience by addressing all high-priority issues identified during the Production Readiness Review.
 
-This sprint does not add major customer-facing features.
+This sprint is focused on polishing the customer experience rather than introducing new platform functionality.
 
-This sprint focuses on:
-
-* Platform review
-* Customer journey review
-* Admin workflow review
-* Production readiness
-* Revenue readiness
-* Security review
-* Documentation review
+No new modules or external integrations should be added during this sprint.
 
 ---
 
 # Business Goal
 
-Determine whether the platform is capable of supporting a real paying customer.
+Complete the user experience so the first customer can:
 
-Identify:
+- Create an account
+- Sign in
+- Create a business
+- Complete onboarding
+- Generate a website
+- Customize their website
+- Manage billing
+- Request a domain
+- Request email
 
-* Missing functionality
-* Process gaps
-* Security concerns
-* Operational concerns
-* Legal concerns
-
-Create a prioritized action plan.
+...with a professional, intuitive workflow.
 
 ---
 
 # Scope
 
-Review all completed functionality:
+This sprint covers:
 
-* Authentication
-* Business Management
-* 247SP
-* Website Generation
-* Website Branding
-* Billing
-* Domain Management
-* Email Management
-* Admin Portal
-
----
-
-# Customer Journey Review
-
-Review the complete customer workflow:
-
-1. Signup
-2. Login
-3. Create Business
-4. Activate 247SP
-5. Complete Onboarding
-6. Generate Website
-7. Customize Website
-8. Review Billing
-9. Request Domain
-10. Request Email
-
-Document:
-
-* Missing steps
-* Confusing UI
-* Missing messaging
-* Broken workflows
+- Login Flow
+- Signup Flow
+- Dashboard UX
+- Business Onboarding
+- Module Selection
+- Branding
+- Navigation
+- Form Improvements
+- UI Consistency
 
 ---
 
-# Admin Workflow Review
+# 1. Branding
+
+## Objectives
+
+Replace placeholder branding throughout the platform.
+
+### Tasks
+
+- Add Ultimate Back Office logo
+- Add module logos
+    - 24/7 Sales Partner
+    - EMD
+    - SSP
+    - TUHWD
+- Add favicon
+- Update browser titles
+- Review spacing and sizing
+
+Definition of Done
+
+All pages display consistent branding.
+
+---
+
+# 2. Login Flow Improvements
+
+## Objectives
+
+Simplify OTP login.
+
+Current Flow
+
+Login
+
+↓
+
+Request Code
+
+↓
+
+Stay on same page
+
+↓
+
+Verify link
+
+↓
+
+Verify page
+
+New Flow
+
+Login
+
+↓
+
+Request Code
+
+↓
+
+Automatically redirect to Verify page
+
+↓
+
+Email pre-filled
+
+↓
+
+OTP auto-filled in staging
+
+↓
+
+Verify
+
+### Tasks
+
+- Auto redirect after requesting OTP
+- Preserve entered email
+- Improve success messaging
+- Remove unnecessary clicks
+
+---
+
+# 3. Dashboard Cleanup
+
+## Objectives
+
+Separate account navigation from business actions.
+
+### Account Navigation
+
+Dashboard
+
+Businesses
+
+Billing
+
+Domains
+
+Email
+
+Profile
+
+Log Out
+
+### Business Card
+
+Business Name
+
+Business Status
+
+Active Modules
+
+Buttons
+
+- Edit Business
+- Manage Website
+- Open 247SP
+- Billing
+- Domains
+- Email
+
+Remove duplicated navigation.
+
+Improve spacing and alignment.
+
+---
+
+# 4. Business Onboarding
+
+## Step 1
+
+Reorder fields:
+
+Legal Business Name
+
+↓
+
+Public Business Name (DBA)
+
+↓
+
+Business Email
+
+↓
+
+Business Phone
+
+If Legal Structure = Other
+
+Display
+
+Specify Legal Structure
+
+[text field]
+
+---
+
+## Step 2
+
+Expand available service options.
+
+Each category should include:
+
+- More service options
+- Other option
+- Optional custom service field
+
+Improve layout consistency.
+
+---
+
+## Step 3
+
+Only show active modules.
+
+Hide:
+
+- Future modules
+- Disabled modules
+
+Improve:
+
+- Alignment
+- Card sizing
+- White space
+- Mobile responsiveness
+
+---
+
+## Step 4
+
+Improve summary.
+
+Include:
+
+- Business Information
+- Services
+- Selected Modules
+- Website Package
+- Domain Choice
+- Included Email
+- Billing Plan
+
+---
+
+# 5. Onboarding Welcome
+
+Before onboarding begins, add a welcome screen.
+
+Example:
+
+Welcome to Ultimate Back Office
+
+We'll help you set up:
+
+✓ Business Profile
+
+✓ Services
+
+✓ Website
+
+✓ Branding
+
+✓ Domain
+
+✓ Business Email
+
+Estimated time:
+
+8–10 minutes
+
+Button
+
+Begin Setup
+
+---
+
+# 6. Navigation Consistency
+
+Review every page.
+
+Confirm:
+
+Current page highlighted
+
+Consistent button styling
+
+Back buttons
+
+Cancel buttons
+
+Home navigation
+
+Breadcrumbs where appropriate
+
+---
+
+# 7. UI Polish
 
 Review:
 
-* User Management
-* Business Management
-* Website Management
-* Billing Management
-* Domain Management
-* Email Management
+Spacing
 
-Document:
+Typography
 
-* Missing controls
-* Missing reporting
-* Missing status visibility
-* Manual database dependencies
+Alignment
 
----
+Responsive layouts
 
-# Production Readiness Review
+Empty states
 
-Review:
+Loading states
 
-* Staging Environment
-* Production Architecture
-* Backups
-* Logging
-* Monitoring
-* Error Handling
-* SSL
-* Deployment Procedures
+Success messages
 
-Document all risks.
+Error messages
+
+Validation messages
 
 ---
 
-# Security Review
+# 8. Production Readiness Review
 
-Review:
+Confirm:
 
-* Authentication
-* Session Management
-* Role Permissions
-* Admin Access
-* Input Validation
-* File Upload Handling
+Login
 
-Document all concerns.
+Signup
+
+Business Creation
+
+247SP Activation
+
+Website Generation
+
+Website Branding
+
+Billing
+
+Domains
+
+Email
+
+Admin Portal
+
+Document remaining launch blockers.
 
 ---
 
-# Revenue Readiness Review
+# Out of Scope
 
-Review:
+Do NOT implement:
 
-* Billing Foundation
-* Subscription Workflow
-* Payment Collection Gap
-* Cancellation Workflow
-* Refund Workflow
+Stripe
 
-Determine remaining work before first revenue.
+Domain APIs
 
----
+Email APIs
 
-# Legal Review
+EMD
 
-Review status of:
+SSP
 
-* Terms of Service
-* Privacy Policy
-* Billing Policy
-* Refund Policy
+TUHWD
 
-Identify missing documents.
+AI
+
+Public Production Deployment
 
 ---
 
 # Deliverables
 
-Create:
+Improved login flow
 
-production-readiness-review.md
+Improved onboarding
 
-Document:
+Improved dashboard
 
-* Findings
-* Severity
-* Recommended Actions
-* Estimated Effort
+Updated branding
 
----
+Cleaner navigation
 
-# Explicitly Out Of Scope
+Production-ready UX
 
-Do NOT build:
-
-* New modules
-* EMD
-* SSP
-* TUHWD
-* Payment integrations
-* Domain automation APIs
-* Email provider integrations
-
-This sprint is review and planning only.
+Updated Production Readiness Review
 
 ---
 
-# Definition Of Done
+# Definition of Done
 
-A complete production readiness review exists.
+A new customer can complete onboarding with minimal confusion.
 
-All known launch blockers are documented.
+The application presents consistent branding.
 
-A prioritized roadmap exists for first-customer readiness.
+The dashboard and onboarding experience are polished.
+
+Only production-ready modules are shown.
+
+The remaining launch blockers are documented and prioritized for Sprint 9.
