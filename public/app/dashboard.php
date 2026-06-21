@@ -24,7 +24,7 @@ try {
     $business = $requestedBusinessId > 0
         ? BusinessFoundation::businessForUser($requestedBusinessId, (int) $user['id'])
         : BusinessFoundation::firstBusinessForUser((int) $user['id']);
-    $activeModules = $business ? BusinessFoundation::activeModules((int) $business['id']) : [];
+    $activeModules = $business ? BusinessFoundation::customerActiveModules((int) $business['id']) : [];
     $hasLeadHubAccess = false;
     $has247spAccess = false;
     foreach ($activeModules as $module) {

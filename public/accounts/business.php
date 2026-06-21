@@ -29,6 +29,7 @@ try {
     $categories = BusinessFoundation::categories();
     $allSubServices = BusinessFoundation::subServices();
     $selectedSubServiceIds = BusinessFoundation::selectedSubServiceIds($businessId);
+    $selectedCustomServices = BusinessFoundation::selectedCustomServices($businessId);
     $notice = '';
     $errors = [];
 } catch (Throwable $exception) {
@@ -38,6 +39,7 @@ try {
     $categories = [];
     $allSubServices = [];
     $selectedSubServiceIds = [];
+    $selectedCustomServices = [];
     $notice = '';
     $errors = ['Business profile could not be loaded. Check the environment and database setup.'];
 }
@@ -47,10 +49,15 @@ foreach ($allSubServices as $service) {
     $serviceCategoryById[(int) $service['id']] = (int) $service['category_id'];
 }
 
+$legalStructureNames = [];
+foreach ($legalStructures as $structure) {
+    $legalStructureNames[(int) $structure['id']] = (string) $structure['name'];
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && $business !== null) {
     $required = [
-        'business_name' => 'Business Name',
-        'legal_name' => 'Legal Name',
+        'legal_name' => 'Legal Business Name',
+        'business_name' => 'Public Business Name (DBA)',
         'email' => 'Business Email',
         'phone' => 'Business Phone',
         'address_line_1' => 'Address Line 1',
@@ -72,9 +79,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $business !== null) {
         $errors[] = 'Enter a valid business email.';
     }
 
+    $selectedLegalStructure = (string) ($legalStructureNames[(int) ($_POST['legal_structure_id'] ?? 0)] ?? '');
+    if (strcasecmp($selectedLegalStructure, 'Other') === 0 && trim((string) ($_POST['legal_structure_other'] ?? '')) === '') {
+        $errors[] = 'Specify the legal structure.';
+    }
+
     $postedServices = $_POST['sub_services'] ?? [];
-    if (!is_array($postedServices) || count($postedServices) === 0) {
-        $errors[] = 'Select at least one service.';
+    $customService = trim((string) ($_POST['custom_service'] ?? ''));
+    if ((!is_array($postedServices) || count($postedServices) === 0) && $customService === '') {
+        $errors[] = 'Select at least one service or enter a custom service.';
     }
 
     $categoryId = (int) ($_POST['primary_category_id'] ?? 0);
@@ -85,16 +98,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $business !== null) {
         }
     }
 
-    if ($categoryId > 0 && $validPostedServices === 0) {
-        $errors[] = 'Select at least one service from the primary category.';
+    if ($categoryId > 0 && $validPostedServices === 0 && $customService === '') {
+        $errors[] = 'Select at least one service from the primary category or enter a custom service.';
     }
 
     if (count($errors) === 0) {
         try {
             BusinessFoundation::saveBusinessInfo((int) $user['id'], $_POST, $businessId);
-            BusinessFoundation::saveServices($businessId, (int) $user['id'], $categoryId, $postedServices);
+            BusinessFoundation::saveServices($businessId, (int) $user['id'], $categoryId, $postedServices, $customService);
             $business = BusinessFoundation::businessForUser($businessId, (int) $user['id']);
             $selectedSubServiceIds = BusinessFoundation::selectedSubServiceIds($businessId);
+            $selectedCustomServices = BusinessFoundation::selectedCustomServices($businessId);
             $notice = 'Business profile saved.';
         } catch (Throwable $exception) {
             $errors[] = 'Business profile could not be saved. Check the database setup and try again.';
@@ -147,11 +161,11 @@ require __DIR__ . '/../../private/views/header.php';
         <input type="hidden" name="business_id" value="<?= e($businessId) ?>">
 
         <div class="form-grid">
-            <label>Business Name
-                <input name="business_name" required value="<?= e(profile_value($business, 'business_name')) ?>">
-            </label>
-            <label>Legal Name
+            <label>Legal Business Name
                 <input name="legal_name" required value="<?= e(profile_value($business, 'legal_name')) ?>">
+            </label>
+            <label>Public Business Name (DBA)
+                <input name="business_name" required value="<?= e(profile_value($business, 'business_name')) ?>">
             </label>
             <label>Business Email
                 <input name="email" type="email" required value="<?= e(profile_value($business, 'email')) ?>">
@@ -178,7 +192,7 @@ require __DIR__ . '/../../private/views/header.php';
                 <input name="country" required value="<?= e(profile_value($business, 'country', 'US')) ?>">
             </label>
             <label>Legal Structure
-                <select name="legal_structure_id" required>
+                <select name="legal_structure_id" required data-legal-structure-select>
                     <option value="">Select legal structure</option>
                     <?php foreach ($legalStructures as $structure): ?>
                         <option value="<?= e($structure['id']) ?>" <?= (int) profile_value($business, 'legal_structure_id') === (int) $structure['id'] ? 'selected' : '' ?>>
@@ -186,6 +200,10 @@ require __DIR__ . '/../../private/views/header.php';
                         </option>
                     <?php endforeach; ?>
                 </select>
+            </label>
+            <label data-legal-structure-other>
+                Specify Legal Structure
+                <input name="legal_structure_other" value="<?= e(profile_value($business, 'legal_structure_other')) ?>">
             </label>
             <label>Primary Category
                 <select name="primary_category_id" required>
@@ -217,6 +235,11 @@ require __DIR__ . '/../../private/views/header.php';
             <?php endforeach; ?>
         </div>
 
+        <label>Custom Service
+            <input name="custom_service" value="<?= e((string) ($_POST['custom_service'] ?? ($selectedCustomServices[0]['name'] ?? ''))) ?>" placeholder="Example: Holiday lighting">
+            <span class="form-help">Optional. Use this if you selected Other or need a service that is not listed.</span>
+        </label>
+
         <div class="button-row">
             <?= ui_button('Back to dashboard', 'dashboard.php', 'secondary') ?>
             <?= ui_button('View billing', 'billing.php', 'secondary') ?>
@@ -225,5 +248,30 @@ require __DIR__ . '/../../private/views/header.php';
         </div>
     </form>
 <?php endif; ?>
+
+<script>
+var legalStructureSelect = document.querySelector('[data-legal-structure-select]');
+var legalStructureOther = document.querySelector('[data-legal-structure-other]');
+
+function updateLegalStructureOther() {
+    if (!legalStructureSelect || !legalStructureOther) {
+        return;
+    }
+
+    var selected = legalStructureSelect.options[legalStructureSelect.selectedIndex];
+    var isOther = selected && selected.text.trim().toLowerCase() === 'other';
+    legalStructureOther.hidden = !isOther;
+    legalStructureOther.querySelectorAll('input').forEach(function (input) {
+        input.required = isOther;
+        input.disabled = !isOther;
+    });
+}
+
+if (legalStructureSelect) {
+    legalStructureSelect.addEventListener('change', updateLegalStructureOther);
+}
+
+updateLegalStructureOther();
+</script>
 
 <?php require __DIR__ . '/../../private/views/footer.php'; ?>

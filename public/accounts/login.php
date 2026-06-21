@@ -22,8 +22,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         try {
             $result = Auth::requestLoginCode($email);
-            $notice = $result['message'];
-            $displayCode = $result['display_code'];
+            $query = [
+                'email' => $email,
+                'requested' => '1',
+            ];
+
+            if (($result['display_code'] ?? null) !== null) {
+                $query['code'] = (string) $result['display_code'];
+            }
+
+            header('Location: verify.php?' . http_build_query($query));
+            exit;
         } catch (Throwable $exception) {
             $error = 'The login code could not be prepared. Check the environment and database setup.';
         }

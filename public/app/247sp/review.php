@@ -121,6 +121,7 @@ require __DIR__ . '/../../../private/views/header.php';
 
     <div class="app-content">
         <section class="hero-panel product-hero product-hero--247sp">
+            <img class="product-hero__logo" src="../assets/img/247sp-logo.svg" alt="24/7 Sales Partner">
             <p class="eyebrow">247SP review</p>
             <h1><?= $business ? e($business['business_name']) : 'Review onboarding' ?></h1>
             <p class="muted">Confirm the collected setup information before marking onboarding complete.</p>

@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 64" role="img" aria-labelledby="title">
+  <title id="title">Ultimate Back Office</title>
+  <rect width="260" height="64" rx="12" fill="#FFFFFF"/>
+  <rect x="8" y="8" width="48" height="48" rx="10" fill="#3B6C7A"/>
+  <path d="M20 21h8v16c0 4 2 6 5 6s5-2 5-6V21h8v16c0 8-5 13-13 13s-13-5-13-13V21z" fill="#FFFFFF"/>
+  <text x="68" y="30" fill="#222222" font-family="Poppins, Segoe UI, sans-serif" font-size="18" font-weight="700">Ultimate</text>
+  <text x="68" y="49" fill="#3B6C7A" font-family="Poppins, Segoe UI, sans-serif" font-size="18" font-weight="700">Back Office</text>
+</svg>

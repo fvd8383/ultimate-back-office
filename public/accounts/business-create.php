@@ -29,11 +29,11 @@ if ($user === null) {
     exit;
 }
 
-$step = $_POST['step'] ?? $_GET['step'] ?? 'business_info';
-$allowedSteps = ['business_info', 'services', 'modules', 'confirmation'];
+$step = $_POST['step'] ?? $_GET['step'] ?? 'welcome';
+$allowedSteps = ['welcome', 'business_info', 'services', 'modules', 'confirmation'];
 
 if (!in_array($step, $allowedSteps, true)) {
-    $step = 'business_info';
+    $step = 'welcome';
 }
 
 $businessId = isset($_POST['business_id']) ? (int) $_POST['business_id'] : (int) ($_GET['business_id'] ?? 0);
@@ -46,12 +46,8 @@ $accountPlan = 'standard';
 $packageType = 'modular';
 
 try {
-    $hasEnterpriseAccess = BusinessFoundation::userHasEnterpriseAccess((int) $user['id']);
-    $accountPlan = $hasEnterpriseAccess ? 'enterprise' : 'standard';
-
-    if ($hasEnterpriseAccess) {
-        BusinessFoundation::ensureEnterpriseUserBusinessesUseFullOs((int) $user['id']);
-    }
+    $hasEnterpriseAccess = false;
+    $accountPlan = 'standard';
 
     if ($businessId > 0) {
         $business = BusinessFoundation::businessForUser($businessId, (int) $user['id']);
@@ -68,9 +64,9 @@ try {
     $availableModules = BusinessFoundation::availableModules();
     $fullOsIncludedModules = BusinessFoundation::fullOsIncludedModules();
     $selectedSubServiceIds = $businessId > 0 ? BusinessFoundation::selectedSubServiceIds($businessId) : [];
-    $activeModules = $businessId > 0 ? BusinessFoundation::activeModules($businessId) : [];
+    $activeModules = $businessId > 0 ? BusinessFoundation::customerActiveModules($businessId) : [];
     $selectedModuleKeys = BusinessFoundation::selectedModuleKeysFromActiveModules($activeModules);
-    $packageType = $accountPlan === 'enterprise' ? 'full_os' : BusinessFoundation::packageTypeFromActiveModules($activeModules);
+    $packageType = BusinessFoundation::packageTypeFromActiveModules($activeModules);
 } catch (Throwable $exception) {
     $hasEnterpriseAccess = false;
     $accountPlan = 'standard';
@@ -89,6 +85,11 @@ try {
 $serviceCategoryById = [];
 foreach ($allSubServices as $service) {
     $serviceCategoryById[(int) $service['id']] = (int) $service['category_id'];
+}
+
+$legalStructureNames = [];
+foreach ($legalStructures as $structure) {
+    $legalStructureNames[(int) $structure['id']] = (string) $structure['name'];
 }
 
 function business_onboarding_debug_enabled(): bool
@@ -115,8 +116,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && count($errors) === 0) {
     try {
         if ($step === 'business_info') {
             $required = [
-                'business_name' => 'Business Name',
-                'legal_name' => 'Legal Name',
+                'legal_name' => 'Legal Business Name',
+                'business_name' => 'Public Business Name (DBA)',
                 'email' => 'Business Email',
                 'phone' => 'Business Phone',
                 'address_line_1' => 'Address Line 1',
@@ -137,6 +138,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && count($errors) === 0) {
                 $errors[] = 'Enter a valid business email.';
             }
 
+            $selectedLegalStructure = (string) ($legalStructureNames[(int) ($_POST['legal_structure_id'] ?? 0)] ?? '');
+            if (strcasecmp($selectedLegalStructure, 'Other') === 0 && trim((string) ($_POST['legal_structure_other'] ?? '')) === '') {
+                $errors[] = 'Specify the legal structure.';
+            }
+
             if (count($errors) === 0) {
                 $businessId = BusinessFoundation::saveBusinessInfo((int) $user['id'], $_POST, $businessId > 0 ? $businessId : null);
                 header('Location: business-create.php?step=services&business_id=' . $businessId);
@@ -151,13 +157,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && count($errors) === 0) {
 
             $categoryId = (int) ($_POST['primary_category_id'] ?? 0);
             $postedServices = $_POST['sub_services'] ?? [];
+            $customService = trim((string) ($_POST['custom_service'] ?? ''));
 
             if ($categoryId <= 0) {
                 $errors[] = 'Select one primary category.';
             }
 
-            if (!is_array($postedServices) || count($postedServices) === 0) {
-                $errors[] = 'Select at least one service.';
+            if ((!is_array($postedServices) || count($postedServices) === 0) && $customService === '') {
+                $errors[] = 'Select at least one service or enter a custom service.';
             }
 
             $validPostedServices = 0;
@@ -167,12 +174,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && count($errors) === 0) {
                 }
             }
 
-            if ($categoryId > 0 && $validPostedServices === 0) {
-                $errors[] = 'Select at least one service from the primary category.';
+            if ($categoryId > 0 && $validPostedServices === 0 && $customService === '') {
+                $errors[] = 'Select at least one service from the primary category or enter a custom service.';
             }
 
             if (count($errors) === 0) {
-                BusinessFoundation::saveServices($businessId, (int) $user['id'], $categoryId, $postedServices);
+                BusinessFoundation::saveServices($businessId, (int) $user['id'], $categoryId, $postedServices, $customService);
                 header('Location: business-create.php?step=modules&business_id=' . $businessId);
                 exit;
             }
@@ -183,29 +190,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && count($errors) === 0) {
                 $errors[] = 'Complete business information first.';
             }
 
-            $accountPlan = (string) ($_POST['account_plan'] ?? 'standard');
-
-            if (!in_array($accountPlan, ['standard', 'enterprise'], true)) {
-                $accountPlan = 'standard';
-            }
-
-            $hasEnterpriseAccess = $accountPlan === 'enterprise';
-            $packageType = $hasEnterpriseAccess ? 'full_os' : (string) ($_POST['package_type'] ?? 'modular');
-
-            if (!in_array($packageType, ['modular', 'full_os'], true)) {
-                $packageType = 'modular';
-            }
-
-            $postedModules = $packageType === 'modular' ? ($_POST['modules'] ?? []) : [];
+            $accountPlan = 'standard';
+            $hasEnterpriseAccess = false;
+            $packageType = 'modular';
+            $postedModules = $_POST['modules'] ?? [];
             $postedModules = is_array($postedModules) ? $postedModules : [];
+            $postedModules = array_values(array_intersect($postedModules, array_column($availableModules, 'module_key')));
 
-            if ($packageType === 'modular' && count($postedModules) === 0) {
-                $errors[] = 'Select at least one module or platform tier.';
+            if (count($postedModules) === 0) {
+                $errors[] = 'Select 24/7 Sales Partner to continue.';
             }
 
             if (count($errors) === 0) {
-                BusinessFoundation::setEnterpriseAccessForUser((int) $user['id'], $businessId, $accountPlan === 'enterprise');
-                BusinessFoundation::saveModules($businessId, (int) $user['id'], $postedModules, $packageType, $accountPlan === 'enterprise');
+                BusinessFoundation::setEnterpriseAccessForUser((int) $user['id'], $businessId, false);
+                BusinessFoundation::saveModules($businessId, (int) $user['id'], $postedModules, $packageType, false);
                 header('Location: business-create.php?step=confirmation&business_id=' . $businessId);
                 exit;
             }
@@ -232,16 +230,19 @@ if ($businessId > 0) {
     try {
         $business = BusinessFoundation::businessForUser($businessId, (int) $user['id']);
         $selectedSubServiceIds = BusinessFoundation::selectedSubServiceIds($businessId);
-        $activeModules = BusinessFoundation::activeModules($businessId);
+        $activeModules = BusinessFoundation::customerActiveModules($businessId);
         $selectedModuleKeys = BusinessFoundation::selectedModuleKeysFromActiveModules($activeModules);
-        $hasEnterpriseAccess = BusinessFoundation::userHasEnterpriseAccess((int) $user['id']);
-        $accountPlan = $hasEnterpriseAccess ? 'enterprise' : 'standard';
-        $packageType = $accountPlan === 'enterprise' ? 'full_os' : BusinessFoundation::packageTypeFromActiveModules($activeModules);
-        $selectedServices = BusinessFoundation::selectedServices($businessId);
+        $hasEnterpriseAccess = false;
+        $accountPlan = 'standard';
+        $packageType = BusinessFoundation::packageTypeFromActiveModules($activeModules);
+        $selectedCustomServices = BusinessFoundation::selectedCustomServices($businessId);
+        $selectedServices = array_merge(BusinessFoundation::selectedServices($businessId), $selectedCustomServices);
     } catch (Throwable $exception) {
+        $selectedCustomServices = [];
         $selectedServices = [];
     }
 } else {
+    $selectedCustomServices = [];
     $selectedServices = [];
 }
 
@@ -274,6 +275,14 @@ function module_checked(string $moduleKey, array $selected): string
     return in_array($moduleKey, $selected, true) ? ' checked' : '';
 }
 
+function legal_structure_label(?array $business, array $legalStructureNames): string
+{
+    $label = (string) ($legalStructureNames[(int) ($business['legal_structure_id'] ?? 0)] ?? 'Not selected');
+    $other = trim((string) ($business['legal_structure_other'] ?? ''));
+
+    return $other !== '' ? $label . ' - ' . $other : $label;
+}
+
 $pageTitle = 'Create Business - Ultimate Back Office';
 $bodyClass = 'accounts-dashboard';
 $layoutHomeHref = 'dashboard.php';
@@ -284,7 +293,7 @@ require __DIR__ . '/../../private/views/header.php';
 <section class="dashboard-card dashboard-card--wide">
     <p class="eyebrow">Business onboarding</p>
     <h1>Create Business</h1>
-    <p class="muted">Build the business profile, service selections, and module access foundation for Lead Hub.</p>
+    <p class="muted">Build the business profile, service selections, and launch-ready 24/7 Sales Partner access.</p>
 </section>
 
 <?php if ($notice !== ''): ?>
@@ -296,13 +305,33 @@ require __DIR__ . '/../../private/views/header.php';
 <?php endforeach; ?>
 
 <nav class="step-nav" aria-label="Business onboarding steps">
+    <span class="<?= $step === 'welcome' ? 'is-active' : '' ?>">Start</span>
     <span class="<?= $step === 'business_info' ? 'is-active' : '' ?>">1. Business</span>
     <span class="<?= $step === 'services' ? 'is-active' : '' ?>">2. Services</span>
     <span class="<?= $step === 'modules' ? 'is-active' : '' ?>">3. Modules</span>
     <span class="<?= $step === 'confirmation' ? 'is-active' : '' ?>">4. Confirm</span>
 </nav>
 
-<?php if ($step === 'business_info'): ?>
+<?php if ($step === 'welcome'): ?>
+    <section class="dashboard-card onboarding-welcome">
+        <p class="eyebrow">Welcome to Ultimate Back Office</p>
+        <h2>Set up your business workspace</h2>
+        <p class="muted">We will help you set up your business profile, services, website package, domain path, and included business email.</p>
+        <ul class="setup-checklist">
+            <li>Business Profile</li>
+            <li>Services</li>
+            <li>Website</li>
+            <li>Branding</li>
+            <li>Domain</li>
+            <li>Business Email</li>
+        </ul>
+        <p class="muted">Estimated time: 8-10 minutes.</p>
+        <div class="button-row">
+            <?= ui_button('Begin Setup', 'business-create.php?step=business_info' . ($businessId > 0 ? '&business_id=' . urlencode((string) $businessId) : '')) ?>
+            <?= ui_button('Cancel', 'dashboard.php', 'secondary') ?>
+        </div>
+    </section>
+<?php elseif ($step === 'business_info'): ?>
     <form method="post" action="business-create.php" class="dashboard-card form-stack">
         <input type="hidden" name="step" value="business_info">
         <?php if ($businessId > 0): ?>
@@ -310,11 +339,11 @@ require __DIR__ . '/../../private/views/header.php';
         <?php endif; ?>
 
         <div class="form-grid">
-            <label>Business Name
-                <input name="business_name" required value="<?= e(form_value($business, 'business_name')) ?>">
-            </label>
-            <label>Legal Name
+            <label>Legal Business Name
                 <input name="legal_name" required value="<?= e(form_value($business, 'legal_name')) ?>">
+            </label>
+            <label>Public Business Name (DBA)
+                <input name="business_name" required value="<?= e(form_value($business, 'business_name')) ?>">
             </label>
             <label>Business Email
                 <input name="email" type="email" required value="<?= e(form_value($business, 'email')) ?>">
@@ -341,7 +370,7 @@ require __DIR__ . '/../../private/views/header.php';
                 <input name="country" required value="<?= e(form_value($business, 'country', 'US')) ?>">
             </label>
             <label>Legal Structure
-                <select name="legal_structure_id" required>
+                <select name="legal_structure_id" required data-legal-structure-select>
                     <option value="">Select legal structure</option>
                     <?php foreach ($legalStructures as $structure): ?>
                         <option value="<?= e($structure['id']) ?>" <?= (int) form_value($business, 'legal_structure_id') === (int) $structure['id'] ? 'selected' : '' ?>>
@@ -349,6 +378,10 @@ require __DIR__ . '/../../private/views/header.php';
                         </option>
                     <?php endforeach; ?>
                 </select>
+            </label>
+            <label data-legal-structure-other>
+                Specify Legal Structure
+                <input name="legal_structure_other" value="<?= e(form_value($business, 'legal_structure_other')) ?>">
             </label>
             <label class="checkbox-line">
                 <input type="checkbox" name="is_public_physical_location" value="1" <?= (int) form_value($business, 'is_public_physical_location', '1') === 1 ? 'checked' : '' ?>>
@@ -389,6 +422,11 @@ require __DIR__ . '/../../private/views/header.php';
             <?php endforeach; ?>
         </div>
 
+        <label>Custom Service
+            <input name="custom_service" value="<?= e((string) ($_POST['custom_service'] ?? ($selectedCustomServices[0]['name'] ?? ''))) ?>" placeholder="Example: Holiday lighting">
+            <span class="form-help">Optional. Use this if you selected Other or need a service that is not listed.</span>
+        </label>
+
         <div class="button-row">
             <?= ui_button('Back', 'business-create.php?step=business_info&business_id=' . urlencode((string) $businessId), 'secondary') ?>
             <?= ui_button('Save and continue') ?>
@@ -399,60 +437,16 @@ require __DIR__ . '/../../private/views/header.php';
         <input type="hidden" name="step" value="modules">
         <input type="hidden" name="business_id" value="<?= e($businessId) ?>">
 
-        <fieldset class="package-options">
-            <legend>Account Plan</legend>
-            <label class="module-option">
-                <input type="radio" name="account_plan" value="standard" <?= $accountPlan !== 'enterprise' ? 'checked' : '' ?>>
-                <strong>Standard account</strong>
-                <span>One business using either a modular package or Full OS.</span>
-            </label>
-            <label class="module-option">
-                <input type="radio" name="account_plan" value="enterprise" <?= $accountPlan === 'enterprise' ? 'checked' : '' ?>>
-                <strong>Enterprise account</strong>
-                <span>Enables Add Business and forces Full OS for every business.</span>
-            </label>
-        </fieldset>
-
-        <fieldset class="package-options">
-            <legend>Business Package</legend>
-            <label class="module-option">
-                <input type="radio" name="package_type" value="modular" <?= $packageType !== 'full_os' ? 'checked' : '' ?>>
-                <strong>Modular package</strong>
-                <span>Select individual business modules. Lead Hub is included automatically.</span>
-            </label>
-            <label class="module-option">
-                <input type="radio" name="package_type" value="full_os" <?= $packageType === 'full_os' ? 'checked' : '' ?>>
-                <strong>Full OS</strong>
-                <span>Automatically activates Lead Hub, 247SP, EMD, SSP, TUHWD, and KYN.</span>
-            </label>
-        </fieldset>
-
-        <?= ui_alert('Account Plan: Enterprise. Every business uses Full OS, so modular package selection is unavailable.', 'info', ['data-enterprise-notice' => true, 'hidden' => $accountPlan !== 'enterprise']) ?>
-
-        <section class="module-selection" data-package-panel="modular" <?= ($accountPlan !== 'enterprise' && $packageType !== 'full_os') ? '' : 'hidden' ?>>
-            <h2>Modular package modules</h2>
+        <section class="module-selection">
+            <h2>Available Launch Module</h2>
+            <p class="muted">24/7 Sales Partner is the active customer-ready product. Lead Hub is included automatically.</p>
             <div class="module-grid">
                 <?php foreach ($availableModules as $module): ?>
                     <label class="module-option">
-                        <input type="checkbox" name="modules[]" value="<?= e($module['module_key']) ?>"<?= module_checked($module['module_key'], $_POST['modules'] ?? $selectedModuleKeys) ?> <?= ($accountPlan !== 'enterprise' && $packageType !== 'full_os') ? '' : 'disabled' ?>>
+                        <input type="checkbox" name="modules[]" value="<?= e($module['module_key']) ?>"<?= module_checked($module['module_key'], $_POST['modules'] ?? ($selectedModuleKeys ?: ['247sp'])) ?>>
                         <strong><?= e($module['name']) ?></strong>
-                        <?php if ($module['module_key'] === 'kyn'): ?>
-                            <span>KYN requires SSP. If SSP is not selected, it will be included automatically.</span>
-                        <?php else: ?>
-                            <span>Includes Lead Hub access.</span>
-                        <?php endif; ?>
+                        <span>Includes Lead Hub, website setup, domain request tracking, billing visibility, and business email request tracking.</span>
                     </label>
-                <?php endforeach; ?>
-            </div>
-        </section>
-
-        <section class="module-selection" data-package-panel="full_os" <?= ($accountPlan === 'enterprise' || $packageType === 'full_os') ? '' : 'hidden' ?>>
-            <h2>Full OS included modules</h2>
-            <p class="muted">Individual module selection is not needed with Full OS.</p>
-            <div class="pill-list">
-                <?= ui_badge('Full OS', 'module') ?>
-                <?php foreach ($fullOsIncludedModules as $module): ?>
-                    <?= ui_badge((string) $module['name'], 'module') ?>
                 <?php endforeach; ?>
             </div>
         </section>
@@ -468,10 +462,16 @@ require __DIR__ . '/../../private/views/header.php';
         <?php if ($business): ?>
             <dl class="summary-list">
                 <div><dt>Business</dt><dd><?= e($business['business_name']) ?></dd></div>
+                <div><dt>Legal Business</dt><dd><?= e($business['legal_name']) ?></dd></div>
+                <div><dt>Legal Structure</dt><dd><?= e(legal_structure_label($business, $legalStructureNames)) ?></dd></div>
                 <div><dt>Email</dt><dd><?= e($business['email']) ?></dd></div>
                 <div><dt>Phone</dt><dd><?= e($business['phone']) ?></dd></div>
                 <div><dt>Address</dt><dd><?= e($business['address_line_1']) ?>, <?= e($business['city']) ?>, <?= e($business['state']) ?> <?= e($business['postal_code']) ?></dd></div>
                 <div><dt>Category</dt><dd><?= e($categoryNames[(int) ($business['primary_category_id'] ?? 0)] ?? 'Not selected') ?></dd></div>
+                <div><dt>Website Package</dt><dd>24/7 Sales Partner website and private preview workflow</dd></div>
+                <div><dt>Domain Choice</dt><dd>Completed during 24/7 Sales Partner onboarding</dd></div>
+                <div><dt>Included Email</dt><dd>One business mailbox request is included</dd></div>
+                <div><dt>Billing Plan</dt><dd>24/7 Sales Partner - $100 setup, $27/month</dd></div>
             </dl>
 
             <h3>Selected Services</h3>
@@ -499,47 +499,28 @@ require __DIR__ . '/../../private/views/header.php';
 <?php endif; ?>
 
 <script>
-document.querySelectorAll('input[name="account_plan"], input[name="package_type"]').forEach(function (input) {
-    input.addEventListener('change', updatePackagePanels);
-});
+var legalStructureSelect = document.querySelector('[data-legal-structure-select]');
+var legalStructureOther = document.querySelector('[data-legal-structure-other]');
 
-function updatePackagePanels() {
-    var accountPlanInput = document.querySelector('input[name="account_plan"]:checked');
-    var accountPlan = accountPlanInput ? accountPlanInput.value : '<?= e($accountPlan) ?>';
-    var packageInput = document.querySelector('input[name="package_type"]:checked');
-    var packageType = packageInput ? packageInput.value : '<?= e($packageType) ?>';
-    var isEnterprise = accountPlan === 'enterprise';
-
-    if (isEnterprise) {
-        packageType = 'full_os';
-        var fullOsInput = document.querySelector('input[name="package_type"][value="full_os"]');
-
-        if (fullOsInput) {
-            fullOsInput.checked = true;
-        }
+function updateLegalStructureOther() {
+    if (!legalStructureSelect || !legalStructureOther) {
+        return;
     }
 
-    document.querySelectorAll('input[name="package_type"]').forEach(function (input) {
-        input.disabled = isEnterprise;
-    });
-
-    var enterpriseNotice = document.querySelector('[data-enterprise-notice]');
-
-    if (enterpriseNotice) {
-        enterpriseNotice.hidden = !isEnterprise;
-    }
-
-    document.querySelectorAll('[data-package-panel]').forEach(function (panel) {
-        var isActive = panel.getAttribute('data-package-panel') === packageType;
-        panel.hidden = !isActive;
-
-        panel.querySelectorAll('input').forEach(function (input) {
-            input.disabled = !isActive;
-        });
+    var selected = legalStructureSelect.options[legalStructureSelect.selectedIndex];
+    var isOther = selected && selected.text.trim().toLowerCase() === 'other';
+    legalStructureOther.hidden = !isOther;
+    legalStructureOther.querySelectorAll('input').forEach(function (input) {
+        input.required = isOther;
+        input.disabled = !isOther;
     });
 }
 
-updatePackagePanels();
+if (legalStructureSelect) {
+    legalStructureSelect.addEventListener('change', updateLegalStructureOther);
+}
+
+updateLegalStructureOther();
 </script>
 
 <?php require __DIR__ . '/../../private/views/footer.php'; ?>

@@ -162,6 +162,7 @@ require __DIR__ . '/../../../private/views/header.php';
 
     <div class="app-content">
         <section class="hero-panel product-hero product-hero--247sp">
+            <img class="product-hero__logo" src="../assets/img/247sp-logo.svg" alt="24/7 Sales Partner">
             <p class="eyebrow">247SP onboarding</p>
             <h1><?= $business ? e($business['business_name']) : 'Start onboarding' ?></h1>
             <p class="muted">Save each step as you collect the website build inputs.</p>

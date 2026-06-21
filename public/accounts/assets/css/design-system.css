@@ -347,6 +347,13 @@ button:hover,
     font-weight: 700;
 }
 
+.site-header__logo {
+    display: block;
+    width: 174px;
+    height: auto;
+    max-height: 44px;
+}
+
 .site-header__account {
     display: flex;
     align-items: center;
@@ -516,7 +523,7 @@ button:hover,
 
 .step-nav {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
     gap: 10px;
     margin: 20px 0;
 }
@@ -568,6 +575,46 @@ button:hover,
 
 .product-hero--247sp {
     border-top: 4px solid var(--ubo-247sp-primary);
+}
+
+.product-hero__logo {
+    display: block;
+    width: min(220px, 100%);
+    height: auto;
+    margin-bottom: 16px;
+}
+
+.onboarding-welcome {
+    display: grid;
+    gap: 14px;
+}
+
+.setup-checklist {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    margin: 0;
+    padding: 0;
+}
+
+.setup-checklist li {
+    position: relative;
+    list-style: none;
+    border: 1px solid var(--ubo-line);
+    border-radius: var(--ubo-radius-control);
+    background: var(--ubo-bg);
+    padding: 12px 14px 12px 38px;
+}
+
+.setup-checklist li::before {
+    position: absolute;
+    top: 15px;
+    left: 14px;
+    width: 12px;
+    height: 12px;
+    border-radius: 999px;
+    background: var(--ubo-success);
+    content: "";
 }
 
 .review-section {
@@ -1339,6 +1386,7 @@ button:hover,
     .business-list__item,
     .form-grid,
     .step-nav,
+    .setup-checklist,
     .service-groups,
     .service-page-grid,
     .module-grid,
