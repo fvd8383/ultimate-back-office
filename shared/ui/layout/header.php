@@ -3,6 +3,8 @@
 $pageTitle = $pageTitle ?? 'Ultimate Back Office';
 $bodyClass = $bodyClass ?? '';
 $designSystemPath = $designSystemPath ?? '/assets/css/design-system.css';
+$layoutLogoPath = $layoutLogoPath ?? '/assets/img/ubo-logo.svg';
+$layoutFaviconPath = $layoutFaviconPath ?? '/assets/img/favicon.svg';
 $layoutUserName = $layoutUserName ?? '';
 $layoutLogoutHref = $layoutLogoutHref ?? '';
 ?>
@@ -12,13 +14,14 @@ $layoutLogoutHref = $layoutLogoutHref ?? '';
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title><?= e($pageTitle) ?></title>
+    <link rel="icon" href="<?= e($layoutFaviconPath) ?>" type="image/svg+xml">
     <link rel="stylesheet" href="<?= e($designSystemPath) ?>">
 </head>
 <body class="<?= e($bodyClass) ?>">
 <header class="site-header">
     <div class="site-header__inner">
         <a class="site-header__brand" href="<?= e($layoutHomeHref ?? '#') ?>">
-            <span class="site-header__mark">UBO</span>
+            <img class="site-header__logo" src="<?= e($layoutLogoPath) ?>" alt="Ultimate Back Office">
             <span>Ultimate Back Office</span>
         </a>
         <?php if ($layoutUserName !== '' || $layoutLogoutHref !== ''): ?>

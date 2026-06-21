@@ -10,8 +10,9 @@ if (Session::isAuthenticated()) {
 }
 
 $email = trim($_POST['email'] ?? $_GET['email'] ?? '');
-$code = '';
+$code = trim($_GET['code'] ?? '');
 $error = '';
+$notice = isset($_GET['requested']) ? 'Code requested. Enter the one-time code below to sign in.' : '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $code = trim($_POST['code'] ?? '');
@@ -38,8 +39,12 @@ require __DIR__ . '/../../private/views/header.php';
         <h1>Verify your login code</h1>
         <p class="muted">Codes expire after 10 minutes and can only be used once.</p>
 
+        <?php if ($notice !== ''): ?>
+            <?= ui_alert($notice, 'success') ?>
+        <?php endif; ?>
+
         <?php if ($error !== ''): ?>
-            <div class="error"><?= e($error) ?></div>
+            <?= ui_alert($error, 'error') ?>
         <?php endif; ?>
 
         <form method="post" action="verify.php" class="form-stack">
@@ -49,7 +54,7 @@ require __DIR__ . '/../../private/views/header.php';
             <label for="code">One-time code</label>
             <input id="code" name="code" type="text" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required value="<?= e($code) ?>">
 
-            <button type="submit">Verify code</button>
+            <?= ui_button('Verify code') ?>
         </form>
 
         <p class="secondary-link">

@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 64" role="img" aria-labelledby="title">
+  <title id="title">EMD Network</title>
+  <rect width="260" height="64" rx="12" fill="#FFFFFF"/>
+  <rect x="8" y="8" width="48" height="48" rx="10" fill="#D1892A"/>
+  <text x="17" y="40" fill="#FFFFFF" font-family="Poppins, Segoe UI, sans-serif" font-size="16" font-weight="700">EMD</text>
+  <text x="68" y="39" fill="#222222" font-family="Poppins, Segoe UI, sans-serif" font-size="18" font-weight="700">EMD Network</text>
+</svg>

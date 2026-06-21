@@ -16,6 +16,8 @@ final class BusinessFoundation
     ];
 
     private const FULL_OS_INCLUDED_MODULE_KEYS = ['lead_hub', '247sp', 'emd', 'ssp', 'tuhwd', 'kyn'];
+    private const CUSTOMER_VISIBLE_MODULE_KEYS = ['lead_hub', '247sp'];
+    private const CUSTOMER_SELECTABLE_MODULE_KEYS = ['247sp'];
 
     public static function legalStructures(): array
     {
@@ -123,7 +125,7 @@ final class BusinessFoundation
         $businesses = $statement->fetchAll();
 
         foreach ($businesses as &$business) {
-            $business['active_modules'] = self::activeModules((int) $business['id']);
+            $business['active_modules'] = self::customerActiveModules((int) $business['id']);
             $business['has_enterprise'] = self::businessHasActiveModule((int) $business['id'], 'enterprise');
             $business['profile_completion'] = self::profileCompletion($business);
         }
@@ -156,6 +158,20 @@ final class BusinessFoundation
         return $statement->fetchAll();
     }
 
+    public static function selectedCustomServices(int $businessId): array
+    {
+        $statement = Database::connection()->prepare(
+            'SELECT bcs.id, bcs.service_name AS name, c.name AS category_name, bcs.category_id
+             FROM business_custom_services bcs
+             INNER JOIN categories c ON c.id = bcs.category_id
+             WHERE bcs.business_id = :business_id
+             ORDER BY c.name ASC, bcs.service_name ASC'
+        );
+        $statement->execute(['business_id' => $businessId]);
+
+        return $statement->fetchAll();
+    }
+
     public static function activeModules(int $businessId): array
     {
         if (self::businessHasActiveModule($businessId, 'enterprise')) {
@@ -179,15 +195,34 @@ final class BusinessFoundation
         return $statement->fetchAll();
     }
 
+    public static function customerActiveModules(int $businessId): array
+    {
+        $placeholders = implode(',', array_fill(0, count(self::CUSTOMER_VISIBLE_MODULE_KEYS), '?'));
+        $statement = Database::connection()->prepare(
+            "SELECT m.module_key, m.name, bm.activation_source
+             FROM business_modules bm
+             INNER JOIN modules m ON m.id = bm.module_id
+             WHERE bm.business_id = ?
+               AND bm.status = 'active'
+               AND m.module_key IN ({$placeholders})
+             ORDER BY FIELD(m.module_key, 'lead_hub', '247sp'), m.name"
+        );
+        $statement->execute(array_merge([$businessId], self::CUSTOMER_VISIBLE_MODULE_KEYS));
+
+        return $statement->fetchAll();
+    }
+
     public static function availableModules(): array
     {
-        $statement = Database::connection()->query(
+        $placeholders = implode(',', array_fill(0, count(self::CUSTOMER_SELECTABLE_MODULE_KEYS), '?'));
+        $statement = Database::connection()->prepare(
             "SELECT module_key, name
              FROM modules
              WHERE is_active = 1
-               AND module_key IN ('247sp', 'emd', 'ssp', 'tuhwd', 'kyn')
-             ORDER BY FIELD(module_key, '247sp', 'emd', 'ssp', 'tuhwd', 'kyn')"
+               AND module_key IN ({$placeholders})
+             ORDER BY FIELD(module_key, '247sp')"
         );
+        $statement->execute(self::CUSTOMER_SELECTABLE_MODULE_KEYS);
 
         return $statement->fetchAll();
     }
@@ -245,6 +280,7 @@ final class BusinessFoundation
             'country' => trim((string) ($input['country'] ?? 'US')),
             'is_public_physical_location' => isset($input['is_public_physical_location']) ? 1 : 0,
             'legal_structure_id' => self::nullableInt($input['legal_structure_id'] ?? null),
+            'legal_structure_other' => self::normalizeOptionalText($input['legal_structure_other'] ?? ''),
         ];
 
         $slug = self::uniqueSlug($data['business_name'], $businessId);
@@ -254,12 +290,12 @@ final class BusinessFoundation
                 'INSERT INTO businesses (
                     business_name, slug, legal_name, owner_user_id, phone, email,
                     address_line_1, address_line_2, city, state, postal_code, country,
-                    is_public_physical_location, legal_structure_id, status, setup_status, setup_step,
+                    is_public_physical_location, legal_structure_id, legal_structure_other, status, setup_status, setup_step,
                     created_at, updated_at
                  ) VALUES (
                     :business_name, :slug, :legal_name, :owner_user_id, :phone, :email,
                     :address_line_1, :address_line_2, :city, :state, :postal_code, :country,
-                    :is_public_physical_location, :legal_structure_id, :status, :setup_status, :setup_step,
+                    :is_public_physical_location, :legal_structure_id, :legal_structure_other, :status, :setup_status, :setup_step,
                     NOW(), NOW()
                  )'
             );
@@ -298,6 +334,7 @@ final class BusinessFoundation
                  country = :country,
                  is_public_physical_location = :is_public_physical_location,
                  legal_structure_id = :legal_structure_id,
+                 legal_structure_other = :legal_structure_other,
                  setup_status = IF(setup_status = :complete_status, setup_status, :incomplete_status),
                  setup_step = IF(setup_step = :completed_step, setup_step, :services_step),
                  updated_at = NOW()
@@ -321,9 +358,10 @@ final class BusinessFoundation
         return $businessId;
     }
 
-    public static function saveServices(int $businessId, int $userId, int $categoryId, array $subServiceIds): void
+    public static function saveServices(int $businessId, int $userId, int $categoryId, array $subServiceIds, string $customService = ''): void
     {
         $validIds = self::validSubServiceIds($categoryId, $subServiceIds);
+        $customService = self::normalizeOptionalText($customService);
 
         Database::connection()->beginTransaction();
 
@@ -357,6 +395,21 @@ final class BusinessFoundation
                 $insert->execute([
                     'business_id' => $businessId,
                     'sub_service_id' => $subServiceId,
+                ]);
+            }
+
+            $deleteCustom = Database::connection()->prepare('DELETE FROM business_custom_services WHERE business_id = :business_id');
+            $deleteCustom->execute(['business_id' => $businessId]);
+
+            if ($customService !== '') {
+                $customInsert = Database::connection()->prepare(
+                    'INSERT INTO business_custom_services (business_id, category_id, service_name, created_at, updated_at)
+                     VALUES (:business_id, :category_id, :service_name, NOW(), NOW())'
+                );
+                $customInsert->execute([
+                    'business_id' => $businessId,
+                    'category_id' => $categoryId,
+                    'service_name' => $customService,
                 ]);
             }
 
@@ -620,6 +673,11 @@ final class BusinessFoundation
         $int = (int) $value;
 
         return $int > 0 ? $int : null;
+    }
+
+    private static function normalizeOptionalText($value): string
+    {
+        return substr(trim((string) $value), 0, 150);
     }
 
     private static function linkOwner(int $businessId, int $userId): void

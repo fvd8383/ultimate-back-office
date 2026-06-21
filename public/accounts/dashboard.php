@@ -6,7 +6,7 @@ require_once __DIR__ . '/../../private/classes/BusinessFoundation.php';
 Session::requireAuth('login.php');
 
 $testingNotice = '';
-$normalizeEnterpriseModules = true;
+$normalizeEnterpriseModules = false;
 $appBaseUrl = '../app';
 
 try {
@@ -62,12 +62,6 @@ function dashboard_testing_tools_enabled(): bool
 
 function dashboard_has_enterprise_access(array $businesses): bool
 {
-    foreach ($businesses as $business) {
-        if (!empty($business['has_enterprise'])) {
-            return true;
-        }
-    }
-
     return false;
 }
 
@@ -106,6 +100,7 @@ require __DIR__ . '/../../private/views/header.php';
             <?= ui_button('Billing', 'billing.php', 'secondary') ?>
             <?= ui_button('Domains', 'domains.php', 'secondary') ?>
             <?= ui_button('Email', 'email.php', 'secondary') ?>
+            <?= ui_button('Profile', 'business.php', 'secondary') ?>
             <?= ui_button('Log out', 'logout.php') ?>
         </div>
     </div>
@@ -126,9 +121,6 @@ require __DIR__ . '/../../private/views/header.php';
         <p class="muted">No business is linked to this account yet. Business setup is required before Lead Hub can be used.</p>
         <?= ui_button('Create Business', 'business-create.php') ?>
     <?php else: ?>
-        <?php if ($canAddBusiness): ?>
-            <?= ui_alert('Account Plan: Enterprise', 'info') ?>
-        <?php endif; ?>
         <div class="business-list">
             <?php foreach ($businesses as $business): ?>
                 <article class="business-list__item">
@@ -154,16 +146,19 @@ require __DIR__ . '/../../private/views/header.php';
                         <?php if ($isOwner): ?>
                             <?= ui_badge('Owner', 'role') ?>
                         <?php endif; ?>
-                        <a href="business.php?business_id=<?= e($business['id']) ?>">Edit Profile</a>
-                        <a href="business-create.php?business_id=<?= e($business['id']) ?>&step=modules">Manage Modules</a>
+                        <?= ui_button('Edit Business', 'business.php?business_id=' . urlencode((string) $business['id']), 'secondary', ['class' => 'ubo-dashboard-action']) ?>
                         <?php if (dashboard_business_has_module($business, 'lead_hub')): ?>
                             <?= ui_button('Open Lead Hub', $appBaseUrl . '/dashboard.php?business_id=' . urlencode((string) $business['id']), 'secondary', ['class' => 'ubo-dashboard-action ubo-dashboard-action--lead']) ?>
                         <?php endif; ?>
                         <?php if (dashboard_business_has_module($business, '247sp')): ?>
+                            <?= ui_button('Manage Website', $appBaseUrl . '/247sp/website-manager.php?business_id=' . urlencode((string) $business['id']), 'secondary', ['class' => 'ubo-dashboard-action']) ?>
                             <?= ui_button('Open 24/7 Sales Partner', $appBaseUrl . '/247sp/dashboard.php?business_id=' . urlencode((string) $business['id']), 'primary', ['class' => 'ubo-dashboard-action ubo-dashboard-action--247sp']) ?>
                         <?php endif; ?>
+                        <?= ui_button('Billing', 'billing.php', 'secondary', ['class' => 'ubo-dashboard-action']) ?>
+                        <?= ui_button('Domains', 'domains.php', 'secondary', ['class' => 'ubo-dashboard-action']) ?>
+                        <?= ui_button('Email', 'email.php', 'secondary', ['class' => 'ubo-dashboard-action']) ?>
                         <?php if ($business['setup_status'] !== 'complete'): ?>
-                            <a href="business-create.php?business_id=<?= e($business['id']) ?>">Continue Setup</a>
+                            <?= ui_button('Continue Setup', 'business-create.php?business_id=' . urlencode((string) $business['id']), 'secondary', ['class' => 'ubo-dashboard-action']) ?>
                         <?php endif; ?>
                     </div>
                 </article>

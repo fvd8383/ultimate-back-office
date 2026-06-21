@@ -2,7 +2,7 @@
 
 ## Review Date
 
-TBD
+June 21, 2026
 
 ---
 
@@ -18,6 +18,7 @@ Current platform status:
 * Billing Foundation: Complete
 * Domain Workflow: Complete
 * Email Workflow: Complete
+* Sprint 8.5 UX Polish: Complete
 
 Overall Readiness:
 
@@ -98,6 +99,28 @@ Create Refund Policy.
 ---
 
 # Medium Priority Issues
+
+## Customer Onboarding UX
+
+Severity: Medium
+
+Status: Improved in Sprint 8.5
+
+Completed:
+
+* Login now redirects directly to verification after requesting a code.
+* Staging OTP is pre-filled on the verification page when available.
+* Accounts dashboard separates account navigation from business actions.
+* Business onboarding includes a welcome screen.
+* Business information fields are ordered for legal name, DBA, email, and phone.
+* Legal Structure = Other now captures a specified legal structure.
+* Service options are expanded with Other choices and a custom service field.
+* Customer module selection is limited to the active launch module: 24/7 Sales Partner.
+* Onboarding confirmation summarizes business info, services, modules, website package, domain path, included email, and billing plan.
+
+Remaining:
+
+* Validate all updated UX flows on staging after migration 011 is applied.
 
 ## Customer Notifications
 
@@ -208,6 +231,8 @@ Customer can:
 * Customize Website
 * Request Domain
 * Request Email
+* View Billing Status
+* Navigate Customer Dashboard
 
 Customer cannot:
 
@@ -234,7 +259,7 @@ Payment Processing
 
 Current Readiness Estimate:
 
-80–85%
+85–90%
 
 Primary Remaining Blocker:
 
@@ -245,3 +270,4 @@ Secondary Blockers:
 * Legal Documentation
 * Customer Notifications
 * Operational Procedures
+* Staging validation of Sprint 8.5 migration and UI changes
