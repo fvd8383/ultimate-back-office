@@ -154,7 +154,6 @@ require __DIR__ . '/../../private/views/header.php';
                             <?= ui_button('Edit Business', 'business.php?business_id=' . urlencode((string) $business['id']), 'secondary', ['class' => 'ubo-dashboard-action']) ?>
                             <?php if (dashboard_business_has_module($business, '247sp')): ?>
                                 <?= ui_button('Open 24/7 Sales Partner', $appBaseUrl . '/247sp/dashboard.php?business_id=' . urlencode((string) $business['id']), 'primary', ['class' => 'ubo-dashboard-action ubo-dashboard-action--247sp']) ?>
-                                <?= ui_button('Manage Website', $appBaseUrl . '/247sp/website-manager.php?business_id=' . urlencode((string) $business['id']), 'secondary', ['class' => 'ubo-dashboard-action']) ?>
                             <?php endif; ?>
                             <?= ui_button('Billing', 'billing.php', 'secondary', ['class' => 'ubo-dashboard-action']) ?>
                             <?= ui_button('Domains', 'domains.php', 'secondary', ['class' => 'ubo-dashboard-action']) ?>

@@ -442,7 +442,7 @@ require __DIR__ . '/../../private/views/header.php';
             <p class="muted">24/7 Sales Partner is the active customer-ready product. Lead Hub is included automatically.</p>
             <div class="module-grid">
                 <?php foreach ($availableModules as $module): ?>
-                    <label class="module-option">
+                    <label class="module-option module-option--stacked">
                         <input type="checkbox" name="modules[]" value="<?= e($module['module_key']) ?>"<?= module_checked($module['module_key'], $_POST['modules'] ?? ($selectedModuleKeys ?: ['247sp'])) ?>>
                         <strong><?= e($module['name']) ?></strong>
                         <span>Activates the customer-ready 247SP module. Website, domain, and email setup continue inside 24/7 Sales Partner.</span>
