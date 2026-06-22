@@ -53,10 +53,10 @@ try {
         'task_count' => 0,
         'recent_activity' => [],
     ];
-    $loadError = 'Lead Hub could not be loaded. Check the environment and database setup.';
+    $loadError = 'Workspace dashboard could not be loaded. Check the environment and database setup.';
 }
 
-$pageTitle = 'Lead Hub - Ultimate Back Office';
+$pageTitle = 'Workspace Dashboard - Ultimate Back Office';
 $bodyClass = 'app-dashboard';
 $layoutHomeHref = 'dashboard.php';
 $layoutUserName = $user ? trim((string) $user['first_name'] . ' ' . (string) $user['last_name']) : '';
@@ -73,21 +73,27 @@ require __DIR__ . '/../../private/views/header.php';
         ? $accountsBaseUrl . '/business-create.php?business_id=' . urlencode((string) $business['id']) . '&step=modules'
         : $accountsDashboardHref;
 
+    $leadHubHref = $business
+        ? 'dashboard.php?business_id=' . urlencode((string) $business['id']) . '#lead-hub'
+        : 'dashboard.php#lead-hub';
+
     $sidebarItems = [
-        ['label' => 'Dashboard', 'href' => 'dashboard.php', 'current' => true],
+        ['label' => 'Workspace Dashboard', 'href' => 'dashboard.php', 'current' => true],
+        ['label' => 'Accounts Dashboard', 'href' => $accountsDashboardHref],
         ['label' => 'Businesses', 'href' => $businessesHref],
         ['label' => 'Modules', 'href' => $modulesHref],
+        ['label' => 'Lead Hub', 'href' => $leadHubHref],
     ];
 
     if ($business && $has247spAccess) {
         $sidebarItems[] = ['label' => '24/7 Sales Partner', 'href' => '247sp/dashboard.php?business_id=' . urlencode((string) $business['id'])];
     }
     ?>
-    <?= ui_sidebar('Lead Hub', $sidebarItems, 'Lead Hub') ?>
+    <?= ui_sidebar('Ultimate Back Office', $sidebarItems, 'Workspace navigation') ?>
 
     <div class="app-content">
         <section class="hero-panel">
-            <p class="eyebrow">Lead Hub</p>
+            <p class="eyebrow">Workspace Dashboard</p>
             <h1><?= $business ? e($business['business_name']) : 'Platform foundation' ?></h1>
             <?php if ($user): ?>
                 <p class="muted">Signed in as <?= e($user['first_name']) ?> <?= e($user['last_name']) ?> &lt;<?= e($user['email']) ?>&gt;</p>
@@ -99,7 +105,8 @@ require __DIR__ . '/../../private/views/header.php';
         <?php elseif ($business === null): ?>
             <section class="empty-state">
                 <h2>Business setup required</h2>
-                <p>No matching business is linked to this account. Lead Hub is available only for businesses connected to the signed-in user.</p>
+                <p>No matching business is linked to this account. Return to Accounts to create or manage a business.</p>
+                <?= ui_button('Accounts Dashboard', $accountsDashboardHref, 'primary') ?>
             </section>
         <?php else: ?>
             <?php if (!$hasLeadHubAccess): ?>
@@ -127,7 +134,7 @@ require __DIR__ . '/../../private/views/header.php';
                 </section>
             <?php endif; ?>
 
-            <section class="metrics-grid" aria-label="Lead Hub summary">
+            <section class="metrics-grid" id="lead-hub" aria-label="Lead Hub summary">
                 <article>
                     <span>Contacts</span>
                     <strong><?= e($summary['contact_count']) ?></strong>
