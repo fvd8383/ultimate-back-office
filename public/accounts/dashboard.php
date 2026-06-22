@@ -31,7 +31,7 @@ try {
                 : 'That business could not be found for this account.';
         } elseif ($testingAction === 'remove_modules') {
             if (BusinessFoundation::removeModuleAssignmentsForTesting($businessId, (int) $user['id'])) {
-                $testingNotice = 'Module assignments were removed.';
+                $testingNotice = 'Module assignments were removed. Billing subscription records were not changed.';
                 $normalizeEnterpriseModules = false;
             } else {
                 $testingNotice = 'That business could not be found for this account.';

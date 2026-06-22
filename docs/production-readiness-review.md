@@ -136,6 +136,18 @@ Missing:
 
 ---
 
+## Billing And Module Access Status
+
+Severity: Medium
+
+Status: Clarified
+
+Notes:
+
+Billing subscription records and active module assignments are separate. Staging tools that remove module assignments do not cancel or deactivate subscriptions. Customer billing and admin billing views now show subscription status and active module access separately, including a warning when a 24/7 Sales Partner subscription exists without active 24/7 Sales Partner module access.
+
+---
+
 ## Operational Procedures
 
 Severity: Medium

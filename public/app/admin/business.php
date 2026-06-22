@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/_common.php';
+require_once __DIR__ . '/../../../private/classes/BillingFoundation.php';
 
 $context = admin_bootstrap();
 if (!$context['is_admin']) {
@@ -52,6 +53,7 @@ $business = null;
 $activeModules = [];
 $allModules = [];
 $notes = [];
+$billingSubscription = null;
 
 try {
     $business = $businessId > 0 ? AdminPortal::business($businessId) : null;
@@ -59,12 +61,15 @@ try {
         $activeModules = AdminPortal::activeModulesForBusiness($businessId);
         $allModules = AdminPortal::allManagedModules();
         $notes = AdminPortal::notesForBusiness($businessId);
+        $billingSubscription = BillingFoundation::subscriptionForBusiness($businessId);
     }
 } catch (Throwable $exception) {
     $loadError = 'Business detail could not be loaded.';
 }
 
 $activeModuleKeys = array_column($activeModules, 'module_key');
+$has247spAccess = in_array('247sp', $activeModuleKeys, true);
+$has247spSubscription = $billingSubscription !== null;
 
 admin_begin('Business Detail', 'businesses', $context);
 ?>
@@ -91,6 +96,9 @@ admin_begin('Business Detail', 'businesses', $context);
 
     <section class="business-switcher">
         <h2>Business Information</h2>
+        <?php if ($has247spSubscription && !$has247spAccess): ?>
+            <?= ui_alert('Subscription exists, but 24/7 Sales Partner module access is not active.', 'warning') ?>
+        <?php endif; ?>
         <div class="summary-list">
             <div><dt>Name</dt><dd><?= e($business['business_name']) ?></dd></div>
             <div><dt>Contact</dt><dd><?= e($business['owner_name'] ?: 'Not set') ?></dd></div>
@@ -98,6 +106,8 @@ admin_begin('Business Detail', 'businesses', $context);
             <div><dt>Phone</dt><dd><?= e($business['phone']) ?></dd></div>
             <div><dt>Onboarding</dt><dd><?= e(AdminPortal::statusLabel($business['onboarding_status'])) ?><?= $business['onboarding_step'] ? ' · ' . e(AdminPortal::statusLabel($business['onboarding_step'])) : '' ?></dd></div>
             <div><dt>Website</dt><dd><?= e(AdminPortal::statusLabel($business['website_status'])) ?></dd></div>
+            <div><dt>247SP Subscription</dt><dd><?= $has247spSubscription ? ui_badge(AdminPortal::statusLabel($billingSubscription['status']), in_array((string) $billingSubscription['status'], ['past_due', 'cancelled'], true) ? 'role' : 'status') . ' ' . e($billingSubscription['plan_name']) : e('No subscription') ?></dd></div>
+            <div><dt>247SP Module Access</dt><dd><?= ui_badge($has247spAccess ? 'Active' : 'Inactive', $has247spAccess ? 'status' : 'role') ?></dd></div>
         </div>
         <div class="button-row secondary-link">
             <?= ui_button('Open Website Controls', 'website.php?business_id=' . urlencode((string) $businessId), 'secondary') ?>
