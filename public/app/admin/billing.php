@@ -43,12 +43,17 @@ function billing_money($amount): string
     return '$' . number_format((float) $amount, 2);
 }
 
+function billing_module_access_label($isActive): string
+{
+    return (int) $isActive === 1 ? 'Active' : 'Inactive';
+}
+
 admin_begin('Billing', 'billing', $context);
 ?>
 <section class="hero-panel">
     <p class="eyebrow">Billing</p>
     <h1>Subscription management</h1>
-    <p class="muted">Track 24/7 Sales Partner plans, manual billing statuses, and recurring revenue. No payment processing runs here.</p>
+    <p class="muted">Track 24/7 Sales Partner plans, manual billing statuses, active module access, and recurring revenue. No payment processing runs here.</p>
 </section>
 
 <?php if ($notice !== ''): ?>
@@ -71,13 +76,23 @@ admin_begin('Billing', 'billing', $context);
     <section class="business-switcher">
         <div class="admin-table admin-table--billing">
             <div class="admin-table__head">
-                <span>Business</span><span>Plan</span><span>Status</span><span>Setup Fee</span><span>Monthly Fee</span><span>Start Date</span><span>Controls</span>
+                <span>Business</span><span>Plan</span><span>Status</span><span>Module Access</span><span>Setup Fee</span><span>Monthly Fee</span><span>Start Date</span><span>Controls</span>
             </div>
             <?php foreach ($subscriptions as $subscription): ?>
+                <?php
+                    $moduleAccessActive = (int) ($subscription['module_access_active'] ?? 0) === 1;
+                    $hasAccessMismatch = (string) ($subscription['product_key'] ?? '') === '247sp' && !$moduleAccessActive;
+                ?>
                 <div class="admin-table__row">
                     <span><a href="business.php?business_id=<?= e($subscription['business_id']) ?>"><?= e($subscription['business_name']) ?></a></span>
                     <span><?= e($subscription['plan_name']) ?></span>
                     <span><?= ui_badge(AdminPortal::statusLabel($subscription['status']), $subscription['status'] === 'past_due' ? 'role' : 'status') ?></span>
+                    <span>
+                        <?= ui_badge(billing_module_access_label($subscription['module_access_active']), $moduleAccessActive ? 'status' : 'role') ?>
+                        <?php if ($hasAccessMismatch): ?>
+                            <small class="admin-table__cell-note">Subscription exists; module access inactive.</small>
+                        <?php endif; ?>
+                    </span>
                     <span><?= e(billing_money($subscription['setup_fee'])) ?></span>
                     <span><?= e(billing_money($subscription['monthly_fee'])) ?></span>
                     <span><?= e($subscription['started_at'] ?: 'Not started') ?></span>

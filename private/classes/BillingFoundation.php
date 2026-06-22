@@ -46,11 +46,21 @@ final class BillingFoundation
                     p.product_key,
                     p.name AS plan_name,
                     p.setup_fee,
-                    p.monthly_fee
+                    p.monthly_fee,
+                    CASE
+                        WHEN p.product_key IS NULL THEN NULL
+                        WHEN access_bm.id IS NULL THEN 0
+                        ELSE 1
+                    END AS module_access_active,
+                    access_module.name AS module_name
              FROM businesses b
              INNER JOIN business_users bu ON bu.business_id = b.id
              LEFT JOIN subscriptions s ON s.business_id = b.id
              LEFT JOIN plans p ON p.id = s.plan_id
+             LEFT JOIN modules access_module ON access_module.module_key = p.product_key
+             LEFT JOIN business_modules access_bm ON access_bm.business_id = b.id
+                AND access_bm.module_id = access_module.id
+                AND access_bm.status = :module_status
              WHERE bu.user_id = :user_id
                AND bu.status = :link_status
                AND b.status = :business_status
@@ -60,6 +70,7 @@ final class BillingFoundation
             'user_id' => $userId,
             'link_status' => 'active',
             'business_status' => 'active',
+            'module_status' => 'active',
         ]);
 
         return $statement->fetchAll();
@@ -97,10 +108,19 @@ final class BillingFoundation
                     p.product_key,
                     p.name AS plan_name,
                     p.setup_fee,
-                    p.monthly_fee
+                    p.monthly_fee,
+                    CASE
+                        WHEN access_bm.id IS NULL THEN 0
+                        ELSE 1
+                    END AS module_access_active,
+                    access_module.name AS module_name
              FROM subscriptions s
              INNER JOIN businesses b ON b.id = s.business_id
              INNER JOIN plans p ON p.id = s.plan_id
+             LEFT JOIN modules access_module ON access_module.module_key = p.product_key
+             LEFT JOIN business_modules access_bm ON access_bm.business_id = b.id
+                AND access_bm.module_id = access_module.id
+                AND access_bm.status = 'active'
              ORDER BY s.created_at DESC, s.id DESC'
         )->fetchAll();
     }

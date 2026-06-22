@@ -1322,8 +1322,15 @@ button:hover,
 
 .admin-table--billing .admin-table__head,
 .admin-table--billing .admin-table__row {
-    min-width: 1220px;
-    grid-template-columns: 1.2fr 1fr .8fr .7fr .7fr 1fr 1.2fr;
+    min-width: 1360px;
+    grid-template-columns: 1.2fr 1fr .8fr .9fr .7fr .7fr 1fr 1.2fr;
+}
+
+.admin-table__cell-note {
+    display: block;
+    margin-top: 6px;
+    color: var(--ubo-muted);
+    font-size: 12px;
 }
 
 .admin-table--domains .admin-table__head,
