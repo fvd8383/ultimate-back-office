@@ -94,9 +94,10 @@ require __DIR__ . '/../../private/views/header.php';
 
     <div class="dashboard-card">
         <h2>Account Navigation</h2>
+        <p class="muted">Account-level pages for this login.</p>
         <div class="button-row">
             <?= ui_button('Dashboard', 'dashboard.php', 'secondary') ?>
-            <?= ui_button('Businesses', count($businesses) > 0 ? 'business.php' : 'business-create.php', 'secondary') ?>
+            <?= ui_button('Businesses', '#businesses', 'secondary') ?>
             <?= ui_button('Billing', 'billing.php', 'secondary') ?>
             <?= ui_button('Domains', 'domains.php', 'secondary') ?>
             <?= ui_button('Email', 'email.php', 'secondary') ?>
@@ -114,8 +115,8 @@ require __DIR__ . '/../../private/views/header.php';
     <?= ui_alert($testingNotice, 'info') ?>
 <?php endif; ?>
 
-<section class="dashboard-card">
-    <h2>Linked Businesses</h2>
+<section class="dashboard-card" id="businesses">
+    <h2>Businesses</h2>
 
     <?php if (count($businesses) === 0): ?>
         <p class="muted">No business is linked to this account yet. Business setup is required before Lead Hub can be used.</p>
@@ -138,28 +139,30 @@ require __DIR__ . '/../../private/views/header.php';
                         </div>
                     </div>
                     <div class="business-list__meta">
-                        <?php $roleName = (string) ($business['role_name'] ?? 'No role'); ?>
-                        <?php $isOwner = (int) $business['is_owner'] === 1; ?>
-                        <?php if (!($isOwner && strcasecmp($roleName, 'Owner') === 0)): ?>
-                            <?= ui_badge($roleName, 'role') ?>
-                        <?php endif; ?>
-                        <?php if ($isOwner): ?>
-                            <?= ui_badge('Owner', 'role') ?>
-                        <?php endif; ?>
-                        <?= ui_button('Edit Business', 'business.php?business_id=' . urlencode((string) $business['id']), 'secondary', ['class' => 'ubo-dashboard-action']) ?>
-                        <?php if (dashboard_business_has_module($business, 'lead_hub')): ?>
-                            <?= ui_button('Open Lead Hub', $appBaseUrl . '/dashboard.php?business_id=' . urlencode((string) $business['id']), 'secondary', ['class' => 'ubo-dashboard-action ubo-dashboard-action--lead']) ?>
-                        <?php endif; ?>
-                        <?php if (dashboard_business_has_module($business, '247sp')): ?>
-                            <?= ui_button('Manage Website', $appBaseUrl . '/247sp/website-manager.php?business_id=' . urlencode((string) $business['id']), 'secondary', ['class' => 'ubo-dashboard-action']) ?>
-                            <?= ui_button('Open 24/7 Sales Partner', $appBaseUrl . '/247sp/dashboard.php?business_id=' . urlencode((string) $business['id']), 'primary', ['class' => 'ubo-dashboard-action ubo-dashboard-action--247sp']) ?>
-                        <?php endif; ?>
-                        <?= ui_button('Billing', 'billing.php', 'secondary', ['class' => 'ubo-dashboard-action']) ?>
-                        <?= ui_button('Domains', 'domains.php', 'secondary', ['class' => 'ubo-dashboard-action']) ?>
-                        <?= ui_button('Email', 'email.php', 'secondary', ['class' => 'ubo-dashboard-action']) ?>
-                        <?php if ($business['setup_status'] !== 'complete'): ?>
-                            <?= ui_button('Continue Setup', 'business-create.php?business_id=' . urlencode((string) $business['id']), 'secondary', ['class' => 'ubo-dashboard-action']) ?>
-                        <?php endif; ?>
+                        <div class="business-list__roles">
+                            <?php $roleName = (string) ($business['role_name'] ?? 'No role'); ?>
+                            <?php $isOwner = (int) $business['is_owner'] === 1; ?>
+                            <?php if (!($isOwner && strcasecmp($roleName, 'Owner') === 0)): ?>
+                                <?= ui_badge($roleName, 'role') ?>
+                            <?php endif; ?>
+                            <?php if ($isOwner): ?>
+                                <?= ui_badge('Owner', 'role') ?>
+                            <?php endif; ?>
+                        </div>
+                        <div class="business-actions" aria-label="Business actions for <?= e($business['business_name']) ?>">
+                            <h4>Business Actions</h4>
+                            <?= ui_button('Edit Business', 'business.php?business_id=' . urlencode((string) $business['id']), 'secondary', ['class' => 'ubo-dashboard-action']) ?>
+                            <?php if (dashboard_business_has_module($business, '247sp')): ?>
+                                <?= ui_button('Open 24/7 Sales Partner', $appBaseUrl . '/247sp/dashboard.php?business_id=' . urlencode((string) $business['id']), 'primary', ['class' => 'ubo-dashboard-action ubo-dashboard-action--247sp']) ?>
+                                <?= ui_button('Manage Website', $appBaseUrl . '/247sp/website-manager.php?business_id=' . urlencode((string) $business['id']), 'secondary', ['class' => 'ubo-dashboard-action']) ?>
+                            <?php endif; ?>
+                            <?= ui_button('Billing', 'billing.php', 'secondary', ['class' => 'ubo-dashboard-action']) ?>
+                            <?= ui_button('Domains', 'domains.php', 'secondary', ['class' => 'ubo-dashboard-action']) ?>
+                            <?= ui_button('Email', 'email.php', 'secondary', ['class' => 'ubo-dashboard-action']) ?>
+                            <?php if ($business['setup_status'] !== 'complete'): ?>
+                                <?= ui_button('Continue Setup', 'business-create.php?business_id=' . urlencode((string) $business['id']), 'secondary', ['class' => 'ubo-dashboard-action']) ?>
+                            <?php endif; ?>
+                        </div>
                     </div>
                 </article>
             <?php endforeach; ?>

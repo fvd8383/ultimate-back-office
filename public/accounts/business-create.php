@@ -293,7 +293,7 @@ require __DIR__ . '/../../private/views/header.php';
 <section class="dashboard-card dashboard-card--wide">
     <p class="eyebrow">Business onboarding</p>
     <h1>Create Business</h1>
-    <p class="muted">Build the business profile, service selections, and launch-ready 24/7 Sales Partner access.</p>
+    <p class="muted">Create your business profile and service selections. Product setup continues inside each active module.</p>
 </section>
 
 <?php if ($notice !== ''): ?>
@@ -315,15 +315,15 @@ require __DIR__ . '/../../private/views/header.php';
 <?php if ($step === 'welcome'): ?>
     <section class="dashboard-card onboarding-welcome">
         <p class="eyebrow">Welcome to Ultimate Back Office</p>
-        <h2>Set up your business workspace</h2>
-        <p class="muted">We will help you set up your business profile, services, website package, domain path, and included business email.</p>
+        <h2>Set up your business profile</h2>
+        <p class="muted">Create your business profile and service selections. Product setup continues inside each active module.</p>
         <ul class="setup-checklist">
             <li>Business Profile</li>
             <li>Services</li>
-            <li>Website</li>
-            <li>Branding</li>
-            <li>Domain</li>
-            <li>Business Email</li>
+            <li>Business Contact Details</li>
+            <li>Service Category</li>
+            <li>Active Modules</li>
+            <li>Setup Summary</li>
         </ul>
         <p class="muted">Estimated time: 8-10 minutes.</p>
         <div class="button-row">
@@ -445,7 +445,7 @@ require __DIR__ . '/../../private/views/header.php';
                     <label class="module-option">
                         <input type="checkbox" name="modules[]" value="<?= e($module['module_key']) ?>"<?= module_checked($module['module_key'], $_POST['modules'] ?? ($selectedModuleKeys ?: ['247sp'])) ?>>
                         <strong><?= e($module['name']) ?></strong>
-                        <span>Includes Lead Hub, website setup, domain request tracking, billing visibility, and business email request tracking.</span>
+                        <span>Activates the customer-ready 247SP module. Website, domain, and email setup continue inside 24/7 Sales Partner.</span>
                     </label>
                 <?php endforeach; ?>
             </div>
@@ -468,10 +468,7 @@ require __DIR__ . '/../../private/views/header.php';
                 <div><dt>Phone</dt><dd><?= e($business['phone']) ?></dd></div>
                 <div><dt>Address</dt><dd><?= e($business['address_line_1']) ?>, <?= e($business['city']) ?>, <?= e($business['state']) ?> <?= e($business['postal_code']) ?></dd></div>
                 <div><dt>Category</dt><dd><?= e($categoryNames[(int) ($business['primary_category_id'] ?? 0)] ?? 'Not selected') ?></dd></div>
-                <div><dt>Website Package</dt><dd>24/7 Sales Partner website and private preview workflow</dd></div>
-                <div><dt>Domain Choice</dt><dd>Completed during 24/7 Sales Partner onboarding</dd></div>
-                <div><dt>Included Email</dt><dd>One business mailbox request is included</dd></div>
-                <div><dt>Billing Plan</dt><dd>24/7 Sales Partner - $100 setup, $27/month</dd></div>
+                <div><dt>Product Setup</dt><dd>Continues inside each active module.</dd></div>
             </dl>
 
             <h3>Selected Services</h3>
