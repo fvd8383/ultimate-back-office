@@ -98,7 +98,7 @@ final class BillingFoundation
 
     public static function adminSubscriptions(): array
     {
-        return Database::connection()->query(
+        $statement = Database::connection()->prepare(
             'SELECT s.id,
                     s.business_id,
                     s.status,
@@ -120,9 +120,12 @@ final class BillingFoundation
              LEFT JOIN modules access_module ON access_module.module_key = p.product_key
              LEFT JOIN business_modules access_bm ON access_bm.business_id = b.id
                 AND access_bm.module_id = access_module.id
-                AND access_bm.status = 'active'
+                AND access_bm.status = :module_status
              ORDER BY s.created_at DESC, s.id DESC'
-        )->fetchAll();
+        );
+        $statement->execute(['module_status' => 'active']);
+
+        return $statement->fetchAll();
     }
 
     public static function adminMetrics(): array
