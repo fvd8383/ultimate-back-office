@@ -141,6 +141,8 @@ $layoutHomeHref = 'dashboard.php';
 $layoutUserName = $user ? trim((string) $user['first_name'] . ' ' . (string) $user['last_name']) : '';
 $layoutLogoutHref = 'logout.php';
 require __DIR__ . '/../../private/views/header.php';
+require __DIR__ . '/../../private/views/account-navigation.php';
+account_shell_begin('businesses');
 ?>
 <section class="dashboard-card dashboard-card--wide">
     <p class="eyebrow">Business profile</p>
@@ -274,4 +276,5 @@ if (legalStructureSelect) {
 updateLegalStructureOther();
 </script>
 
+<?php account_shell_end(); ?>
 <?php require __DIR__ . '/../../private/views/footer.php'; ?>

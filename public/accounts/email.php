@@ -57,25 +57,13 @@ $layoutHomeHref = 'dashboard.php';
 $layoutUserName = $user ? trim((string) $user['first_name'] . ' ' . (string) $user['last_name']) : '';
 $layoutLogoutHref = 'logout.php';
 require __DIR__ . '/../../private/views/header.php';
+require __DIR__ . '/../../private/views/account-navigation.php';
+account_shell_begin('email');
 ?>
-<section class="dashboard-grid">
-    <div class="dashboard-card dashboard-card--wide">
-        <p class="eyebrow">Accounts</p>
-        <h1>Email</h1>
-        <p class="muted">Request business mailboxes and track manual setup status. No real mailbox, DNS, password, SMTP, IMAP, or provider provisioning occurs here.</p>
-    </div>
-
-    <div class="dashboard-card">
-        <h2>Navigation</h2>
-        <div class="button-row">
-            <?= ui_button('Dashboard', 'dashboard.php', 'secondary') ?>
-            <?= ui_button('Businesses', 'business.php', 'secondary') ?>
-            <?= ui_button('Billing', 'billing.php', 'secondary') ?>
-            <?= ui_button('Domains', 'domains.php', 'secondary') ?>
-            <?= ui_button('Email', 'email.php', 'secondary') ?>
-            <?= ui_button('Logout', 'logout.php') ?>
-        </div>
-    </div>
+<section class="dashboard-card dashboard-card--wide">
+    <p class="eyebrow">Accounts</p>
+    <h1>Email</h1>
+    <p class="muted">Request business mailboxes and track manual setup status. No real mailbox, DNS, password, SMTP, IMAP, or provider provisioning occurs here.</p>
 </section>
 
 <?php if ($notice !== ''): ?>
@@ -191,4 +179,5 @@ require __DIR__ . '/../../private/views/header.php';
         <?php endif; ?>
     </section>
 <?php endif; ?>
+<?php account_shell_end(); ?>
 <?php require __DIR__ . '/../../private/views/footer.php'; ?>
