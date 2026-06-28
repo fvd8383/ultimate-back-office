@@ -132,12 +132,25 @@ Customer-facing account and workspace links are visible to signed-in users. Modu
 
 Sprint 8.5 uses a responsive left navigation shell:
 
-* desktop uses a sticky left rail beside content
+* desktop uses a persistent scrollable left rail beside content
 * smaller screens stack the navigation above content
 * navigation sections wrap without horizontal scrolling
 * active state remains visible
 
 A future design-system sprint may replace the stacked mobile layout with a hamburger drawer, but the current implementation must remain usable without horizontal scrolling.
+
+## Scroll Behavior
+
+Desktop account and app shell pages use a viewport-height frame:
+
+* the header and footer stay outside the scrollable application panes
+* the left sidebar has viewport-aware height and scrolls independently when navigation content exceeds the available height
+* the main content area scrolls independently from the sidebar
+* horizontal page scrolling should not be introduced
+
+On smaller screens, the shell returns to normal stacked page scrolling so navigation and content remain reachable without narrow independent scroll panes.
+
+ACCOUNT, WORKSPACE, and ADMIN sections may become collapsible in a future design-system sprint if the number of modules grows. Independent sidebar scrolling is the preferred Sprint 8.5 behavior, so collapsible sections are optional future polish rather than required behavior.
 
 ## Business Context
 
