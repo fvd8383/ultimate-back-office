@@ -127,6 +127,21 @@ The Sprint 7 migration adds manual domain workflow tables for `domain_requests`,
 
 OTP email sending is not configured yet. In production mode, the app does not display the code and shows a placeholder message instead.
 
+## Staging Test Personas
+
+After all database migrations have been applied on staging, seed stable QA users with:
+
+```bash
+mysql -h DB_HOST -P DB_PORT -u DB_USER -p DB_NAME < database/staging/create_test_personas.sql
+```
+
+These accounts are for staging only. Login still uses the staging OTP flow described above.
+
+- `admin@test.com` (`Internal Admin`): internal `Super Admin`/`Admin` access for `/app/admin/*`; intentionally has no linked customer business.
+- `customer@test.com` (`Standard Customer`): standard customer linked to `Customer Test Services`; no Admin Portal access; 247SP and Lead Hub active; 247SP subscription active; 247SP onboarding complete.
+- `trial@test.com` (`Trial Customer`): customer linked to `Trial Test Services`; no Admin Portal access; 247SP and Lead Hub active; 247SP subscription trial; 247SP onboarding left in progress for incomplete onboarding QA.
+- `suspended@test.com` (`Suspended Customer`): customer linked to `Suspended Test Services`; no Admin Portal access; 247SP and Lead Hub active; 247SP subscription past due; flagged as a test/suspended business while public status stays active so testers can verify warning behavior.
+
 ## Web Roots
 
 The deployed web roots are:
