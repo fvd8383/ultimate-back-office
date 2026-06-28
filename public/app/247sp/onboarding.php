@@ -329,12 +329,12 @@ require __DIR__ . '/../../../private/views/account-navigation.php';
                         <label class="module-option">
                             <input type="radio" name="domain_selection_type" value="existing" <?= $domainType !== 'purchase' ? 'checked' : '' ?>>
                             <strong>Bring Existing Domain</strong>
-                            <span>Customer retains ownership. No domain registration is performed here.</span>
+                            <span>Use a domain you already own. We will review it before setup.</span>
                         </label>
                         <label class="module-option">
                             <input type="radio" name="domain_selection_type" value="purchase" <?= $domainType === 'purchase' ? 'checked' : '' ?>>
                             <strong>Purchase Through 247SP</strong>
-                            <span>Stores the desired domain as pending for a future sprint.</span>
+                            <span>Submit your preferred domain for review. We will confirm availability before setup.</span>
                         </label>
                     </fieldset>
 
@@ -345,7 +345,7 @@ require __DIR__ . '/../../../private/views/account-navigation.php';
                         </label>
                         <label data-domain-field="purchase">Desired Domain Name
                             <input name="desired_domain_name" value="<?= e($domainType === 'purchase' ? sp247_form_value($domain, 'domain_name') : '') ?>" placeholder="example.com">
-                            <span class="form-help">Enter the domain you would like 247SP to review later. No domain is registered from this form.</span>
+                            <span class="form-help">Enter the domain you would like 247SP to review. We will confirm availability before setup.</span>
                         </label>
                     </div>
 
@@ -363,7 +363,7 @@ require __DIR__ . '/../../../private/views/account-navigation.php';
                         <input name="primary_mailbox_name" required value="<?= e(sp247_form_value($email, 'primary_mailbox_name', 'info')) ?>" placeholder="info">
                         <span class="form-help">Use only the mailbox name before the @ symbol, such as info, support, or office.</span>
                     </label>
-                    <p class="muted">This stores the mailbox request only. Email is not provisioned in Sprint 3.</p>
+                    <p class="muted">We will review this mailbox request and confirm the next setup steps with you.</p>
 
                     <div class="button-row">
                         <?= ui_button('Back', sp247_step_href('domain_selection', $businessIdForLinks), 'secondary') ?>
