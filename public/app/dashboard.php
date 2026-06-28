@@ -56,19 +56,23 @@ try {
     $loadError = 'Workspace dashboard could not be loaded. Check the environment and database setup.';
 }
 
-$pageTitle = 'Workspace Dashboard - Ultimate Back Office';
+$pageTitle = 'Lead Hub Dashboard - Ultimate Back Office';
 $bodyClass = 'app-dashboard';
 $layoutHomeHref = 'dashboard.php';
 $layoutUserName = $user ? trim((string) $user['first_name'] . ' ' . (string) $user['last_name']) : '';
 $layoutLogoutHref = $accountsBaseUrl . '/logout.php';
 require __DIR__ . '/../../private/views/header.php';
 require __DIR__ . '/../../private/views/account-navigation.php';
+require __DIR__ . '/../../private/views/lead-hub-navigation.php';
 $accountsDashboardHref = $accountsBaseUrl . '/dashboard.php';
+$businessIdForLinks = $business ? (int) $business['id'] : 0;
+$leadHubNavItems = lead_hub_nav_items($businessIdForLinks, 'dashboard');
 ?>
-<?php application_shell_begin('lead_hub', ['area' => 'app', 'user' => $user, 'business' => $business]); ?>
+<?php application_shell_begin('lead_hub', ['area' => 'app', 'user' => $user, 'business' => $business, 'secondary_nav' => $leadHubNavItems]); ?>
         <section class="hero-panel">
-            <p class="eyebrow">Workspace Dashboard</p>
-            <h1><?= $business ? e($business['business_name']) : 'Platform foundation' ?></h1>
+            <p class="eyebrow">Lead Hub</p>
+            <h1><?= $business ? e($business['business_name']) : 'CRM workspace' ?></h1>
+            <p class="muted">Manage leads, contacts, tasks, notes, and recent customer activity for this business.</p>
             <?php if ($user): ?>
                 <p class="muted">Signed in as <?= e($user['first_name']) ?> <?= e($user['last_name']) ?> &lt;<?= e($user['email']) ?>&gt;</p>
             <?php endif; ?>
@@ -126,7 +130,7 @@ $accountsDashboardHref = $accountsBaseUrl . '/dashboard.php';
             <section class="business-switcher">
                 <h2>Recent Activity</h2>
                 <?php if (count($summary['recent_activity']) === 0): ?>
-                    <p class="muted">No recent activity yet.</p>
+                    <p class="muted">No lead, contact, task, or note activity yet.</p>
                 <?php else: ?>
                     <div class="activity-list">
                         <?php foreach ($summary['recent_activity'] as $activity): ?>

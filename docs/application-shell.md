@@ -74,6 +74,10 @@ WORKSPACE links launch product/module areas.
 Current routing:
 
 * Lead Hub: `public/app/dashboard.php`
+* Lead Hub Leads: `public/app/lead-hub/leads.php`
+* Lead Hub Contacts: `public/app/lead-hub/contacts.php`
+* Lead Hub Tasks: `public/app/lead-hub/tasks.php`
+* Lead Hub Notes: `public/app/lead-hub/notes.php`
 * 24/7 Sales Partner: `public/app/247sp/dashboard.php`
 
 When a business is selected or discoverable, workspace links include the `business_id` query parameter. If no business is available, links fall back to the safest existing route and the destination page handles the empty state.
@@ -107,6 +111,14 @@ Entering a module does not replace the primary left navigation.
 Website Manager remains inside the 24/7 Sales Partner workflow. It should not appear as a top-level account business action.
 
 Lead Hub remains a separate WORKSPACE item and must not be moved into 24/7 Sales Partner secondary navigation.
+
+Lead Hub secondary navigation appears nested under the active Lead Hub WORKSPACE item in the left sidebar. It includes:
+
+* Dashboard
+* Leads
+* Contacts
+* Tasks
+* Notes
 
 Admin pages keep the global shell visible, while admin routes such as Users, Businesses, Websites, Billing, Domains, and Email appear as secondary admin navigation in the content area.
 
