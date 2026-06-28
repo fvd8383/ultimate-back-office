@@ -96,9 +96,9 @@ Admin visibility must use the existing internal role authorization logic. Regula
 
 Entering a module does not replace the primary left navigation.
 
-Module-specific navigation appears inside the page content as secondary navigation. For 24/7 Sales Partner, this includes:
+24/7 Sales Partner secondary navigation appears nested under the active 24/7 Sales Partner WORKSPACE item in the left sidebar. It includes:
 
-* 247SP Dashboard
+* Dashboard
 * Onboarding
 * Review
 * Preview
@@ -106,7 +106,9 @@ Module-specific navigation appears inside the page content as secondary navigati
 
 Website Manager remains inside the 24/7 Sales Partner workflow. It should not appear as a top-level account business action.
 
-Admin pages follow the same pattern: the global shell remains visible, while admin routes such as Users, Businesses, Websites, Billing, Domains, and Email appear as secondary admin navigation.
+Lead Hub remains a separate WORKSPACE item and must not be moved into 24/7 Sales Partner secondary navigation.
+
+Admin pages keep the global shell visible, while admin routes such as Users, Businesses, Websites, Billing, Domains, and Email appear as secondary admin navigation in the content area.
 
 ## Active State Behavior
 

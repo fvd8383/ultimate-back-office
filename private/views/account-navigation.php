@@ -88,6 +88,17 @@ if (!function_exists('application_shell_section')) {
             $html .= '<span class="account-nav__icon" aria-hidden="true">' . e((string) $item['icon']) . '</span>';
             $html .= '<span>' . e((string) $item['label']) . '</span>';
             $html .= '</a>';
+
+            $children = $item['children'] ?? [];
+            if (is_array($children) && count($children) > 0) {
+                $html .= '<nav class="account-nav__subnav" aria-label="' . e((string) $item['label'] . ' navigation') . '">';
+                foreach ($children as $child) {
+                    $html .= '<a class="account-nav__subitem" href="' . e((string) ($child['href'] ?? '#')) . '"' . (!empty($child['current']) ? ' aria-current="page"' : '') . '>';
+                    $html .= e((string) ($child['label'] ?? ''));
+                    $html .= '</a>';
+                }
+                $html .= '</nav>';
+            }
         }
 
         return $html . '</section>';
@@ -110,9 +121,14 @@ if (!function_exists('application_navigation')) {
             ['icon' => '👤', 'label' => 'Profile', 'href' => $baseUrls['accounts'] . '/profile.php', 'current' => $current === 'profile'],
         ];
 
+        $salesPartnerItem = ['icon' => '24', 'label' => '24/7 Sales Partner', 'href' => application_shell_href($baseUrls['app'], '247sp/dashboard.php', $business), 'current' => $current === '247sp'];
+        if ($current === '247sp' && isset($options['secondary_nav']) && is_array($options['secondary_nav'])) {
+            $salesPartnerItem['children'] = $options['secondary_nav'];
+        }
+
         $workspaceItems = [
             ['icon' => '▦', 'label' => 'Lead Hub', 'href' => application_shell_href($baseUrls['app'], 'dashboard.php', $business), 'current' => $current === 'lead_hub'],
-            ['icon' => '24', 'label' => '24/7 Sales Partner', 'href' => application_shell_href($baseUrls['app'], '247sp/dashboard.php', $business), 'current' => $current === '247sp'],
+            $salesPartnerItem,
         ];
 
         $adminItems = application_shell_admin_visible($options)

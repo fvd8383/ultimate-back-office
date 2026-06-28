@@ -108,7 +108,7 @@ function sp247_status_label(string $status): string
 
 $businessIdForLinks = $business ? (int) $business['id'] : 0;
 $sp247NavItems = [
-    ['label' => '247SP Dashboard', 'href' => 'dashboard.php' . ($businessIdForLinks > 0 ? '?business_id=' . urlencode((string) $businessIdForLinks) : ''), 'current' => true],
+    ['label' => 'Dashboard', 'href' => 'dashboard.php' . ($businessIdForLinks > 0 ? '?business_id=' . urlencode((string) $businessIdForLinks) : ''), 'current' => true],
     ['label' => 'Onboarding', 'href' => $businessIdForLinks > 0 ? 'onboarding.php?business_id=' . urlencode((string) $businessIdForLinks) : 'onboarding.php'],
     ['label' => 'Review', 'href' => $businessIdForLinks > 0 ? 'review.php?business_id=' . urlencode((string) $businessIdForLinks) : 'review.php'],
     ['label' => 'Preview', 'href' => $businessIdForLinks > 0 ? 'site-preview.php?business_id=' . urlencode((string) $businessIdForLinks) : 'site-preview.php'],
@@ -127,9 +127,7 @@ $layoutLogoutHref = $accountsBaseUrl . '/logout.php';
 require __DIR__ . '/../../../private/views/header.php';
 require __DIR__ . '/../../../private/views/account-navigation.php';
 ?>
-<?php application_shell_begin('247sp', ['area' => 'app_247sp', 'user' => $user, 'business' => $business]); ?>
-        <?= application_module_nav($sp247NavItems, '24/7 Sales Partner navigation') ?>
-
+<?php application_shell_begin('247sp', ['area' => 'app_247sp', 'user' => $user, 'business' => $business, 'secondary_nav' => $sp247NavItems]); ?>
         <section class="hero-panel product-hero product-hero--247sp">
             <img class="product-hero__logo" src="../assets/img/247sp-logo.svg" alt="24/7 Sales Partner">
             <p class="eyebrow">24/7 Sales Partner</p>
