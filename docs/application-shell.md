@@ -2,306 +2,162 @@
 
 ## Purpose
 
-This document defines the permanent application layout and navigation standards for Ultimate Back Office (UBO).
+This document defines the persistent application layout and navigation standards for Ultimate Back Office (UBO). Account pages, workspace pages, admin pages, customer modules, and future products should use this shell unless a later sprint explicitly changes the platform layout.
 
-All customer-facing modules, account pages, and future products must conform to this structure unless explicitly approved otherwise.
+The shell must help customers and internal users understand:
 
-The goal is that every customer always knows:
+* where they are
+* which account area or workspace module they are using
+* how to return to Accounts from App pages
+* how to move between modules without losing the UBO context
 
-* Where they are
-* What business they are working in
-* What module they are using
-* How to return to another area
+## Persistent Header
 
-Navigation should never change unexpectedly.
+The header is shared across account, app, module, and admin areas.
 
----
+It should contain:
 
-# Overall Layout
+* UBO branding/logo
+* the signed-in user when available
+* logout access
 
+The header should remain clean. Module-specific links belong in the left navigation or in module secondary navigation, not in the header.
+
+## Persistent Left Navigation
+
+The left navigation is the primary application navigation. It is not a floating utility card and it should not be replaced when entering a module.
+
+The shell structure is:
+
+```text
+Ultimate Back Office
+
+ACCOUNT
+- Home
+- Businesses
+- Billing
+- Domains
+- Email
+- Profile
+
+WORKSPACE
+- Lead Hub
+- 24/7 Sales Partner
+
+ADMIN
+- Admin Portal
+
+Log out
 ```
-┌───────────────────────────────────────────────────────────────┐
-│ Ultimate Back Office                          User | Log Out  │
-├───────────────┬───────────────────────────────────────────────┤
-│               │                                               │
-│ Left Sidebar  │               Page Content                    │
-│               │                                               │
-│               │                                               │
-└───────────────┴───────────────────────────────────────────────┘
-```
 
-The application consists of:
+Icons should appear with labels. Sprint 8.5 may use simple temporary text or symbol icons because the repo does not currently include a shared icon library. A future design-system pass should replace temporary icons with the chosen shared icon set.
 
-* Persistent Header
-* Persistent Left Navigation
-* Dynamic Content Area
+## Account Section
 
----
+ACCOUNT links are account-level destinations. They are not module-specific.
 
-# Header
+Current routing:
 
-The header is always visible.
+* Home: `public/accounts/dashboard.php`
+* Businesses: `public/accounts/dashboard.php#businesses`
+* Billing: `public/accounts/billing.php`
+* Domains: `public/accounts/domains.php`
+* Email: `public/accounts/email.php`
+* Profile: `public/accounts/profile.php`
 
-Contents:
+No standalone `public/accounts/businesses.php` route exists in Sprint 8.5, so Businesses uses the dashboard businesses section rather than inventing a new route.
 
-* Ultimate Back Office logo
-* Product title
-* Logged-in user
-* Log Out button
+## Workspace Section
 
-The header never changes based on the current module.
+WORKSPACE links launch product/module areas.
 
----
+Current routing:
 
-# Left Navigation
+* Lead Hub: `public/app/dashboard.php`
+* 24/7 Sales Partner: `public/app/247sp/dashboard.php`
 
-The left navigation is persistent across the application.
+When a business is selected or discoverable, workspace links include the `business_id` query parameter. If no business is available, links fall back to the safest existing route and the destination page handles the empty state.
 
-It does not change when entering a module.
+Lead Hub must be shown as a workspace module/action. It must not be used as the global sidebar title.
 
-It contains three sections.
+Future customer modules should plug into WORKSPACE as additional items. They should not create a separate global shell.
 
----
+## Admin Section
 
-## ACCOUNT
+ADMIN is visible only for users with existing internal admin access.
 
-🏠 Home
+Current routing:
 
-🏢 Businesses
+* Admin Portal: `public/app/admin/dashboard.php`
 
-💳 Billing
+Admin visibility must use the existing internal role authorization logic. Regular customers must not see Admin Portal in the global navigation.
 
-🌐 Domains
+## Module Secondary Navigation
 
-✉️ Email
+Entering a module does not replace the primary left navigation.
 
-👤 Profile
+Module-specific navigation appears inside the page content as secondary navigation. For 24/7 Sales Partner, this includes:
 
-Purpose:
-
-Manage the customer account.
-
-These pages are not tied to a specific module.
-
----
-
-## WORKSPACE
-
-Contains business modules.
-
-Launch modules:
-
-• Lead Hub
-
-• 24/7 Sales Partner
-
-Future modules:
-
-• EMD
-
-• Super Simple Payments
-
-• Tell Us How We Did
-
-• Additional modules
-
-Modules appear only when:
-
-* available to the customer
-* active for the business
-
----
-
-## ADMIN
-
-Visible only for internal staff.
-
-Examples:
-
-Admin Portal
-
-Future internal tools
-
-Never shown to customers.
-
----
-
-# Active Navigation
-
-Only one primary navigation item may be active.
-
-The active item:
-
-* uses accent color
-* includes hover state
-* remains visible during navigation
-
----
-
-# Module Navigation
-
-Selecting a module does NOT replace the left navigation.
-
-Instead, the page content changes.
-
-Each module manages its own secondary navigation.
-
-Example:
-
-24/7 Sales Partner
-
-* Dashboard
-
-* Website Manager
-
-* Preview
-
-* Review
-
+* 247SP Dashboard
 * Onboarding
+* Review
+* Preview
+* Website Manager when the selected business has access
 
-Lead Hub
+Website Manager remains inside the 24/7 Sales Partner workflow. It should not appear as a top-level account business action.
 
-* Dashboard
+Admin pages follow the same pattern: the global shell remains visible, while admin routes such as Users, Businesses, Websites, Billing, Domains, and Email appear as secondary admin navigation.
 
-* Leads
+## Active State Behavior
 
-* Contacts
+Only one primary navigation item should be active at a time.
 
-* Tasks
+Active state rules:
 
-* Notes
+* account pages highlight the matching ACCOUNT item
+* the app dashboard highlights Lead Hub
+* 24/7 Sales Partner pages highlight 24/7 Sales Partner
+* admin pages highlight Admin Portal for authorized internal users
+* secondary module navigation highlights the current module/admin page
 
-* Pipeline
+## Role-Based Visibility
 
-Future modules follow the same pattern.
+Admin Portal is role-gated and only appears when the signed-in user passes the existing internal admin check.
 
----
+Customer-facing account and workspace links are visible to signed-in users. Module pages still enforce their own access checks and should show access-denied or empty-state messaging when a business does not have the relevant module active.
 
-# Business Context
+## Mobile Behavior
 
-The selected business is always visible within module pages.
+Sprint 8.5 uses a responsive left navigation shell:
 
-Example:
+* desktop uses a sticky left rail beside content
+* smaller screens stack the navigation above content
+* navigation sections wrap without horizontal scrolling
+* active state remains visible
 
-Business Name
+A future design-system sprint may replace the stacked mobile layout with a hamburger drawer, but the current implementation must remain usable without horizontal scrolling.
 
-Current Module
+## Business Context
 
-Current User
+Module pages should display the selected business in the content area, typically in the hero/header panel. Customers should be able to tell which business they are editing before changing module data.
 
-Customers should never wonder which business they are editing.
-
----
-
-# Business Actions
-
-Business actions belong on Business pages, not in global navigation.
-
-Examples:
+Business-specific actions belong in business cards or business pages, not in the global shell. Examples:
 
 * Edit Business
-
-* Open Module
-
+* Open 24/7 Sales Partner
 * Billing
-
 * Domains
-
 * Email
 
-Business actions affect only the selected business.
+## Base URL Rules
 
----
+Cross-area links should use configured base URLs when available:
 
-# Navigation Rules
+* `ACCOUNTS_BASE_URL`
+* `APP_BASE_URL`
 
-Navigation links move between application areas.
+Do not hardcode staging URLs. When config is unavailable, pages may use safe relative fallbacks for the active document root.
 
-Buttons perform actions.
+## Design Principle
 
-Do not use buttons as navigation unless there is a compelling reason.
-
----
-
-# Icons
-
-Every navigation item should include an icon.
-
-Icons should remain consistent across all modules.
-
-Avoid emojis in production.
-
-Use a shared icon library.
-
----
-
-# Empty States
-
-Every page with no data should explain:
-
-* What this page is
-
-* Why it is empty
-
-* What action the user should take next
-
----
-
-# Mobile
-
-On small screens:
-
-* Left navigation collapses into a hamburger menu.
-
-* Header remains visible.
-
-* Current page remains highlighted.
-
-No horizontal scrolling.
-
----
-
-# Accessibility
-
-Navigation should support:
-
-* keyboard navigation
-
-* visible focus states
-
-* screen readers
-
-* adequate color contrast
-
----
-
-# Future Expansion
-
-New modules should integrate by adding a single item under the WORKSPACE section.
-
-No redesign of the application shell should be required.
-
-Examples:
-
-Lead Hub
-
-24/7 Sales Partner
-
-EMD
-
-Super Simple Payments
-
-Tell Us How We Did
-
-Future products
-
----
-
-# Design Principle
-
-The application shell should feel like one operating system.
-
-Modules are applications inside that operating system.
-
-Customers should never feel like they have left Ultimate Back Office when moving between modules.
+Ultimate Back Office should feel like one operating system. Modules are applications inside that operating system, not separate products with separate global navigation shells.

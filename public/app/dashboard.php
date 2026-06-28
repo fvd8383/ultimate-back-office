@@ -62,36 +62,10 @@ $layoutHomeHref = 'dashboard.php';
 $layoutUserName = $user ? trim((string) $user['first_name'] . ' ' . (string) $user['last_name']) : '';
 $layoutLogoutHref = $accountsBaseUrl . '/logout.php';
 require __DIR__ . '/../../private/views/header.php';
+require __DIR__ . '/../../private/views/account-navigation.php';
+$accountsDashboardHref = $accountsBaseUrl . '/dashboard.php';
 ?>
-<section class="app-layout">
-    <?php
-    $accountsDashboardHref = $accountsBaseUrl . '/dashboard.php';
-    $businessesHref = $business
-        ? $accountsBaseUrl . '/business.php?business_id=' . urlencode((string) $business['id'])
-        : $accountsDashboardHref;
-    $modulesHref = $business
-        ? $accountsBaseUrl . '/business-create.php?business_id=' . urlencode((string) $business['id']) . '&step=modules'
-        : $accountsDashboardHref;
-
-    $leadHubHref = $business
-        ? 'dashboard.php?business_id=' . urlencode((string) $business['id']) . '#lead-hub'
-        : 'dashboard.php#lead-hub';
-
-    $sidebarItems = [
-        ['label' => 'Workspace Dashboard', 'href' => 'dashboard.php', 'current' => true],
-        ['label' => 'Accounts Dashboard', 'href' => $accountsDashboardHref],
-        ['label' => 'Businesses', 'href' => $businessesHref],
-        ['label' => 'Modules', 'href' => $modulesHref],
-        ['label' => 'Lead Hub', 'href' => $leadHubHref],
-    ];
-
-    if ($business && $has247spAccess) {
-        $sidebarItems[] = ['label' => '24/7 Sales Partner', 'href' => '247sp/dashboard.php?business_id=' . urlencode((string) $business['id'])];
-    }
-    ?>
-    <?= ui_sidebar('Ultimate Back Office', $sidebarItems, 'Workspace navigation') ?>
-
-    <div class="app-content">
+<?php application_shell_begin('lead_hub', ['area' => 'app', 'user' => $user, 'business' => $business]); ?>
         <section class="hero-panel">
             <p class="eyebrow">Workspace Dashboard</p>
             <h1><?= $business ? e($business['business_name']) : 'Platform foundation' ?></h1>
@@ -168,6 +142,5 @@ require __DIR__ . '/../../private/views/header.php';
                 <?php endif; ?>
             </section>
         <?php endif; ?>
-    </div>
-</section>
+<?php application_shell_end(); ?>
 <?php require __DIR__ . '/../../private/views/footer.php'; ?>

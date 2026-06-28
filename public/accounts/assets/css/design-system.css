@@ -433,7 +433,21 @@ button:hover,
 
 .account-nav {
     display: grid;
+    gap: 16px;
+}
+
+.account-nav__section {
+    display: grid;
     gap: 8px;
+}
+
+.account-nav__section-title {
+    margin: 0;
+    color: var(--ubo-muted);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0;
+    text-transform: uppercase;
 }
 
 .account-nav__item {
@@ -477,6 +491,35 @@ button:hover,
 
 .account-nav__logout {
     color: var(--ubo-charcoal);
+}
+
+.module-secondary-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    border: 1px solid var(--ubo-line);
+    border-radius: var(--ubo-radius-card);
+    background: var(--ubo-surface);
+    box-shadow: var(--ubo-shadow);
+    padding: 12px;
+}
+
+.module-secondary-nav a {
+    border-radius: var(--ubo-radius-control);
+    color: var(--ubo-muted);
+    padding: 8px 12px;
+    text-decoration: none;
+}
+
+.module-secondary-nav a:hover {
+    background: var(--ubo-bg);
+    color: var(--ubo-charcoal);
+}
+
+.module-secondary-nav a[aria-current="page"] {
+    background: rgba(59, 108, 122, .10);
+    color: var(--ubo-primary);
+    font-weight: 700;
 }
 
 .eyebrow {
@@ -1573,6 +1616,10 @@ button:hover,
 
     .account-nav {
         grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr));
+    }
+
+    .account-nav__section {
+        align-content: start;
     }
 
     .app-sidebar {

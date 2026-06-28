@@ -112,7 +112,6 @@ $sp247NavItems = [
     ['label' => 'Onboarding', 'href' => $businessIdForLinks > 0 ? 'onboarding.php?business_id=' . urlencode((string) $businessIdForLinks) : 'onboarding.php'],
     ['label' => 'Review', 'href' => $businessIdForLinks > 0 ? 'review.php?business_id=' . urlencode((string) $businessIdForLinks) : 'review.php'],
     ['label' => 'Preview', 'href' => $businessIdForLinks > 0 ? 'site-preview.php?business_id=' . urlencode((string) $businessIdForLinks) : 'site-preview.php'],
-    ['label' => 'Lead Hub', 'href' => '../dashboard.php'],
 ];
 if ($businessIdForLinks > 0 && !$accessDenied) {
     array_splice($sp247NavItems, 4, 0, [[
@@ -126,11 +125,11 @@ $layoutHomeHref = '../dashboard.php';
 $layoutUserName = $user ? trim((string) $user['first_name'] . ' ' . (string) $user['last_name']) : '';
 $layoutLogoutHref = $accountsBaseUrl . '/logout.php';
 require __DIR__ . '/../../../private/views/header.php';
+require __DIR__ . '/../../../private/views/account-navigation.php';
 ?>
-<section class="app-layout">
-    <?= ui_sidebar('24/7 Sales Partner', $sp247NavItems, '24/7 Sales Partner') ?>
+<?php application_shell_begin('247sp', ['area' => 'app_247sp', 'user' => $user, 'business' => $business]); ?>
+        <?= application_module_nav($sp247NavItems, '24/7 Sales Partner navigation') ?>
 
-    <div class="app-content">
         <section class="hero-panel product-hero product-hero--247sp">
             <img class="product-hero__logo" src="../assets/img/247sp-logo.svg" alt="24/7 Sales Partner">
             <p class="eyebrow">24/7 Sales Partner</p>
@@ -235,6 +234,5 @@ require __DIR__ . '/../../../private/views/header.php';
                 <?= ui_button('View Account Email', $accountsBaseUrl . '/email.php', 'secondary') ?>
             </section>
         <?php endif; ?>
-    </div>
-</section>
+<?php application_shell_end(); ?>
 <?php require __DIR__ . '/../../../private/views/footer.php'; ?>
