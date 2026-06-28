@@ -475,6 +475,34 @@ button:hover,
     font-weight: 700;
 }
 
+.account-nav__subnav {
+    display: grid;
+    gap: 4px;
+    margin: -2px 0 4px 34px;
+    padding-left: 12px;
+    border-left: 2px solid var(--ubo-line);
+}
+
+.account-nav__subitem {
+    display: block;
+    border-radius: var(--ubo-radius-control);
+    color: var(--ubo-muted);
+    font-size: 14px;
+    padding: 8px 10px;
+    text-decoration: none;
+}
+
+.account-nav__subitem:hover {
+    background: var(--ubo-bg);
+    color: var(--ubo-charcoal);
+}
+
+.account-nav__subitem[aria-current="page"] {
+    background: rgba(59, 108, 122, .10);
+    color: var(--ubo-primary);
+    font-weight: 700;
+}
+
 .account-nav__icon {
     width: 24px;
     flex: 0 0 24px;
