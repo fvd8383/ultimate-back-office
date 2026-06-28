@@ -136,17 +136,10 @@ account_shell_begin('dashboard');
                             <?php endif; ?>
                         </div>
                         <div class="business-actions" aria-label="Business actions for <?= e($business['business_name']) ?>">
-                            <h4>Business Actions</h4>
-                            <?= ui_button('Edit Business', 'business.php?business_id=' . urlencode((string) $business['id']), 'secondary', ['class' => 'ubo-dashboard-action']) ?>
                             <?php if (dashboard_business_has_module($business, '247sp')): ?>
                                 <?= ui_button('Open 24/7 Sales Partner', $appBaseUrl . '/247sp/dashboard.php?business_id=' . urlencode((string) $business['id']), 'primary', ['class' => 'ubo-dashboard-action ubo-dashboard-action--247sp']) ?>
                             <?php endif; ?>
-                            <?= ui_button('Billing', 'billing.php', 'secondary', ['class' => 'ubo-dashboard-action']) ?>
-                            <?= ui_button('Domains', 'domains.php', 'secondary', ['class' => 'ubo-dashboard-action']) ?>
-                            <?= ui_button('Email', 'email.php', 'secondary', ['class' => 'ubo-dashboard-action']) ?>
-                            <?php if ($business['setup_status'] !== 'complete'): ?>
-                                <?= ui_button('Continue Setup', 'business-create.php?business_id=' . urlencode((string) $business['id']), 'secondary', ['class' => 'ubo-dashboard-action']) ?>
-                            <?php endif; ?>
+                            <?= ui_button('Edit Business', 'business.php?business_id=' . urlencode((string) $business['id']), 'secondary', ['class' => 'ubo-dashboard-action']) ?>
                         </div>
                     </div>
                 </article>
