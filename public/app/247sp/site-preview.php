@@ -530,7 +530,7 @@ require __DIR__ . '/../../../private/views/account-navigation.php';
                         <div>
                             <p class="site-preview-kicker">Contact</p>
                             <h3>Ready to schedule service?</h3>
-                            <p>Call now or send a request through the contact form placeholder.</p>
+                            <p>Call now or send a request through the contact form.</p>
                         </div>
                         <div class="site-preview-contact-card">
                             <a href="<?= e($phoneHref) ?>"><?= e($phone ?: 'Phone pending') ?></a>

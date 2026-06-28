@@ -217,18 +217,18 @@ require __DIR__ . '/../../../private/views/account-navigation.php';
 
             <section class="business-switcher">
                 <h2>Lead Hub Included</h2>
-                <p class="muted">24/7 Sales Partner includes Lead Hub access. Website leads will flow into Lead Hub in a future sprint after site generation and lead capture are built.</p>
+                <p class="muted">24/7 Sales Partner includes Lead Hub access so website inquiries can be managed from your workspace.</p>
             </section>
 
             <section class="business-switcher">
                 <h2>Domain Workflow</h2>
-                <p class="muted">Domain requests are managed manually by the internal team. This dashboard only shows status; it does not register domains, modify DNS, configure SSL, provision email, or publish websites.</p>
+                <p class="muted">Domain requests are reviewed by the 247SP team. This dashboard shows status while availability and setup details are confirmed.</p>
                 <?= ui_button('View Account Domains', $accountsBaseUrl . '/domains.php', 'secondary') ?>
             </section>
 
             <section class="business-switcher">
                 <h2>Email Workflow</h2>
-                <p class="muted">Mailbox requests are managed manually by the internal team. This dashboard only shows status; it does not create mailboxes, configure DNS mail records, send email, collect payment, or manage passwords.</p>
+                <p class="muted">Mailbox requests are reviewed by the 247SP team. This dashboard shows status while setup details are confirmed.</p>
                 <?= ui_button('View Account Email', $accountsBaseUrl . '/email.php', 'secondary') ?>
             </section>
         <?php endif; ?>
