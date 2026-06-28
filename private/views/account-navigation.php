@@ -1,37 +1,134 @@
 <?php
 
-if (!function_exists('account_navigation_items')) {
-    function account_navigation_items(string $current): array
+require_once __DIR__ . '/../classes/AdminPortal.php';
+
+if (!function_exists('application_shell_base_urls')) {
+    function application_shell_base_urls(string $area): array
     {
+        $fallbacks = [
+            'accounts' => ['accounts' => '.', 'app' => '../app'],
+            'app' => ['accounts' => '../accounts', 'app' => '.'],
+            'app_247sp' => ['accounts' => '../../accounts', 'app' => '..'],
+            'app_admin' => ['accounts' => '../../accounts', 'app' => '..'],
+        ];
+        $fallback = $fallbacks[$area] ?? $fallbacks['accounts'];
+
+        try {
+            $accountsBaseUrl = rtrim((string) Database::config('ACCOUNTS_BASE_URL', $fallback['accounts']), '/');
+            $appBaseUrl = rtrim((string) Database::config('APP_BASE_URL', $fallback['app']), '/');
+        } catch (Throwable $exception) {
+            $accountsBaseUrl = $fallback['accounts'];
+            $appBaseUrl = $fallback['app'];
+        }
+
         return [
-            ['key' => 'dashboard', 'icon' => '🏠', 'label' => 'Dashboard', 'href' => 'dashboard.php', 'current' => $current === 'dashboard'],
-            ['key' => 'businesses', 'icon' => '🏢', 'label' => 'Businesses', 'href' => 'dashboard.php#businesses', 'current' => $current === 'businesses'],
-            ['key' => 'billing', 'icon' => '💳', 'label' => 'Billing', 'href' => 'billing.php', 'current' => $current === 'billing'],
-            ['key' => 'domains', 'icon' => '🌐', 'label' => 'Domains', 'href' => 'domains.php', 'current' => $current === 'domains'],
-            ['key' => 'email', 'icon' => '✉️', 'label' => 'Email', 'href' => 'email.php', 'current' => $current === 'email'],
-            ['key' => 'profile', 'icon' => '👤', 'label' => 'Profile', 'href' => 'profile.php', 'current' => $current === 'profile'],
+            'accounts' => $accountsBaseUrl !== '' ? $accountsBaseUrl : $fallback['accounts'],
+            'app' => $appBaseUrl !== '' ? $appBaseUrl : $fallback['app'],
         ];
     }
 }
 
-if (!function_exists('account_navigation')) {
-    function account_navigation(string $current): string
+if (!function_exists('application_shell_business')) {
+    function application_shell_business(array $options): ?array
     {
-        $html = '<aside class="account-sidebar" aria-label="Account navigation">';
-        $html .= '<div><p class="eyebrow">Account</p><h2>Navigation</h2></div>';
-        $html .= '<nav class="account-nav">';
+        if (isset($options['business']) && is_array($options['business'])) {
+            return $options['business'];
+        }
 
-        foreach (account_navigation_items($current) as $item) {
+        try {
+            $user = $options['user'] ?? Auth::currentUser();
+            if (!is_array($user)) {
+                return null;
+            }
+
+            return BusinessFoundation::firstBusinessForUser((int) $user['id']);
+        } catch (Throwable $exception) {
+            return null;
+        }
+    }
+}
+
+if (!function_exists('application_shell_admin_visible')) {
+    function application_shell_admin_visible(array $options): bool
+    {
+        try {
+            $user = $options['user'] ?? Auth::currentUser();
+            return is_array($user) && AdminPortal::currentUserIsAdmin((int) $user['id']);
+        } catch (Throwable $exception) {
+            return false;
+        }
+    }
+}
+
+if (!function_exists('application_shell_href')) {
+    function application_shell_href(string $baseUrl, string $path, ?array $business = null): string
+    {
+        $href = rtrim($baseUrl, '/') . '/' . ltrim($path, '/');
+        if ($business !== null && isset($business['id']) && (int) $business['id'] > 0) {
+            $separator = strpos($href, '?') !== false ? '&' : '?';
+            $href .= $separator . 'business_id=' . urlencode((string) $business['id']);
+        }
+
+        return $href;
+    }
+}
+
+if (!function_exists('application_shell_section')) {
+    function application_shell_section(string $title, array $items): string
+    {
+        if (count($items) === 0) {
+            return '';
+        }
+
+        $html = '<section class="account-nav__section">';
+        $html .= '<p class="account-nav__section-title">' . e($title) . '</p>';
+
+        foreach ($items as $item) {
             $html .= '<a class="account-nav__item" href="' . e((string) $item['href']) . '"' . (!empty($item['current']) ? ' aria-current="page"' : '') . '>';
             $html .= '<span class="account-nav__icon" aria-hidden="true">' . e((string) $item['icon']) . '</span>';
             $html .= '<span>' . e((string) $item['label']) . '</span>';
             $html .= '</a>';
         }
 
+        return $html . '</section>';
+    }
+}
+
+if (!function_exists('application_navigation')) {
+    function application_navigation(string $current, array $options = []): string
+    {
+        $area = (string) ($options['area'] ?? 'accounts');
+        $baseUrls = application_shell_base_urls($area);
+        $business = application_shell_business($options);
+
+        $accountItems = [
+            ['icon' => '🏠', 'label' => 'Home', 'href' => $baseUrls['accounts'] . '/dashboard.php', 'current' => $current === 'home' || $current === 'dashboard'],
+            ['icon' => '🏢', 'label' => 'Businesses', 'href' => $baseUrls['accounts'] . '/dashboard.php#businesses', 'current' => $current === 'businesses'],
+            ['icon' => '💳', 'label' => 'Billing', 'href' => $baseUrls['accounts'] . '/billing.php', 'current' => $current === 'billing'],
+            ['icon' => '🌐', 'label' => 'Domains', 'href' => $baseUrls['accounts'] . '/domains.php', 'current' => $current === 'domains'],
+            ['icon' => '✉️', 'label' => 'Email', 'href' => $baseUrls['accounts'] . '/email.php', 'current' => $current === 'email'],
+            ['icon' => '👤', 'label' => 'Profile', 'href' => $baseUrls['accounts'] . '/profile.php', 'current' => $current === 'profile'],
+        ];
+
+        $workspaceItems = [
+            ['icon' => '▦', 'label' => 'Lead Hub', 'href' => application_shell_href($baseUrls['app'], 'dashboard.php', $business), 'current' => $current === 'lead_hub'],
+            ['icon' => '24', 'label' => '24/7 Sales Partner', 'href' => application_shell_href($baseUrls['app'], '247sp/dashboard.php', $business), 'current' => $current === '247sp'],
+        ];
+
+        $adminItems = application_shell_admin_visible($options)
+            ? [['icon' => '⚙', 'label' => 'Admin Portal', 'href' => $baseUrls['app'] . '/admin/dashboard.php', 'current' => $current === 'admin']]
+            : [];
+
+        $html = '<aside class="account-sidebar application-sidebar" aria-label="Application navigation">';
+        $html .= '<div class="account-sidebar__brand"><h2>Ultimate Back Office</h2></div>';
+        $html .= '<nav class="account-nav">';
+        $html .= application_shell_section('Account', $accountItems);
+        $html .= application_shell_section('Workspace', $workspaceItems);
+        $html .= application_shell_section('Admin', $adminItems);
         $html .= '</nav>';
         $html .= '<div class="account-nav__footer">';
-        $html .= '<a class="account-nav__item account-nav__logout" href="logout.php">';
-        $html .= '<span class="account-nav__icon" aria-hidden="true">↪</span><span>Logout</span>';
+        $html .= '<a class="account-nav__item account-nav__logout" href="' . e($baseUrls['accounts'] . '/logout.php') . '">';
+        $html .= '<span class="account-nav__icon" aria-hidden="true">↪</span><span>Log out</span>';
         $html .= '</a>';
         $html .= '</div>';
         $html .= '</aside>';
@@ -40,18 +137,51 @@ if (!function_exists('account_navigation')) {
     }
 }
 
-if (!function_exists('account_shell_begin')) {
-    function account_shell_begin(string $current): void
+if (!function_exists('application_shell_begin')) {
+    function application_shell_begin(string $current, array $options = []): void
     {
-        echo '<section class="account-layout">';
-        echo account_navigation($current);
-        echo '<div class="account-content">';
+        $layoutClass = trim('account-layout application-layout ' . (string) ($options['layout_class'] ?? ''));
+        echo '<section class="' . e($layoutClass) . '">';
+        echo application_navigation($current, $options);
+        echo '<div class="account-content application-content">';
+    }
+}
+
+if (!function_exists('application_shell_end')) {
+    function application_shell_end(): void
+    {
+        echo '</div></section>';
+    }
+}
+
+if (!function_exists('account_shell_begin')) {
+    function account_shell_begin(string $current, array $options = []): void
+    {
+        $mapped = $current === 'dashboard' ? 'home' : $current;
+        $options['area'] = $options['area'] ?? 'accounts';
+        application_shell_begin($mapped, $options);
     }
 }
 
 if (!function_exists('account_shell_end')) {
     function account_shell_end(): void
     {
-        echo '</div></section>';
+        application_shell_end();
+    }
+}
+
+if (!function_exists('application_module_nav')) {
+    function application_module_nav(array $items, string $label): string
+    {
+        if (count($items) === 0) {
+            return '';
+        }
+
+        $html = '<nav class="module-secondary-nav" aria-label="' . e($label) . '">';
+        foreach ($items as $item) {
+            $html .= '<a href="' . e((string) ($item['href'] ?? '#')) . '"' . (!empty($item['current']) ? ' aria-current="page"' : '') . '>' . e((string) ($item['label'] ?? '')) . '</a>';
+        }
+
+        return $html . '</nav>';
     }
 }

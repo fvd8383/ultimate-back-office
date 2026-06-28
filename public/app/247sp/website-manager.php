@@ -97,7 +97,6 @@ function sp247_manager_nav(int $businessId, string $current, bool $showManager):
         ['label' => 'Onboarding', 'href' => 'onboarding.php' . $suffix, 'current' => $current === 'onboarding'],
         ['label' => 'Review', 'href' => 'review.php' . $suffix, 'current' => $current === 'review'],
         ['label' => 'Preview', 'href' => 'site-preview.php' . $suffix, 'current' => $current === 'preview'],
-        ['label' => 'Lead Hub', 'href' => '../dashboard.php'],
     ];
 
     if ($showManager) {
@@ -168,11 +167,11 @@ $layoutHomeHref = '../dashboard.php';
 $layoutUserName = $user ? trim((string) $user['first_name'] . ' ' . (string) $user['last_name']) : '';
 $layoutLogoutHref = $accountsBaseUrl . '/logout.php';
 require __DIR__ . '/../../../private/views/header.php';
+require __DIR__ . '/../../../private/views/account-navigation.php';
 ?>
-<section class="app-layout">
-    <?= ui_sidebar('24/7 Sales Partner', sp247_manager_nav($businessIdForLinks, 'manager', $businessIdForLinks > 0 && !$accessDenied), '24/7 Sales Partner') ?>
+<?php application_shell_begin('247sp', ['area' => 'app_247sp', 'user' => $user, 'business' => $business]); ?>
+        <?= application_module_nav(sp247_manager_nav($businessIdForLinks, 'manager', $businessIdForLinks > 0 && !$accessDenied), '24/7 Sales Partner navigation') ?>
 
-    <div class="app-content">
         <section class="hero-panel product-hero product-hero--247sp">
             <p class="eyebrow">Website Manager</p>
             <h1><?= $business ? e($business['business_name']) : '247SP website manager' ?></h1>
@@ -302,6 +301,5 @@ require __DIR__ . '/../../../private/views/header.php';
                 </section>
             </form>
         <?php endif; ?>
-    </div>
-</section>
+<?php application_shell_end(); ?>
 <?php require __DIR__ . '/../../../private/views/footer.php'; ?>

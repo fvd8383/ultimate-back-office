@@ -42,9 +42,10 @@ function admin_begin(string $title, string $current, array $context): void
     $designSystemPath = '/assets/css/design-system.css';
 
     require __DIR__ . '/../../../private/views/header.php';
+    require __DIR__ . '/../../../private/views/account-navigation.php';
+    application_shell_begin('admin', ['area' => 'app_admin', 'user' => $user, 'layout_class' => 'admin-layout']);
     ?>
-    <section class="app-layout admin-layout">
-        <?= ui_sidebar('Admin Portal', [
+        <?= application_module_nav([
             ['label' => 'Dashboard', 'href' => 'dashboard.php', 'current' => $current === 'dashboard'],
             ['label' => 'Users', 'href' => 'users.php', 'current' => $current === 'users'],
             ['label' => 'Businesses', 'href' => 'businesses.php', 'current' => $current === 'businesses'],
@@ -53,16 +54,12 @@ function admin_begin(string $title, string $current, array $context): void
             ['label' => 'Domains', 'href' => 'domains.php', 'current' => $current === 'domains'],
             ['label' => 'Email', 'href' => 'email.php', 'current' => $current === 'email'],
         ], 'Admin navigation') ?>
-        <div class="app-content">
     <?php
 }
 
 function admin_end(): void
 {
-    ?>
-        </div>
-    </section>
-    <?php
+    application_shell_end();
     require __DIR__ . '/../../../private/views/footer.php';
 }
 
