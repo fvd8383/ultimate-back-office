@@ -63,6 +63,28 @@ body {
     line-height: 1.5;
 }
 
+body.accounts-dashboard,
+body.app-dashboard {
+    display: flex;
+    height: 100vh;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+body.accounts-dashboard .site-header,
+body.accounts-dashboard .site-footer,
+body.app-dashboard .site-header,
+body.app-dashboard .site-footer {
+    flex: 0 0 auto;
+}
+
+body.accounts-dashboard .page-shell,
+body.app-dashboard .page-shell {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
+}
+
 a {
     color: var(--ubo-primary);
 }
@@ -405,25 +427,35 @@ button:hover,
 
 .account-layout {
     display: grid;
+    height: 100%;
+    min-height: 0;
     grid-template-columns: 248px minmax(0, 1fr);
     gap: 24px;
-    align-items: start;
+    align-items: stretch;
 }
 
 .account-content {
     display: grid;
     min-width: 0;
+    min-height: 0;
+    align-content: start;
     gap: 20px;
+    overflow-x: hidden;
+    overflow-y: auto;
+    padding-right: 4px;
 }
 
 .account-sidebar {
-    position: sticky;
-    top: 24px;
     display: grid;
-    min-height: calc(100vh - 180px);
+    min-height: 0;
+    max-height: 100%;
     align-content: start;
     gap: 18px;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
     padding: 22px;
+    scrollbar-gutter: stable;
 }
 
 .account-sidebar h2 {
@@ -1683,8 +1715,22 @@ button:hover,
 }
 
 @media (max-width: 820px) {
+    body.accounts-dashboard,
+    body.app-dashboard {
+        display: block;
+        height: auto;
+        min-height: 100vh;
+        overflow-x: hidden;
+        overflow-y: auto;
+    }
+
     .page-shell {
         margin: 24px auto;
+    }
+
+    body.accounts-dashboard .page-shell,
+    body.app-dashboard .page-shell {
+        overflow: visible;
     }
 
     h1 {
@@ -1731,8 +1777,14 @@ button:hover,
     }
 
     .account-sidebar {
-        position: static;
         min-height: auto;
+        max-height: none;
+        overflow: visible;
+    }
+
+    .account-content {
+        overflow: visible;
+        padding-right: 0;
     }
 
     .account-nav {
