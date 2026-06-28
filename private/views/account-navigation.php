@@ -8,6 +8,7 @@ if (!function_exists('application_shell_base_urls')) {
         $fallbacks = [
             'accounts' => ['accounts' => '.', 'app' => '../app'],
             'app' => ['accounts' => '../accounts', 'app' => '.'],
+            'app_lead_hub' => ['accounts' => '../../accounts', 'app' => '..'],
             'app_247sp' => ['accounts' => '../../accounts', 'app' => '..'],
             'app_admin' => ['accounts' => '../../accounts', 'app' => '..'],
         ];
@@ -121,13 +122,18 @@ if (!function_exists('application_navigation')) {
             ['icon' => '👤', 'label' => 'Profile', 'href' => $baseUrls['accounts'] . '/profile.php', 'current' => $current === 'profile'],
         ];
 
+        $leadHubItem = ['icon' => '▦', 'label' => 'Lead Hub', 'href' => application_shell_href($baseUrls['app'], 'dashboard.php', $business), 'current' => $current === 'lead_hub'];
+        if ($current === 'lead_hub' && isset($options['secondary_nav']) && is_array($options['secondary_nav'])) {
+            $leadHubItem['children'] = $options['secondary_nav'];
+        }
+
         $salesPartnerItem = ['icon' => '24', 'label' => '24/7 Sales Partner', 'href' => application_shell_href($baseUrls['app'], '247sp/dashboard.php', $business), 'current' => $current === '247sp'];
         if ($current === '247sp' && isset($options['secondary_nav']) && is_array($options['secondary_nav'])) {
             $salesPartnerItem['children'] = $options['secondary_nav'];
         }
 
         $workspaceItems = [
-            ['icon' => '▦', 'label' => 'Lead Hub', 'href' => application_shell_href($baseUrls['app'], 'dashboard.php', $business), 'current' => $current === 'lead_hub'],
+            $leadHubItem,
             $salesPartnerItem,
         ];
 

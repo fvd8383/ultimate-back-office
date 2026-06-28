@@ -7,10 +7,8 @@ Session::requireAuth('login.php');
 
 $testingNotice = '';
 $normalizeEnterpriseModules = false;
-$appBaseUrl = '../app';
 
 try {
-    $appBaseUrl = rtrim((string) Database::config('APP_BASE_URL', '../app'), '/');
     $user = Auth::currentUser();
 
     if ($user === null) {
@@ -62,17 +60,6 @@ function dashboard_testing_tools_enabled(): bool
 
 function dashboard_has_enterprise_access(array $businesses): bool
 {
-    return false;
-}
-
-function dashboard_business_has_module(array $business, string $moduleKey): bool
-{
-    foreach ($business['active_modules'] ?? [] as $module) {
-        if (($module['module_key'] ?? '') === $moduleKey) {
-            return true;
-        }
-    }
-
     return false;
 }
 
@@ -136,9 +123,6 @@ account_shell_begin('dashboard');
                             <?php endif; ?>
                         </div>
                         <div class="business-actions" aria-label="Business actions for <?= e($business['business_name']) ?>">
-                            <?php if (dashboard_business_has_module($business, '247sp')): ?>
-                                <?= ui_button('Open 24/7 Sales Partner', $appBaseUrl . '/247sp/dashboard.php?business_id=' . urlencode((string) $business['id']), 'primary', ['class' => 'ubo-dashboard-action ubo-dashboard-action--247sp']) ?>
-                            <?php endif; ?>
                             <?= ui_button('Edit Business', 'business.php?business_id=' . urlencode((string) $business['id']), 'secondary', ['class' => 'ubo-dashboard-action']) ?>
                         </div>
                     </div>
