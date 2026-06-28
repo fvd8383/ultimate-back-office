@@ -56,25 +56,13 @@ $layoutHomeHref = 'dashboard.php';
 $layoutUserName = $user ? trim((string) $user['first_name'] . ' ' . (string) $user['last_name']) : '';
 $layoutLogoutHref = 'logout.php';
 require __DIR__ . '/../../private/views/header.php';
+require __DIR__ . '/../../private/views/account-navigation.php';
+account_shell_begin('billing');
 ?>
-<section class="dashboard-grid">
-    <div class="dashboard-card dashboard-card--wide">
-        <p class="eyebrow">Accounts</p>
-        <h1>Billing</h1>
-        <p class="muted">View subscription records, fees, and active product access for your linked businesses. Billing records and module access are tracked separately.</p>
-    </div>
-
-    <div class="dashboard-card">
-        <h2>Navigation</h2>
-        <div class="button-row">
-            <?= ui_button('Dashboard', 'dashboard.php', 'secondary') ?>
-            <?= ui_button('Businesses', 'business.php', 'secondary') ?>
-            <?= ui_button('Billing', 'billing.php', 'secondary') ?>
-            <?= ui_button('Domains', 'domains.php', 'secondary') ?>
-            <?= ui_button('Email', 'email.php', 'secondary') ?>
-            <?= ui_button('Logout', 'logout.php') ?>
-        </div>
-    </div>
+<section class="dashboard-card dashboard-card--wide">
+    <p class="eyebrow">Accounts</p>
+    <h1>Billing</h1>
+    <p class="muted">View subscription records, fees, and active product access for your linked businesses. Billing records and module access are tracked separately.</p>
 </section>
 
 <?php if ($loadError !== ''): ?>
@@ -121,4 +109,5 @@ require __DIR__ . '/../../private/views/header.php';
         </div>
     </section>
 <?php endif; ?>
+<?php account_shell_end(); ?>
 <?php require __DIR__ . '/../../private/views/footer.php'; ?>

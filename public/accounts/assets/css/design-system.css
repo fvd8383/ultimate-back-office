@@ -213,6 +213,7 @@ button:hover,
 .ubo-card,
 .auth-panel__content,
 .dashboard-card,
+.account-sidebar,
 .app-sidebar,
 .hero-panel,
 .empty-state,
@@ -400,6 +401,82 @@ button:hover,
 
 .dashboard-card--wide {
     min-height: 180px;
+}
+
+.account-layout {
+    display: grid;
+    grid-template-columns: 248px minmax(0, 1fr);
+    gap: 24px;
+    align-items: start;
+}
+
+.account-content {
+    display: grid;
+    min-width: 0;
+    gap: 20px;
+}
+
+.account-sidebar {
+    position: sticky;
+    top: 24px;
+    display: grid;
+    min-height: calc(100vh - 180px);
+    align-content: start;
+    gap: 18px;
+    padding: 22px;
+}
+
+.account-sidebar h2 {
+    margin: 0;
+    font-size: 20px;
+}
+
+.account-nav {
+    display: grid;
+    gap: 8px;
+}
+
+.account-nav__item {
+    display: flex;
+    min-height: 46px;
+    align-items: center;
+    gap: 10px;
+    border: 1px solid transparent;
+    border-radius: var(--ubo-radius-control);
+    color: var(--ubo-muted);
+    padding: 10px 12px;
+    text-decoration: none;
+}
+
+.account-nav__item:hover {
+    border-color: var(--ubo-line);
+    background: var(--ubo-bg);
+    color: var(--ubo-charcoal);
+}
+
+.account-nav__item[aria-current="page"] {
+    border-color: rgba(59, 108, 122, .18);
+    background: rgba(59, 108, 122, .10);
+    color: var(--ubo-primary);
+    font-weight: 700;
+}
+
+.account-nav__icon {
+    width: 24px;
+    flex: 0 0 24px;
+    font-size: 18px;
+    line-height: 1;
+    text-align: center;
+}
+
+.account-nav__footer {
+    border-top: 1px solid var(--ubo-line);
+    margin-top: 6px;
+    padding-top: 14px;
+}
+
+.account-nav__logout {
+    color: var(--ubo-charcoal);
 }
 
 .eyebrow {
@@ -1457,6 +1534,7 @@ button:hover,
     }
 
     .dashboard-grid,
+    .account-layout,
     .business-list__item,
     .form-grid,
     .step-nav,
@@ -1486,6 +1564,15 @@ button:hover,
     .business-actions {
         width: 100%;
         grid-template-columns: 1fr;
+    }
+
+    .account-sidebar {
+        position: static;
+        min-height: auto;
+    }
+
+    .account-nav {
+        grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr));
     }
 
     .app-sidebar {
