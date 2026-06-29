@@ -1,6 +1,6 @@
 # Ultimate Back Office
 
-Ultimate Back Office is a raw PHP/LAMP business operating platform for service businesses. Sprint 1 builds the Accounts OTP login foundation and the first Lead Hub shell. Sprint 2 adds the business onboarding, service selection, and module activation foundation.
+Ultimate Back Office is a raw PHP/LAMP business operating platform for service businesses. It includes the Accounts area, persistent workspace shell, Lead Hub, 24/7 Sales Partner, admin tools, and the supporting business, billing, domain, email, and website-management foundations.
 
 ## Environment Configuration
 
@@ -149,7 +149,7 @@ The deployed web roots are:
 - `public/accounts`
 - `public/app`
 
-`public/accounts` handles OTP login, verification, logout, and account-level dashboard access. `public/app` contains the authenticated Lead Hub shell.
+`public/accounts` handles OTP login, verification, logout, and account-level dashboard access. `public/app` contains the authenticated workspace, module, and admin application shell.
 
 ## Business Onboarding
 
@@ -401,4 +401,4 @@ Shared layout files live in `shared/ui/layout`:
 - `sidebar.php` renders simple dashboard navigation.
 - `footer.php` renders the shared footer.
 
-Accounts and Lead Hub pages should use these shared styles, components, and layouts before adding product-specific presentation. Product modules should keep business logic separate from these UI helpers.
+Account, workspace, admin, and module pages should use these shared styles, components, and layouts before adding product-specific presentation. Product modules should keep business logic separate from these UI helpers.

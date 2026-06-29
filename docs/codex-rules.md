@@ -918,7 +918,7 @@ Activity logs
 ## Second
 
 ```text
-Lead Hub shell
+Workspace shell
 Contacts
 Contact statuses
 Notes

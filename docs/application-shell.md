@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This document defines the persistent application layout and navigation standards for Ultimate Back Office (UBO). Account pages, workspace pages, admin pages, customer modules, and future products should use this shell unless a later sprint explicitly changes the platform layout.
+This document defines the persistent application layout and navigation standards for Ultimate Back Office (UBO). Account pages, workspace pages, admin pages, customer modules, and future products should use this shell unless the platform layout standard changes.
 
 The shell must help customers and internal users understand:
 
@@ -50,7 +50,7 @@ ADMIN
 Log out
 ```
 
-Icons should appear with labels. Sprint 8.5 may use simple temporary text or symbol icons because the repo does not currently include a shared icon library. A future design-system pass should replace temporary icons with the chosen shared icon set.
+Icons should appear with labels. The current shell uses simple text or symbol icons because the repo does not currently include a shared icon library.
 
 ## Account Section
 
@@ -65,7 +65,7 @@ Current routing:
 * Email: `public/accounts/email.php`
 * Profile: `public/accounts/profile.php`
 
-No standalone `public/accounts/businesses.php` route exists in Sprint 8.5, so Businesses uses the dashboard businesses section rather than inventing a new route.
+Businesses uses the dashboard businesses section because no standalone `public/accounts/businesses.php` route is currently implemented.
 
 ## Workspace Section
 
@@ -142,14 +142,12 @@ Customer-facing account and workspace links are visible to signed-in users. Modu
 
 ## Mobile Behavior
 
-Sprint 8.5 uses a responsive left navigation shell:
+Sprint 8.5 delivered a responsive left navigation shell:
 
 * desktop uses a persistent scrollable left rail beside content
 * smaller screens stack the navigation above content
 * navigation sections wrap without horizontal scrolling
 * active state remains visible
-
-A future design-system sprint may replace the stacked mobile layout with a hamburger drawer, but the current implementation must remain usable without horizontal scrolling.
 
 ## Scroll Behavior
 
@@ -162,19 +160,11 @@ Desktop account and app shell pages use a viewport-height frame:
 
 On smaller screens, the shell returns to normal stacked page scrolling so navigation and content remain reachable without narrow independent scroll panes.
 
-ACCOUNT, WORKSPACE, and ADMIN sections may become collapsible in a future design-system sprint if the number of modules grows. Independent sidebar scrolling is the preferred Sprint 8.5 behavior, so collapsible sections are optional future polish rather than required behavior.
-
 ## Business Context
 
 Module pages should display the selected business in the content area, typically in the hero/header panel. Customers should be able to tell which business they are editing before changing module data.
 
-Business-specific actions belong in business cards or business pages, not in the global shell. Examples:
-
-* Edit Business
-* Open 24/7 Sales Partner
-* Billing
-* Domains
-* Email
+Business-specific actions belong in business cards or business pages, not in duplicated navigation groups. The account dashboard business cards currently keep only the business overview and Edit Business action; module and account destinations belong in the global shell.
 
 ## Base URL Rules
 

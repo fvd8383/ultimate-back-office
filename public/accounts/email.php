@@ -43,7 +43,7 @@ try {
         $assignments = EmailProvisioningFoundation::customerMailboxAssignmentsForUser((int) $user['id']);
     }
 } catch (Throwable $exception) {
-    $loadError = 'Email information could not be loaded. Run the Sprint 8 migration and check the database setup.';
+    $loadError = 'Email information could not be loaded. Check setup and try again.';
 }
 
 function accounts_email_count(array $business, string $key): int
