@@ -65,11 +65,47 @@ function admin_site_editor_image_preview(?string $path, string $label): string
     return '<img src="' . e($path) . '" alt="' . e($label) . ' preview">';
 }
 
+function admin_site_editor_file_preview(?string $path, string $label): string
+{
+    if ($path === null || $path === '') {
+        return '<span class="website-manager-empty">No ' . e($label) . ' uploaded</span>';
+    }
+
+    return '<a href="' . e($path) . '" target="_blank" rel="noopener">View uploaded ' . e($label) . '</a>';
+}
+
+function admin_site_editor_primary_cta_labels(): array
+{
+    return ['Call Now', 'Request Service', 'Book Appointment', 'Instant Quote', 'Get Estimate', 'Request Inspection', 'Apply Now', 'Reserve Spot'];
+}
+
+function admin_site_editor_secondary_cta_labels(): array
+{
+    return ['Free Estimate', 'Contact Us', 'View Pricing', 'Learn More'];
+}
+
+function admin_site_editor_cta_behaviors(): array
+{
+    return [
+        'call_now' => 'Call',
+        'contact_form' => 'Contact Form',
+        'view_pricing' => 'View Pricing',
+    ];
+}
+
 function admin_site_editor_cta_type(array $overrides, string $slot, string $fallback): string
 {
     $value = (string) ($overrides['home'][$slot . '_cta_type'] ?? $fallback);
 
-    return in_array($value, ['call_now', 'contact_form', 'schedule_service', 'request_service', 'instant_quote'], true) ? $value : $fallback;
+    if (in_array($value, ['call_now', 'contact_form', 'view_pricing'], true)) {
+        return $value;
+    }
+
+    if (in_array($value, ['schedule_service', 'request_service', 'instant_quote'], true)) {
+        return 'contact_form';
+    }
+
+    return in_array($fallback, ['call_now', 'contact_form', 'view_pricing'], true) ? $fallback : 'contact_form';
 }
 
 function admin_site_editor_stat(array $overrides, array $homeContent, int $number, string $fallbackValue, string $fallbackLabel): array
@@ -239,8 +275,9 @@ if ($primaryCtaFallback === '') {
 }
 $primaryCtaLabel = admin_site_editor_value($overrides, 'home', 'primary_cta_label', $primaryCtaFallback);
 $primaryCtaType = admin_site_editor_cta_type($overrides, 'primary', (string) ($homeContent['primary_cta']['type'] ?? 'call_now'));
-$secondaryCtaLabel = admin_site_editor_value($overrides, 'home', 'secondary_cta_label', (string) ($homeContent['secondary_cta']['label'] ?? 'Request Service'));
-$secondaryCtaType = admin_site_editor_cta_type($overrides, 'secondary', (string) ($homeContent['secondary_cta']['type'] ?? 'request_service'));
+$secondaryCtaLabel = admin_site_editor_value($overrides, 'home', 'secondary_cta_label', (string) ($homeContent['secondary_cta']['label'] ?? 'Contact Us'));
+$secondaryCtaType = admin_site_editor_cta_type($overrides, 'secondary', (string) ($homeContent['secondary_cta']['type'] ?? 'contact_form'));
+$pricingListPath = admin_site_editor_value($overrides, 'home', 'pricing_list_path', (string) ($homeContent['pricing_list_path'] ?? ''));
 $homeStats = [
     1 => admin_site_editor_stat($overrides, $homeContent, 1, 'Local', 'Service'),
     2 => admin_site_editor_stat($overrides, $homeContent, 2, (string) count($bundle['service_pages']), 'Core services available'),
@@ -343,27 +380,45 @@ admin_begin('Website Editor', 'websites', $context);
                 <textarea name="home_subheadline" rows="4" required><?= e($homeSubheadline) ?></textarea>
             </label>
             <label>Primary CTA Label
-                <input type="text" name="home_call_to_action" value="<?= e($primaryCtaLabel) ?>" required>
+                <select name="home_call_to_action" required>
+                    <?php foreach (admin_site_editor_primary_cta_labels() as $label): ?>
+                        <option value="<?= e($label) ?>" <?= $primaryCtaLabel === $label ? 'selected' : '' ?>><?= e($label) ?></option>
+                    <?php endforeach; ?>
+                    <?php if ($primaryCtaLabel !== '' && !in_array($primaryCtaLabel, admin_site_editor_primary_cta_labels(), true)): ?>
+                        <option value="<?= e($primaryCtaLabel) ?>" selected><?= e($primaryCtaLabel) ?></option>
+                    <?php endif; ?>
+                </select>
             </label>
             <div class="form-grid">
-                <label>Primary CTA Type
+                <label>Primary CTA Behavior
                     <select name="primary_cta_type">
-                        <?php foreach (['call_now' => 'Call Now', 'contact_form' => 'Contact Form', 'schedule_service' => 'Schedule Service', 'request_service' => 'Request Service', 'instant_quote' => 'Instant Quote'] as $value => $label): ?>
+                        <?php foreach (admin_site_editor_cta_behaviors() as $value => $label): ?>
                             <option value="<?= e($value) ?>" <?= $primaryCtaType === $value ? 'selected' : '' ?>><?= e($label) ?></option>
                         <?php endforeach; ?>
                     </select>
                 </label>
                 <label>Secondary CTA Label
-                    <input type="text" name="secondary_cta_label" value="<?= e($secondaryCtaLabel) ?>">
+                    <select name="secondary_cta_label">
+                        <?php foreach (admin_site_editor_secondary_cta_labels() as $label): ?>
+                            <option value="<?= e($label) ?>" <?= $secondaryCtaLabel === $label ? 'selected' : '' ?>><?= e($label) ?></option>
+                        <?php endforeach; ?>
+                        <?php if ($secondaryCtaLabel !== '' && !in_array($secondaryCtaLabel, admin_site_editor_secondary_cta_labels(), true)): ?>
+                            <option value="<?= e($secondaryCtaLabel) ?>" selected><?= e($secondaryCtaLabel) ?></option>
+                        <?php endif; ?>
+                    </select>
                 </label>
-                <label>Secondary CTA Type
+                <label>Secondary CTA Behavior
                     <select name="secondary_cta_type">
-                        <?php foreach (['request_service' => 'Request Service', 'contact_form' => 'Contact Form', 'schedule_service' => 'Schedule Service', 'instant_quote' => 'Instant Quote', 'call_now' => 'Call Now'] as $value => $label): ?>
+                        <?php foreach (admin_site_editor_cta_behaviors() as $value => $label): ?>
                             <option value="<?= e($value) ?>" <?= $secondaryCtaType === $value ? 'selected' : '' ?>><?= e($label) ?></option>
                         <?php endforeach; ?>
                     </select>
                 </label>
             </div>
+            <label>Pricing List
+                <span class="website-manager-preview"><?= admin_site_editor_file_preview($pricingListPath, 'pricing list') ?></span>
+                <input type="file" name="pricing_list" accept=".pdf,.png,.jpg,.jpeg,.webp,application/pdf,image/png,image/jpeg,image/webp">
+            </label>
             <div class="form-grid">
                 <?php foreach ($homeStats as $statNumber => $stat): ?>
                     <fieldset>

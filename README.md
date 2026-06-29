@@ -346,7 +346,15 @@ The DFY admin site editor at `public/app/admin/website-editor.php` reuses the ex
 
 Business display phone, email, and service area remain sourced from the existing business profile and 247SP onboarding records; the DFY editor shows that context and does not create separate display-field overrides.
 
-247SP CTA types currently support customer-facing labels and routing behavior. `call_now` links to the business phone number. `contact_form`, `request_service`, `schedule_service`, and `instant_quote` route to the contact page until service-specific workflows are added. Future service-specific CTA forms may collect bedrooms and bathrooms for cleaning, property size for lawn care, and onsite inspection requests for roofing, electrical, and plumbing.
+247SP CTA controls support customer-facing primary labels such as Call Now, Request Service, Book Appointment, Instant Quote, Get Estimate, Request Inspection, Apply Now, and Reserve Spot. Secondary labels support Free Estimate, Contact Us, View Pricing, and Learn More.
+
+Only three CTA behaviors are active in Sprint 8.5 closeout:
+
+- `call_now` links to the business phone number.
+- `contact_form` routes to the contact page.
+- `view_pricing` links to the uploaded pricing list when one exists, otherwise routes to the contact page.
+
+Pricing lists are uploaded through the shared 247SP Website Manager and DFY admin editor upload flow under `public/app/uploads/pricing-lists/`. Supported pricing-list file types are PDF, PNG, JPG/JPEG, and WEBP. Future service-specific forms may collect bedrooms and bathrooms for cleaning, property size for lawn care, and onsite inspection requests for roofing, electrical, and plumbing, but this sprint does not add calculators, scheduling engines, quote engines, application workflows, reservations, checkout, or ecommerce.
 
 Future paid service/SEO page bundles may expose more service page capacity and self-serve page management to customers. This sprint only adds admin-side structure management and does not add bundle billing logic.
 

@@ -1076,6 +1076,7 @@ button:hover,
 .site-preview-nav a:hover,
 .site-preview-nav-menu:hover .site-preview-nav-trigger,
 .site-preview-nav-menu:focus-within .site-preview-nav-trigger,
+.site-preview-nav-menu.is-active .site-preview-nav-trigger,
 .site-preview-nav .is-active {
     background: rgba(49, 68, 211, .10);
     color: var(--preview-blue);
@@ -1083,6 +1084,22 @@ button:hover,
 
 .site-preview-nav-menu {
     position: relative;
+}
+
+.site-preview-nav-trigger {
+    cursor: pointer;
+    display: inline-flex;
+    list-style: none;
+}
+
+.site-preview-nav-trigger::-webkit-details-marker {
+    display: none;
+}
+
+.site-preview-nav-trigger::after {
+    content: "v";
+    font-size: 10px;
+    margin-left: 6px;
 }
 
 .site-preview-nav-dropdown {
@@ -1101,7 +1118,8 @@ button:hover,
 }
 
 .site-preview-nav-menu:hover .site-preview-nav-dropdown,
-.site-preview-nav-menu:focus-within .site-preview-nav-dropdown {
+.site-preview-nav-menu:focus-within .site-preview-nav-dropdown,
+.site-preview-nav-menu[open] .site-preview-nav-dropdown {
     display: grid;
     gap: 4px;
 }
@@ -1190,6 +1208,12 @@ button:hover,
     flex-wrap: wrap;
     gap: 12px;
     margin-top: 24px;
+}
+
+.site-preview-cta-note {
+    color: var(--preview-muted);
+    font-size: 14px;
+    margin-top: 12px;
 }
 
 .site-preview-hero-card,
@@ -1874,11 +1898,15 @@ button:hover,
 
     .site-preview-nav-dropdown {
         box-shadow: none;
-        display: grid;
+        display: none;
         left: auto;
         margin-top: 6px;
         position: static;
         transform: none;
+    }
+
+    .site-preview-nav-menu[open] .site-preview-nav-dropdown {
+        display: grid;
     }
 
     .site-preview-hero,

@@ -189,7 +189,7 @@ function sp247_preview_tel_href(string $phone): string
     return $digits !== '' ? 'tel:' . $digits : '#';
 }
 
-function sp247_preview_cta(array $content, array $overrides, string $slot, string $defaultType, string $defaultLabel, int $businessId, string $phoneHref): array
+function sp247_preview_cta(array $content, array $overrides, string $slot, string $defaultType, string $defaultLabel, int $businessId, string $phoneHref, string $pricingListPath): array
 {
     $generated = $content[$slot . '_cta'] ?? [];
     if (!is_array($generated)) {
@@ -197,18 +197,36 @@ function sp247_preview_cta(array $content, array $overrides, string $slot, strin
     }
 
     $type = (string) (($overrides['home'][$slot . '_cta_type'] ?? '') ?: ($generated['type'] ?? $defaultType));
-    if (!in_array($type, ['call_now', 'contact_form', 'schedule_service', 'request_service', 'instant_quote'], true)) {
-        $type = $defaultType;
+    if (in_array($type, ['schedule_service', 'request_service', 'instant_quote'], true)) {
+        $type = 'contact_form';
+    }
+    if (!in_array($type, ['call_now', 'contact_form', 'view_pricing'], true)) {
+        $type = in_array($defaultType, ['call_now', 'contact_form', 'view_pricing'], true) ? $defaultType : 'contact_form';
     }
 
     $label = (string) (($overrides['home'][$slot . '_cta_label'] ?? '') ?: ($generated['label'] ?? $defaultLabel));
-    $href = $type === 'call_now' ? $phoneHref : sp247_preview_href($businessId, 'contact');
+    if (strcasecmp($label, 'View Pricing') === 0) {
+        $type = 'view_pricing';
+    }
+
+    $href = sp247_preview_href($businessId, 'contact');
+    if ($type === 'call_now') {
+        $href = $phoneHref;
+    }
+    if ($type === 'view_pricing' && $pricingListPath !== '') {
+        $href = $pricingListPath;
+    }
 
     return [
         'type' => $type,
         'label' => $label,
         'href' => $href,
     ];
+}
+
+function sp247_preview_cta_is_pricing(array $cta): bool
+{
+    return ($cta['type'] ?? '') === 'view_pricing' || strcasecmp((string) ($cta['label'] ?? ''), 'View Pricing') === 0;
 }
 
 function sp247_preview_home_stats(array $homeContent, array $overrides, int $serviceCount): array
@@ -325,8 +343,10 @@ function sp247_preview_apply_overrides(array $content, string $pageType, int $se
         $content['subheadline'] = (string) (($overrides['home']['subheadline'] ?? '') ?: ($content['subheadline'] ?? $content['business_description'] ?? ''));
         $content['business_description'] = $content['subheadline'];
         $content['call_to_action'] = (string) (($overrides['home']['call_to_action'] ?? '') ?: ($content['call_to_action'] ?? ''));
-        $content['primary_cta'] = sp247_preview_cta($content, $overrides, 'primary', 'call_now', 'Call Now', 0, '#');
-        $content['secondary_cta'] = sp247_preview_cta($content, $overrides, 'secondary', 'request_service', 'Request Service', 0, '#');
+        $pricingListPath = (string) (($overrides['home']['pricing_list_path'] ?? '') ?: ($content['pricing_list_path'] ?? ''));
+        $content['pricing_list_path'] = $pricingListPath;
+        $content['primary_cta'] = sp247_preview_cta($content, $overrides, 'primary', 'call_now', 'Call Now', 0, '#', $pricingListPath);
+        $content['secondary_cta'] = sp247_preview_cta($content, $overrides, 'secondary', 'contact_form', 'Contact Us', 0, '#', $pricingListPath);
         $content['hero_image_path'] = (string) (($overrides['home']['hero_image_path'] ?? '') ?: ($branding['hero_image_path'] ?? ($content['hero_image_path'] ?? '')));
     }
 
@@ -394,8 +414,11 @@ $currentPageType = (string) ($currentPage['page_type'] ?? '');
 $heroImage = (string) (($content['hero_image_path'] ?? '') ?: ($currentPageType === 'home' ? ($homeContent['hero_image_path'] ?? '') : ''));
 $aboutImage = (string) ($content['about_image_path'] ?? '');
 $serviceImage = (string) ($content['service_image_path'] ?? '');
-$primaryCta = sp247_preview_cta($homeContent, $contentOverrides, 'primary', 'call_now', (string) (($homeContent['call_to_action'] ?? '') ?: 'Call Now'), $businessIdForLinks, $phoneHref);
-$secondaryCta = sp247_preview_cta($homeContent, $contentOverrides, 'secondary', 'request_service', 'Request Service', $businessIdForLinks, $phoneHref);
+$pricingListPath = (string) ($homeContent['pricing_list_path'] ?? '');
+$primaryCta = sp247_preview_cta($homeContent, $contentOverrides, 'primary', 'call_now', (string) (($homeContent['call_to_action'] ?? '') ?: 'Call Now'), $businessIdForLinks, $phoneHref, $pricingListPath);
+$secondaryCta = sp247_preview_cta($homeContent, $contentOverrides, 'secondary', 'contact_form', 'Contact Us', $businessIdForLinks, $phoneHref, $pricingListPath);
+$showPricingCta = $pricingListPath !== '' && !sp247_preview_cta_is_pricing($primaryCta) && !sp247_preview_cta_is_pricing($secondaryCta);
+$showPricingFallbackCopy = $pricingListPath === '' && (sp247_preview_cta_is_pricing($primaryCta) || sp247_preview_cta_is_pricing($secondaryCta));
 $homeStats = sp247_preview_home_stats($homeContent, $contentOverrides, count($previewServices));
 $homeSlug = sp247_preview_page_slug($pages, 'home', 'home');
 $aboutSlug = sp247_preview_page_slug($pages, 'about', 'about');
@@ -456,8 +479,8 @@ require __DIR__ . '/../../../private/views/account-navigation.php';
                     <nav class="site-preview-nav" aria-label="Preview website navigation">
                         <a class="<?= $currentPageType === 'home' ? 'is-active' : '' ?>" href="<?= e(sp247_preview_href($businessIdForLinks, $homeSlug)) ?>">Home</a>
                         <?php if (count($serviceNavItems) > 0): ?>
-                            <div class="site-preview-nav-menu <?= $currentPageType === 'service' ? 'is-active' : '' ?>">
-                                <a class="site-preview-nav-trigger" href="<?= e(sp247_preview_href($businessIdForLinks, $homeSlug)) ?>#services">Services</a>
+                            <details class="site-preview-nav-menu <?= $currentPageType === 'service' ? 'is-active' : '' ?>">
+                                <summary class="site-preview-nav-trigger">Services</summary>
                                 <div class="site-preview-nav-dropdown">
                                     <?php foreach ($serviceNavItems as $serviceNavItem): ?>
                                         <a class="<?= $currentPage && (int) $currentPage['id'] === (int) $serviceNavItem['page_id'] ? 'is-active' : '' ?>" href="<?= e(sp247_preview_href($businessIdForLinks, (string) $serviceNavItem['slug'])) ?>">
@@ -470,7 +493,7 @@ require __DIR__ . '/../../../private/views/account-navigation.php';
                                         <?php endforeach; ?>
                                     <?php endforeach; ?>
                                 </div>
-                            </div>
+                            </details>
                         <?php endif; ?>
                         <a class="<?= $currentPageType === 'about' ? 'is-active' : '' ?>" href="<?= e(sp247_preview_href($businessIdForLinks, $aboutSlug)) ?>">About</a>
                         <a class="<?= $currentPageType === 'contact' ? 'is-active' : '' ?>" href="<?= e(sp247_preview_href($businessIdForLinks, $contactSlug)) ?>">Contact</a>
@@ -497,7 +520,13 @@ require __DIR__ . '/../../../private/views/account-navigation.php';
                         <div class="site-preview-actions">
                             <a class="site-preview-button" href="<?= e($primaryCta['href']) ?>"><?= e($primaryCta['label']) ?></a>
                             <a class="site-preview-button site-preview-button--secondary" href="<?= e($secondaryCta['href']) ?>"><?= e($secondaryCta['label']) ?></a>
+                            <?php if ($showPricingCta): ?>
+                                <a class="site-preview-button site-preview-button--secondary" href="<?= e($pricingListPath) ?>" target="_blank" rel="noopener">View Pricing</a>
+                            <?php endif; ?>
                         </div>
+                        <?php if ($showPricingFallbackCopy): ?>
+                            <p class="site-preview-cta-note">Tell us what you need and we will help with pricing and next steps.</p>
+                        <?php endif; ?>
                     </div>
                     <aside class="site-preview-hero-card">
                         <?php if ($heroImage !== ''): ?>
