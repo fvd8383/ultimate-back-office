@@ -40,7 +40,11 @@ admin_begin('Websites', 'websites', $context);
                     <span><?= e($website['template_name']) ?></span>
                     <span><?= ui_badge(AdminPortal::statusLabel($website['status']), 'status') ?></span>
                     <span><?= e($website['generated_at']) ?></span>
-                    <span><a href="website.php?website_id=<?= e($website['id']) ?>">Open</a></span>
+                    <span>
+                        <a href="website.php?website_id=<?= e($website['id']) ?>">Open</a>
+                        ·
+                        <a href="website-editor.php?business_id=<?= e($website['business_id']) ?>">Edit Site</a>
+                    </span>
                 </div>
             <?php endforeach; ?>
             <?php if (count($websites) === 0): ?>
