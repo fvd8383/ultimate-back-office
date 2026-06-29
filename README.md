@@ -332,6 +332,7 @@ Website controls support:
 - View generated website details.
 - View a read-only asset and branding summary.
 - Edit 24/7 Sales Partner website branding, page content, service content, and upload assets through the DFY admin site editor.
+- Edit service page supporting copy, trust cards, and page-specific hero images through the shared 247SP website override model.
 - Generate websites from completed 247SP onboarding.
 - Regenerate websites from the latest 247SP onboarding data.
 - Open the existing private preview.

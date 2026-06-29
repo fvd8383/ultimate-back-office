@@ -124,7 +124,8 @@ final class WebsiteManager
             }
         }
 
-        $contentFields = self::contentFieldsFromInput($input);
+        $existingOverrides = self::contentOverridesForBusiness($businessId);
+        $contentFields = self::contentFieldsFromInput($input, $existingOverrides);
         $serviceImages = self::serviceImagesForBusiness($businessId);
 
         for ($serviceNumber = 1; $serviceNumber <= 3; $serviceNumber++) {
@@ -137,6 +138,28 @@ final class WebsiteManager
 
             if ($uploadedPath !== null) {
                 $serviceImages[$serviceNumber] = $uploadedPath;
+            }
+
+            $serviceHeroPath = self::storeUploadedFile($businessId, 'service_' . $serviceNumber . '_hero_image', $files, [
+                'directory' => 'page-hero-images',
+                'extensions' => ['png', 'jpg', 'jpeg'],
+                'mimes' => ['image/png', 'image/jpeg'],
+            ]);
+
+            if ($serviceHeroPath !== null) {
+                $contentFields['service_' . $serviceNumber]['hero_image_path'] = $serviceHeroPath;
+            }
+        }
+
+        foreach (['about' => 'about_hero_image', 'contact' => 'contact_hero_image'] as $pageKey => $fieldName) {
+            $pageHeroPath = self::storeUploadedFile($businessId, $fieldName, $files, [
+                'directory' => 'page-hero-images',
+                'extensions' => ['png', 'jpg', 'jpeg'],
+                'mimes' => ['image/png', 'image/jpeg'],
+            ]);
+
+            if ($pageHeroPath !== null) {
+                $contentFields[$pageKey]['hero_image_path'] = $pageHeroPath;
             }
         }
 
@@ -165,7 +188,7 @@ final class WebsiteManager
             : SiteGenerator::regenerateWebsite($businessId, $userId);
     }
 
-    private static function contentFieldsFromInput(array $input): array
+    private static function contentFieldsFromInput(array $input, array $existingOverrides): array
     {
         $fields = [
             'home' => [
@@ -183,14 +206,44 @@ final class WebsiteManager
             ],
         ];
 
+        self::carryOptionalOverride($fields, $input, $existingOverrides, 'about', 'hero_image_path', 'about_hero_image_path');
+        self::carryOptionalOverride($fields, $input, $existingOverrides, 'contact', 'hero_image_path', 'contact_hero_image_path');
+
         for ($serviceNumber = 1; $serviceNumber <= 3; $serviceNumber++) {
-            $fields['service_' . $serviceNumber] = [
+            $serviceKey = 'service_' . $serviceNumber;
+            $fields[$serviceKey] = [
                 'title' => self::requiredText($input, 'service_' . $serviceNumber . '_title', 'Service ' . $serviceNumber . ' title is required.'),
                 'description' => self::requiredText($input, 'service_' . $serviceNumber . '_description', 'Service ' . $serviceNumber . ' description is required.'),
             ];
+            self::carryOptionalOverride($fields, $input, $existingOverrides, $serviceKey, 'included_heading', $serviceKey . '_included_heading');
+            self::carryOptionalOverride($fields, $input, $existingOverrides, $serviceKey, 'included_description', $serviceKey . '_included_description');
+            self::carryOptionalOverride($fields, $input, $existingOverrides, $serviceKey, 'included_item_1', $serviceKey . '_included_item_1');
+            self::carryOptionalOverride($fields, $input, $existingOverrides, $serviceKey, 'included_item_2', $serviceKey . '_included_item_2');
+            self::carryOptionalOverride($fields, $input, $existingOverrides, $serviceKey, 'included_item_3', $serviceKey . '_included_item_3');
+            self::carryOptionalOverride($fields, $input, $existingOverrides, $serviceKey, 'trust_heading', $serviceKey . '_trust_heading');
+            self::carryOptionalOverride($fields, $input, $existingOverrides, $serviceKey, 'trust_1_title', $serviceKey . '_trust_1_title');
+            self::carryOptionalOverride($fields, $input, $existingOverrides, $serviceKey, 'trust_1_text', $serviceKey . '_trust_1_text');
+            self::carryOptionalOverride($fields, $input, $existingOverrides, $serviceKey, 'trust_2_title', $serviceKey . '_trust_2_title');
+            self::carryOptionalOverride($fields, $input, $existingOverrides, $serviceKey, 'trust_2_text', $serviceKey . '_trust_2_text');
+            self::carryOptionalOverride($fields, $input, $existingOverrides, $serviceKey, 'trust_3_title', $serviceKey . '_trust_3_title');
+            self::carryOptionalOverride($fields, $input, $existingOverrides, $serviceKey, 'trust_3_text', $serviceKey . '_trust_3_text');
+            self::carryOptionalOverride($fields, $input, $existingOverrides, $serviceKey, 'hero_image_path', $serviceKey . '_hero_image_path');
         }
 
         return $fields;
+    }
+
+    private static function carryOptionalOverride(array &$fields, array $input, array $existingOverrides, string $pageKey, string $fieldKey, string $inputKey): void
+    {
+        if (array_key_exists($inputKey, $input)) {
+            $value = trim((string) $input[$inputKey]);
+        } else {
+            $value = trim((string) ($existingOverrides[$pageKey][$fieldKey] ?? ''));
+        }
+
+        if ($value !== '') {
+            $fields[$pageKey][$fieldKey] = $value;
+        }
     }
 
     private static function requiredText(array $input, string $field, string $message): string

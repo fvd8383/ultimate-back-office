@@ -79,6 +79,44 @@ function admin_site_editor_service_area(?array $configuration): string
     return $serviceArea !== '' ? $serviceArea : 'Not set';
 }
 
+function admin_site_editor_service_included_items(array $overrides, string $serviceKey, array $generatedContent, string $serviceName): array
+{
+    $serviceLabel = strtolower($serviceName !== '' ? $serviceName : 'service');
+    $generatedItems = $generatedContent['included_items'] ?? [];
+    if (!is_array($generatedItems)) {
+        $generatedItems = [];
+    }
+
+    return [
+        admin_site_editor_value($overrides, $serviceKey, 'included_item_1', (string) ($generatedItems[0] ?? 'You need a clear assessment before a small ' . $serviceLabel . ' issue becomes a bigger problem.')),
+        admin_site_editor_value($overrides, $serviceKey, 'included_item_2', (string) ($generatedItems[1] ?? 'You want reliable help from a local business that explains the next step clearly.')),
+        admin_site_editor_value($overrides, $serviceKey, 'included_item_3', (string) ($generatedItems[2] ?? 'You are ready to schedule ' . $serviceLabel . ' and want the job handled professionally.')),
+    ];
+}
+
+function admin_site_editor_service_trust_cards(array $overrides, string $serviceKey, array $generatedContent, string $serviceArea): array
+{
+    $generatedCards = $generatedContent['trust_cards'] ?? [];
+    if (!is_array($generatedCards)) {
+        $generatedCards = [];
+    }
+
+    return [
+        [
+            'title' => admin_site_editor_value($overrides, $serviceKey, 'trust_1_title', (string) ($generatedCards[0]['title'] ?? 'Local')),
+            'text' => admin_site_editor_value($overrides, $serviceKey, 'trust_1_text', (string) ($generatedCards[0]['text'] ?? ($serviceArea !== '' ? 'Serving ' . $serviceArea : 'Service near you'))),
+        ],
+        [
+            'title' => admin_site_editor_value($overrides, $serviceKey, 'trust_2_title', (string) ($generatedCards[1]['title'] ?? 'Clear')),
+            'text' => admin_site_editor_value($overrides, $serviceKey, 'trust_2_text', (string) ($generatedCards[1]['text'] ?? 'Simple communication before work begins')),
+        ],
+        [
+            'title' => admin_site_editor_value($overrides, $serviceKey, 'trust_3_title', (string) ($generatedCards[2]['title'] ?? 'Ready')),
+            'text' => admin_site_editor_value($overrides, $serviceKey, 'trust_3_text', (string) ($generatedCards[2]['text'] ?? 'Call or request service when you need help')),
+        ],
+    ];
+}
+
 try {
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($businessId <= 0) {
@@ -145,6 +183,8 @@ try {
 $businessName = (string) ($business['business_name'] ?? '');
 $businessContent = $bundle['content'] ?? [];
 $configuration = $bundle['configuration'] ?? null;
+$serviceAreaDisplay = admin_site_editor_service_area($configuration);
+$serviceAreaForCopy = $serviceAreaDisplay !== 'Not set' ? $serviceAreaDisplay : '';
 $homeContent = admin_site_editor_content($pages, 'home');
 $aboutContent = admin_site_editor_content($pages, 'about');
 $contactContent = admin_site_editor_content($pages, 'contact');
@@ -154,8 +194,10 @@ $homeSubheadline = admin_site_editor_value($overrides, 'home', 'subheadline', (s
 $homeCallToAction = admin_site_editor_value($overrides, 'home', 'call_to_action', (string) ($homeContent['call_to_action'] ?? ('Call ' . $businessName . ' today to request service.')));
 $aboutHeading = admin_site_editor_value($overrides, 'about', 'heading', (string) ($aboutContent['about_heading'] ?? ('About ' . $businessName)));
 $aboutDescription = admin_site_editor_value($overrides, 'about', 'description', (string) ($aboutContent['company_description'] ?? $businessContent['about_company'] ?? ''));
+$aboutHeroImage = admin_site_editor_value($overrides, 'about', 'hero_image_path', (string) ($aboutContent['hero_image_path'] ?? $branding['about_image_path'] ?? ''));
 $contactHeading = admin_site_editor_value($overrides, 'contact', 'heading', (string) ($contactContent['contact_heading'] ?? ('Contact ' . $businessName)));
 $contactDescription = admin_site_editor_value($overrides, 'contact', 'description', (string) ($contactContent['contact_description'] ?? 'Tell us what you need and we will help you take the next step.'));
+$contactHeroImage = admin_site_editor_value($overrides, 'contact', 'hero_image_path', (string) ($contactContent['hero_image_path'] ?? ''));
 
 $detailHref = $website !== null
     ? 'website.php?website_id=' . urlencode((string) $website['id'])
@@ -205,7 +247,7 @@ admin_begin('Website Editor', 'websites', $context);
         <div class="summary-list">
             <div><dt>Display Phone</dt><dd><?= e($business['phone'] ?? 'Not set') ?></dd></div>
             <div><dt>Display Email</dt><dd><?= e($business['email'] ?? 'Not set') ?></dd></div>
-            <div><dt>Service Area</dt><dd><?= e(admin_site_editor_service_area($configuration)) ?></dd></div>
+            <div><dt>Service Area</dt><dd><?= e($serviceAreaDisplay) ?></dd></div>
         </div>
     </section>
 
@@ -227,8 +269,8 @@ admin_begin('Website Editor', 'websites', $context);
                     <span class="website-manager-preview"><?= admin_site_editor_image_preview($branding['logo_path'] ?? null, 'logo') ?></span>
                     <input type="file" name="logo" accept=".png,.jpg,.jpeg,.svg,image/png,image/jpeg,image/svg+xml">
                 </label>
-                <label>Hero Image
-                    <span class="website-manager-preview"><?= admin_site_editor_image_preview($branding['hero_image_path'] ?? null, 'hero image') ?></span>
+                <label>Home Hero Image
+                    <span class="website-manager-preview"><?= admin_site_editor_image_preview($branding['hero_image_path'] ?? null, 'home hero image') ?></span>
                     <input type="file" name="hero_image" accept=".png,.jpg,.jpeg,image/png,image/jpeg">
                 </label>
                 <label>About Image
@@ -259,6 +301,10 @@ admin_begin('Website Editor', 'websites', $context);
             <label>About Description
                 <textarea name="about_description" rows="6" required><?= e($aboutDescription) ?></textarea>
             </label>
+            <label>About Hero Image
+                <span class="website-manager-preview"><?= admin_site_editor_image_preview($aboutHeroImage, 'about hero image') ?></span>
+                <input type="file" name="about_hero_image" accept=".png,.jpg,.jpeg,image/png,image/jpeg">
+            </label>
         </section>
 
         <section class="business-switcher website-manager-section">
@@ -268,6 +314,10 @@ admin_begin('Website Editor', 'websites', $context);
             </label>
             <label>Contact Description
                 <textarea name="contact_description" rows="4" required><?= e($contactDescription) ?></textarea>
+            </label>
+            <label>Contact Hero Image
+                <span class="website-manager-preview"><?= admin_site_editor_image_preview($contactHeroImage, 'contact hero image') ?></span>
+                <input type="file" name="contact_hero_image" accept=".png,.jpg,.jpeg,image/png,image/jpeg">
             </label>
         </section>
 
@@ -281,6 +331,12 @@ admin_begin('Website Editor', 'websites', $context);
                     $generatedServiceContent = admin_site_editor_content($pages, 'service', $serviceNumber);
                     $serviceTitle = admin_site_editor_value($overrides, $serviceKey, 'title', (string) ($generatedServiceContent['service_name'] ?? $servicePage['service_name']));
                     $serviceDescription = admin_site_editor_value($overrides, $serviceKey, 'description', (string) ($generatedServiceContent['service_description'] ?? $servicePage['short_description']));
+                    $serviceHeroImage = admin_site_editor_value($overrides, $serviceKey, 'hero_image_path', (string) ($generatedServiceContent['hero_image_path'] ?? $branding['hero_image_path'] ?? ''));
+                    $serviceIncludedHeading = admin_site_editor_value($overrides, $serviceKey, 'included_heading', (string) ($generatedServiceContent['included_heading'] ?? ($serviceTitle . ' made straightforward')));
+                    $serviceIncludedDescription = admin_site_editor_value($overrides, $serviceKey, 'included_description', (string) ($generatedServiceContent['included_description'] ?? ($businessName . ' helps customers understand the issue, choose a practical next step, and get service scheduled without confusion.')));
+                    $serviceIncludedItems = admin_site_editor_service_included_items($overrides, $serviceKey, $generatedServiceContent, $serviceTitle);
+                    $serviceTrustHeading = admin_site_editor_value($overrides, $serviceKey, 'trust_heading', (string) ($generatedServiceContent['trust_heading'] ?? ('Why choose ' . $businessName . ' for ' . $serviceTitle)));
+                    $serviceTrustCards = admin_site_editor_service_trust_cards($overrides, $serviceKey, $generatedServiceContent, $serviceAreaForCopy);
                     ?>
                     <fieldset>
                         <legend><?= e('Service ' . $serviceNumber) ?></legend>
@@ -290,10 +346,38 @@ admin_begin('Website Editor', 'websites', $context);
                         <label>Service Description
                             <textarea name="service_<?= e($serviceNumber) ?>_description" rows="5" required><?= e($serviceDescription) ?></textarea>
                         </label>
+                        <label>Service Hero Image
+                            <span class="website-manager-preview"><?= admin_site_editor_image_preview($serviceHeroImage, 'service ' . $serviceNumber . ' hero image') ?></span>
+                            <input type="file" name="service_<?= e($serviceNumber) ?>_hero_image" accept=".png,.jpg,.jpeg,image/png,image/jpeg">
+                        </label>
                         <label>Service Image
                             <span class="website-manager-preview"><?= admin_site_editor_image_preview($serviceImages[$serviceNumber] ?? null, 'service ' . $serviceNumber . ' image') ?></span>
                             <input type="file" name="service_image_<?= e($serviceNumber) ?>" accept=".png,.jpg,.jpeg,image/png,image/jpeg">
                         </label>
+                        <label>What Is Included Heading
+                            <input type="text" name="service_<?= e($serviceNumber) ?>_included_heading" value="<?= e($serviceIncludedHeading) ?>">
+                        </label>
+                        <label>What Is Included Description
+                            <textarea name="service_<?= e($serviceNumber) ?>_included_description" rows="4"><?= e($serviceIncludedDescription) ?></textarea>
+                        </label>
+                        <?php foreach ($serviceIncludedItems as $index => $item): ?>
+                            <label><?= e('Included Bullet ' . ($index + 1)) ?>
+                                <textarea name="service_<?= e($serviceNumber) ?>_included_item_<?= e($index + 1) ?>" rows="3"><?= e($item) ?></textarea>
+                            </label>
+                        <?php endforeach; ?>
+                        <label>Trust Section Heading
+                            <input type="text" name="service_<?= e($serviceNumber) ?>_trust_heading" value="<?= e($serviceTrustHeading) ?>">
+                        </label>
+                        <?php foreach ($serviceTrustCards as $index => $trustCard): ?>
+                            <div class="form-grid">
+                                <label><?= e('Trust Card ' . ($index + 1) . ' Title') ?>
+                                    <input type="text" name="service_<?= e($serviceNumber) ?>_trust_<?= e($index + 1) ?>_title" value="<?= e($trustCard['title'] ?? '') ?>">
+                                </label>
+                                <label><?= e('Trust Card ' . ($index + 1) . ' Text') ?>
+                                    <input type="text" name="service_<?= e($serviceNumber) ?>_trust_<?= e($index + 1) ?>_text" value="<?= e($trustCard['text'] ?? '') ?>">
+                                </label>
+                            </div>
+                        <?php endforeach; ?>
                     </fieldset>
                 <?php endforeach; ?>
             </div>

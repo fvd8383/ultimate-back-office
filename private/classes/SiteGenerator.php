@@ -180,7 +180,7 @@ final class SiteGenerator
                     'special_offer' => (string) ($content['special_offer'] ?? ''),
                     'financing_available' => (int) ($content['financing_available'] ?? 0) === 1,
                     'call_to_action' => self::override($overrides, 'home', 'call_to_action', $cta),
-                    'hero_image_path' => (string) ($branding['hero_image_path'] ?? ''),
+                    'hero_image_path' => self::override($overrides, 'home', 'hero_image_path', (string) ($branding['hero_image_path'] ?? '')),
                 ],
             ],
         ];
@@ -191,6 +191,7 @@ final class SiteGenerator
             $serviceKey = 'service_' . $serviceNumber;
             $serviceName = self::override($overrides, $serviceKey, 'title', (string) $service['service_name']);
             $serviceDescription = self::override($overrides, $serviceKey, 'description', (string) $service['short_description']);
+            $serviceIncludedItems = self::serviceIncludedItems($overrides, $serviceKey, $serviceName);
             $serviceSlug = self::uniqueSlug(self::slugify($serviceName), $usedSlugs);
             $usedSlugs[] = $serviceSlug;
 
@@ -203,8 +204,13 @@ final class SiteGenerator
                     'service_number' => $serviceNumber,
                     'service_name' => $serviceName,
                     'service_description' => $serviceDescription,
+                    'included_heading' => self::override($overrides, $serviceKey, 'included_heading', $serviceName . ' made straightforward'),
+                    'included_description' => self::override($overrides, $serviceKey, 'included_description', (string) $business['business_name'] . ' helps customers understand the issue, choose a practical next step, and get service scheduled without confusion.'),
+                    'included_items' => $serviceIncludedItems,
+                    'trust_heading' => self::override($overrides, $serviceKey, 'trust_heading', 'Why choose ' . (string) $business['business_name'] . ' for ' . $serviceName),
+                    'trust_cards' => self::serviceTrustCards($overrides, $serviceKey, $serviceArea),
                     'call_to_action' => $cta,
-                    'hero_image_path' => (string) ($branding['hero_image_path'] ?? ''),
+                    'hero_image_path' => self::override($overrides, $serviceKey, 'hero_image_path', (string) ($branding['hero_image_path'] ?? '')),
                     'service_image_path' => (string) ($serviceImages[$serviceNumber] ?? ''),
                 ],
             ];
@@ -221,6 +227,7 @@ final class SiteGenerator
                 'company_description' => self::override($overrides, 'about', 'description', (string) $content['about_company']),
                 'years_in_business' => (int) $content['years_in_business'],
                 'service_area' => $serviceArea,
+                'hero_image_path' => self::override($overrides, 'about', 'hero_image_path', (string) ($branding['about_image_path'] ?? '')),
                 'about_image_path' => (string) ($branding['about_image_path'] ?? ''),
             ],
         ];
@@ -236,6 +243,7 @@ final class SiteGenerator
                 'phone' => (string) $business['phone'],
                 'email' => (string) $business['email'],
                 'service_area' => $serviceArea,
+                'hero_image_path' => self::override($overrides, 'contact', 'hero_image_path', ''),
                 'contact_form_placeholder' => 'Contact form placeholder. Form sending and lead processing are not active in Sprint 4.',
             ],
         ];
@@ -385,6 +393,35 @@ final class SiteGenerator
         $value = trim((string) ($overrides[$pageKey][$fieldKey] ?? ''));
 
         return $value !== '' ? $value : $fallback;
+    }
+
+    private static function serviceIncludedItems(array $overrides, string $serviceKey, string $serviceName): array
+    {
+        $serviceLabel = strtolower($serviceName !== '' ? $serviceName : 'service');
+
+        return [
+            self::override($overrides, $serviceKey, 'included_item_1', 'You need a clear assessment before a small ' . $serviceLabel . ' issue becomes a bigger problem.'),
+            self::override($overrides, $serviceKey, 'included_item_2', 'You want reliable help from a local business that explains the next step clearly.'),
+            self::override($overrides, $serviceKey, 'included_item_3', 'You are ready to schedule ' . $serviceLabel . ' and want the job handled professionally.'),
+        ];
+    }
+
+    private static function serviceTrustCards(array $overrides, string $serviceKey, string $serviceArea): array
+    {
+        return [
+            [
+                'title' => self::override($overrides, $serviceKey, 'trust_1_title', 'Local'),
+                'text' => self::override($overrides, $serviceKey, 'trust_1_text', $serviceArea !== '' ? 'Serving ' . $serviceArea : 'Service near you'),
+            ],
+            [
+                'title' => self::override($overrides, $serviceKey, 'trust_2_title', 'Clear'),
+                'text' => self::override($overrides, $serviceKey, 'trust_2_text', 'Simple communication before work begins'),
+            ],
+            [
+                'title' => self::override($overrides, $serviceKey, 'trust_3_title', 'Ready'),
+                'text' => self::override($overrides, $serviceKey, 'trust_3_text', 'Call or request service when you need help'),
+            ],
+        ];
     }
 
     private static function slugify(string $value): string
