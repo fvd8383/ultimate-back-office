@@ -1,407 +1,348 @@
-# Sprint 8.5 – Production Readiness & UX Polish
-
-## Objective
-
-Refine the Ultimate Back Office user experience by addressing all high-priority issues identified during the Production Readiness Review.
-
-This sprint is focused on polishing the customer experience rather than introducing new platform functionality.
-
-No new modules or external integrations should be added during this sprint.
-
----
-
-# Business Goal
-
-Complete the user experience so the first customer can:
-
-- Create an account
-- Sign in
-- Create a business
-- Complete onboarding
-- Generate a website
-- Customize their website
-- Manage billing
-- Request a domain
-- Request email
-
-...with a professional, intuitive workflow.
-
----
-
-# Scope
-
-This sprint covers:
-
-- Login Flow
-- Signup Flow
-- Dashboard UX
-- Business Onboarding
-- Module Selection
-- Branding
-- Navigation
-- Form Improvements
-- UI Consistency
-
----
-
-# 1. Branding
-
-## Objectives
-
-Replace placeholder branding throughout the platform.
-
-### Tasks
-
-- Add Ultimate Back Office logo
-- Add module logos
-    - 24/7 Sales Partner
-    - EMD
-    - SSP
-    - TUHWD
-- Add favicon
-- Update browser titles
-- Review spacing and sizing
-
-Definition of Done
-
-All pages display consistent branding.
-
----
-
-# 2. Login Flow Improvements
-
-## Objectives
-
-Simplify OTP login.
-
-Current Flow
-
-Login
-
-↓
-
-Request Code
-
-↓
-
-Stay on same page
-
-↓
-
-Verify link
-
-↓
-
-Verify page
-
-New Flow
-
-Login
-
-↓
-
-Request Code
-
-↓
-
-Automatically redirect to Verify page
-
-↓
-
-Email pre-filled
-
-↓
-
-OTP auto-filled in staging
-
-↓
-
-Verify
-
-### Tasks
-
-- Auto redirect after requesting OTP
-- Preserve entered email
-- Improve success messaging
-- Remove unnecessary clicks
-
----
-
-# 3. Dashboard Cleanup
-
-## Objectives
-
-Separate account navigation from business actions.
-
-### Account Navigation
-
-Dashboard
-
-Businesses
-
-Billing
-
-Domains
-
-Email
-
-Profile
-
-Log Out
-
-### Business Card
-
-Business Name
-
-Business Status
-
-Active Modules
-
-Buttons
-
-- Edit Business
-- Manage Website
-- Open 247SP
+# Sprint 8.5 - Production Readiness UX and Application Shell
+
+## Status
+
+Complete.
+
+Sprint 8.5 closed the production-readiness UX gap for the current 24/7 Sales Partner launch path. It did not add payment processing, public production deployment, domain API automation, email API automation, AI generation, or new modules.
+
+## Completed Outcomes
+
+Sprint 8.5 delivered:
+
+* Persistent Application Shell across account, workspace, module, and admin areas
+* Account navigation cleanup
+* Workspace navigation cleanup
+* Admin navigation cleanup
+* 24/7 Sales Partner module navigation under the workspace shell
+* Return path between Accounts and App areas
+* Dashboard business-card cleanup
+* Product-neutral business onboarding copy
+* Business onboarding field-order cleanup
+* Legal Structure = Other text field support
+* Expanded service selections
+* Active-module-only customer module selection
+* Module-selection card alignment fixes
+* 24/7 Sales Partner Website Manager polish
+* Admin-side DFY Website Editor
+* CTA configuration controls
+* Homepage stat configuration controls
+* Service page hierarchy and parent/child service pages
+* Services dropdown navigation in the private website preview
+* Pricing-list upload
+* Production readiness documentation updates
+
+## Application Shell
+
+The persistent shell is now the primary navigation model.
+
+It includes:
+
+```text
+Ultimate Back Office
+
+ACCOUNT
+- Home
+- Businesses
 - Billing
 - Domains
 - Email
+- Profile
 
-Remove duplicated navigation.
+WORKSPACE
+- Lead Hub
+- 24/7 Sales Partner
 
-Improve spacing and alignment.
+ADMIN
+- Admin Portal
 
----
+Log out
+```
 
-# 4. Business Onboarding
+Account pages live under `public/accounts`.
 
-## Step 1
+Workspace pages live under `public/app`.
 
-Reorder fields:
+Admin pages live under `public/app/admin`.
 
-Legal Business Name
+24/7 Sales Partner pages live under `public/app/247sp`.
 
-↓
+The shell keeps the primary left navigation visible when entering modules. Module-specific navigation appears as secondary navigation instead of replacing the global shell.
 
-Public Business Name (DBA)
+## Account Navigation
 
-↓
+Account navigation is separated from business-specific actions.
 
-Business Email
+Account navigation includes:
 
-↓
+* Home
+* Businesses
+* Billing
+* Domains
+* Email
+* Profile
 
-Business Phone
+The account dashboard is now an overview surface. Business cards show business summary information and Edit Business only. Billing, Domains, Email, Lead Hub, and 24/7 Sales Partner live in the persistent navigation rather than duplicated business-card action groups.
 
-If Legal Structure = Other
+## Workspace Navigation
 
-Display
+Workspace navigation includes:
 
-Specify Legal Structure
+* Lead Hub
+* 24/7 Sales Partner
 
-[text field]
+Lead Hub is treated as a workspace module/action, not as the global application shell title.
 
----
+24/7 Sales Partner opens the selected or available business workspace when a business context is available.
 
-## Step 2
+## Admin Navigation
 
-Expand available service options.
+The Admin Portal link is role-gated by existing internal admin authorization.
 
-Each category should include:
+Regular customer users do not see Admin Portal in the global navigation.
 
-- More service options
-- Other option
-- Optional custom service field
+Admin pages keep the application shell visible. Admin-specific sections such as Users, Businesses, Websites, Billing, Domains, and Email remain inside the admin portal experience.
 
-Improve layout consistency.
+## Return Path Between Accounts And App
 
----
+Users can move between:
 
-## Step 3
+* Accounts dashboard and account-level pages
+* App workspace pages
+* Lead Hub pages
+* 24/7 Sales Partner pages
+* Admin Portal pages when authorized
 
-Only show active modules.
+Cross-area links use configured `ACCOUNTS_BASE_URL` and `APP_BASE_URL` where available, with safe relative fallbacks.
 
-Hide:
+## Module Navigation
 
-- Future modules
-- Disabled modules
+24/7 Sales Partner secondary navigation appears under the active 24/7 Sales Partner workspace item.
 
-Improve:
+It includes:
 
-- Alignment
-- Card sizing
-- White space
-- Mobile responsiveness
+* Dashboard
+* Onboarding
+* Review
+* Preview
+* Website Manager
 
----
+Lead Hub secondary navigation appears under the active Lead Hub workspace item.
 
-## Step 4
+It includes:
 
-Improve summary.
+* Dashboard
+* Leads
+* Contacts
+* Tasks
+* Notes
 
-Include:
+The 24/7 Sales Partner navigation remains separate from Lead Hub navigation.
 
-- Business Information
-- Services
-- Selected Modules
-- Website Package
-- Domain Choice
-- Included Email
-- Billing Plan
+## 24/7 Sales Partner Website Manager
 
----
+Customer Website Manager supports editing existing customer-safe website settings:
 
-# 5. Onboarding Welcome
+* Logo
+* Brand colors
+* Home hero image
+* About image
+* Service images
+* Homepage heading and description
+* Homepage CTA labels and behaviors
+* Homepage stat cards
+* About page heading and description
+* Contact page heading and description
+* Existing active service page title and description
+* Pricing-list upload
+* Save and regenerate private preview
 
-Before onboarding begins, add a welcome screen.
+Customer Website Manager does not expose add/remove/reorder service page controls. Those are admin-side responsibilities.
+
+## Admin Website Editor
+
+The admin DFY editor lives at:
+
+`public/app/admin/website-editor.php`
+
+It requires existing internal admin authorization.
+
+Internal admins can edit and prepare a customer's 24/7 Sales Partner website without customer impersonation.
+
+Admin Website Editor supports:
+
+* Branding
+* Logo
+* Home/about/contact hero images
+* Homepage content
+* Homepage CTA configuration
+* Homepage stat cards
+* About content
+* Contact content
+* Existing service page content
+* Service supporting copy and trust text
+* Service images and service hero images
+* Service page add/edit/reorder/deactivation
+* Parent/child service page assignment
+* Pricing-list upload
+* Preview and regeneration
+
+## CTA Configuration
+
+CTA labels are customer-facing labels. Active CTA behavior is intentionally limited.
+
+Primary CTA label options:
+
+* Call Now
+* Request Service
+* Book Appointment
+* Instant Quote
+* Get Estimate
+* Request Inspection
+* Apply Now
+* Reserve Spot
+
+Secondary CTA label options:
+
+* Free Estimate
+* Contact Us
+* View Pricing
+* Learn More
+
+Active CTA behaviors:
+
+* `call_now`
+* `contact_form`
+* `view_pricing`
+
+Labels that imply scheduling, instant quoting, applications, or reservations route to contact form unless the behavior is explicitly set to call or view pricing.
+
+No calculators, scheduling engine, quote engine, application workflow, reservation workflow, payment processing, or ecommerce behavior was added in Sprint 8.5.
+
+## Homepage Stat Configuration
+
+Homepage stat cards are editable through customer Website Manager and Admin Website Editor.
+
+Date Business Started is used to calculate years in business when available.
+
+If no business start date is available, the site avoids displaying "0 years in business" and falls back to customer-safe local service language.
+
+## Service Hierarchy
+
+Service pages are stored in the existing 24/7 Sales Partner service page model with added hierarchy metadata.
+
+Admins can manage:
+
+* Parent service pages
+* Child/sub-service pages
+* Sort order
+* Active/inactive status
+* Stable slugs
 
 Example:
 
-Welcome to Ultimate Back Office
+```text
+Clogged Drain
+- Clogged Toilet
+- Clogged Sink Drain
+```
 
-We'll help you set up:
+Customer Website Manager can edit existing active service content but does not manage service structure.
 
-✓ Business Profile
+## Services Dropdown Navigation
 
-✓ Services
+Private website preview navigation now uses:
 
-✓ Website
+* Home
+* Services
+* About
+* Contact
 
-✓ Branding
+Service pages appear under the Services dropdown instead of as top-level navigation items.
 
-✓ Domain
+Sub-services appear nested under their parent service.
 
-✓ Business Email
+Inactive service pages do not appear in preview navigation after regeneration.
 
-Estimated time:
+## Pricing List Upload
 
-8–10 minutes
+Pricing-list upload is supported through the customer Website Manager and Admin Website Editor.
 
-Button
+Supported file types:
 
-Begin Setup
+* PDF
+* PNG
+* JPG/JPEG
+* WEBP
 
----
+Uploads use the existing 24/7 Sales Partner upload approach under:
 
-# 6. Navigation Consistency
+`public/app/uploads/pricing-lists/`
 
-Review every page.
+When a pricing list exists, View Pricing links to the uploaded file.
 
-Confirm:
+When View Pricing is selected without an uploaded pricing list, the preview routes to the contact page and uses customer-facing fallback copy.
 
-Current page highlighted
+## Customer Responsibilities
 
-Consistent button styling
+Customers can:
 
-Back buttons
+* Complete business onboarding
+* Activate the customer-ready module
+* Complete 24/7 Sales Partner onboarding
+* Generate a private website preview
+* Edit customer-safe Website Manager fields
+* Upload customer-safe website assets
+* Upload a pricing list
+* Request domain and email setup
+* View billing, domain, email, and module status
 
-Cancel buttons
+Customers cannot:
 
-Home navigation
+* Access admin-only editor controls
+* Add, reorder, deactivate, or nest service pages
+* Access internal admin portal routes
+* Trigger payment processing, domain automation, email automation, or public production deployment from Sprint 8.5
 
-Breadcrumbs where appropriate
+## Admin Responsibilities
 
----
+Internal admins can:
 
-# 7. UI Polish
+* Manage users and businesses
+* View and manage admin website records
+* Edit customer 24/7 Sales Partner websites through the DFY editor
+* Manage service page hierarchy
+* Manage service page status and ordering
+* Regenerate private previews
+* See billing/module access mismatches
+* Manage domain and email workflow status through existing admin tools
 
-Review:
+Admins remain responsible for manual operational review until later payment, domain, email, publishing, and lead-capture automation is implemented.
 
-Spacing
+## Out Of Scope
 
-Typography
+Sprint 8.5 did not implement:
 
-Alignment
+* Stripe
+* Payment processing
+* Domain API automation
+* Email API automation
+* Public production deployment
+* Public website publishing
+* Lead capture into Lead Hub
+* AI generation
+* EMD
+* SSP
+* TUHWD
+* New modules
 
-Responsive layouts
+## Definition Of Done
 
-Empty states
+Sprint 8.5 is complete when:
 
-Loading states
-
-Success messages
-
-Error messages
-
-Validation messages
-
----
-
-# 8. Production Readiness Review
-
-Confirm:
-
-Login
-
-Signup
-
-Business Creation
-
-247SP Activation
-
-Website Generation
-
-Website Branding
-
-Billing
-
-Domains
-
-Email
-
-Admin Portal
-
-Document remaining launch blockers.
-
----
-
-# Out of Scope
-
-Do NOT implement:
-
-Stripe
-
-Domain APIs
-
-Email APIs
-
-EMD
-
-SSP
-
-TUHWD
-
-AI
-
-Public Production Deployment
-
----
-
-# Deliverables
-
-Improved login flow
-
-Improved onboarding
-
-Improved dashboard
-
-Updated branding
-
-Cleaner navigation
-
-Production-ready UX
-
-Updated Production Readiness Review
-
----
-
-# Definition of Done
-
-A new customer can complete onboarding with minimal confusion.
-
-The application presents consistent branding.
-
-The dashboard and onboarding experience are polished.
-
-Only production-ready modules are shown.
-
-The remaining launch blockers are documented and prioritized for Sprint 9.
+* The persistent application shell is the primary navigation model.
+* Account, workspace, module, and admin navigation are clearly separated.
+* 24/7 Sales Partner Website Manager supports the current customer-safe customization scope.
+* Admin Website Editor supports DFY website preparation and service hierarchy management.
+* CTA, homepage stat, service hierarchy, Services dropdown, and pricing-list behaviors are documented.
+* Production readiness and first-customer documentation reflect the completed Sprint 8.5 state.

@@ -10,7 +10,7 @@ New module development is paused until 247SP is launch-ready. EMD, SSP, TUHWD, a
 
 # Roadmap Priority
 
-1. Sprint 8.5: UX/Application Shell/Admin QA
+1. Sprint 8.5: UX/Application Shell/Admin QA - Complete
 2. Sprint 9: Stripe Payment Integration
 3. Sprint 10: 247SP Lead Capture -> Lead Hub
 4. Sprint 11: Domain Automation
@@ -26,16 +26,31 @@ New module development is paused until 247SP is launch-ready. EMD, SSP, TUHWD, a
 * [x] User Authentication
 * [x] Business Creation
 * [x] Module Activation
+* [x] Persistent Application Shell
+* [x] Account Navigation
+* [x] Workspace Navigation
+* [x] Admin Navigation
+* [x] Module Navigation
+* [x] Accounts/App Return Path
 * [x] Lead Hub Foundation
 * [x] 247SP Onboarding
 * [x] Website Generation
 * [x] Website Preview
 * [x] Website Branding
 * [x] Website Customization
+* [x] 247SP Website Manager
+* [x] Admin Website Editor
+* [x] CTA Configuration
+* [x] Homepage Stat Configuration
+* [x] Service Hierarchy
+* [x] Parent/Child Service Pages
+* [x] Services Dropdown Navigation
+* [x] Pricing List Upload
 * [x] Admin Portal
 * [x] Billing Foundation
-* [ ] Admin QA
-* [ ] Customer QA
+* [x] Sprint 8.5 UX/Application Shell/Admin QA
+* [ ] First-customer Admin QA
+* [ ] First-customer Customer QA
 
 ---
 
@@ -83,6 +98,11 @@ New module development is paused until 247SP is launch-ready. EMD, SSP, TUHWD, a
 
 # Customer Experience
 
+* [x] Persistent left application navigation
+* [x] Product-neutral business onboarding
+* [x] Account dashboard business-card cleanup
+* [x] Customer Website Manager for customer-safe 247SP edits
+* [x] Pricing-list upload for private preview
 * [ ] Customer Welcome Email
 * [ ] Customer Setup Status Dashboard
 * [ ] Customer Billing Page Finalized
@@ -97,6 +117,10 @@ New module development is paused until 247SP is launch-ready. EMD, SSP, TUHWD, a
 * [x] User Management
 * [x] Business Management
 * [x] Website Management
+* [x] Admin Website Editor
+* [x] Admin Service Hierarchy Management
+* [x] Admin 247SP CTA And Homepage Stat Editing
+* [x] Admin Pricing List Upload
 * [x] Billing Management
 * [ ] Domain Management QA
 * [ ] Email Management QA
@@ -136,7 +160,7 @@ New module development is paused until 247SP is launch-ready. EMD, SSP, TUHWD, a
 - [ ] Email provisioning and automation
 - [ ] Production environment readiness
 - [ ] Legal and policy documents
-- [ ] Admin QA and customer QA
+- [ ] First-customer admin QA and customer QA
 
 ---
 
@@ -185,6 +209,8 @@ Future module work remains paused until the first paying 247SP customer path is 
 # Current Status
 
 Progress: Approximately 65-70% for a first paying 247SP customer.
+
+Sprint 8.5 UX/Application Shell/Admin QA is complete. The platform now has persistent account/workspace/admin navigation, customer-safe 247SP Website Manager controls, admin DFY Website Editor controls, CTA configuration, homepage stat configuration, service hierarchy, parent/child service pages, Services dropdown navigation, and pricing-list upload.
 
 Major Remaining Milestones:
 

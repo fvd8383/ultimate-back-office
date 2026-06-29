@@ -2,7 +2,7 @@
 
 ## Review Date
 
-June 21, 2026
+June 29, 2026
 
 ---
 
@@ -19,6 +19,7 @@ Current platform status:
 * Domain Workflow Foundation: Complete
 * Email Workflow Foundation: Complete
 * Sprint 8.5 UX/Application Shell/Admin QA: Complete
+* Sprint 8.5 Documentation: Complete
 
 Overall Readiness:
 
@@ -30,11 +31,13 @@ Current readiness estimate based on 247SP only:
 
 Approximately 65-70%.
 
+Sprint 8.5 is complete. The remaining work is not Sprint 8.5 UX polish; it is the launch-readiness work listed in the roadmap below.
+
 ---
 
 # Revised Roadmap
 
-1. Sprint 8.5: UX/Application Shell/Admin QA
+1. Sprint 8.5: UX/Application Shell/Admin QA - Complete
 2. Sprint 9: Stripe Payment Integration
 3. Sprint 10: 247SP Lead Capture -> Lead Hub
 4. Sprint 11: Domain Automation
@@ -203,24 +206,45 @@ Create Refund Policy.
 
 Severity: Medium
 
-Status: Improved in Sprint 8.5
+Status: Complete for Sprint 8.5
 
 Completed:
 
 * Login now redirects directly to verification after requesting a code.
 * Staging OTP is pre-filled on the verification page when available.
+* Persistent Application Shell provides account, workspace, module, and admin navigation.
 * Accounts dashboard separates account navigation from business actions.
+* Account dashboard business cards are overview-focused and keep only Edit Business as the business-card action.
 * Business onboarding includes a welcome screen.
 * Business information fields are ordered for legal name, DBA, email, and phone.
 * Legal Structure = Other now captures a specified legal structure.
 * Service options are expanded with Other choices and a custom service field.
 * Customer module selection is limited to the active launch module: 24/7 Sales Partner.
 * Onboarding confirmation summarizes business info, services, selected launch modules, and module handoff guidance.
+* App pages provide a return path to Accounts through the persistent shell.
+* Lead Hub and 24/7 Sales Partner appear as workspace modules, not as shell replacements.
+* Admin Portal visibility is role-gated to internal admins.
 
-Remaining:
+No remaining Sprint 8.5 UX work is tracked here. First-customer QA remains part of the launch-readiness critical path.
 
-* Validate all updated UX flows on staging after migration 011 is applied.
-* Validate admin QA and customer QA against the first-customer path.
+---
+
+## 247SP Website Manager And Admin Editor
+
+Severity: Medium
+
+Status: Complete for Sprint 8.5
+
+Completed:
+
+* Customer Website Manager supports branding, page content, existing active service content, CTA configuration, homepage stat configuration, pricing-list upload, and private preview regeneration.
+* Admin Website Editor supports DFY website editing without customer impersonation.
+* Admin Website Editor supports service page content, supporting copy, trust text, images, page hero images, service hierarchy, parent/child service pages, ordering, and deactivation.
+* Service pages now render under the Services dropdown instead of as top-level preview navigation items.
+* Parent/child service pages render as nested Services dropdown items.
+* View Pricing links to the uploaded pricing list when present and safely routes to Contact when no pricing list exists.
+
+No payment processing, public publishing, domain automation, email automation, scheduling engine, quote engine, application workflow, reservation workflow, ecommerce checkout, or AI generation was added.
 
 ---
 
@@ -418,4 +442,4 @@ Secondary Blockers:
 * Customer Notifications
 * Operational Procedures
 * Admin QA and customer QA
-* Staging validation of Sprint 8.5 migration and UI changes
+* First-customer staging validation
