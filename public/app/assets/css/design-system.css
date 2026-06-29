@@ -1063,7 +1063,8 @@ button:hover,
     gap: 10px;
 }
 
-.site-preview-nav a {
+.site-preview-nav a,
+.site-preview-nav-trigger {
     border-radius: 999px;
     color: var(--preview-muted);
     font-size: 13px;
@@ -1073,9 +1074,49 @@ button:hover,
 }
 
 .site-preview-nav a:hover,
+.site-preview-nav-menu:hover .site-preview-nav-trigger,
+.site-preview-nav-menu:focus-within .site-preview-nav-trigger,
 .site-preview-nav .is-active {
     background: rgba(49, 68, 211, .10);
     color: var(--preview-blue);
+}
+
+.site-preview-nav-menu {
+    position: relative;
+}
+
+.site-preview-nav-dropdown {
+    background: #ffffff;
+    border: 1px solid var(--preview-line);
+    border-radius: 12px;
+    box-shadow: 0 18px 38px rgba(34, 34, 34, .12);
+    display: none;
+    left: 50%;
+    min-width: 220px;
+    padding: 8px;
+    position: absolute;
+    top: calc(100% + 8px);
+    transform: translateX(-50%);
+    z-index: 20;
+}
+
+.site-preview-nav-menu:hover .site-preview-nav-dropdown,
+.site-preview-nav-menu:focus-within .site-preview-nav-dropdown {
+    display: grid;
+    gap: 4px;
+}
+
+.site-preview-nav-dropdown a {
+    border-radius: 8px;
+    display: block;
+    padding: 9px 10px;
+    white-space: normal;
+}
+
+.site-preview-nav-dropdown .site-preview-nav-child {
+    color: var(--preview-muted);
+    font-size: 12px;
+    padding-left: 24px;
 }
 
 .site-preview-phone,
@@ -1715,6 +1756,12 @@ button:hover,
     gap: 14px;
 }
 
+.website-manager-service-meta {
+    align-items: end;
+    border-bottom: 1px solid var(--ubo-line);
+    padding-bottom: 14px;
+}
+
 @media (max-width: 820px) {
     body.accounts-dashboard,
     body.app-dashboard {
@@ -1818,6 +1865,20 @@ button:hover,
 
     .site-preview-nav {
         justify-content: flex-start;
+    }
+
+    .site-preview-nav-menu,
+    .site-preview-nav-dropdown {
+        width: 100%;
+    }
+
+    .site-preview-nav-dropdown {
+        box-shadow: none;
+        display: grid;
+        left: auto;
+        margin-top: 6px;
+        position: static;
+        transform: none;
     }
 
     .site-preview-hero,

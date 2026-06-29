@@ -198,7 +198,8 @@ final class SiteGenerator
             $serviceName = self::override($overrides, $serviceKey, 'title', (string) $service['service_name']);
             $serviceDescription = self::override($overrides, $serviceKey, 'description', (string) $service['short_description']);
             $serviceIncludedItems = self::serviceIncludedItems($overrides, $serviceKey, $serviceName);
-            $serviceSlug = self::uniqueSlug(self::slugify($serviceName), $usedSlugs);
+            $storedServiceSlug = trim((string) ($service['slug'] ?? ''));
+            $serviceSlug = self::uniqueSlug($storedServiceSlug !== '' ? $storedServiceSlug : self::slugify($serviceName), $usedSlugs);
             $usedSlugs[] = $serviceSlug;
 
             $pages[] = [
@@ -207,7 +208,10 @@ final class SiteGenerator
                 'slug' => $serviceSlug,
                 'sort_order' => $sortOrder,
                 'content' => [
+                    'service_page_id' => (int) $service['id'],
+                    'parent_service_page_id' => (int) ($service['parent_service_page_id'] ?? 0),
                     'service_number' => $serviceNumber,
+                    'sort_order' => (int) ($service['sort_order'] ?? $sortOrder),
                     'service_name' => $serviceName,
                     'service_description' => $serviceDescription,
                     'included_heading' => self::override($overrides, $serviceKey, 'included_heading', $serviceName . ' made straightforward'),

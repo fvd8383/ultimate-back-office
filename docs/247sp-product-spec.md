@@ -173,15 +173,11 @@ Use 247SP defaults.
 Every site includes:
 
 1. Home
-2. Service Page 1
-3. Service Page 2
-4. Service Page 3
-5. About
-6. Contact
+2. Services dropdown
+3. About
+4. Contact
 
-Total:
-
-6 pages
+The Services dropdown contains active service pages. Where configured by an internal admin, sub-service pages appear nested under parent services.
 
 ---
 
@@ -207,6 +203,10 @@ Each service page includes:
 * Benefits
 * CTA
 * Contact form
+
+Internal admins can add, edit, reorder, deactivate, and nest service pages for done-for-you website management. For example, a plumbing site may include Clogged Drain as a parent service with Clogged Toilet and Clogged Sink Drain as sub-service pages.
+
+Customer Website Manager may edit existing active service content, but add/remove/reorder/sub-service controls are admin-only for now. Future paid service or SEO page bundles may expose additional page capacity and self-serve management without adding billing logic in this sprint.
 
 ---
 

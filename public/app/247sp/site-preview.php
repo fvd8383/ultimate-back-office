@@ -117,6 +117,71 @@ function sp247_preview_services(array $pages, array $overrides, array $serviceIm
     return $services;
 }
 
+function sp247_preview_page_slug(array $pages, string $pageType, string $fallback): string
+{
+    foreach ($pages as $page) {
+        if (($page['page_type'] ?? '') === $pageType) {
+            return (string) $page['slug'];
+        }
+    }
+
+    return $fallback;
+}
+
+function sp247_preview_service_nav_tree(array $pages, array $overrides): array
+{
+    $itemsByServicePageId = [];
+    $rootIds = [];
+    $childrenByParentId = [];
+    $serviceNumberFallback = 0;
+
+    foreach ($pages as $page) {
+        if (($page['page_type'] ?? '') !== 'service') {
+            continue;
+        }
+
+        $serviceNumberFallback++;
+        $content = sp247_preview_content($page);
+        $serviceNumber = (int) ($content['service_number'] ?? 0);
+        $serviceNumber = $serviceNumber > 0 ? $serviceNumber : $serviceNumberFallback;
+        $serviceKey = 'service_' . $serviceNumber;
+        $servicePageId = (int) ($content['service_page_id'] ?? 0);
+        if ($servicePageId <= 0) {
+            $servicePageId = -1 * $serviceNumberFallback;
+        }
+
+        $itemsByServicePageId[$servicePageId] = [
+            'service_page_id' => $servicePageId,
+            'parent_service_page_id' => (int) ($content['parent_service_page_id'] ?? 0),
+            'title' => (string) (($overrides[$serviceKey]['title'] ?? '') ?: ($content['service_name'] ?? $page['title'])),
+            'slug' => (string) $page['slug'],
+            'page_id' => (int) $page['id'],
+            'children' => [],
+        ];
+    }
+
+    foreach ($itemsByServicePageId as $servicePageId => $item) {
+        $parentId = (int) $item['parent_service_page_id'];
+        if ($parentId > 0 && isset($itemsByServicePageId[$parentId])) {
+            $childrenByParentId[$parentId][] = $servicePageId;
+            continue;
+        }
+
+        $rootIds[] = $servicePageId;
+    }
+
+    $tree = [];
+    foreach ($rootIds as $rootId) {
+        $rootItem = $itemsByServicePageId[$rootId];
+        foreach ($childrenByParentId[$rootId] ?? [] as $childId) {
+            $rootItem['children'][] = $itemsByServicePageId[$childId];
+        }
+        $tree[] = $rootItem;
+    }
+
+    return $tree;
+}
+
 function sp247_preview_tel_href(string $phone): string
 {
     $digits = preg_replace('/[^0-9+]/', '', $phone);
@@ -320,6 +385,7 @@ $homeContent = sp247_preview_apply_overrides(sp247_preview_page_content($pages, 
 $aboutContent = sp247_preview_apply_overrides(sp247_preview_page_content($pages, 'about'), 'about', 0, $contentOverrides, $branding, $serviceImages);
 $contactContent = sp247_preview_apply_overrides(sp247_preview_page_content($pages, 'contact'), 'contact', 0, $contentOverrides, $branding, $serviceImages);
 $previewServices = sp247_preview_services($pages, $contentOverrides, $serviceImages);
+$serviceNavItems = sp247_preview_service_nav_tree($pages, $contentOverrides);
 $serviceArea = (string) (($content['service_area'] ?? '') ?: ($homeContent['service_area'] ?? '') ?: ($contactContent['service_area'] ?? ''));
 $phone = (string) (($contactContent['phone'] ?? '') ?: ($business['phone'] ?? ''));
 $email = (string) (($contactContent['email'] ?? '') ?: ($business['email'] ?? ''));
@@ -331,6 +397,9 @@ $serviceImage = (string) ($content['service_image_path'] ?? '');
 $primaryCta = sp247_preview_cta($homeContent, $contentOverrides, 'primary', 'call_now', (string) (($homeContent['call_to_action'] ?? '') ?: 'Call Now'), $businessIdForLinks, $phoneHref);
 $secondaryCta = sp247_preview_cta($homeContent, $contentOverrides, 'secondary', 'request_service', 'Request Service', $businessIdForLinks, $phoneHref);
 $homeStats = sp247_preview_home_stats($homeContent, $contentOverrides, count($previewServices));
+$homeSlug = sp247_preview_page_slug($pages, 'home', 'home');
+$aboutSlug = sp247_preview_page_slug($pages, 'about', 'about');
+$contactSlug = sp247_preview_page_slug($pages, 'contact', 'contact');
 
 $pageTitle = '247SP Website Preview - Ultimate Back Office';
 $bodyClass = 'app-dashboard theme-247sp';
@@ -385,22 +454,26 @@ require __DIR__ . '/../../../private/views/account-navigation.php';
                         <strong><?= e($business['business_name']) ?></strong>
                     </a>
                     <nav class="site-preview-nav" aria-label="Preview website navigation">
-                        <?php $navServiceNumber = 0; ?>
-                        <?php foreach ($pages as $page): ?>
-                            <?php
-                            $navTitle = (string) $page['title'];
-                            if (($page['page_type'] ?? '') === 'service') {
-                                $navServiceNumber++;
-                                $navContent = sp247_preview_content($page);
-                                $storedNavServiceNumber = (int) ($navContent['service_number'] ?? 0);
-                                $effectiveNavServiceNumber = $storedNavServiceNumber > 0 ? $storedNavServiceNumber : $navServiceNumber;
-                                $navTitle = (string) (($contentOverrides['service_' . $effectiveNavServiceNumber]['title'] ?? '') ?: $navTitle);
-                            }
-                            ?>
-                            <a class="<?= $currentPage && (int) $currentPage['id'] === (int) $page['id'] ? 'is-active' : '' ?>" href="<?= e(sp247_preview_href($businessIdForLinks, (string) $page['slug'])) ?>">
-                                <?= e($navTitle) ?>
-                            </a>
-                        <?php endforeach; ?>
+                        <a class="<?= $currentPageType === 'home' ? 'is-active' : '' ?>" href="<?= e(sp247_preview_href($businessIdForLinks, $homeSlug)) ?>">Home</a>
+                        <?php if (count($serviceNavItems) > 0): ?>
+                            <div class="site-preview-nav-menu <?= $currentPageType === 'service' ? 'is-active' : '' ?>">
+                                <a class="site-preview-nav-trigger" href="<?= e(sp247_preview_href($businessIdForLinks, $homeSlug)) ?>#services">Services</a>
+                                <div class="site-preview-nav-dropdown">
+                                    <?php foreach ($serviceNavItems as $serviceNavItem): ?>
+                                        <a class="<?= $currentPage && (int) $currentPage['id'] === (int) $serviceNavItem['page_id'] ? 'is-active' : '' ?>" href="<?= e(sp247_preview_href($businessIdForLinks, (string) $serviceNavItem['slug'])) ?>">
+                                            <?= e($serviceNavItem['title']) ?>
+                                        </a>
+                                        <?php foreach ($serviceNavItem['children'] as $childServiceNavItem): ?>
+                                            <a class="site-preview-nav-child <?= $currentPage && (int) $currentPage['id'] === (int) $childServiceNavItem['page_id'] ? 'is-active' : '' ?>" href="<?= e(sp247_preview_href($businessIdForLinks, (string) $childServiceNavItem['slug'])) ?>">
+                                                <?= e($childServiceNavItem['title']) ?>
+                                            </a>
+                                        <?php endforeach; ?>
+                                    <?php endforeach; ?>
+                                </div>
+                            </div>
+                        <?php endif; ?>
+                        <a class="<?= $currentPageType === 'about' ? 'is-active' : '' ?>" href="<?= e(sp247_preview_href($businessIdForLinks, $aboutSlug)) ?>">About</a>
+                        <a class="<?= $currentPageType === 'contact' ? 'is-active' : '' ?>" href="<?= e(sp247_preview_href($businessIdForLinks, $contactSlug)) ?>">Contact</a>
                     </nav>
                     <a class="site-preview-phone" href="<?= e($phoneHref) ?>">Call <?= e($phone ?: 'Today') ?></a>
                 </header>

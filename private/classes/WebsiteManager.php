@@ -129,7 +129,7 @@ final class WebsiteManager
         $contentFields = self::contentFieldsFromInput($input, $existingOverrides);
         $serviceImages = self::serviceImagesForBusiness($businessId);
 
-        for ($serviceNumber = 1; $serviceNumber <= 3; $serviceNumber++) {
+        foreach (self::serviceNumbersFromInput($input, $files) as $serviceNumber) {
             $fieldName = 'service_image_' . $serviceNumber;
             $uploadedPath = self::storeUploadedFile($businessId, $fieldName, $files, [
                 'directory' => 'service-images',
@@ -219,7 +219,7 @@ final class WebsiteManager
         self::carryOptionalOverride($fields, $input, $existingOverrides, 'about', 'hero_image_path', 'about_hero_image_path');
         self::carryOptionalOverride($fields, $input, $existingOverrides, 'contact', 'hero_image_path', 'contact_hero_image_path');
 
-        for ($serviceNumber = 1; $serviceNumber <= 3; $serviceNumber++) {
+        foreach (self::serviceNumbersFromInput($input, []) as $serviceNumber) {
             $serviceKey = 'service_' . $serviceNumber;
             $fields[$serviceKey] = [
                 'title' => self::requiredText($input, 'service_' . $serviceNumber . '_title', 'Service ' . $serviceNumber . ' title is required.'),
@@ -241,6 +241,34 @@ final class WebsiteManager
         }
 
         return $fields;
+    }
+
+    private static function serviceNumbersFromInput(array $input, array $files): array
+    {
+        $serviceNumbers = [];
+
+        foreach (array_keys($input) as $key) {
+            if (preg_match('/^service_(\d+)_title$/', (string) $key, $matches)) {
+                $serviceNumbers[] = (int) $matches[1];
+            }
+        }
+
+        foreach (array_keys($files) as $key) {
+            if (preg_match('/^service_image_(\d+)$/', (string) $key, $matches)) {
+                $serviceNumbers[] = (int) $matches[1];
+            }
+
+            if (preg_match('/^service_(\d+)_hero_image$/', (string) $key, $matches)) {
+                $serviceNumbers[] = (int) $matches[1];
+            }
+        }
+
+        $serviceNumbers = array_values(array_unique(array_filter($serviceNumbers, static function (int $serviceNumber): bool {
+            return $serviceNumber > 0;
+        })));
+        sort($serviceNumbers);
+
+        return $serviceNumbers;
     }
 
     private static function carryOptionalOverride(array &$fields, array $input, array $existingOverrides, string $pageKey, string $fieldKey, string $inputKey): void
@@ -357,7 +385,7 @@ final class WebsiteManager
         );
 
         foreach ($serviceImages as $serviceNumber => $imagePath) {
-            if ((int) $serviceNumber < 1 || (int) $serviceNumber > 3 || trim((string) $imagePath) === '') {
+            if ((int) $serviceNumber < 1 || trim((string) $imagePath) === '') {
                 continue;
             }
 
