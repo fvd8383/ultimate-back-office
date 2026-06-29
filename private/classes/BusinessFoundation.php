@@ -281,6 +281,7 @@ final class BusinessFoundation
             'is_public_physical_location' => isset($input['is_public_physical_location']) ? 1 : 0,
             'legal_structure_id' => self::nullableInt($input['legal_structure_id'] ?? null),
             'legal_structure_other' => self::normalizeOptionalText($input['legal_structure_other'] ?? ''),
+            'business_started_on' => self::normalizeOptionalDate($input['business_started_on'] ?? ''),
         ];
 
         $slug = self::uniqueSlug($data['business_name'], $businessId);
@@ -290,12 +291,12 @@ final class BusinessFoundation
                 'INSERT INTO businesses (
                     business_name, slug, legal_name, owner_user_id, phone, email,
                     address_line_1, address_line_2, city, state, postal_code, country,
-                    is_public_physical_location, legal_structure_id, legal_structure_other, status, setup_status, setup_step,
+                    is_public_physical_location, legal_structure_id, legal_structure_other, business_started_on, status, setup_status, setup_step,
                     created_at, updated_at
                  ) VALUES (
                     :business_name, :slug, :legal_name, :owner_user_id, :phone, :email,
                     :address_line_1, :address_line_2, :city, :state, :postal_code, :country,
-                    :is_public_physical_location, :legal_structure_id, :legal_structure_other, :status, :setup_status, :setup_step,
+                    :is_public_physical_location, :legal_structure_id, :legal_structure_other, :business_started_on, :status, :setup_status, :setup_step,
                     NOW(), NOW()
                  )'
             );
@@ -335,6 +336,7 @@ final class BusinessFoundation
                  is_public_physical_location = :is_public_physical_location,
                  legal_structure_id = :legal_structure_id,
                  legal_structure_other = :legal_structure_other,
+                 business_started_on = :business_started_on,
                  setup_status = IF(setup_status = :complete_status, setup_status, :incomplete_status),
                  setup_step = IF(setup_step = :completed_step, setup_step, :services_step),
                  updated_at = NOW()
@@ -678,6 +680,21 @@ final class BusinessFoundation
     private static function normalizeOptionalText($value): string
     {
         return substr(trim((string) $value), 0, 150);
+    }
+
+    private static function normalizeOptionalDate($value): ?string
+    {
+        $date = trim((string) $value);
+        if ($date === '') {
+            return null;
+        }
+
+        $parsed = DateTimeImmutable::createFromFormat('!Y-m-d', $date);
+        if ($parsed === false || $parsed->format('Y-m-d') !== $date) {
+            return null;
+        }
+
+        return $date;
     }
 
     private static function linkOwner(int $businessId, int $userId): void

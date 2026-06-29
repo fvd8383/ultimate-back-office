@@ -158,7 +158,10 @@ final class SiteGenerator
 
         $businessName = (string) $business['business_name'];
         $serviceArea = self::serviceArea($configuration);
-        $cta = 'Call ' . $businessName . ' today to request service.';
+        $yearsInBusiness = self::yearsInBusiness($business['business_started_on'] ?? null, $content['years_in_business'] ?? null);
+        $defaultPrimaryCtaLabel = self::override($overrides, 'home', 'call_to_action', 'Call Now');
+        $primaryCta = self::cta($overrides, 'primary', 'call_now', $defaultPrimaryCtaLabel);
+        $secondaryCta = self::cta($overrides, 'secondary', 'request_service', 'Request Service');
         $usedSlugs = ['home', 'about', 'contact'];
         $pages = [
             [
@@ -179,7 +182,10 @@ final class SiteGenerator
                     }, $services),
                     'special_offer' => (string) ($content['special_offer'] ?? ''),
                     'financing_available' => (int) ($content['financing_available'] ?? 0) === 1,
-                    'call_to_action' => self::override($overrides, 'home', 'call_to_action', $cta),
+                    'call_to_action' => self::override($overrides, 'home', 'call_to_action', $primaryCta['label']),
+                    'primary_cta' => $primaryCta,
+                    'secondary_cta' => $secondaryCta,
+                    'stats' => self::homepageStats($overrides, $yearsInBusiness, count($services), (int) ($content['financing_available'] ?? 0) === 1),
                     'hero_image_path' => self::override($overrides, 'home', 'hero_image_path', (string) ($branding['hero_image_path'] ?? '')),
                 ],
             ],
@@ -209,7 +215,7 @@ final class SiteGenerator
                     'included_items' => $serviceIncludedItems,
                     'trust_heading' => self::override($overrides, $serviceKey, 'trust_heading', 'Why choose ' . (string) $business['business_name'] . ' for ' . $serviceName),
                     'trust_cards' => self::serviceTrustCards($overrides, $serviceKey, $serviceArea),
-                    'call_to_action' => $cta,
+                    'call_to_action' => $primaryCta['label'],
                     'hero_image_path' => self::override($overrides, $serviceKey, 'hero_image_path', (string) ($branding['hero_image_path'] ?? '')),
                     'service_image_path' => (string) ($serviceImages[$serviceNumber] ?? ''),
                 ],
@@ -225,7 +231,7 @@ final class SiteGenerator
             'content' => [
                 'about_heading' => self::override($overrides, 'about', 'heading', 'About ' . $businessName),
                 'company_description' => self::override($overrides, 'about', 'description', (string) $content['about_company']),
-                'years_in_business' => (int) $content['years_in_business'],
+                'years_in_business' => $yearsInBusiness,
                 'service_area' => $serviceArea,
                 'hero_image_path' => self::override($overrides, 'about', 'hero_image_path', (string) ($branding['about_image_path'] ?? '')),
                 'about_image_path' => (string) ($branding['about_image_path'] ?? ''),
@@ -393,6 +399,61 @@ final class SiteGenerator
         $value = trim((string) ($overrides[$pageKey][$fieldKey] ?? ''));
 
         return $value !== '' ? $value : $fallback;
+    }
+
+    private static function cta(array $overrides, string $slot, string $defaultType, string $defaultLabel): array
+    {
+        $type = self::override($overrides, 'home', $slot . '_cta_type', $defaultType);
+        if (!in_array($type, ['call_now', 'contact_form', 'schedule_service', 'request_service', 'instant_quote'], true)) {
+            $type = $defaultType;
+        }
+
+        return [
+            'type' => $type,
+            'label' => self::override($overrides, 'home', $slot . '_cta_label', $defaultLabel),
+        ];
+    }
+
+    private static function homepageStats(array $overrides, ?int $yearsInBusiness, int $serviceCount, bool $financingAvailable): array
+    {
+        $stats = [
+            [
+                'value' => $yearsInBusiness !== null && $yearsInBusiness > 0 ? (string) $yearsInBusiness : 'Local',
+                'label' => $yearsInBusiness !== null && $yearsInBusiness > 0 ? 'Years in business' : 'Service',
+            ],
+            [
+                'value' => (string) $serviceCount,
+                'label' => 'Core services available',
+            ],
+            [
+                'value' => $financingAvailable ? 'Yes' : 'Clear',
+                'label' => $financingAvailable ? 'Financing available' : 'Communication from request to service',
+            ],
+        ];
+
+        foreach ($stats as $index => &$stat) {
+            $statNumber = $index + 1;
+            $stat['value'] = self::override($overrides, 'home', 'stat_' . $statNumber . '_value', $stat['value']);
+            $stat['label'] = self::override($overrides, 'home', 'stat_' . $statNumber . '_label', $stat['label']);
+        }
+        unset($stat);
+
+        return $stats;
+    }
+
+    private static function yearsInBusiness($businessStartedOn, $legacyYears): ?int
+    {
+        $startedOn = trim((string) $businessStartedOn);
+        if ($startedOn !== '') {
+            $started = DateTimeImmutable::createFromFormat('!Y-m-d', $startedOn);
+            $today = new DateTimeImmutable('today');
+            if ($started !== false && $started <= $today) {
+                return max(0, (int) $started->diff($today)->y);
+            }
+        }
+
+        $legacy = (int) $legacyYears;
+        return $legacy > 0 ? $legacy : null;
     }
 
     private static function serviceIncludedItems(array $overrides, string $serviceKey, string $serviceName): array

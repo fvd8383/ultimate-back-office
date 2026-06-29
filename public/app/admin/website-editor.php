@@ -64,6 +64,28 @@ function admin_site_editor_image_preview(?string $path, string $label): string
     return '<img src="' . e($path) . '" alt="' . e($label) . ' preview">';
 }
 
+function admin_site_editor_cta_type(array $overrides, string $slot, string $fallback): string
+{
+    $value = (string) ($overrides['home'][$slot . '_cta_type'] ?? $fallback);
+
+    return in_array($value, ['call_now', 'contact_form', 'schedule_service', 'request_service', 'instant_quote'], true) ? $value : $fallback;
+}
+
+function admin_site_editor_stat(array $overrides, array $homeContent, int $number, string $fallbackValue, string $fallbackLabel): array
+{
+    $generatedStats = $homeContent['stats'] ?? [];
+    if (!is_array($generatedStats)) {
+        $generatedStats = [];
+    }
+
+    $index = $number - 1;
+
+    return [
+        'value' => admin_site_editor_value($overrides, 'home', 'stat_' . $number . '_value', (string) ($generatedStats[$index]['value'] ?? $fallbackValue)),
+        'label' => admin_site_editor_value($overrides, 'home', 'stat_' . $number . '_label', (string) ($generatedStats[$index]['label'] ?? $fallbackLabel)),
+    ];
+}
+
 function admin_site_editor_service_area(?array $configuration): string
 {
     if ($configuration === null) {
@@ -192,6 +214,19 @@ $contactContent = admin_site_editor_content($pages, 'contact');
 $homeHeadline = admin_site_editor_value($overrides, 'home', 'headline', (string) ($homeContent['headline'] ?? $businessName));
 $homeSubheadline = admin_site_editor_value($overrides, 'home', 'subheadline', (string) ($homeContent['subheadline'] ?? $homeContent['business_description'] ?? $businessContent['business_description'] ?? ''));
 $homeCallToAction = admin_site_editor_value($overrides, 'home', 'call_to_action', (string) ($homeContent['call_to_action'] ?? ('Call ' . $businessName . ' today to request service.')));
+$primaryCtaFallback = (string) ($homeContent['primary_cta']['label'] ?? '');
+if ($primaryCtaFallback === '') {
+    $primaryCtaFallback = $homeCallToAction !== '' ? $homeCallToAction : 'Call Now';
+}
+$primaryCtaLabel = admin_site_editor_value($overrides, 'home', 'primary_cta_label', $primaryCtaFallback);
+$primaryCtaType = admin_site_editor_cta_type($overrides, 'primary', (string) ($homeContent['primary_cta']['type'] ?? 'call_now'));
+$secondaryCtaLabel = admin_site_editor_value($overrides, 'home', 'secondary_cta_label', (string) ($homeContent['secondary_cta']['label'] ?? 'Request Service'));
+$secondaryCtaType = admin_site_editor_cta_type($overrides, 'secondary', (string) ($homeContent['secondary_cta']['type'] ?? 'request_service'));
+$homeStats = [
+    1 => admin_site_editor_stat($overrides, $homeContent, 1, 'Local', 'Service'),
+    2 => admin_site_editor_stat($overrides, $homeContent, 2, (string) count($bundle['service_pages']), 'Core services available'),
+    3 => admin_site_editor_stat($overrides, $homeContent, 3, 'Clear', 'Communication from request to service'),
+];
 $aboutHeading = admin_site_editor_value($overrides, 'about', 'heading', (string) ($aboutContent['about_heading'] ?? ('About ' . $businessName)));
 $aboutDescription = admin_site_editor_value($overrides, 'about', 'description', (string) ($aboutContent['company_description'] ?? $businessContent['about_company'] ?? ''));
 $aboutHeroImage = admin_site_editor_value($overrides, 'about', 'hero_image_path', (string) ($aboutContent['hero_image_path'] ?? $branding['about_image_path'] ?? ''));
@@ -288,9 +323,41 @@ admin_begin('Website Editor', 'websites', $context);
             <label>Homepage Description
                 <textarea name="home_subheadline" rows="4" required><?= e($homeSubheadline) ?></textarea>
             </label>
-            <label>Call To Action
-                <input type="text" name="home_call_to_action" value="<?= e($homeCallToAction) ?>" required>
+            <label>Primary CTA Label
+                <input type="text" name="home_call_to_action" value="<?= e($primaryCtaLabel) ?>" required>
             </label>
+            <div class="form-grid">
+                <label>Primary CTA Type
+                    <select name="primary_cta_type">
+                        <?php foreach (['call_now' => 'Call Now', 'contact_form' => 'Contact Form', 'schedule_service' => 'Schedule Service', 'request_service' => 'Request Service', 'instant_quote' => 'Instant Quote'] as $value => $label): ?>
+                            <option value="<?= e($value) ?>" <?= $primaryCtaType === $value ? 'selected' : '' ?>><?= e($label) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </label>
+                <label>Secondary CTA Label
+                    <input type="text" name="secondary_cta_label" value="<?= e($secondaryCtaLabel) ?>">
+                </label>
+                <label>Secondary CTA Type
+                    <select name="secondary_cta_type">
+                        <?php foreach (['request_service' => 'Request Service', 'contact_form' => 'Contact Form', 'schedule_service' => 'Schedule Service', 'instant_quote' => 'Instant Quote', 'call_now' => 'Call Now'] as $value => $label): ?>
+                            <option value="<?= e($value) ?>" <?= $secondaryCtaType === $value ? 'selected' : '' ?>><?= e($label) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </label>
+            </div>
+            <div class="form-grid">
+                <?php foreach ($homeStats as $statNumber => $stat): ?>
+                    <fieldset>
+                        <legend><?= e('Homepage Stat ' . $statNumber) ?></legend>
+                        <label>Value
+                            <input type="text" name="stat_<?= e($statNumber) ?>_value" value="<?= e($stat['value']) ?>">
+                        </label>
+                        <label>Label
+                            <input type="text" name="stat_<?= e($statNumber) ?>_label" value="<?= e($stat['label']) ?>">
+                        </label>
+                    </fieldset>
+                <?php endforeach; ?>
+            </div>
         </section>
 
         <section class="business-switcher website-manager-section">

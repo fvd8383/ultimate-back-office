@@ -156,6 +156,7 @@ require __DIR__ . '/../../../private/views/account-navigation.php';
                     <div><dt>Contact</dt><dd><?= e($onboarding['contact_name'] ?? 'Not provided') ?></dd></div>
                     <div><dt>Email</dt><dd><?= e($business['email']) ?></dd></div>
                     <div><dt>Phone</dt><dd><?= e($business['phone']) ?></dd></div>
+                    <div><dt>Date Business Started</dt><dd><?= e($business['business_started_on'] ?? 'Not provided') ?></dd></div>
                 </dl>
             </section>
 
@@ -199,7 +200,6 @@ require __DIR__ . '/../../../private/views/account-navigation.php';
                 <dl class="summary-list">
                     <div><dt>Description</dt><dd><?= e($content['business_description'] ?? 'Not provided') ?></dd></div>
                     <div><dt>About</dt><dd><?= e($content['about_company'] ?? 'Not provided') ?></dd></div>
-                    <div><dt>Years In Business</dt><dd><?= e($content['years_in_business'] ?? 'Not provided') ?></dd></div>
                     <div><dt>Financing Available</dt><dd><?= e(sp247_yes_no($content['financing_available'] ?? 0)) ?></dd></div>
                     <div><dt>Special Offer</dt><dd><?= e($content['special_offer'] ?? 'None') ?></dd></div>
                 </dl>

@@ -92,6 +92,7 @@ final class TwentyFourSevenSalesPartner
         $contactName = trim((string) ($input['contact_name'] ?? ''));
         $email = trim((string) ($input['email'] ?? ''));
         $phone = trim((string) ($input['phone'] ?? ''));
+        $businessStartedOn = self::normalizeOptionalDate($input['business_started_on'] ?? '');
 
         if ($businessName === '' || $contactName === '' || $email === '' || $phone === '') {
             throw new InvalidArgumentException('Business name, contact name, email, and phone are required.');
@@ -111,6 +112,7 @@ final class TwentyFourSevenSalesPartner
                  SET business_name = :business_name,
                      email = :email,
                      phone = :phone,
+                     business_started_on = :business_started_on,
                      updated_at = NOW()
                  WHERE id = :business_id'
             );
@@ -118,6 +120,7 @@ final class TwentyFourSevenSalesPartner
                 'business_name' => $businessName,
                 'email' => $email,
                 'phone' => $phone,
+                'business_started_on' => $businessStartedOn,
                 'business_id' => $businessId,
             ]);
 
@@ -277,15 +280,10 @@ final class TwentyFourSevenSalesPartner
     {
         $businessDescription = trim((string) ($input['business_description'] ?? ''));
         $aboutCompany = trim((string) ($input['about_company'] ?? ''));
-        $yearsInBusiness = trim((string) ($input['years_in_business'] ?? ''));
         $specialOffer = trim((string) ($input['special_offer'] ?? ''));
 
-        if ($businessDescription === '' || $aboutCompany === '' || $yearsInBusiness === '') {
-            throw new InvalidArgumentException('Business description, about company, and years in business are required.');
-        }
-
-        if (!ctype_digit($yearsInBusiness)) {
-            throw new InvalidArgumentException('Years in business must be a whole number.');
+        if ($businessDescription === '' || $aboutCompany === '') {
+            throw new InvalidArgumentException('Business description and about company are required.');
         }
 
         $onboarding = self::ensureOnboarding($businessId);
@@ -310,7 +308,7 @@ final class TwentyFourSevenSalesPartner
             'onboarding_id' => (int) $onboarding['id'],
             'business_description' => $businessDescription,
             'about_company' => $aboutCompany,
-            'years_in_business' => (int) $yearsInBusiness,
+            'years_in_business' => null,
             'financing_available' => isset($input['financing_available']) ? 1 : 0,
             'special_offer' => $specialOffer,
         ]);
@@ -595,6 +593,21 @@ final class TwentyFourSevenSalesPartner
         }
 
         return $domain;
+    }
+
+    private static function normalizeOptionalDate($value): ?string
+    {
+        $date = trim((string) $value);
+        if ($date === '') {
+            return null;
+        }
+
+        $parsed = DateTimeImmutable::createFromFormat('!Y-m-d', $date);
+        if ($parsed === false || $parsed->format('Y-m-d') !== $date) {
+            return null;
+        }
+
+        return $date;
     }
 
     private static function tableName(string $table): string

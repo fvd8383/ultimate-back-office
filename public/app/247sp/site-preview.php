@@ -124,6 +124,62 @@ function sp247_preview_tel_href(string $phone): string
     return $digits !== '' ? 'tel:' . $digits : '#';
 }
 
+function sp247_preview_cta(array $content, array $overrides, string $slot, string $defaultType, string $defaultLabel, int $businessId, string $phoneHref): array
+{
+    $generated = $content[$slot . '_cta'] ?? [];
+    if (!is_array($generated)) {
+        $generated = [];
+    }
+
+    $type = (string) (($overrides['home'][$slot . '_cta_type'] ?? '') ?: ($generated['type'] ?? $defaultType));
+    if (!in_array($type, ['call_now', 'contact_form', 'schedule_service', 'request_service', 'instant_quote'], true)) {
+        $type = $defaultType;
+    }
+
+    $label = (string) (($overrides['home'][$slot . '_cta_label'] ?? '') ?: ($generated['label'] ?? $defaultLabel));
+    $href = $type === 'call_now' ? $phoneHref : sp247_preview_href($businessId, 'contact');
+
+    return [
+        'type' => $type,
+        'label' => $label,
+        'href' => $href,
+    ];
+}
+
+function sp247_preview_home_stats(array $homeContent, array $overrides, int $serviceCount): array
+{
+    $generatedStats = $homeContent['stats'] ?? [];
+    if (!is_array($generatedStats)) {
+        $generatedStats = [];
+    }
+
+    $stats = [
+        [
+            'value' => (string) ($generatedStats[0]['value'] ?? 'Local'),
+            'label' => (string) ($generatedStats[0]['label'] ?? 'Service'),
+        ],
+        [
+            'value' => (string) ($generatedStats[1]['value'] ?? $serviceCount),
+            'label' => (string) ($generatedStats[1]['label'] ?? 'Core services available'),
+        ],
+        [
+            'value' => (string) ($generatedStats[2]['value'] ?? (($homeContent['financing_available'] ?? false) === true ? 'Yes' : 'Clear')),
+            'label' => (string) ($generatedStats[2]['label'] ?? (($homeContent['financing_available'] ?? false) === true ? 'Financing available' : 'Communication from request to service')),
+        ],
+    ];
+
+    foreach ($stats as $index => &$stat) {
+        $statNumber = $index + 1;
+        $stat['value'] = (string) (($overrides['home']['stat_' . $statNumber . '_value'] ?? '') ?: $stat['value']);
+        $stat['label'] = (string) (($overrides['home']['stat_' . $statNumber . '_label'] ?? '') ?: $stat['label']);
+    }
+    unset($stat);
+
+    return array_values(array_filter($stats, static function (array $stat): bool {
+        return trim((string) $stat['value']) !== '' && trim((string) $stat['label']) !== '';
+    }));
+}
+
 function sp247_preview_service_included_items(array $content, array $overrides, string $serviceKey, string $serviceName): array
 {
     $serviceLabel = strtolower($serviceName !== '' ? $serviceName : 'service');
@@ -204,6 +260,8 @@ function sp247_preview_apply_overrides(array $content, string $pageType, int $se
         $content['subheadline'] = (string) (($overrides['home']['subheadline'] ?? '') ?: ($content['subheadline'] ?? $content['business_description'] ?? ''));
         $content['business_description'] = $content['subheadline'];
         $content['call_to_action'] = (string) (($overrides['home']['call_to_action'] ?? '') ?: ($content['call_to_action'] ?? ''));
+        $content['primary_cta'] = sp247_preview_cta($content, $overrides, 'primary', 'call_now', 'Call Now', 0, '#');
+        $content['secondary_cta'] = sp247_preview_cta($content, $overrides, 'secondary', 'request_service', 'Request Service', 0, '#');
         $content['hero_image_path'] = (string) (($overrides['home']['hero_image_path'] ?? '') ?: ($branding['hero_image_path'] ?? ($content['hero_image_path'] ?? '')));
     }
 
@@ -270,7 +328,9 @@ $currentPageType = (string) ($currentPage['page_type'] ?? '');
 $heroImage = (string) (($content['hero_image_path'] ?? '') ?: ($currentPageType === 'home' ? ($homeContent['hero_image_path'] ?? '') : ''));
 $aboutImage = (string) ($content['about_image_path'] ?? '');
 $serviceImage = (string) ($content['service_image_path'] ?? '');
-$primaryCta = (string) (($content['call_to_action'] ?? '') ?: ($homeContent['call_to_action'] ?? 'Call ' . ($phone ?: 'Now')));
+$primaryCta = sp247_preview_cta($homeContent, $contentOverrides, 'primary', 'call_now', (string) (($homeContent['call_to_action'] ?? '') ?: 'Call Now'), $businessIdForLinks, $phoneHref);
+$secondaryCta = sp247_preview_cta($homeContent, $contentOverrides, 'secondary', 'request_service', 'Request Service', $businessIdForLinks, $phoneHref);
+$homeStats = sp247_preview_home_stats($homeContent, $contentOverrides, count($previewServices));
 
 $pageTitle = '247SP Website Preview - Ultimate Back Office';
 $bodyClass = 'app-dashboard theme-247sp';
@@ -362,8 +422,8 @@ require __DIR__ . '/../../../private/views/account-navigation.php';
                             <p><?= e($content['subheadline'] ?? $content['business_description'] ?? '') ?></p>
                         <?php endif; ?>
                         <div class="site-preview-actions">
-                            <a class="site-preview-button" href="<?= e($phoneHref) ?>"><?= e($primaryCta) ?></a>
-                            <a class="site-preview-button site-preview-button--secondary" href="<?= e(sp247_preview_href($businessIdForLinks, 'contact')) ?>">Request Service</a>
+                            <a class="site-preview-button" href="<?= e($primaryCta['href']) ?>"><?= e($primaryCta['label']) ?></a>
+                            <a class="site-preview-button site-preview-button--secondary" href="<?= e($secondaryCta['href']) ?>"><?= e($secondaryCta['label']) ?></a>
                         </div>
                     </div>
                     <aside class="site-preview-hero-card">
@@ -444,10 +504,17 @@ require __DIR__ . '/../../../private/views/account-navigation.php';
                     </section>
 
                     <section class="site-preview-section site-preview-experience">
-                        <article>
-                            <strong><?= e((string) ($content['years_in_business'] ?? '0')) ?></strong>
-                            <span>Years in business</span>
-                        </article>
+                        <?php if ((int) ($content['years_in_business'] ?? 0) > 0): ?>
+                            <article>
+                                <strong><?= e((string) $content['years_in_business']) ?></strong>
+                                <span>Years in business</span>
+                            </article>
+                        <?php else: ?>
+                            <article>
+                                <strong>Local</strong>
+                                <span>Service</span>
+                            </article>
+                        <?php endif; ?>
                         <div>
                             <p class="site-preview-kicker">Service area</p>
                             <h3><?= e($serviceArea !== '' ? $serviceArea : 'Local service area') ?></h3>
@@ -530,18 +597,12 @@ require __DIR__ . '/../../../private/views/account-navigation.php';
                             <h3>Built around fast, clear service</h3>
                         </div>
                         <div class="site-preview-trust-grid">
-                            <article>
-                                <strong><?= e((string) ($aboutContent['years_in_business'] ?? 'Local')) ?></strong>
-                                <span><?= isset($aboutContent['years_in_business']) ? 'Years in business' : 'Local experience' ?></span>
-                            </article>
-                            <article>
-                                <strong><?= e(count($previewServices)) ?></strong>
-                                <span>Core services available</span>
-                            </article>
-                            <article>
-                                <strong><?= ($homeContent['financing_available'] ?? false) === true ? 'Yes' : 'Clear' ?></strong>
-                                <span><?= ($homeContent['financing_available'] ?? false) === true ? 'Financing available' : 'Communication from request to service' ?></span>
-                            </article>
+                            <?php foreach ($homeStats as $stat): ?>
+                                <article>
+                                    <strong><?= e($stat['value']) ?></strong>
+                                    <span><?= e($stat['label']) ?></span>
+                                </article>
+                            <?php endforeach; ?>
                         </div>
                     </section>
 
@@ -551,7 +612,7 @@ require __DIR__ . '/../../../private/views/account-navigation.php';
                             <h3><?= e($serviceArea !== '' ? $serviceArea : 'Local service area') ?></h3>
                             <p><?= e($business['business_name']) ?> provides reliable local service with a simple way to call, request help, and choose the service you need.</p>
                         </div>
-                        <a class="site-preview-button site-preview-button--secondary" href="<?= e(sp247_preview_href($businessIdForLinks, 'contact')) ?>">Get In Touch</a>
+                        <a class="site-preview-button site-preview-button--secondary" href="<?= e($secondaryCta['href']) ?>"><?= e($secondaryCta['label']) ?></a>
                     </section>
 
                     <section class="site-preview-section site-preview-contact">

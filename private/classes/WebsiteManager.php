@@ -7,6 +7,7 @@ final class WebsiteManager
 {
     public const DEFAULT_PRIMARY_COLOR = '#3144D3';
 
+    private const CTA_TYPES = ['call_now', 'contact_form', 'schedule_service', 'request_service', 'instant_quote'];
     private const MAX_UPLOAD_BYTES = 5242880;
     private const BRANDING_UPLOADS = [
         'logo' => [
@@ -206,6 +207,15 @@ final class WebsiteManager
             ],
         ];
 
+        $fields['home']['primary_cta_label'] = self::optionalText($input['primary_cta_label'] ?? $input['home_call_to_action'] ?? $existingOverrides['home']['primary_cta_label'] ?? '');
+        self::carryOptionalCtaType($fields, $input, $existingOverrides, 'home', 'primary_cta_type', 'primary_cta_type');
+        self::carryOptionalOverride($fields, $input, $existingOverrides, 'home', 'secondary_cta_label', 'secondary_cta_label');
+        self::carryOptionalCtaType($fields, $input, $existingOverrides, 'home', 'secondary_cta_type', 'secondary_cta_type');
+        for ($statNumber = 1; $statNumber <= 3; $statNumber++) {
+            self::carryOptionalOverride($fields, $input, $existingOverrides, 'home', 'stat_' . $statNumber . '_value', 'stat_' . $statNumber . '_value');
+            self::carryOptionalOverride($fields, $input, $existingOverrides, 'home', 'stat_' . $statNumber . '_label', 'stat_' . $statNumber . '_label');
+        }
+
         self::carryOptionalOverride($fields, $input, $existingOverrides, 'about', 'hero_image_path', 'about_hero_image_path');
         self::carryOptionalOverride($fields, $input, $existingOverrides, 'contact', 'hero_image_path', 'contact_hero_image_path');
 
@@ -246,6 +256,19 @@ final class WebsiteManager
         }
     }
 
+    private static function carryOptionalCtaType(array &$fields, array $input, array $existingOverrides, string $pageKey, string $fieldKey, string $inputKey): void
+    {
+        if (array_key_exists($inputKey, $input)) {
+            $value = trim((string) $input[$inputKey]);
+        } else {
+            $value = trim((string) ($existingOverrides[$pageKey][$fieldKey] ?? ''));
+        }
+
+        if ($value !== '' && in_array($value, self::CTA_TYPES, true)) {
+            $fields[$pageKey][$fieldKey] = $value;
+        }
+    }
+
     private static function requiredText(array $input, string $field, string $message): string
     {
         $value = trim((string) ($input[$field] ?? ''));
@@ -255,6 +278,11 @@ final class WebsiteManager
         }
 
         return $value;
+    }
+
+    private static function optionalText($value): string
+    {
+        return trim((string) $value);
     }
 
     private static function upsertBranding(int $businessId, array $branding): void
