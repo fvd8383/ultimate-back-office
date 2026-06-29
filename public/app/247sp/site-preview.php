@@ -124,14 +124,41 @@ function sp247_preview_tel_href(string $phone): string
     return $digits !== '' ? 'tel:' . $digits : '#';
 }
 
-function sp247_preview_service_reasons(string $serviceName): array
+function sp247_preview_service_included_items(array $content, array $overrides, string $serviceKey, string $serviceName): array
 {
     $serviceLabel = strtolower($serviceName !== '' ? $serviceName : 'service');
+    $generatedItems = $content['included_items'] ?? [];
+    if (!is_array($generatedItems)) {
+        $generatedItems = [];
+    }
 
     return [
-        'You need a clear assessment before a small ' . $serviceLabel . ' issue becomes a bigger problem.',
-        'You want reliable help from a local business that explains the next step clearly.',
-        'You are ready to schedule ' . $serviceLabel . ' and want the job handled professionally.',
+        (string) (($overrides[$serviceKey]['included_item_1'] ?? '') ?: ($generatedItems[0] ?? 'You need a clear assessment before a small ' . $serviceLabel . ' issue becomes a bigger problem.')),
+        (string) (($overrides[$serviceKey]['included_item_2'] ?? '') ?: ($generatedItems[1] ?? 'You want reliable help from a local business that explains the next step clearly.')),
+        (string) (($overrides[$serviceKey]['included_item_3'] ?? '') ?: ($generatedItems[2] ?? 'You are ready to schedule ' . $serviceLabel . ' and want the job handled professionally.')),
+    ];
+}
+
+function sp247_preview_service_trust_cards(array $content, array $overrides, string $serviceKey, string $serviceArea): array
+{
+    $generatedCards = $content['trust_cards'] ?? [];
+    if (!is_array($generatedCards)) {
+        $generatedCards = [];
+    }
+
+    return [
+        [
+            'title' => (string) (($overrides[$serviceKey]['trust_1_title'] ?? '') ?: ($generatedCards[0]['title'] ?? 'Local')),
+            'text' => (string) (($overrides[$serviceKey]['trust_1_text'] ?? '') ?: ($generatedCards[0]['text'] ?? ($serviceArea !== '' ? 'Serving ' . $serviceArea : 'Service near you'))),
+        ],
+        [
+            'title' => (string) (($overrides[$serviceKey]['trust_2_title'] ?? '') ?: ($generatedCards[1]['title'] ?? 'Clear')),
+            'text' => (string) (($overrides[$serviceKey]['trust_2_text'] ?? '') ?: ($generatedCards[1]['text'] ?? 'Simple communication before work begins')),
+        ],
+        [
+            'title' => (string) (($overrides[$serviceKey]['trust_3_title'] ?? '') ?: ($generatedCards[2]['title'] ?? 'Ready')),
+            'text' => (string) (($overrides[$serviceKey]['trust_3_text'] ?? '') ?: ($generatedCards[2]['text'] ?? 'Call or request service when you need help')),
+        ],
     ];
 }
 
@@ -177,25 +204,32 @@ function sp247_preview_apply_overrides(array $content, string $pageType, int $se
         $content['subheadline'] = (string) (($overrides['home']['subheadline'] ?? '') ?: ($content['subheadline'] ?? $content['business_description'] ?? ''));
         $content['business_description'] = $content['subheadline'];
         $content['call_to_action'] = (string) (($overrides['home']['call_to_action'] ?? '') ?: ($content['call_to_action'] ?? ''));
-        $content['hero_image_path'] = (string) ($branding['hero_image_path'] ?? ($content['hero_image_path'] ?? ''));
+        $content['hero_image_path'] = (string) (($overrides['home']['hero_image_path'] ?? '') ?: ($branding['hero_image_path'] ?? ($content['hero_image_path'] ?? '')));
     }
 
     if ($pageType === 'about') {
         $content['about_heading'] = (string) (($overrides['about']['heading'] ?? '') ?: ($content['about_heading'] ?? ''));
         $content['company_description'] = (string) (($overrides['about']['description'] ?? '') ?: ($content['company_description'] ?? ''));
+        $content['hero_image_path'] = (string) (($overrides['about']['hero_image_path'] ?? '') ?: ($content['hero_image_path'] ?? ($branding['about_image_path'] ?? '')));
         $content['about_image_path'] = (string) ($branding['about_image_path'] ?? ($content['about_image_path'] ?? ''));
     }
 
     if ($pageType === 'contact') {
         $content['contact_heading'] = (string) (($overrides['contact']['heading'] ?? '') ?: ($content['contact_heading'] ?? ''));
         $content['contact_description'] = (string) (($overrides['contact']['description'] ?? '') ?: ($content['contact_description'] ?? ''));
+        $content['hero_image_path'] = (string) (($overrides['contact']['hero_image_path'] ?? '') ?: ($content['hero_image_path'] ?? ''));
     }
 
     if ($pageType === 'service' && $serviceNumber > 0) {
         $serviceKey = 'service_' . $serviceNumber;
         $content['service_name'] = (string) (($overrides[$serviceKey]['title'] ?? '') ?: ($content['service_name'] ?? ''));
         $content['service_description'] = (string) (($overrides[$serviceKey]['description'] ?? '') ?: ($content['service_description'] ?? ''));
-        $content['hero_image_path'] = (string) ($branding['hero_image_path'] ?? ($content['hero_image_path'] ?? ''));
+        $content['included_heading'] = (string) (($overrides[$serviceKey]['included_heading'] ?? '') ?: ($content['included_heading'] ?? (($content['service_name'] ?? 'Service') . ' made straightforward')));
+        $content['included_description'] = (string) (($overrides[$serviceKey]['included_description'] ?? '') ?: ($content['included_description'] ?? 'This service helps customers understand the issue, choose a practical next step, and get service scheduled without confusion.'));
+        $content['included_items'] = sp247_preview_service_included_items($content, $overrides, $serviceKey, (string) $content['service_name']);
+        $content['trust_heading'] = (string) (($overrides[$serviceKey]['trust_heading'] ?? '') ?: ($content['trust_heading'] ?? ('Why choose this team for ' . ($content['service_name'] ?? 'service'))));
+        $content['trust_cards'] = sp247_preview_service_trust_cards($content, $overrides, $serviceKey, (string) ($content['service_area'] ?? ''));
+        $content['hero_image_path'] = (string) (($overrides[$serviceKey]['hero_image_path'] ?? '') ?: ($content['hero_image_path'] ?? ($branding['hero_image_path'] ?? '')));
         $content['service_image_path'] = (string) ($serviceImages[$serviceNumber] ?? ($content['service_image_path'] ?? ''));
     }
 
@@ -233,10 +267,7 @@ $phone = (string) (($contactContent['phone'] ?? '') ?: ($business['phone'] ?? ''
 $email = (string) (($contactContent['email'] ?? '') ?: ($business['email'] ?? ''));
 $phoneHref = sp247_preview_tel_href($phone);
 $currentPageType = (string) ($currentPage['page_type'] ?? '');
-$heroImage = (string) (($content['hero_image_path'] ?? '') ?: ($homeContent['hero_image_path'] ?? ''));
-if (!in_array($currentPageType, ['home', 'service'], true)) {
-    $heroImage = '';
-}
+$heroImage = (string) (($content['hero_image_path'] ?? '') ?: ($currentPageType === 'home' ? ($homeContent['hero_image_path'] ?? '') : ''));
 $aboutImage = (string) ($content['about_image_path'] ?? '');
 $serviceImage = (string) ($content['service_image_path'] ?? '');
 $primaryCta = (string) (($content['call_to_action'] ?? '') ?: ($homeContent['call_to_action'] ?? 'Call ' . ($phone ?: 'Now')));
@@ -351,13 +382,16 @@ require __DIR__ . '/../../../private/views/account-navigation.php';
                 <?php if ($currentPageType === 'service'): ?>
                     <?php
                     $serviceName = (string) ($content['service_name'] ?? $currentPage['title']);
-                    $serviceReasons = sp247_preview_service_reasons($serviceName);
+                    $serviceReasons = $content['included_items'] ?? sp247_preview_service_included_items($content, $contentOverrides, 'service_' . $currentServiceNumber, $serviceName);
+                    $serviceTrustCards = $content['trust_cards'] ?? sp247_preview_service_trust_cards($content, $contentOverrides, 'service_' . $currentServiceNumber, $serviceArea);
+                    $serviceIncludedDescription = trim((string) ($content['included_description'] ?? ''));
+                    $serviceTrustHeading = trim((string) ($content['trust_heading'] ?? ''));
                     ?>
                     <section class="site-preview-section site-preview-feature">
                         <div>
                             <p class="site-preview-kicker">What is included</p>
-                            <h3><?= e($serviceName) ?> made straightforward</h3>
-                            <p><?= e($business['business_name']) ?> helps customers understand the issue, choose a practical next step, and get service scheduled without confusion.</p>
+                            <h3><?= e($content['included_heading'] ?? ($serviceName . ' made straightforward')) ?></h3>
+                            <p><?= e($serviceIncludedDescription !== '' ? $serviceIncludedDescription : ($business['business_name'] . ' helps customers understand the issue, choose a practical next step, and get service scheduled without confusion.')) ?></p>
                         </div>
                         <div class="site-preview-feature-stack">
                             <?php if ($serviceImage !== ''): ?>
@@ -374,21 +408,15 @@ require __DIR__ . '/../../../private/views/account-navigation.php';
                     <section class="site-preview-section site-preview-trust site-preview-trust--focused">
                         <div class="site-preview-section-heading">
                             <p class="site-preview-kicker">Why choose us</p>
-                            <h3>Why choose <?= e($business['business_name']) ?> for <?= e($serviceName) ?></h3>
+                            <h3><?= e($serviceTrustHeading !== '' ? $serviceTrustHeading : ('Why choose ' . $business['business_name'] . ' for ' . $serviceName)) ?></h3>
                         </div>
                         <div class="site-preview-trust-grid">
-                            <article>
-                                <strong>Local</strong>
-                                <span><?= e($serviceArea !== '' ? 'Serving ' . $serviceArea : 'Service near you') ?></span>
-                            </article>
-                            <article>
-                                <strong>Clear</strong>
-                                <span>Simple communication before work begins</span>
-                            </article>
-                            <article>
-                                <strong>Ready</strong>
-                                <span>Call or request service when you need help</span>
-                            </article>
+                            <?php foreach ($serviceTrustCards as $trustCard): ?>
+                                <article>
+                                    <strong><?= e($trustCard['title'] ?? '') ?></strong>
+                                    <span><?= e($trustCard['text'] ?? '') ?></span>
+                                </article>
+                            <?php endforeach; ?>
                         </div>
                     </section>
 
