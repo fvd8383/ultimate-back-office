@@ -134,7 +134,7 @@ sprint5_5_verified.sql
 * Website customization was required before domain automation.
 * Sprint 5.5 significantly improved customer readiness of generated websites.
 
-## Current Platform Status
+## Historical Platform Status
 
 Working flow:
 
@@ -147,6 +147,59 @@ Account
 → Website Preview
 → Admin Management
 
-## Next Candidate Sprint
+## Historical Next Candidate Sprint
 
-Sprint 6 – Billing & Subscription Readiness
+Sprint 6 - Billing & Subscription Readiness
+
+# Sprint 8.5
+
+## Sprint
+
+8.5 Production UX & Application Shell
+
+## Completed
+
+* Persistent application shell
+* Unified navigation
+* Workspace model
+* Admin workspace
+* Module navigation
+* Account/App navigation
+* Admin Website Editor
+* Customer Website Manager improvements
+* Homepage customization
+* CTA configuration
+* Pricing list support
+* Service hierarchy
+* Parent/child service pages
+* Service navigation dropdown
+* Preview improvements
+* Regeneration preservation
+* Internal admin test personas
+* Production readiness updates
+
+## Known Deferred Work
+
+* Stripe integration
+* Domain automation
+* Email provisioning automation
+* Lead capture -> Lead Hub integration
+* Customer notifications
+* Publish pipeline
+* SEO automation
+* Analytics
+* Scheduling
+* Instant Quote
+* Additional modules (paused)
+
+## Closeout Notes
+
+Sprint 8.5 closed the production UX and application shell work needed before the next sprint. Account pages, workspace pages, module pages, and internal admin pages now align around the persistent application shell and shared navigation model.
+
+24/7 Sales Partner is documented as the active website module with customer-facing Website Manager controls and internal DFY Admin Website Editor controls. CTA configuration, homepage stat configuration, pricing-list upload, service hierarchy, parent/child service pages, service dropdown navigation, preview behavior, and regeneration preservation are part of the completed Sprint 8.5 scope.
+
+Deferred items remain outside Sprint 8.5 and should be handled by future sprints only when explicitly started.
+
+## Current Roadmap
+
+Next sprint: Sprint 8.6.
