@@ -27,7 +27,7 @@ Your first task is to build the shared platform foundation:
 - activity logs
 - payment_providers
 - business_payment_accounts
-- Lead Hub shell
+- workspace shell
 - contacts
 - contact statuses
 - notes
