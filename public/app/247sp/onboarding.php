@@ -214,6 +214,9 @@ require __DIR__ . '/../../../private/views/account-navigation.php';
                         <label>Phone
                             <input name="phone" required value="<?= e(sp247_form_value($business, 'phone')) ?>">
                         </label>
+                        <label>Date Business Started
+                            <input name="business_started_on" type="date" value="<?= e(sp247_form_value($business, 'business_started_on')) ?>">
+                        </label>
                     </div>
 
                     <?= ui_button('Save and continue') ?>
@@ -300,9 +303,6 @@ require __DIR__ . '/../../../private/views/account-navigation.php';
                         <span class="form-help">Use this for the about page. Mention local roots, experience, and what customers can expect.</span>
                     </label>
                     <div class="form-grid">
-                        <label>Years In Business
-                            <input name="years_in_business" inputmode="numeric" required value="<?= e(sp247_form_value($content, 'years_in_business')) ?>" placeholder="Example: 10">
-                        </label>
                         <label>Special Offer
                             <input name="special_offer" value="<?= e(sp247_form_value($content, 'special_offer')) ?>" placeholder="Example: $25 off first service call">
                             <span class="form-help">Optional. Leave blank if there is no current offer.</span>

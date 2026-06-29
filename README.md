@@ -166,7 +166,7 @@ Business slugs are generated automatically from the business name and stored in 
 
 ## Business Profile Management
 
-Use `public/accounts/business.php` to edit a linked business profile after creation. Editable fields include business name, legal name, phone, email, address, physical location, legal structure, category, and services.
+Use `public/accounts/business.php` to edit a linked business profile after creation. Editable fields include business name, legal name, date business started, phone, email, address, physical location, legal structure, category, and services.
 
 Authenticated users can only create, edit, and complete onboarding for businesses linked to their account through `business_users`.
 
@@ -267,7 +267,7 @@ The Website Manager supports:
 - Logo upload.
 - Primary and secondary brand color selection.
 - Hero image, about image, and one optional image per service.
-- Homepage headline, subheadline, and call-to-action edits.
+- Homepage headline, subheadline, stat cards, and call-to-action label/type edits.
 - About page heading and description edits.
 - Contact page heading and description edits.
 - Service title and description edits.
@@ -285,6 +285,7 @@ Sprint 5.5 stores uploads locally under browser-accessible app document-root pat
 - `public/app/uploads/hero-images/`
 - `public/app/uploads/about-images/`
 - `public/app/uploads/service-images/`
+- `public/app/uploads/page-hero-images/`
 
 Uploads are validated by extension, MIME type, size, and business ownership before paths are stored. Public publishing is still not active.
 
@@ -333,6 +334,7 @@ Website controls support:
 - View a read-only asset and branding summary.
 - Edit 24/7 Sales Partner website branding, page content, service content, and upload assets through the DFY admin site editor.
 - Edit service page supporting copy, trust cards, and page-specific hero images through the shared 247SP website override model.
+- Edit homepage stat cards and primary/secondary CTA labels and types through the shared 247SP website override model.
 - Generate websites from completed 247SP onboarding.
 - Regenerate websites from the latest 247SP onboarding data.
 - Open the existing private preview.
@@ -340,6 +342,8 @@ Website controls support:
 The DFY admin site editor at `public/app/admin/website-editor.php` reuses the existing 247SP Website Manager storage and generation logic. Internal Admin and Super Admin users can save edits, preview sites, and regenerate private previews without customer impersonation. Regular customer users cannot access admin editor routes.
 
 Business display phone, email, and service area remain sourced from the existing business profile and 247SP onboarding records; the DFY editor shows that context and does not create separate display-field overrides.
+
+247SP CTA types currently support customer-facing labels and routing behavior. `call_now` links to the business phone number. `contact_form`, `request_service`, `schedule_service`, and `instant_quote` route to the contact page until service-specific workflows are added. Future service-specific CTA forms may collect bedrooms and bathrooms for cleaning, property size for lawn care, and onsite inspection requests for roofing, electrical, and plumbing.
 
 Billing controls support:
 

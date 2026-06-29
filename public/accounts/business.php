@@ -175,6 +175,9 @@ account_shell_begin('businesses');
             <label>Business Phone
                 <input name="phone" required value="<?= e(profile_value($business, 'phone')) ?>">
             </label>
+            <label>Date Business Started
+                <input name="business_started_on" type="date" value="<?= e(profile_value($business, 'business_started_on')) ?>">
+            </label>
             <label>Address Line 1
                 <input name="address_line_1" required value="<?= e(profile_value($business, 'address_line_1')) ?>">
             </label>
