@@ -67,6 +67,146 @@ final class TwentyFourSevenSalesPartner
         ];
     }
 
+    public static function servicePagesForAdmin(int $businessId): array
+    {
+        $statement = Database::connection()->prepare(
+            'SELECT *
+             FROM `247sp_service_pages`
+             WHERE business_id = :business_id
+             ORDER BY CASE WHEN status = :active_status THEN 0 ELSE 1 END ASC,
+                      sort_order ASC,
+                      service_number ASC'
+        );
+        $statement->execute([
+            'business_id' => $businessId,
+            'active_status' => 'active',
+        ]);
+
+        return $statement->fetchAll();
+    }
+
+    public static function saveAdminServicePages(int $businessId, int $userId, array $input): void
+    {
+        $submittedPages = $input['service_pages'] ?? [];
+        if (!is_array($submittedPages)) {
+            $submittedPages = [];
+        }
+
+        $onboarding = self::ensureOnboarding($businessId);
+        $existingPages = self::servicePagesForAdmin($businessId);
+        $pagesById = [];
+        $maxServiceNumber = 0;
+
+        foreach ($existingPages as $page) {
+            $pageId = (int) $page['id'];
+            $pagesById[$pageId] = $page;
+            $maxServiceNumber = max($maxServiceNumber, (int) $page['service_number']);
+        }
+
+        Database::connection()->beginTransaction();
+
+        try {
+            foreach ($submittedPages as $pageInput) {
+                if (!is_array($pageInput)) {
+                    continue;
+                }
+
+                $pageId = (int) ($pageInput['id'] ?? 0);
+                if ($pageId <= 0 || !isset($pagesById[$pageId])) {
+                    continue;
+                }
+
+                $existing = $pagesById[$pageId];
+                $serviceNumber = (int) $existing['service_number'];
+                $serviceName = trim((string) ($input['service_' . $serviceNumber . '_title'] ?? $existing['service_name']));
+                $shortDescription = trim((string) ($input['service_' . $serviceNumber . '_description'] ?? $existing['short_description']));
+
+                if ($serviceName === '' || $shortDescription === '') {
+                    throw new InvalidArgumentException('Each service page needs a title and description.');
+                }
+
+                $parentId = self::validParentServicePageId(
+                    (int) ($pageInput['parent_service_page_id'] ?? 0),
+                    $pageId,
+                    $pagesById
+                );
+                $sortOrder = max(0, (int) ($pageInput['sort_order'] ?? $existing['sort_order'] ?? ($serviceNumber * 10)));
+                $status = (string) ($pageInput['status'] ?? 'active') === 'inactive' ? 'inactive' : 'active';
+                $slug = self::uniqueServiceSlug($businessId, self::slugify($serviceName), $pageId);
+
+                $statement = Database::connection()->prepare(
+                    'UPDATE `247sp_service_pages`
+                     SET parent_service_page_id = :parent_service_page_id,
+                         sort_order = :sort_order,
+                         status = :status,
+                         slug = :slug,
+                         service_name = :service_name,
+                         short_description = :short_description,
+                         updated_at = NOW()
+                     WHERE id = :id
+                       AND business_id = :business_id'
+                );
+                $statement->execute([
+                    'parent_service_page_id' => $parentId,
+                    'sort_order' => $sortOrder,
+                    'status' => $status,
+                    'slug' => $slug,
+                    'service_name' => $serviceName,
+                    'short_description' => $shortDescription,
+                    'id' => $pageId,
+                    'business_id' => $businessId,
+                ]);
+            }
+
+            $newServiceName = trim((string) ($input['new_service_title'] ?? ''));
+            $newServiceDescription = trim((string) ($input['new_service_description'] ?? ''));
+            if ($newServiceName !== '') {
+                if ($newServiceDescription === '') {
+                    throw new InvalidArgumentException('New service pages need a title and description.');
+                }
+
+                $newServiceNumber = $maxServiceNumber + 1;
+                $newSortOrderInput = trim((string) ($input['new_service_sort_order'] ?? ''));
+                $newSortOrder = $newSortOrderInput !== ''
+                    ? max(0, (int) $newSortOrderInput)
+                    : $newServiceNumber * 10;
+                $newParentId = self::validParentServicePageId(
+                    (int) ($input['new_parent_service_page_id'] ?? 0),
+                    0,
+                    $pagesById
+                );
+                $newSlug = self::uniqueServiceSlug($businessId, self::slugify($newServiceName), null);
+
+                $statement = Database::connection()->prepare(
+                    'INSERT INTO `247sp_service_pages` (
+                        business_id, onboarding_id, service_number, parent_service_page_id,
+                        sort_order, status, slug, service_name, short_description, created_at, updated_at
+                     ) VALUES (
+                        :business_id, :onboarding_id, :service_number, :parent_service_page_id,
+                        :sort_order, :status, :slug, :service_name, :short_description, NOW(), NOW()
+                     )'
+                );
+                $statement->execute([
+                    'business_id' => $businessId,
+                    'onboarding_id' => (int) $onboarding['id'],
+                    'service_number' => $newServiceNumber,
+                    'parent_service_page_id' => $newParentId,
+                    'sort_order' => $newSortOrder,
+                    'status' => 'active',
+                    'slug' => $newSlug,
+                    'service_name' => $newServiceName,
+                    'short_description' => $newServiceDescription,
+                ]);
+            }
+
+            self::logActivity($businessId, $userId, '247sp_admin_service_pages_saved', '247SP admin service pages saved');
+            Database::connection()->commit();
+        } catch (Throwable $exception) {
+            Database::connection()->rollBack();
+            throw $exception;
+        }
+    }
+
     public static function dashboardSummary(int $businessId): array
     {
         $bundle = self::bundle($businessId);
@@ -245,23 +385,40 @@ final class TwentyFourSevenSalesPartner
                 'website_status' => 'in_progress',
             ]);
 
+            $existingServicePages = [];
+            foreach (self::servicePagesForAdmin($businessId) as $existingServicePage) {
+                $existingServicePages[(int) $existingServicePage['service_number']] = $existingServicePage;
+            }
+
             $statement = Database::connection()->prepare(
                 'INSERT INTO `247sp_service_pages` (
-                    business_id, onboarding_id, service_number, service_name, short_description, created_at, updated_at
+                    business_id, onboarding_id, service_number, parent_service_page_id,
+                    sort_order, status, slug, service_name, short_description, created_at, updated_at
                  ) VALUES (
-                    :business_id, :onboarding_id, :service_number, :service_name, :short_description, NOW(), NOW()
+                    :business_id, :onboarding_id, :service_number, NULL,
+                    :sort_order, :status, :slug, :service_name, :short_description, NOW(), NOW()
                  )
                  ON DUPLICATE KEY UPDATE
+                    parent_service_page_id = VALUES(parent_service_page_id),
+                    sort_order = VALUES(sort_order),
+                    status = VALUES(status),
+                    slug = VALUES(slug),
                     service_name = VALUES(service_name),
                     short_description = VALUES(short_description),
                     updated_at = NOW()'
             );
 
             foreach ($services as $service) {
+                $existingServiceId = isset($existingServicePages[(int) $service['service_number']])
+                    ? (int) $existingServicePages[(int) $service['service_number']]['id']
+                    : null;
                 $statement->execute([
                     'business_id' => $businessId,
                     'onboarding_id' => (int) $onboarding['id'],
                     'service_number' => $service['service_number'],
+                    'sort_order' => $service['service_number'] * 10,
+                    'status' => 'active',
+                    'slug' => self::uniqueServiceSlug($businessId, self::slugify($service['service_name']), $existingServiceId),
                     'service_name' => $service['service_name'],
                     'short_description' => $service['short_description'],
                 ]);
@@ -447,8 +604,8 @@ final class TwentyFourSevenSalesPartner
             $errors[] = 'Service area or primary category is incomplete.';
         }
 
-        if (count($bundle['service_pages']) !== 3) {
-            $errors[] = 'Three service pages are required.';
+        if (count($bundle['service_pages']) < 3) {
+            $errors[] = 'At least three active service pages are required.';
         }
 
         if ($bundle['content'] === null) {
@@ -509,11 +666,89 @@ final class TwentyFourSevenSalesPartner
             'SELECT *
              FROM `247sp_service_pages`
              WHERE business_id = :business_id
-             ORDER BY service_number ASC'
+               AND status = :status
+             ORDER BY sort_order ASC, service_number ASC'
         );
-        $statement->execute(['business_id' => $businessId]);
+        $statement->execute([
+            'business_id' => $businessId,
+            'status' => 'active',
+        ]);
 
         return $statement->fetchAll();
+    }
+
+    private static function validParentServicePageId(int $parentId, int $currentPageId, array $pagesById): ?int
+    {
+        if ($parentId <= 0 || $parentId === $currentPageId || !isset($pagesById[$parentId])) {
+            return null;
+        }
+
+        $parent = $pagesById[$parentId];
+        if ((string) ($parent['status'] ?? 'active') !== 'active') {
+            return null;
+        }
+
+        if ((int) ($parent['parent_service_page_id'] ?? 0) > 0) {
+            return null;
+        }
+
+        return $parentId;
+    }
+
+    private static function slugify(string $value): string
+    {
+        $slug = strtolower(trim($value));
+        $slug = preg_replace('/[^a-z0-9]+/', '-', $slug);
+        $slug = trim((string) $slug, '-');
+
+        return $slug !== '' ? $slug : 'service';
+    }
+
+    private static function uniqueServiceSlug(int $businessId, string $baseSlug, ?int $ignoreServicePageId): string
+    {
+        $slug = $baseSlug !== '' ? $baseSlug : 'service';
+        $candidate = $slug;
+        $suffix = 2;
+
+        while (self::serviceSlugExists($businessId, $candidate, $ignoreServicePageId)) {
+            $candidate = $slug . '-' . $suffix;
+            $suffix++;
+        }
+
+        return $candidate;
+    }
+
+    private static function serviceSlugExists(int $businessId, string $slug, ?int $ignoreServicePageId): bool
+    {
+        if ($ignoreServicePageId !== null) {
+            $statement = Database::connection()->prepare(
+                'SELECT COUNT(*)
+                 FROM `247sp_service_pages`
+                 WHERE business_id = :business_id
+                   AND slug = :slug
+                   AND id <> :ignore_service_page_id'
+            );
+            $statement->execute([
+                'business_id' => $businessId,
+                'slug' => $slug,
+                'ignore_service_page_id' => $ignoreServicePageId,
+            ]);
+
+            return (int) $statement->fetchColumn() > 0;
+        }
+
+        $statement = Database::connection()->prepare(
+            'SELECT COUNT(*)
+             FROM `247sp_service_pages`
+             WHERE business_id = :business_id
+               AND slug = :slug'
+        );
+        $statement->execute([
+            'business_id' => $businessId,
+            'slug' => $slug,
+        ]);
+
+        return (int) $statement->fetchColumn() > 0;
     }
 
     private static function upsertWebsiteConfiguration(int $businessId, int $onboardingId, array $values): void

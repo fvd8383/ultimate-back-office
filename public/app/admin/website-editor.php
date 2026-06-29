@@ -26,6 +26,7 @@ $pages = [];
 $branding = [];
 $serviceImages = [];
 $overrides = [];
+$adminServicePages = [];
 $has247spAccess = false;
 
 function admin_site_editor_content(array $pages, string $pageType, ?int $serviceNumber = null): array
@@ -139,6 +140,21 @@ function admin_site_editor_service_trust_cards(array $overrides, string $service
     ];
 }
 
+function admin_site_editor_parent_options(array $servicePages, int $currentServicePageId = 0): array
+{
+    return array_values(array_filter($servicePages, static function (array $servicePage) use ($currentServicePageId): bool {
+        if ((int) ($servicePage['id'] ?? 0) === $currentServicePageId) {
+            return false;
+        }
+
+        if ((string) ($servicePage['status'] ?? 'active') !== 'active') {
+            return false;
+        }
+
+        return (int) ($servicePage['parent_service_page_id'] ?? 0) <= 0;
+    }));
+}
+
 try {
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($businessId <= 0) {
@@ -151,6 +167,7 @@ try {
 
         $action = (string) ($_POST['action'] ?? 'save');
         if ($action === 'save_regenerate') {
+            TwentyFourSevenSalesPartner::saveAdminServicePages($businessId, (int) $context['user']['id'], $_POST);
             WebsiteManager::saveAndRegenerate($businessId, (int) $context['user']['id'], $_POST, $_FILES);
             header('Location: website-editor.php?business_id=' . urlencode((string) $businessId) . '&regenerated=1');
             exit;
@@ -162,6 +179,7 @@ try {
             exit;
         }
 
+        TwentyFourSevenSalesPartner::saveAdminServicePages($businessId, (int) $context['user']['id'], $_POST);
         WebsiteManager::saveWebsiteManager($businessId, (int) $context['user']['id'], $_POST, $_FILES);
         header('Location: website-editor.php?business_id=' . urlencode((string) $businessId) . '&saved=1');
         exit;
@@ -196,6 +214,7 @@ try {
     $branding = WebsiteManager::brandingForBusiness($businessId);
     $serviceImages = WebsiteManager::serviceImagesForBusiness($businessId);
     $overrides = WebsiteManager::contentOverridesForBusiness($businessId);
+    $adminServicePages = TwentyFourSevenSalesPartner::servicePagesForAdmin($businessId);
 } catch (InvalidArgumentException $exception) {
     $loadError = $exception->getMessage();
 } catch (Throwable $exception) {
@@ -390,9 +409,11 @@ admin_begin('Website Editor', 'websites', $context);
 
         <section class="business-switcher website-manager-section">
             <h2>Service Pages</h2>
+            <p class="muted">Admins can manage the service page structure shown in the website Services dropdown. Inactive service pages remain saved but do not appear in preview navigation after regeneration.</p>
             <div class="service-page-grid website-manager-services">
-                <?php foreach ($bundle['service_pages'] as $servicePage): ?>
+                <?php foreach ($adminServicePages as $servicePage): ?>
                     <?php
+                    $servicePageId = (int) $servicePage['id'];
                     $serviceNumber = (int) $servicePage['service_number'];
                     $serviceKey = 'service_' . $serviceNumber;
                     $generatedServiceContent = admin_site_editor_content($pages, 'service', $serviceNumber);
@@ -406,7 +427,29 @@ admin_begin('Website Editor', 'websites', $context);
                     $serviceTrustCards = admin_site_editor_service_trust_cards($overrides, $serviceKey, $generatedServiceContent, $serviceAreaForCopy);
                     ?>
                     <fieldset>
-                        <legend><?= e('Service ' . $serviceNumber) ?></legend>
+                        <legend><?= e('Service ' . $serviceNumber . ((string) ($servicePage['status'] ?? 'active') === 'inactive' ? ' (Inactive)' : '')) ?></legend>
+                        <input type="hidden" name="service_pages[<?= e($servicePageId) ?>][id]" value="<?= e($servicePageId) ?>">
+                        <div class="form-grid website-manager-service-meta">
+                            <label>Sort Order
+                                <input type="number" name="service_pages[<?= e($servicePageId) ?>][sort_order]" value="<?= e((string) ($servicePage['sort_order'] ?? ($serviceNumber * 10))) ?>" min="0" step="1">
+                            </label>
+                            <label>Parent Service
+                                <select name="service_pages[<?= e($servicePageId) ?>][parent_service_page_id]">
+                                    <option value="">Top-level service</option>
+                                    <?php foreach (admin_site_editor_parent_options($adminServicePages, $servicePageId) as $parentServicePage): ?>
+                                        <option value="<?= e((string) $parentServicePage['id']) ?>" <?= (int) ($servicePage['parent_service_page_id'] ?? 0) === (int) $parentServicePage['id'] ? 'selected' : '' ?>>
+                                            <?= e($parentServicePage['service_name']) ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </label>
+                            <label>Status
+                                <select name="service_pages[<?= e($servicePageId) ?>][status]">
+                                    <option value="active" <?= (string) ($servicePage['status'] ?? 'active') === 'active' ? 'selected' : '' ?>>Active</option>
+                                    <option value="inactive" <?= (string) ($servicePage['status'] ?? 'active') === 'inactive' ? 'selected' : '' ?>>Inactive</option>
+                                </select>
+                            </label>
+                        </div>
                         <label>Service Title
                             <input type="text" name="service_<?= e($serviceNumber) ?>_title" value="<?= e($serviceTitle) ?>" required>
                         </label>
@@ -447,6 +490,29 @@ admin_begin('Website Editor', 'websites', $context);
                         <?php endforeach; ?>
                     </fieldset>
                 <?php endforeach; ?>
+                <fieldset>
+                    <legend>Add Service Page</legend>
+                    <p class="muted">Add parent services or sub-services such as Clogged Drain, then Clogged Toilet under that parent. Leave this section blank when only saving existing pages.</p>
+                    <div class="form-grid website-manager-service-meta">
+                        <label>Sort Order
+                            <input type="number" name="new_service_sort_order" value="" min="0" step="1" placeholder="Auto">
+                        </label>
+                        <label>Parent Service
+                            <select name="new_parent_service_page_id">
+                                <option value="">Top-level service</option>
+                                <?php foreach (admin_site_editor_parent_options($adminServicePages) as $parentServicePage): ?>
+                                    <option value="<?= e((string) $parentServicePage['id']) ?>"><?= e($parentServicePage['service_name']) ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </label>
+                    </div>
+                    <label>Service Title
+                        <input type="text" name="new_service_title" value="">
+                    </label>
+                    <label>Service Description
+                        <textarea name="new_service_description" rows="5"></textarea>
+                    </label>
+                </fieldset>
             </div>
         </section>
 

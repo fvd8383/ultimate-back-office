@@ -233,11 +233,11 @@ The site generator:
 - Reads completed Sprint 3 onboarding data.
 - Assigns the single `starter_local_service` template, displayed as Starter Local Service.
 - Creates one generated website record.
-- Creates six generated pages: Home, Service 1, Service 2, Service 3, About, and Contact.
+- Creates generated pages for Home, active service pages, About, and Contact.
 - Stores generated page content as structured JSON.
 - Sets website status to `generated` and records `generated_at`.
 
-Regeneration replaces the existing generated pages with new pages built from the current onboarding data.
+Regeneration replaces the existing generated pages with new pages built from the current onboarding data and admin-managed active service pages.
 
 New database tables:
 
@@ -291,6 +291,8 @@ Uploads are validated by extension, MIME type, size, and business ownership befo
 
 Sprint 5.5 does not add domain automation, DNS management, email provisioning, Stripe billing, AI content generation, public publishing, blog/CMS/media library functionality, analytics, SEO tooling, Apache changes, DNS changes, SSL changes, server config changes, or credential changes.
 
+Admin-managed service page structure is stored on `247sp_service_pages`. Migration `013_247sp_service_page_management.sql` adds parent service support, sort order, active/inactive status, and stable service slugs so generated website navigation can group service pages under a Services dropdown. Customer Website Manager can edit existing active service content, while add/remove/reorder/sub-service controls remain admin-only.
+
 ## Admin Portal
 
 The internal admin portal lives in `public/app/admin` because `staging-app.ultimatebackoffice.com` uses `public/app` as its document root.
@@ -334,6 +336,7 @@ Website controls support:
 - View a read-only asset and branding summary.
 - Edit 24/7 Sales Partner website branding, page content, service content, and upload assets through the DFY admin site editor.
 - Edit service page supporting copy, trust cards, and page-specific hero images through the shared 247SP website override model.
+- Add, reorder, deactivate, and assign parent services for service/sub-service pages, such as Clogged Drain with Clogged Toilet or Clogged Sink Drain underneath it.
 - Edit homepage stat cards and primary/secondary CTA labels and types through the shared 247SP website override model.
 - Generate websites from completed 247SP onboarding.
 - Regenerate websites from the latest 247SP onboarding data.
@@ -344,6 +347,8 @@ The DFY admin site editor at `public/app/admin/website-editor.php` reuses the ex
 Business display phone, email, and service area remain sourced from the existing business profile and 247SP onboarding records; the DFY editor shows that context and does not create separate display-field overrides.
 
 247SP CTA types currently support customer-facing labels and routing behavior. `call_now` links to the business phone number. `contact_form`, `request_service`, `schedule_service`, and `instant_quote` route to the contact page until service-specific workflows are added. Future service-specific CTA forms may collect bedrooms and bathrooms for cleaning, property size for lawn care, and onsite inspection requests for roofing, electrical, and plumbing.
+
+Future paid service/SEO page bundles may expose more service page capacity and self-serve page management to customers. This sprint only adds admin-side structure management and does not add bundle billing logic.
 
 Billing controls support:
 
