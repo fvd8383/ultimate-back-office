@@ -122,6 +122,84 @@ Lead Hub secondary navigation appears nested under the active Lead Hub WORKSPACE
 
 Admin pages keep the global shell visible, while admin routes such as Users, Businesses, Websites, Billing, Domains, and Email appear as secondary admin navigation in the content area.
 
+## 24/7 Sales Partner Website Manager
+
+The customer Website Manager lives inside the 24/7 Sales Partner module at:
+
+`public/app/247sp/website-manager.php`
+
+It is customer-facing and should expose only customer-safe controls:
+
+* branding assets
+* brand colors
+* existing active service content
+* homepage content
+* homepage CTA labels and behavior
+* homepage stat cards
+* about and contact content
+* pricing-list upload
+* save and regenerate private preview
+
+It must not expose admin-only service structure controls such as add, deactivate, reorder, or parent/child service assignment.
+
+## Admin Website Editor
+
+The admin DFY Website Editor lives inside the Admin Portal at:
+
+`public/app/admin/website-editor.php`
+
+It requires existing internal admin authorization. Regular customers must not see or access this route.
+
+Internal admins can use it to prepare and polish a customer's 24/7 Sales Partner website without impersonating the customer.
+
+Admin-only responsibilities include:
+
+* service page add/edit/reorder/deactivation
+* parent/child service page assignment
+* service supporting copy and trust text
+* service page images and hero images
+* page-specific hero image management
+* CTA and homepage stat review
+* pricing-list upload/replacement
+* private preview regeneration
+
+## CTA And Pricing Behavior
+
+CTA configuration belongs inside the 24/7 Sales Partner website workflow.
+
+Supported active CTA behaviors are:
+
+* `call_now`
+* `contact_form`
+* `view_pricing`
+
+Customer-facing CTA labels may imply appointment booking, estimates, inspections, applications, or reservations, but those labels route to contact form unless the behavior is explicitly set to call or view pricing. The shell and module navigation must not imply that calculators, scheduling, quote engines, application workflows, reservations, payment processing, or ecommerce checkout exist.
+
+Pricing-list uploads use the existing 24/7 Sales Partner asset upload pattern under:
+
+`public/app/uploads/pricing-lists/`
+
+View Pricing links to the uploaded pricing list when available. If no pricing list exists, View Pricing routes to the contact page with customer-facing fallback copy.
+
+## Service Hierarchy And Website Navigation
+
+Admin-managed service hierarchy supports:
+
+* parent service pages
+* child/sub-service pages
+* sort order
+* active/inactive service page status
+* stable service slugs
+
+Customer website preview navigation uses:
+
+* Home
+* Services
+* About
+* Contact
+
+Service pages and sub-service pages appear under the Services dropdown. They should not appear as separate top-level website navigation items. Sub-services should be nested or indented under their parent service.
+
 ## Active State Behavior
 
 Only one primary navigation item should be active at a time.
