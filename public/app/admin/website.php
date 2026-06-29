@@ -184,14 +184,18 @@ admin_begin('Website Detail', 'websites', $context);
                     <input type="hidden" name="action" value="generate_website">
                     <?= ui_button('Generate Website', '', 'primary') ?>
                 </form>
+                <?php if ($businessId > 0): ?>
+                    <?= ui_button('Edit Site', 'website-editor.php?business_id=' . urlencode((string) $businessId), 'secondary') ?>
+                <?php endif; ?>
             <?php else: ?>
                 <form method="post" action="website.php">
                     <input type="hidden" name="website_id" value="<?= e($website['id']) ?>">
                     <input type="hidden" name="business_id" value="<?= e($businessId) ?>">
                     <input type="hidden" name="action" value="regenerate_website">
-                    <?= ui_button('Regenerate Website', '', 'primary') ?>
+                    <?= ui_button('Regenerate Site', '', 'primary') ?>
                 </form>
-                <?= ui_button('Open Preview', $previewHref, 'secondary') ?>
+                <?= ui_button('Edit Site', 'website-editor.php?business_id=' . urlencode((string) $businessId), 'primary') ?>
+                <?= ui_button('Preview Site', $previewHref, 'secondary') ?>
             <?php endif; ?>
             <?php if ($businessId > 0): ?>
                 <?= ui_button('Open Business', 'business.php?business_id=' . urlencode((string) $businessId), 'secondary') ?>

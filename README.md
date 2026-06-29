@@ -303,6 +303,7 @@ Admin pages:
 - `/admin/business.php`
 - `/admin/websites.php`
 - `/admin/website.php`
+- `/admin/website-editor.php`
 - `/admin/billing.php`
 
 Only active users assigned an internal `Super Admin` or internal `Admin` role through `user_roles` may access these pages. Business-scoped Admin roles do not grant admin portal access. Other authenticated users receive Access Denied.
@@ -330,9 +331,14 @@ Website controls support:
 
 - View generated website details.
 - View a read-only asset and branding summary.
+- Edit 24/7 Sales Partner website branding, page content, service content, and upload assets through the DFY admin site editor.
 - Generate websites from completed 247SP onboarding.
 - Regenerate websites from the latest 247SP onboarding data.
 - Open the existing private preview.
+
+The DFY admin site editor at `public/app/admin/website-editor.php` reuses the existing 247SP Website Manager storage and generation logic. Internal Admin and Super Admin users can save edits, preview sites, and regenerate private previews without customer impersonation. Regular customer users cannot access admin editor routes.
+
+Business display phone, email, and service area remain sourced from the existing business profile and 247SP onboarding records; the DFY editor shows that context and does not create separate display-field overrides.
 
 Billing controls support:
 
