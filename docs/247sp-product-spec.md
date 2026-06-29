@@ -193,6 +193,12 @@ Contains:
 * Service area
 * CTA
 
+CTA labels may be customer-facing service prompts such as Call Now, Request Service, Book Appointment, Instant Quote, Get Estimate, Request Inspection, Apply Now, Reserve Spot, Free Estimate, Contact Us, View Pricing, or Learn More.
+
+Active CTA behaviors are limited to call, contact form, and view pricing. Scheduling, instant quote, application, reservation, and calculator-style labels route to contact form unless an admin explicitly selects call or view pricing. View Pricing links to the uploaded pricing list when available and otherwise routes to the contact page.
+
+Pricing list uploads support PDF, PNG, JPG/JPEG, and WEBP files through the existing 247SP asset upload flow. No payment processing, checkout, scheduling engine, quote calculator, application workflow, reservation system, or ecommerce behavior is included.
+
 ---
 
 # Service Pages

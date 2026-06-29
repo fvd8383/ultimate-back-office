@@ -7,7 +7,7 @@ final class WebsiteManager
 {
     public const DEFAULT_PRIMARY_COLOR = '#3144D3';
 
-    private const CTA_TYPES = ['call_now', 'contact_form', 'schedule_service', 'request_service', 'instant_quote'];
+    private const CTA_TYPES = ['call_now', 'contact_form', 'view_pricing'];
     private const MAX_UPLOAD_BYTES = 5242880;
     private const BRANDING_UPLOADS = [
         'logo' => [
@@ -164,6 +164,16 @@ final class WebsiteManager
             }
         }
 
+        $pricingListPath = self::storeUploadedFile($businessId, 'pricing_list', $files, [
+            'directory' => 'pricing-lists',
+            'extensions' => ['pdf', 'png', 'jpg', 'jpeg', 'webp'],
+            'mimes' => ['application/pdf', 'image/png', 'image/jpeg', 'image/webp'],
+        ]);
+
+        if ($pricingListPath !== null) {
+            $contentFields['home']['pricing_list_path'] = $pricingListPath;
+        }
+
         Database::connection()->beginTransaction();
 
         try {
@@ -211,6 +221,7 @@ final class WebsiteManager
         self::carryOptionalCtaType($fields, $input, $existingOverrides, 'home', 'primary_cta_type', 'primary_cta_type');
         self::carryOptionalOverride($fields, $input, $existingOverrides, 'home', 'secondary_cta_label', 'secondary_cta_label');
         self::carryOptionalCtaType($fields, $input, $existingOverrides, 'home', 'secondary_cta_type', 'secondary_cta_type');
+        self::carryOptionalOverride($fields, $input, $existingOverrides, 'home', 'pricing_list_path', 'pricing_list_path');
         for ($statNumber = 1; $statNumber <= 3; $statNumber++) {
             self::carryOptionalOverride($fields, $input, $existingOverrides, 'home', 'stat_' . $statNumber . '_value', 'stat_' . $statNumber . '_value');
             self::carryOptionalOverride($fields, $input, $existingOverrides, 'home', 'stat_' . $statNumber . '_label', 'stat_' . $statNumber . '_label');

@@ -161,7 +161,7 @@ final class SiteGenerator
         $yearsInBusiness = self::yearsInBusiness($business['business_started_on'] ?? null, $content['years_in_business'] ?? null);
         $defaultPrimaryCtaLabel = self::override($overrides, 'home', 'call_to_action', 'Call Now');
         $primaryCta = self::cta($overrides, 'primary', 'call_now', $defaultPrimaryCtaLabel);
-        $secondaryCta = self::cta($overrides, 'secondary', 'request_service', 'Request Service');
+        $secondaryCta = self::cta($overrides, 'secondary', 'contact_form', 'Contact Us');
         $usedSlugs = ['home', 'about', 'contact'];
         $pages = [
             [
@@ -185,6 +185,7 @@ final class SiteGenerator
                     'call_to_action' => self::override($overrides, 'home', 'call_to_action', $primaryCta['label']),
                     'primary_cta' => $primaryCta,
                     'secondary_cta' => $secondaryCta,
+                    'pricing_list_path' => self::override($overrides, 'home', 'pricing_list_path', ''),
                     'stats' => self::homepageStats($overrides, $yearsInBusiness, count($services), (int) ($content['financing_available'] ?? 0) === 1),
                     'hero_image_path' => self::override($overrides, 'home', 'hero_image_path', (string) ($branding['hero_image_path'] ?? '')),
                 ],
@@ -254,7 +255,7 @@ final class SiteGenerator
                 'email' => (string) $business['email'],
                 'service_area' => $serviceArea,
                 'hero_image_path' => self::override($overrides, 'contact', 'hero_image_path', ''),
-                'contact_form_placeholder' => 'Contact form placeholder. Form sending and lead processing are not active in Sprint 4.',
+                'contact_form_prompt' => 'Tell us what you need and we will help with the next step.',
             ],
         ];
 
@@ -407,15 +408,30 @@ final class SiteGenerator
 
     private static function cta(array $overrides, string $slot, string $defaultType, string $defaultLabel): array
     {
-        $type = self::override($overrides, 'home', $slot . '_cta_type', $defaultType);
-        if (!in_array($type, ['call_now', 'contact_form', 'schedule_service', 'request_service', 'instant_quote'], true)) {
-            $type = $defaultType;
+        $type = self::normalizeCtaType(self::override($overrides, 'home', $slot . '_cta_type', $defaultType), $defaultType);
+
+        $label = self::override($overrides, 'home', $slot . '_cta_label', $defaultLabel);
+        if (strcasecmp($label, 'View Pricing') === 0) {
+            $type = 'view_pricing';
         }
 
         return [
             'type' => $type,
-            'label' => self::override($overrides, 'home', $slot . '_cta_label', $defaultLabel),
+            'label' => $label,
         ];
+    }
+
+    private static function normalizeCtaType(string $type, string $defaultType): string
+    {
+        if (in_array($type, ['call_now', 'contact_form', 'view_pricing'], true)) {
+            return $type;
+        }
+
+        if (in_array($type, ['schedule_service', 'request_service', 'instant_quote'], true)) {
+            return 'contact_form';
+        }
+
+        return in_array($defaultType, ['call_now', 'contact_form', 'view_pricing'], true) ? $defaultType : 'contact_form';
     }
 
     private static function homepageStats(array $overrides, ?int $yearsInBusiness, int $serviceCount, bool $financingAvailable): array
