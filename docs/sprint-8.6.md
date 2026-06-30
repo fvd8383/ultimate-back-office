@@ -46,6 +46,10 @@ Every lead generated from a customer website must automatically enter Lead Hub.
 * Customer receives notification.
 * Activity logged.
 
+### Milestone 1 Deferred Item
+
+Email notification to the customer and internal notification remain deferred until shared notification infrastructure is implemented safely. Milestone 1 lead capture should create Lead Hub contact, note, task, and activity records without sending real email.
+
 ---
 
 # Milestone 2 — Lead Hub MVP
