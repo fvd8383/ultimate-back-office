@@ -146,14 +146,21 @@ final class LeadHub
 
     public static function contactsForBusiness(int $businessId, int $limit = 100): array
     {
-        $statement = Database::connection()->prepare(
-            'SELECT c.*, cs.name AS status_name
-             FROM contacts c
-             LEFT JOIN contact_statuses cs ON cs.id = c.status_id
-             WHERE c.business_id = :business_id
-             ORDER BY c.updated_at DESC, c.created_at DESC, c.id DESC
-             LIMIT :limit'
-        );
+        $statusJoinSupported = self::tableExists('contact_statuses') && self::columnExists('contacts', 'status_id');
+        $sql = $statusJoinSupported
+            ? 'SELECT c.*, cs.name AS status_name
+               FROM contacts c
+               LEFT JOIN contact_statuses cs ON cs.id = c.status_id
+               WHERE c.business_id = :business_id
+               ORDER BY c.updated_at DESC, c.created_at DESC, c.id DESC
+               LIMIT :limit'
+            : 'SELECT c.*, NULL AS status_name
+               FROM contacts c
+               WHERE c.business_id = :business_id
+               ORDER BY c.updated_at DESC, c.created_at DESC, c.id DESC
+               LIMIT :limit';
+
+        $statement = Database::connection()->prepare($sql);
         $statement->bindValue('business_id', $businessId, PDO::PARAM_INT);
         $statement->bindValue('limit', max(1, min($limit, 200)), PDO::PARAM_INT);
         $statement->execute();
@@ -183,44 +190,70 @@ final class LeadHub
     public static function dashboardSummary(int $businessId): array
     {
         $connection = Database::connection();
+        $summary = [
+            'total_contacts_count' => 0,
+            'recent_contacts' => [],
+            'new_leads_count' => 0,
+            'open_tasks_count' => 0,
+            'status_summary' => [],
+        ];
 
-        $newStatusIds = self::statusIdsForKeys($businessId, ['new', 'new_lead']);
-        $newLeadsSql = 'SELECT COUNT(*) FROM contacts WHERE business_id = ? AND contact_type = ?';
-        $newLeadsParams = [$businessId, 'lead'];
-
-        if (count($newStatusIds) > 0) {
-            $newLeadsSql .= ' AND status_id IN (' . implode(',', array_fill(0, count($newStatusIds), '?')) . ')';
-            $newLeadsStatement = $connection->prepare($newLeadsSql);
-            $newLeadsStatement->execute(array_merge($newLeadsParams, $newStatusIds));
-        } else {
-            $newLeadsStatement = $connection->prepare($newLeadsSql);
-            $newLeadsStatement->execute($newLeadsParams);
+        if (!self::tableExists('contacts')) {
+            return $summary;
         }
 
-        $openTasks = $connection->prepare(
-            "SELECT COUNT(*)
-             FROM tasks
-             WHERE business_id = :business_id
-               AND status NOT IN ('done', 'completed', 'closed')"
+        $totalContacts = $connection->prepare(
+            'SELECT COUNT(*)
+             FROM contacts
+             WHERE business_id = :business_id'
         );
-        $openTasks->execute(['business_id' => $businessId]);
+        $totalContacts->execute(['business_id' => $businessId]);
+        $summary['total_contacts_count'] = (int) $totalContacts->fetchColumn();
+        $summary['recent_contacts'] = self::contactsForBusiness($businessId, 8);
 
-        $statusSummary = $connection->prepare(
-            'SELECT COALESCE(cs.name, "No Status") AS status_name, COUNT(c.id) AS contact_count
-             FROM contacts c
-             LEFT JOIN contact_statuses cs ON cs.id = c.status_id
-             WHERE c.business_id = :business_id
-             GROUP BY c.status_id, cs.name
-             ORDER BY contact_count DESC, status_name ASC'
-        );
-        $statusSummary->execute(['business_id' => $businessId]);
+        $newLeadsSql = 'SELECT COUNT(*) FROM contacts WHERE business_id = ?';
+        $newLeadsParams = [$businessId];
 
-        return [
-            'recent_contacts' => self::contactsForBusiness($businessId, 8),
-            'new_leads_count' => (int) $newLeadsStatement->fetchColumn(),
-            'open_tasks_count' => (int) $openTasks->fetchColumn(),
-            'status_summary' => $statusSummary->fetchAll(),
-        ];
+        if (self::columnExists('contacts', 'contact_type')) {
+            $newLeadsSql .= ' AND contact_type = ?';
+            $newLeadsParams[] = 'lead';
+        }
+
+        $newStatusIds = self::columnExists('contacts', 'status_id')
+            ? self::statusIdsForKeys($businessId, ['new', 'new_lead'])
+            : [];
+        if (self::columnExists('contacts', 'status_id') && count($newStatusIds) > 0) {
+            $newLeadsSql .= ' AND status_id IN (' . implode(',', array_fill(0, count($newStatusIds), '?')) . ')';
+            $newLeadsParams = array_merge($newLeadsParams, $newStatusIds);
+        }
+        $newLeadsStatement = $connection->prepare($newLeadsSql);
+        $newLeadsStatement->execute($newLeadsParams);
+        $summary['new_leads_count'] = (int) $newLeadsStatement->fetchColumn();
+
+        if (self::tableExists('tasks')) {
+            $openTasksSql = 'SELECT COUNT(*) FROM tasks WHERE business_id = :business_id';
+            if (self::columnExists('tasks', 'status')) {
+                $openTasksSql .= " AND status NOT IN ('done', 'completed', 'closed')";
+            }
+            $openTasks = $connection->prepare($openTasksSql);
+            $openTasks->execute(['business_id' => $businessId]);
+            $summary['open_tasks_count'] = (int) $openTasks->fetchColumn();
+        }
+
+        if (self::tableExists('contact_statuses') && self::columnExists('contacts', 'status_id')) {
+            $statusSummary = $connection->prepare(
+                "SELECT COALESCE(cs.name, 'No Status') AS status_name, COUNT(c.id) AS contact_count
+                 FROM contacts c
+                 LEFT JOIN contact_statuses cs ON cs.id = c.status_id
+                 WHERE c.business_id = :business_id
+                 GROUP BY c.status_id, cs.name
+                 ORDER BY contact_count DESC, status_name ASC"
+            );
+            $statusSummary->execute(['business_id' => $businessId]);
+            $summary['status_summary'] = $statusSummary->fetchAll();
+        }
+
+        return $summary;
     }
 
     public static function contactDetail(int $businessId, int $contactId): ?array
@@ -366,6 +399,7 @@ final class LeadHub
             'note_body' => $noteBody,
         ]);
 
+        self::touchContact($businessId, $contactId);
         self::insertSimpleActivity($businessId, $userId, $contactId, 'lead_hub_note_added', 'Lead Hub note added');
     }
 
@@ -398,6 +432,7 @@ final class LeadHub
             'priority' => 'normal',
         ]);
 
+        self::touchContact($businessId, $contactId);
         self::insertSimpleActivity($businessId, $userId, $contactId, 'lead_hub_task_created', 'Lead Hub task created');
     }
 
@@ -865,6 +900,50 @@ final class LeadHub
             'activity_type' => $activityType,
             'subject' => $subject,
         ]);
+    }
+
+    private static function touchContact(int $businessId, int $contactId): void
+    {
+        $statement = Database::connection()->prepare(
+            'UPDATE contacts
+             SET updated_at = NOW()
+             WHERE id = :contact_id
+               AND business_id = :business_id'
+        );
+        $statement->execute([
+            'contact_id' => $contactId,
+            'business_id' => $businessId,
+        ]);
+    }
+
+    private static function tableExists(string $table): bool
+    {
+        $statement = Database::connection()->prepare(
+            'SELECT COUNT(*)
+             FROM information_schema.TABLES
+             WHERE TABLE_SCHEMA = DATABASE()
+               AND TABLE_NAME = :table_name'
+        );
+        $statement->execute(['table_name' => $table]);
+
+        return (int) $statement->fetchColumn() > 0;
+    }
+
+    private static function columnExists(string $table, string $column): bool
+    {
+        $statement = Database::connection()->prepare(
+            'SELECT COUNT(*)
+             FROM information_schema.COLUMNS
+             WHERE TABLE_SCHEMA = DATABASE()
+               AND TABLE_NAME = :table_name
+               AND COLUMN_NAME = :column_name'
+        );
+        $statement->execute([
+            'table_name' => $table,
+            'column_name' => $column,
+        ]);
+
+        return (int) $statement->fetchColumn() > 0;
     }
 
     private static function splitName(string $name): array

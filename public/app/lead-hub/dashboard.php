@@ -5,6 +5,7 @@ require_once __DIR__ . '/../../../private/classes/LeadHub.php';
 
 $context = lead_hub_bootstrap();
 $summary = [
+    'total_contacts_count' => 0,
     'recent_contacts' => [],
     'new_leads_count' => 0,
     'open_tasks_count' => 0,
@@ -12,11 +13,30 @@ $summary = [
 ];
 $error = '';
 
+function lead_hub_dashboard_error(Throwable $exception): string
+{
+    error_log('Lead Hub dashboard error: ' . $exception->getMessage());
+
+    try {
+        $environment = strtolower((string) Database::config('APP_ENV', 'production'));
+        $debug = (bool) Database::config('APP_DEBUG', false);
+    } catch (Throwable $configException) {
+        $environment = 'production';
+        $debug = false;
+    }
+
+    if ($debug || $environment !== 'production') {
+        return 'Lead Hub dashboard could not be loaded: ' . $exception->getMessage();
+    }
+
+    return 'Lead Hub dashboard could not be loaded.';
+}
+
 if ((int) $context['business_id'] > 0) {
     try {
         $summary = LeadHub::dashboardSummary((int) $context['business_id']);
     } catch (Throwable $exception) {
-        $error = 'Lead Hub dashboard could not be loaded.';
+        $error = lead_hub_dashboard_error($exception);
     }
 }
 
@@ -35,8 +55,8 @@ if ($ready): ?>
 
     <section class="metrics-grid" aria-label="Lead Hub CRM summary">
         <article>
-            <span>Recent Contacts</span>
-            <strong><?= e(count($summary['recent_contacts'])) ?></strong>
+            <span>Total Contacts</span>
+            <strong><?= e($summary['total_contacts_count']) ?></strong>
         </article>
         <article>
             <span>New Leads</span>
