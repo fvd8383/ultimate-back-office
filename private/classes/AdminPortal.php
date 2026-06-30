@@ -5,6 +5,7 @@ require_once __DIR__ . '/BusinessFoundation.php';
 require_once __DIR__ . '/BillingFoundation.php';
 require_once __DIR__ . '/SiteGenerator.php';
 require_once __DIR__ . '/WebsiteManager.php';
+require_once __DIR__ . '/LeadHub.php';
 
 final class AdminPortal
 {
@@ -344,6 +345,11 @@ final class AdminPortal
         $statement->execute(['business_id' => $businessId]);
 
         return $statement->fetchAll();
+    }
+
+    public static function recent247spWebsiteLeadsForBusiness(int $businessId, int $limit = 10): array
+    {
+        return LeadHub::recent247spWebsiteLeads($businessId, $limit);
     }
 
     public static function websites(): array

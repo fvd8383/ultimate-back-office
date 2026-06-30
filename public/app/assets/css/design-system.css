@@ -1486,8 +1486,31 @@ button:hover,
 }
 
 .site-preview-form-placeholder input,
-.site-preview-form-placeholder textarea {
+.site-preview-form-placeholder textarea,
+.site-preview-lead-form input,
+.site-preview-lead-form textarea {
     background: #F5F5F5;
+}
+
+.site-preview-lead-form {
+    display: grid;
+    gap: 14px;
+    margin-top: 10px;
+    width: 100%;
+}
+
+.site-preview-lead-form .site-preview-button {
+    width: 100%;
+    border: 0;
+    cursor: pointer;
+}
+
+.lead-capture-honeypot {
+    position: absolute;
+    left: -10000px;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
 }
 
 .site-preview-footer {

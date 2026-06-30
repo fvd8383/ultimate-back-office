@@ -2,6 +2,7 @@
 
 require_once __DIR__ . '/../../private/classes/Auth.php';
 require_once __DIR__ . '/../../private/classes/BusinessFoundation.php';
+require_once __DIR__ . '/../../private/classes/LeadHub.php';
 
 try {
     $accountsBaseUrl = rtrim((string) Database::config('ACCOUNTS_BASE_URL'), '/');
@@ -41,6 +42,7 @@ try {
         'task_count' => 0,
         'recent_activity' => [],
     ];
+    $recentWebsiteLeads = $business ? LeadHub::recent247spWebsiteLeads((int) $business['id'], 5) : [];
     $loadError = '';
 } catch (Throwable $exception) {
     $user = null;
@@ -53,6 +55,7 @@ try {
         'task_count' => 0,
         'recent_activity' => [],
     ];
+    $recentWebsiteLeads = [];
     $loadError = 'Workspace dashboard could not be loaded. Check the environment and database setup.';
 }
 
@@ -125,6 +128,24 @@ $leadHubNavItems = lead_hub_nav_items($businessIdForLinks, 'dashboard');
                     <span>Activity</span>
                     <strong><?= e(count($summary['recent_activity'])) ?></strong>
                 </article>
+            </section>
+
+            <section class="business-switcher">
+                <h2>Recent 247SP Website Submissions</h2>
+                <?php if (count($recentWebsiteLeads) === 0): ?>
+                    <p class="muted">No 247SP website submissions yet.</p>
+                <?php else: ?>
+                    <div class="activity-list">
+                        <?php foreach ($recentWebsiteLeads as $lead): ?>
+                            <?php $leadName = trim((string) $lead['first_name'] . ' ' . (string) $lead['last_name']); ?>
+                            <article>
+                                <strong><a href="lead-hub/lead.php?business_id=<?= e($business['id']) ?>&contact_id=<?= e($lead['id']) ?>"><?= e($leadName !== '' ? $leadName : 'Website lead') ?></a></strong>
+                                <p><?= e($lead['source_detail'] ?: '247SP website') ?></p>
+                                <span><?= e($lead['submitted_at'] ?: $lead['updated_at']) ?></span>
+                            </article>
+                        <?php endforeach; ?>
+                    </div>
+                <?php endif; ?>
             </section>
 
             <section class="business-switcher">

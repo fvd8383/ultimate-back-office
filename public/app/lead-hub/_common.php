@@ -48,6 +48,22 @@ function lead_hub_bootstrap(): array
 function lead_hub_page(string $current, string $title, string $description): void
 {
     $context = lead_hub_bootstrap();
+    $ready = lead_hub_shell_begin($context, $current, $title);
+
+    if ($ready) {
+        ?>
+            <section class="empty-state">
+                <h2>No records yet</h2>
+                <p><?= e($description) ?></p>
+            </section>
+        <?php
+    }
+
+    lead_hub_shell_end();
+}
+
+function lead_hub_shell_begin(array $context, string $current, string $title): bool
+{
     $user = $context['user'];
     $business = $context['business'];
     $businessId = (int) $context['business_id'];
@@ -75,19 +91,22 @@ function lead_hub_page(string $current, string $title, string $description): voi
 
         <?php if ($loadError !== ''): ?>
             <?= ui_alert($loadError, 'error') ?>
+            <?php return false; ?>
         <?php elseif ($business === null): ?>
             <section class="empty-state">
                 <h2>Business setup required</h2>
                 <p>Create or select a business before using Lead Hub.</p>
                 <?= ui_button('Accounts Dashboard', $accountsBaseUrl . '/dashboard.php', 'primary') ?>
             </section>
-        <?php else: ?>
-            <section class="empty-state">
-                <h2>No records yet</h2>
-                <p><?= e($description) ?></p>
-            </section>
+            <?php return false; ?>
         <?php endif; ?>
     <?php
+
+    return true;
+}
+
+function lead_hub_shell_end(): void
+{
     application_shell_end();
     require __DIR__ . '/../../../private/views/footer.php';
 }

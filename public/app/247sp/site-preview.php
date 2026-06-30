@@ -5,6 +5,7 @@ require_once __DIR__ . '/../../../private/classes/TwentyFourSevenSalesPartner.ph
 require_once __DIR__ . '/../../../private/classes/SiteGenerator.php';
 require_once __DIR__ . '/../../../private/classes/AdminPortal.php';
 require_once __DIR__ . '/../../../private/classes/WebsiteManager.php';
+require_once __DIR__ . '/../../../private/classes/LeadHub.php';
 
 try {
     $accountsBaseUrl = rtrim((string) Database::config('ACCOUNTS_BASE_URL'), '/');
@@ -25,6 +26,23 @@ $serviceImages = [];
 $loadError = '';
 $accessDenied = false;
 $regenerated = isset($_GET['regenerated']);
+$leadNotice = '';
+$leadError = '';
+
+if (($_GET['lead_status'] ?? '') === 'success') {
+    $leadNotice = 'Thanks. Your request was sent successfully.';
+}
+
+if (($_GET['lead_status'] ?? '') === 'error') {
+    $leadErrors = [
+        'name' => 'Please enter your name.',
+        'contact' => 'Please enter a phone number or email address.',
+        'email' => 'Please enter a valid email address.',
+        'spam' => 'This request could not be accepted. Please call or try again.',
+        'website' => 'This request could not be matched to a website.',
+    ];
+    $leadError = $leadErrors[(string) ($_GET['lead_error'] ?? '')] ?? 'Your request could not be sent. Please call or try again.';
+}
 
 try {
     $user = Auth::currentUser();
@@ -309,6 +327,41 @@ function sp247_preview_style(array $branding): string
     return '--preview-blue:' . $primary . ';--preview-blue-dark:' . $primary . ';--preview-accent:' . $secondary . ';';
 }
 
+function sp247_preview_lead_form(int $businessId, ?array $website, ?array $currentPage, string $sourcePage, string $serviceName, int $rows = 4): void
+{
+    $websiteId = (int) ($website['id'] ?? 0);
+    $pageId = (int) ($currentPage['id'] ?? 0);
+    $sourceSlug = (string) ($currentPage['slug'] ?? '');
+    ?>
+    <form method="post" action="lead-submit.php" class="site-preview-lead-form">
+        <input type="hidden" name="business_id" value="<?= e($businessId) ?>">
+        <input type="hidden" name="website_id" value="<?= e($websiteId) ?>">
+        <input type="hidden" name="page_id" value="<?= e($pageId) ?>">
+        <input type="hidden" name="source_page" value="<?= e($sourcePage) ?>">
+        <input type="hidden" name="source_slug" value="<?= e($sourceSlug) ?>">
+        <input type="hidden" name="service_name" value="<?= e($serviceName) ?>">
+        <label class="lead-capture-honeypot" aria-hidden="true">Company website
+            <input type="text" name="company_website" tabindex="-1" autocomplete="off">
+        </label>
+        <div class="form-grid">
+            <label>Name
+                <input name="name" maxlength="150" required autocomplete="name">
+            </label>
+            <label>Phone
+                <input name="phone" maxlength="50" autocomplete="tel">
+            </label>
+        </div>
+        <label>Email
+            <input type="email" name="email" maxlength="255" autocomplete="email">
+        </label>
+        <label>How can we help?
+            <textarea name="message" maxlength="2000" rows="<?= e($rows) ?>"></textarea>
+        </label>
+        <button class="site-preview-button" type="submit">Send Request</button>
+    </form>
+    <?php
+}
+
 function sp247_preview_service_number(array $pages, ?array $currentPage): int
 {
     if ($currentPage === null || ($currentPage['page_type'] ?? '') !== 'service') {
@@ -411,6 +464,8 @@ $phone = (string) (($contactContent['phone'] ?? '') ?: ($business['phone'] ?? ''
 $email = (string) (($contactContent['email'] ?? '') ?: ($business['email'] ?? ''));
 $phoneHref = sp247_preview_tel_href($phone);
 $currentPageType = (string) ($currentPage['page_type'] ?? '');
+$currentServiceName = $currentPageType === 'service' ? (string) ($content['service_name'] ?? $currentPage['title'] ?? '') : '';
+$currentSourcePage = (string) ($currentPage['title'] ?? ucfirst($currentPageType ?: 'page'));
 $heroImage = (string) (($content['hero_image_path'] ?? '') ?: ($currentPageType === 'home' ? ($homeContent['hero_image_path'] ?? '') : ''));
 $aboutImage = (string) ($content['about_image_path'] ?? '');
 $serviceImage = (string) ($content['service_image_path'] ?? '');
@@ -464,6 +519,12 @@ require __DIR__ . '/../../../private/views/account-navigation.php';
                 </div>
             </section>
         <?php else: ?>
+            <?php if ($leadNotice !== ''): ?>
+                <?= ui_alert($leadNotice, 'success') ?>
+            <?php endif; ?>
+            <?php if ($leadError !== ''): ?>
+                <?= ui_alert($leadError, 'error') ?>
+            <?php endif; ?>
             <section class="site-preview-shell" style="<?= e(sp247_preview_style($branding)) ?>">
                 <header class="site-preview-header">
                     <a class="site-preview-brand" href="<?= e(sp247_preview_href($businessIdForLinks, 'home')) ?>">
@@ -591,6 +652,7 @@ require __DIR__ . '/../../../private/views/account-navigation.php';
                         <div class="site-preview-contact-card">
                             <a href="<?= e($phoneHref) ?>"><?= e($phone ?: 'Phone pending') ?></a>
                             <span><?= e($email ?: 'Email pending') ?></span>
+                            <?php sp247_preview_lead_form($businessIdForLinks, $website, $currentPage, $currentSourcePage, $currentServiceName, 4); ?>
                         </div>
                     </section>
                 <?php elseif ($currentPageType === 'about'): ?>
@@ -657,14 +719,7 @@ require __DIR__ . '/../../../private/views/account-navigation.php';
                         </div>
                         <div class="site-preview-contact-card">
                             <strong>Service request</strong>
-                            <div class="site-preview-form-placeholder">
-                                <div class="form-grid">
-                                    <label>Name<input disabled value=""></label>
-                                    <label>Phone<input disabled value=""></label>
-                                </div>
-                                <label>Email<input disabled value=""></label>
-                                <label>How can we help?<textarea disabled rows="5"></textarea></label>
-                            </div>
+                            <?php sp247_preview_lead_form($businessIdForLinks, $website, $currentPage, $currentSourcePage, '', 5); ?>
                         </div>
                     </section>
 
@@ -726,13 +781,7 @@ require __DIR__ . '/../../../private/views/account-navigation.php';
                         <div class="site-preview-contact-card">
                             <a href="<?= e($phoneHref) ?>"><?= e($phone ?: 'Phone pending') ?></a>
                             <span><?= e($email ?: 'Email pending') ?></span>
-                            <div class="site-preview-form-placeholder">
-                                <div class="form-grid">
-                                    <label>Name<input disabled value=""></label>
-                                    <label>Phone<input disabled value=""></label>
-                                </div>
-                                <label>How can we help?<textarea disabled rows="4"></textarea></label>
-                            </div>
+                            <?php sp247_preview_lead_form($businessIdForLinks, $website, $currentPage, $currentSourcePage, '', 4); ?>
                         </div>
                     </section>
                 <?php endif; ?>

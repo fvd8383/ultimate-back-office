@@ -54,6 +54,7 @@ $activeModules = [];
 $allModules = [];
 $notes = [];
 $billingSubscription = null;
+$recentWebsiteLeads = [];
 
 try {
     $business = $businessId > 0 ? AdminPortal::business($businessId) : null;
@@ -62,6 +63,7 @@ try {
         $allModules = AdminPortal::allManagedModules();
         $notes = AdminPortal::notesForBusiness($businessId);
         $billingSubscription = BillingFoundation::subscriptionForBusiness($businessId);
+        $recentWebsiteLeads = AdminPortal::recent247spWebsiteLeadsForBusiness($businessId, 5);
     }
 } catch (Throwable $exception) {
     $loadError = 'Business detail could not be loaded.';
@@ -148,6 +150,24 @@ admin_begin('Business Detail', 'businesses', $context);
             </label>
             <?= ui_button('Save Business Controls', '', 'primary') ?>
         </form>
+    </section>
+
+    <section class="business-switcher">
+        <h2>Recent 247SP Website Leads</h2>
+        <?php if (count($recentWebsiteLeads) === 0): ?>
+            <p class="muted">No 247SP website submissions yet.</p>
+        <?php else: ?>
+            <div class="activity-list">
+                <?php foreach ($recentWebsiteLeads as $lead): ?>
+                    <?php $leadName = trim((string) $lead['first_name'] . ' ' . (string) $lead['last_name']); ?>
+                    <article>
+                        <strong><?= e($leadName !== '' ? $leadName : 'Website lead') ?></strong>
+                        <p><?= e(trim(implode(' · ', array_filter([(string) $lead['phone'], (string) $lead['email'], (string) $lead['status_name']])))) ?></p>
+                        <span><?= e($lead['source_detail'] ?: '247SP website') ?> · <?= e($lead['submitted_at'] ?: $lead['updated_at']) ?></span>
+                    </article>
+                <?php endforeach; ?>
+            </div>
+        <?php endif; ?>
     </section>
 
     <section class="business-switcher">
