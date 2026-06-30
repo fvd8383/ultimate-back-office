@@ -100,8 +100,8 @@ if ($ready): ?>
     </section>
 
     <section class="business-switcher">
-        <h2>Shared CRM Foundation</h2>
-        <p class="muted">Lead Hub contacts are the shared CRM records for 247SP website leads, future SSP invoice customers, EMD leads, and TUHWD review contacts.</p>
+        <h2>Your Customer Pipeline</h2>
+        <p class="muted">Track new inquiries, customer details, follow-ups, and notes in one place.</p>
     </section>
 <?php endif; ?>
 <?php lead_hub_shell_end(); ?>

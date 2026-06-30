@@ -9,10 +9,7 @@ final class LeadHub
     private const CONTACT_TYPES = ['lead', 'contact'];
     private const SOURCE_OPTIONS = [
         'manual' => 'Manual entry',
-        '247sp_website' => '247SP website',
-        'ssp' => 'SSP',
-        'emd' => 'EMD',
-        'tuhwd' => 'TUHWD',
+        '247sp_website' => 'Website form',
         'other' => 'Other',
     ];
 
