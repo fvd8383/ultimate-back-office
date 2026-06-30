@@ -23,15 +23,19 @@ if ($ready): ?>
         <section class="empty-state">
             <h2>No contacts yet</h2>
             <p>Lead Hub contacts will appear here after website submissions or manual CRM activity.</p>
+            <?= ui_button('Add Contact', 'contact.php?business_id=' . urlencode((string) $context['business_id']), 'primary') ?>
         </section>
     <?php else: ?>
         <section class="business-switcher">
+            <div class="button-row secondary-link">
+                <?= ui_button('Add Contact', 'contact.php?business_id=' . urlencode((string) $context['business_id']), 'primary') ?>
+            </div>
             <h2>Contact Records</h2>
             <div class="activity-list">
                 <?php foreach ($contacts as $contact): ?>
                     <?php $contactName = trim((string) $contact['first_name'] . ' ' . (string) $contact['last_name']); ?>
                     <article>
-                        <strong><a href="lead.php?business_id=<?= e($context['business_id']) ?>&contact_id=<?= e($contact['id']) ?>"><?= e($contactName !== '' ? $contactName : 'Contact') ?></a></strong>
+                        <strong><a href="contact.php?business_id=<?= e($context['business_id']) ?>&contact_id=<?= e($contact['id']) ?>"><?= e($contactName !== '' ? $contactName : 'Contact') ?></a></strong>
                         <p><?= e(trim(implode(' · ', array_filter([(string) $contact['phone'], (string) $contact['email'], (string) $contact['status_name']])))) ?></p>
                         <span><?= e($contact['source_detail'] ?: 'No source detail') ?> · <?= e($contact['updated_at']) ?></span>
                     </article>

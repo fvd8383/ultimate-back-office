@@ -73,9 +73,11 @@ WORKSPACE links launch product/module areas.
 
 Current routing:
 
-* Lead Hub: `public/app/dashboard.php`
+* Lead Hub: `public/app/lead-hub/dashboard.php`
+* Legacy Lead Hub Dashboard entry: `public/app/dashboard.php`
 * Lead Hub Leads: `public/app/lead-hub/leads.php`
 * Lead Hub Contacts: `public/app/lead-hub/contacts.php`
+* Lead Hub Contact Detail: `public/app/lead-hub/contact.php`
 * Lead Hub Tasks: `public/app/lead-hub/tasks.php`
 * Lead Hub Notes: `public/app/lead-hub/notes.php`
 * 24/7 Sales Partner: `public/app/247sp/dashboard.php`

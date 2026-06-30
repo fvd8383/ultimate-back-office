@@ -104,7 +104,7 @@ They may exist in the database, documentation, or admin controls, but customers 
 
 # Lead Hub
 
-Lead Hub is the shared lead tracking layer.
+Lead Hub is the shared CRM and lead tracking layer.
 
 It is not currently sold as a standalone product.
 
@@ -113,8 +113,11 @@ Lead Hub is automatically included when a business activates:
 * 247SP
 * EMD Network
 * Future lead-generating products
+* Future customer-record products such as SSP and TUHWD
 
 For 247SP customers, Lead Hub should feel like part of the product experience, not a separate product purchase.
+
+Lead Hub contacts are the shared customer/prospect records future modules should reuse for 247SP website leads, SSP invoice customers, EMD leads, and TUHWD review contacts.
 
 ---
 

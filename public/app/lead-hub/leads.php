@@ -23,15 +23,19 @@ if ($ready): ?>
         <section class="empty-state">
             <h2>No website leads yet</h2>
             <p>247SP website form submissions will appear here after visitors send a request.</p>
+            <?= ui_button('Add Lead', 'contact.php?business_id=' . urlencode((string) $context['business_id']), 'primary') ?>
         </section>
     <?php else: ?>
         <section class="business-switcher">
+            <div class="button-row secondary-link">
+                <?= ui_button('Add Lead', 'contact.php?business_id=' . urlencode((string) $context['business_id']), 'primary') ?>
+            </div>
             <h2>247SP Website Submissions</h2>
             <div class="activity-list">
                 <?php foreach ($leads as $lead): ?>
                     <?php $leadName = trim((string) $lead['first_name'] . ' ' . (string) $lead['last_name']); ?>
                     <article>
-                        <strong><a href="lead.php?business_id=<?= e($context['business_id']) ?>&contact_id=<?= e($lead['id']) ?>"><?= e($leadName !== '' ? $leadName : 'Website lead') ?></a></strong>
+                        <strong><a href="contact.php?business_id=<?= e($context['business_id']) ?>&contact_id=<?= e($lead['id']) ?>"><?= e($leadName !== '' ? $leadName : 'Website lead') ?></a></strong>
                         <p><?= e($lead['source_detail'] ?: '247SP website') ?></p>
                         <p><?= e(trim(implode(' · ', array_filter([(string) $lead['phone'], (string) $lead['email'], (string) $lead['status_name']])))) ?></p>
                         <span><?= e($lead['submitted_at'] ?: $lead['updated_at']) ?></span>

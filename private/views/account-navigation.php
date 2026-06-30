@@ -122,7 +122,7 @@ if (!function_exists('application_navigation')) {
             ['icon' => '👤', 'label' => 'Profile', 'href' => $baseUrls['accounts'] . '/profile.php', 'current' => $current === 'profile'],
         ];
 
-        $leadHubItem = ['icon' => '▦', 'label' => 'Lead Hub', 'href' => application_shell_href($baseUrls['app'], 'dashboard.php', $business), 'current' => $current === 'lead_hub'];
+        $leadHubItem = ['icon' => '▦', 'label' => 'Lead Hub', 'href' => application_shell_href($baseUrls['app'], 'lead-hub/dashboard.php', $business), 'current' => $current === 'lead_hub'];
         if ($current === 'lead_hub' && isset($options['secondary_nav']) && is_array($options['secondary_nav'])) {
             $leadHubItem['children'] = $options['secondary_nav'];
         }

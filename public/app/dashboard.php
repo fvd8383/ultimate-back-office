@@ -139,7 +139,7 @@ $leadHubNavItems = lead_hub_nav_items($businessIdForLinks, 'dashboard');
                         <?php foreach ($recentWebsiteLeads as $lead): ?>
                             <?php $leadName = trim((string) $lead['first_name'] . ' ' . (string) $lead['last_name']); ?>
                             <article>
-                                <strong><a href="lead-hub/lead.php?business_id=<?= e($business['id']) ?>&contact_id=<?= e($lead['id']) ?>"><?= e($leadName !== '' ? $leadName : 'Website lead') ?></a></strong>
+                                <strong><a href="lead-hub/contact.php?business_id=<?= e($business['id']) ?>&contact_id=<?= e($lead['id']) ?>"><?= e($leadName !== '' ? $leadName : 'Website lead') ?></a></strong>
                                 <p><?= e($lead['source_detail'] ?: '247SP website') ?></p>
                                 <span><?= e($lead['submitted_at'] ?: $lead['updated_at']) ?></span>
                             </article>

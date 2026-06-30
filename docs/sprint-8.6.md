@@ -22,11 +22,18 @@ Complete every workflow required for a customer to:
 
 ---
 
-# Milestone 1 — Lead Capture Pipeline
+# Milestone 1 — Lead Capture Pipeline And Lead Hub CRM Foundation
 
 ## Objective
 
-Every lead generated from a customer website must automatically enter Lead Hub.
+Every lead generated from a customer website must automatically enter Lead Hub, and Lead Hub must support basic manual CRM management for businesses.
+
+Lead Hub is the shared CRM foundation for:
+
+* 247SP website leads
+* Future SSP invoice customers
+* Future EMD leads
+* Future TUHWD review contacts
 
 ### Deliverables
 
@@ -36,6 +43,13 @@ Every lead generated from a customer website must automatically enter Lead Hub.
 * Lead creation.
 * Lead assignment.
 * Lead activity history.
+* Manual contact/lead creation.
+* Manual contact/lead editing.
+* Contact status updates.
+* Contact detail view.
+* Contact notes.
+* Contact follow-up tasks.
+* Lead Hub dashboard with recent contacts/leads, new lead count, open task count, and simple status summary.
 * Email notification to customer.
 * Internal notification.
 
@@ -43,6 +57,10 @@ Every lead generated from a customer website must automatically enter Lead Hub.
 
 * Submit form.
 * Lead appears in Lead Hub.
+* Create a manual contact in Lead Hub.
+* Edit contact details and status.
+* Add a contact note.
+* Create a contact follow-up task.
 * Customer receives notification.
 * Activity logged.
 

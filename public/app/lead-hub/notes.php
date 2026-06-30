@@ -31,7 +31,13 @@ if ($ready): ?>
                 <?php foreach ($notes as $note): ?>
                     <?php $contactName = trim((string) $note['first_name'] . ' ' . (string) $note['last_name']); ?>
                     <article>
-                        <strong><?= e($contactName !== '' ? $contactName : 'Note') ?></strong>
+                        <strong>
+                            <?php if ($contactName !== '' && (int) ($note['contact_id'] ?? 0) > 0): ?>
+                                <a href="contact.php?business_id=<?= e($context['business_id']) ?>&contact_id=<?= e($note['contact_id']) ?>"><?= e($contactName) ?></a>
+                            <?php else: ?>
+                                <?= e($contactName !== '' ? $contactName : 'Note') ?>
+                            <?php endif; ?>
+                        </strong>
                         <p><?= nl2br(e($note['note_body'])) ?></p>
                         <span><?= e($note['created_at']) ?></span>
                     </article>

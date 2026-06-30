@@ -33,7 +33,7 @@ if ($ready): ?>
                     <article>
                         <strong><?= e($task['title']) ?></strong>
                         <?php if ($contactName !== ''): ?>
-                            <p><?= e($contactName) ?></p>
+                            <p><a href="contact.php?business_id=<?= e($context['business_id']) ?>&contact_id=<?= e($task['contact_id']) ?>"><?= e($contactName) ?></a></p>
                         <?php endif; ?>
                         <?php if ($task['description']): ?>
                             <p><?= nl2br(e($task['description'])) ?></p>
