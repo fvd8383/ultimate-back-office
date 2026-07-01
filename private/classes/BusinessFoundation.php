@@ -576,6 +576,9 @@ final class BusinessFoundation
         $tasks = $connection->prepare('SELECT COUNT(*) FROM tasks WHERE business_id = :business_id');
         $tasks->execute(['business_id' => $businessId]);
 
+        $leads = $connection->prepare("SELECT COUNT(*) FROM contacts WHERE business_id = :business_id AND contact_type = 'lead'");
+        $leads->execute(['business_id' => $businessId]);
+
         $activity = $connection->prepare(
             'SELECT activity_type, subject, description, created_at
              FROM activity_logs
@@ -586,6 +589,7 @@ final class BusinessFoundation
         $activity->execute(['business_id' => $businessId]);
 
         return [
+            'lead_count' => (int) $leads->fetchColumn(),
             'contact_count' => (int) $contacts->fetchColumn(),
             'task_count' => (int) $tasks->fetchColumn(),
             'recent_activity' => $activity->fetchAll(),

@@ -41,6 +41,7 @@ try {
         }
     }
     $summary = $business ? BusinessFoundation::leadHubSummary((int) $business['id']) : [
+        'lead_count' => 0,
         'contact_count' => 0,
         'task_count' => 0,
         'recent_activity' => [],
@@ -55,6 +56,7 @@ try {
     $hasLeadHubAccess = false;
     $has247spAccess = false;
     $summary = [
+        'lead_count' => 0,
         'contact_count' => 0,
         'task_count' => 0,
         'recent_activity' => [],
@@ -129,18 +131,22 @@ $leadHubNavItems = lead_hub_nav_items($businessIdForLinks, 'dashboard');
             <?php endif; ?>
 
             <section class="metrics-grid" id="lead-hub" aria-label="Lead Hub summary">
-                <article>
+                <a class="metric-card" href="lead-hub/leads.php?business_id=<?= e($businessIdForLinks) ?>">
+                    <span>New Leads</span>
+                    <strong><?= e($summary['lead_count'] ?? 0) ?></strong>
+                </a>
+                <a class="metric-card" href="lead-hub/contacts.php?business_id=<?= e($businessIdForLinks) ?>">
                     <span>Contacts</span>
                     <strong><?= e($summary['contact_count']) ?></strong>
-                </article>
-                <article>
+                </a>
+                <a class="metric-card" href="lead-hub/tasks.php?business_id=<?= e($businessIdForLinks) ?>">
                     <span>Tasks</span>
                     <strong><?= e($summary['task_count']) ?></strong>
-                </article>
-                <article>
+                </a>
+                <a class="metric-card" href="lead-hub/notes.php?business_id=<?= e($businessIdForLinks) ?>">
                     <span>Activity</span>
                     <strong><?= e(count($summary['recent_activity'])) ?></strong>
-                </article>
+                </a>
             </section>
 
             <section class="business-switcher">

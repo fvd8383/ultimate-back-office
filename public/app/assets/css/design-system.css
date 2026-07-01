@@ -477,12 +477,56 @@ button:hover,
 }
 
 .account-nav__section-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    border-radius: var(--ubo-radius-control);
     margin: 0;
     color: var(--ubo-muted);
+    cursor: pointer;
     font-size: 12px;
     font-weight: 700;
     letter-spacing: 0;
+    list-style: none;
+    padding: 6px 8px;
     text-transform: uppercase;
+}
+
+.account-nav__section-title::-webkit-details-marker,
+.account-nav__subsection-title::-webkit-details-marker {
+    display: none;
+}
+
+.account-nav__section-title::after,
+.account-nav__subsection-title::after {
+    content: "v";
+    font-size: 11px;
+    line-height: 1;
+    transform: rotate(-90deg);
+    transition: transform .16s ease;
+}
+
+.account-nav__section[open] > .account-nav__section-title::after,
+.account-nav__subsection[open] > .account-nav__subsection-title::after {
+    transform: rotate(0deg);
+}
+
+.account-nav__section-title:hover,
+.account-nav__subsection-title:hover {
+    background: var(--ubo-bg);
+    color: var(--ubo-charcoal);
+}
+
+.account-nav__section-title:focus-visible,
+.account-nav__subsection-title:focus-visible {
+    outline: 3px solid var(--ubo-focus);
+    outline-offset: 2px;
+}
+
+.account-nav__section-items {
+    display: grid;
+    gap: 8px;
 }
 
 .account-nav__item {
@@ -508,6 +552,26 @@ button:hover,
     background: rgba(59, 108, 122, .10);
     color: var(--ubo-primary);
     font-weight: 700;
+}
+
+.account-nav__subsection {
+    display: grid;
+    gap: 6px;
+}
+
+.account-nav__subsection-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    border-radius: var(--ubo-radius-control);
+    color: var(--ubo-muted);
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 700;
+    list-style: none;
+    margin: -2px 0 0 34px;
+    padding: 6px 10px;
 }
 
 .account-nav__subnav {
@@ -1054,6 +1118,26 @@ button:hover,
 .metrics-grid article {
     min-height: 120px;
     padding: 20px;
+}
+
+.metrics-grid .metric-card {
+    min-height: 120px;
+    border: 1px solid var(--ubo-line);
+    border-radius: var(--ubo-radius-card);
+    background: var(--ubo-surface);
+    box-shadow: var(--ubo-shadow);
+    color: inherit;
+    padding: 20px;
+    text-decoration: none;
+    transition: border-color .16s ease, box-shadow .16s ease, transform .16s ease;
+}
+
+.metrics-grid .metric-card:hover,
+.metrics-grid .metric-card:focus-visible {
+    border-color: rgba(59, 108, 122, .38);
+    box-shadow: 0 8px 22px rgba(34, 34, 34, .09);
+    color: inherit;
+    transform: translateY(-1px);
 }
 
 .metrics-grid span {
