@@ -19,11 +19,13 @@ $business = null;
 $summary = [];
 $website = null;
 $billing = null;
+$websiteApproval = ['approved' => false, 'status' => 'not_reviewed', 'created_at' => null];
 $loadError = '';
 $actionError = '';
 $accessDenied = false;
 $completed = isset($_GET['completed']);
 $changesRequested = isset($_GET['changes_requested']);
+$approvedForLaunch = isset($_GET['approved']);
 
 try {
     $user = Auth::currentUser();
@@ -48,12 +50,24 @@ try {
                 header('Location: dashboard.php?business_id=' . $businessId . '&changes_requested=1');
                 exit;
             }
+
+            if (isset($_POST['approve_launch'])) {
+                $approvalWebsite = SiteGenerator::websiteForBusiness($businessId);
+                if ($approvalWebsite === null || !in_array((string) ($approvalWebsite['status'] ?? ''), ['generated', 'published'], true)) {
+                    throw new InvalidArgumentException('Review your website preview before approving launch.');
+                }
+
+                TwentyFourSevenSalesPartner::approveWebsiteLaunch($businessId, (int) $user['id']);
+                header('Location: dashboard.php?business_id=' . $businessId . '&approved=1');
+                exit;
+            }
         }
 
         if (!$accessDenied) {
             $summary = TwentyFourSevenSalesPartner::dashboardSummary($businessId);
             $website = SiteGenerator::websiteForBusiness($businessId);
             $billing = BillingFoundation::subscriptionForBusiness($businessId);
+            $websiteApproval = TwentyFourSevenSalesPartner::websiteLaunchApproval($businessId);
 
             if ($website !== null) {
                 $summary['website_status'] = (string) $website['status'];
@@ -67,6 +81,7 @@ try {
         $summary = TwentyFourSevenSalesPartner::dashboardSummary((int) $business['id']);
         $website = SiteGenerator::websiteForBusiness((int) $business['id']);
         $billing = BillingFoundation::subscriptionForBusiness((int) $business['id']);
+        $websiteApproval = TwentyFourSevenSalesPartner::websiteLaunchApproval((int) $business['id']);
 
         if ($website !== null) {
             $summary['website_status'] = (string) $website['status'];
@@ -97,6 +112,121 @@ function sp247_status_label(string $status): string
     ];
 
     return $labels[$status] ?? ucwords(str_replace('_', ' ', $status));
+}
+
+function sp247_business_profile_complete(?array $business): bool
+{
+    if ($business === null) {
+        return false;
+    }
+
+    foreach (['business_name', 'email', 'phone', 'address_line_1', 'city', 'state', 'postal_code'] as $field) {
+        if (trim((string) ($business[$field] ?? '')) === '') {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+function sp247_subscription_paid(?array $billing): bool
+{
+    return $billing !== null && (string) ($billing['status'] ?? '') === 'active';
+}
+
+function sp247_build_launch_readiness(
+    ?array $business,
+    array $summary,
+    ?array $website,
+    ?array $billing,
+    array $websiteApproval,
+    string $accountsBaseUrl,
+    int $businessIdForLinks
+): array {
+    $businessId = urlencode((string) $businessIdForLinks);
+    $setupComplete = (string) ($summary['setup_status'] ?? '') === 'complete';
+    $previewReady = $website !== null && in_array((string) ($website['status'] ?? ''), ['generated', 'published'], true);
+    $domainReady = !in_array((string) ($summary['domain_status'] ?? 'not_selected'), ['', 'not_selected'], true);
+    $emailReady = !in_array((string) ($summary['email_status'] ?? 'not_selected'), ['', 'not_selected'], true);
+    $paymentComplete = sp247_subscription_paid($billing);
+    $approvalDate = (string) ($websiteApproval['created_at'] ?? '');
+    $generatedDate = (string) ($website['generated_at'] ?? '');
+    $websiteApproved = !empty($websiteApproval['approved'])
+        && ($generatedDate === '' || $approvalDate === '' || $approvalDate >= $generatedDate);
+    $readyToLaunch = $setupComplete && $previewReady && $domainReady && $emailReady && $websiteApproved && $paymentComplete;
+
+    $items = [
+        [
+            'label' => 'Business profile complete',
+            'completed' => sp247_business_profile_complete($business),
+            'detail' => sp247_business_profile_complete($business) ? 'Your business contact and service area details are saved.' : 'Add the core business details used for your website.',
+            'action' => ['label' => 'Update profile', 'href' => $accountsBaseUrl . '/business.php?business_id=' . $businessId],
+        ],
+        [
+            'label' => 'Website onboarding complete',
+            'completed' => $setupComplete,
+            'detail' => $setupComplete ? 'Your website setup answers have been submitted.' : 'Finish the website setup steps so your preview can be prepared.',
+            'action' => ['label' => 'Continue onboarding', 'href' => 'onboarding.php?business_id=' . $businessId . '&step=' . urlencode((string) ($summary['current_step'] ?? 'business_information'))],
+        ],
+        [
+            'label' => 'Website preview ready',
+            'completed' => $previewReady,
+            'detail' => $previewReady ? 'Your private website preview is ready to review.' : 'Your preview appears here after onboarding and website preparation.',
+            'action' => ['label' => $setupComplete ? 'Review onboarding' : 'Finish onboarding', 'href' => $setupComplete ? 'review.php?business_id=' . $businessId : 'onboarding.php?business_id=' . $businessId],
+        ],
+        [
+            'label' => 'Domain selected/requested',
+            'completed' => $domainReady,
+            'detail' => $domainReady ? 'Your domain request is saved and visible in your account.' : 'Choose the domain you want connected to this website.',
+            'action' => ['label' => 'Choose domain', 'href' => 'onboarding.php?business_id=' . $businessId . '&step=domain_selection'],
+        ],
+        [
+            'label' => 'Email selected/requested',
+            'completed' => $emailReady,
+            'detail' => $emailReady ? 'Your first mailbox request is saved.' : 'Choose the mailbox name you want for your business email.',
+            'action' => ['label' => 'Choose email', 'href' => 'onboarding.php?business_id=' . $businessId . '&step=email_selection'],
+        ],
+        [
+            'label' => 'Website approved',
+            'completed' => $websiteApproved,
+            'detail' => $websiteApproved ? 'Your approval has been saved.' : ($previewReady ? 'Approve the preview when it looks ready, or request changes below.' : 'Review and approve your preview once it is ready.'),
+            'action' => ['label' => 'Preview website', 'href' => 'site-preview.php?business_id=' . $businessId],
+        ],
+        [
+            'label' => 'Payment method added',
+            'completed' => $paymentComplete,
+            'detail' => $paymentComplete ? 'Your billing status is active.' : 'Complete payment setup after reviewing your website preview.',
+            'action' => ['label' => 'View billing', 'href' => $accountsBaseUrl . '/billing.php'],
+        ],
+        [
+            'label' => 'Ready to launch',
+            'completed' => $readyToLaunch,
+            'detail' => $readyToLaunch ? 'Your launch requirements are complete.' : 'Complete the remaining items above to prepare this website for launch.',
+        ],
+    ];
+
+    $primaryAction = null;
+    $supportingText = '';
+
+    if ($previewReady && !$paymentComplete) {
+        $primaryAction = ['label' => 'Complete Payment & Launch', 'href' => $accountsBaseUrl . '/billing.php'];
+        $supportingText = 'Payment is requested only after your website preview is ready for approval.';
+    } elseif ($previewReady && $paymentComplete && !$websiteApproved) {
+        $primaryAction = [
+            'label' => 'Approve & Launch Website',
+            'href' => '',
+            'attributes' => ['name' => 'approve_launch', 'value' => '1', 'form' => 'launch-readiness-action-form'],
+        ];
+        $supportingText = 'Approve the preview when it looks ready, or send a change request below.';
+    } elseif ($readyToLaunch) {
+        $supportingText = 'Your approval is saved and your launch requirements are complete.';
+    }
+
+    return [
+        'items' => $items,
+        'primary_action' => $primaryAction,
+        'supporting_text' => $supportingText,
+    ];
 }
 
 $businessIdForLinks = $business ? (int) $business['id'] : 0;
@@ -134,11 +264,14 @@ require __DIR__ . '/../../../private/views/account-navigation.php';
         <?php if ($changesRequested): ?>
             <?= ui_alert('Change request sent. The 247SP team will review it.', 'success') ?>
         <?php endif; ?>
+        <?php if ($approvedForLaunch): ?>
+            <?= ui_alert('Website approval saved. Your launch checklist has been updated.', 'success') ?>
+        <?php endif; ?>
         <?php if ($actionError !== ''): ?>
             <?= ui_alert($actionError, 'error') ?>
         <?php endif; ?>
         <?php if ($billing !== null && in_array((string) $billing['status'], ['pending_payment', 'past_due'], true)): ?>
-            <?= ui_alert('Billing status is ' . sp247_status_label((string) $billing['status']) . '. 24/7 Sales Partner remains available while billing is handled manually.', 'warning') ?>
+            <?= ui_alert('Billing status is ' . sp247_status_label((string) $billing['status']) . '. Visit Billing to review your current plan and payment status.', 'warning') ?>
         <?php endif; ?>
 
         <?php if ($loadError !== ''): ?>
@@ -171,6 +304,23 @@ require __DIR__ . '/../../../private/views/account-navigation.php';
                     <strong><?= e(sp247_status_label((string) $summary['email_status'])) ?></strong>
                 </article>
             </section>
+
+            <?php
+                $launchReadiness = sp247_build_launch_readiness($business, $summary, $website, $billing, $websiteApproval, $accountsBaseUrl, $businessIdForLinks);
+            ?>
+            <form id="launch-readiness-action-form" method="post" action="dashboard.php">
+                <input type="hidden" name="business_id" value="<?= e($businessIdForLinks) ?>">
+            </form>
+            <?= ui_launch_readiness(
+                'Launch Readiness',
+                'Use this checklist to see what is complete and what still needs attention before your 24/7 Sales Partner website can launch.',
+                $launchReadiness['items'],
+                [
+                    'module_label' => '24/7 Sales Partner',
+                    'primary_action' => $launchReadiness['primary_action'],
+                    'supporting_text' => $launchReadiness['supporting_text'],
+                ]
+            ) ?>
 
             <section class="business-switcher">
                 <h2>Onboarding Progress</h2>
