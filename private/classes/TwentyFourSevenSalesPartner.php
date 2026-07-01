@@ -602,6 +602,41 @@ final class TwentyFourSevenSalesPartner
         self::logActivity($businessId, $userId, '247sp_website_changes_requested', 'Website changes requested', $message);
     }
 
+    public static function approveWebsiteLaunch(int $businessId, int $userId): void
+    {
+        self::logActivity($businessId, $userId, '247sp_website_launch_approved', 'Website approved for launch');
+    }
+
+    public static function websiteLaunchApproval(int $businessId): array
+    {
+        $statement = Database::connection()->prepare(
+            "SELECT activity_type, created_at
+             FROM activity_logs
+             WHERE business_id = :business_id
+               AND module_key = :module_key
+               AND activity_type IN ('247sp_website_launch_approved', '247sp_website_changes_requested')
+             ORDER BY created_at DESC, id DESC
+             LIMIT 1"
+        );
+        $statement->execute([
+            'business_id' => $businessId,
+            'module_key' => '247sp',
+        ]);
+        $activity = $statement->fetch();
+
+        if (!$activity) {
+            return ['approved' => false, 'status' => 'not_reviewed', 'created_at' => null];
+        }
+
+        $approved = (string) $activity['activity_type'] === '247sp_website_launch_approved';
+
+        return [
+            'approved' => $approved,
+            'status' => $approved ? 'approved' : 'changes_requested',
+            'created_at' => $activity['created_at'] ?? null,
+        ];
+    }
+
     public static function readinessErrors(int $businessId): array
     {
         $bundle = self::bundle($businessId);

@@ -244,6 +244,21 @@ Module pages should display the selected business in the content area, typically
 
 Business-specific actions belong in business cards or business pages, not in duplicated navigation groups. The account dashboard business cards currently keep only the business overview and Edit Business action; module and account destinations belong in the global shell.
 
+## Module Dashboard Readiness
+
+Customer-facing module dashboards should include a Launch Readiness or Setup Readiness section whenever the module requires customer setup before first use.
+
+The readiness section should:
+
+* show the module-specific checklist items required before launch or first use
+* clearly distinguish completed and incomplete items
+* provide customer-friendly next actions for incomplete items
+* use existing module, billing, domain, email, or workflow records where available
+* avoid requesting payment before the customer has reached the module-specific approval or launch step
+* avoid internal planning language in customer-facing copy
+
+For 24/7 Sales Partner, payment belongs after website preview review and launch approval, not during signup or business onboarding. Customer payment acceptance belongs to separate payment-processing products, not the 24/7 Sales Partner setup workflow.
+
 ## Base URL Rules
 
 Cross-area links should use configured base URLs when available:
