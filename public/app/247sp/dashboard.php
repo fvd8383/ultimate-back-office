@@ -186,7 +186,6 @@ require __DIR__ . '/../../../private/views/account-navigation.php';
                     <?= ui_button($summary['setup_status'] === 'complete' ? 'Review onboarding' : 'Continue onboarding', $summary['setup_status'] === 'complete'
                         ? 'review.php?business_id=' . urlencode((string) $businessIdForLinks)
                         : 'onboarding.php?business_id=' . urlencode((string) $businessIdForLinks) . '&step=' . urlencode((string) $summary['current_step'])) ?>
-                    <?= ui_button('Lead Hub included', '../dashboard.php', 'secondary') ?>
                 </div>
             </section>
 
@@ -214,11 +213,6 @@ require __DIR__ . '/../../../private/views/account-navigation.php';
                     </form>
                     <p class="muted">If the preview looks ready, contact your 247SP team member to approve the website.</p>
                 <?php endif; ?>
-            </section>
-
-            <section class="business-switcher">
-                <h2>Lead Hub Included</h2>
-                <p class="muted">24/7 Sales Partner includes Lead Hub access so website inquiries can be managed from your workspace.</p>
             </section>
 
             <section class="business-switcher">
