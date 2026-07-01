@@ -92,22 +92,27 @@ account_shell_begin('dashboard');
     <h2>Businesses</h2>
 
     <?php if (count($businesses) === 0): ?>
-        <p class="muted">No business is linked to this account yet. Business setup is required before Lead Hub can be used.</p>
+        <p class="muted">No business is linked to this account yet. Business setup is required before workspace tools can be used.</p>
         <?= ui_button('Create Business', 'business-create.php') ?>
     <?php else: ?>
         <div class="business-list">
             <?php foreach ($businesses as $business): ?>
+                <?php
+                $activeProductModules = array_values(array_filter($business['active_modules'], static function (array $module): bool {
+                    return ($module['module_key'] ?? '') !== 'lead_hub';
+                }));
+                ?>
                 <article class="business-list__item">
                     <div>
                         <h3><?= e($business['business_name']) ?></h3>
                         <p><?= e($business['city']) ?>, <?= e($business['state']) ?></p>
                         <p class="muted">Status: <?= e($business['setup_status']) ?> · Profile <?= e($business['profile_completion']) ?>%</p>
                         <div class="pill-list">
-                            <?php foreach ($business['active_modules'] as $module): ?>
+                            <?php foreach ($activeProductModules as $module): ?>
                                 <?= ui_badge((string) $module['name'], 'module') ?>
                             <?php endforeach; ?>
-                            <?php if (count($business['active_modules']) === 0): ?>
-                                <?= ui_badge('No active modules', 'status') ?>
+                            <?php if (count($activeProductModules) === 0): ?>
+                                <?= ui_badge('No active products', 'status') ?>
                             <?php endif; ?>
                         </div>
                     </div>

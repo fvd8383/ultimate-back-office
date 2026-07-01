@@ -149,7 +149,7 @@ account_shell_begin('businesses');
 <section class="dashboard-card dashboard-card--wide">
     <p class="eyebrow">Business profile</p>
     <h1><?= $business ? e($business['business_name']) : 'Business Profile' ?></h1>
-    <p class="muted">Manage the business details, category, and services used by Lead Hub.</p>
+    <p class="muted">Manage the business details, category, and services used across your workspace.</p>
 </section>
 
 <?php if ($notice !== ''): ?>

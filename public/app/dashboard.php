@@ -26,6 +26,9 @@ try {
         ? BusinessFoundation::businessForUser($requestedBusinessId, (int) $user['id'])
         : BusinessFoundation::firstBusinessForUser((int) $user['id']);
     $activeModules = $business ? BusinessFoundation::customerActiveModules((int) $business['id']) : [];
+    $productModules = array_values(array_filter($activeModules, static function (array $module): bool {
+        return ($module['module_key'] ?? '') !== 'lead_hub';
+    }));
     $hasLeadHubAccess = false;
     $has247spAccess = false;
     foreach ($activeModules as $module) {
@@ -48,6 +51,7 @@ try {
     $user = null;
     $business = null;
     $activeModules = [];
+    $productModules = [];
     $hasLeadHubAccess = false;
     $has247spAccess = false;
     $summary = [
@@ -91,17 +95,17 @@ $leadHubNavItems = lead_hub_nav_items($businessIdForLinks, 'dashboard');
             </section>
         <?php else: ?>
             <?php if (!$hasLeadHubAccess): ?>
-                <?= ui_alert('Lead Hub is not active for this business.', 'warning') ?>
+                <?= ui_alert('CRM workspace access is not active for this business.', 'warning') ?>
             <?php endif; ?>
 
             <section class="business-switcher">
-                <h2>Module Status</h2>
+                <h2>Product Status</h2>
                 <div class="pill-list">
-                    <?php foreach ($activeModules as $module): ?>
+                    <?php foreach ($productModules as $module): ?>
                         <?= ui_badge((string) $module['name'] . ' · ' . (string) $module['activation_source'], 'module') ?>
                     <?php endforeach; ?>
-                    <?php if (count($activeModules) === 0): ?>
-                        <?= ui_badge('No active modules', 'status') ?>
+                    <?php if (count($productModules) === 0): ?>
+                        <?= ui_badge('No active products', 'status') ?>
                     <?php endif; ?>
                 </div>
             </section>
