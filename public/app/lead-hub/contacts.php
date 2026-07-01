@@ -17,12 +17,19 @@ if ((int) $context['business_id'] > 0) {
 
 $ready = lead_hub_shell_begin($context, 'contacts', 'Contacts');
 if ($ready): ?>
+    <section class="business-switcher">
+        <div class="button-row">
+            <?= ui_button('Add Contact', 'contact.php?business_id=' . urlencode((string) $context['business_id']) . '&type=contact', 'primary') ?>
+        </div>
+    </section>
+
     <?php if ($error !== ''): ?>
         <?= ui_alert($error, 'error') ?>
     <?php elseif (count($contacts) === 0): ?>
         <section class="empty-state">
             <h2>No contacts yet</h2>
-            <p>Lead Hub contacts will appear here after website submissions or manual CRM activity.</p>
+            <p>Contacts will appear here after website submissions or manual CRM activity.</p>
+            <?= ui_button('Add Contact', 'contact.php?business_id=' . urlencode((string) $context['business_id']) . '&type=contact', 'primary') ?>
         </section>
     <?php else: ?>
         <section class="business-switcher">

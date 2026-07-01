@@ -5,6 +5,7 @@ require_once __DIR__ . '/Database.php';
 final class LeadHub
 {
     private const SOURCE_247SP_WEBSITE = '247sp_website';
+    private const SOURCE_MANUAL = 'manual';
 
     public static function capture247spWebsiteSubmission(array $input, array $server = []): array
     {
@@ -149,6 +150,119 @@ final class LeadHub
         $statement->execute();
 
         return $statement->fetchAll();
+    }
+
+    public static function leadsForBusiness(int $businessId, int $limit = 100): array
+    {
+        $statement = Database::connection()->prepare(
+            "SELECT c.*, cs.name AS status_name
+             FROM contacts c
+             LEFT JOIN contact_statuses cs ON cs.id = c.status_id
+             WHERE c.business_id = :business_id
+               AND c.contact_type = 'lead'
+             ORDER BY c.updated_at DESC, c.created_at DESC, c.id DESC
+             LIMIT :limit"
+        );
+        $statement->bindValue('business_id', $businessId, PDO::PARAM_INT);
+        $statement->bindValue('limit', max(1, min($limit, 200)), PDO::PARAM_INT);
+        $statement->execute();
+
+        return $statement->fetchAll();
+    }
+
+    public static function createManualContact(int $businessId, int $userId, array $input): int
+    {
+        $name = self::cleanText($input['name'] ?? '', 150);
+        $phone = self::cleanText($input['phone'] ?? '', 50);
+        $email = strtolower(self::cleanText($input['email'] ?? '', 255));
+        $message = self::cleanTextArea($input['message'] ?? '', 2000);
+        $sourceDetail = self::cleanText($input['source_detail'] ?? 'Manual entry', 255);
+        $contactType = (string) ($input['contact_type'] ?? 'lead') === 'contact' ? 'contact' : 'lead';
+
+        if ($name === '') {
+            throw new InvalidArgumentException('Name is required.');
+        }
+
+        if ($phone === '' && $email === '') {
+            throw new InvalidArgumentException('Enter a phone number or email address.');
+        }
+
+        if ($email !== '' && filter_var($email, FILTER_VALIDATE_EMAIL) === false) {
+            throw new InvalidArgumentException('Enter a valid email address.');
+        }
+
+        if ($sourceDetail === '') {
+            $sourceDetail = 'Manual entry';
+        }
+
+        $nameParts = self::splitName($name);
+        $statusId = self::newLeadStatusId($businessId);
+        $connection = Database::connection();
+        $connection->beginTransaction();
+
+        try {
+            $statement = $connection->prepare(
+                'INSERT INTO contacts (
+                    business_id, first_name, last_name, email, phone, contact_type,
+                    status_id, source_module_key, source_detail, created_at, updated_at
+                 ) VALUES (
+                    :business_id, :first_name, :last_name, :email, :phone, :contact_type,
+                    :status_id, :source_module_key, :source_detail, NOW(), NOW()
+                 )'
+            );
+            $statement->execute([
+                'business_id' => $businessId,
+                'first_name' => $nameParts['first_name'],
+                'last_name' => $nameParts['last_name'],
+                'email' => $email !== '' ? $email : null,
+                'phone' => $phone !== '' ? $phone : null,
+                'contact_type' => $contactType,
+                'status_id' => $statusId,
+                'source_module_key' => self::SOURCE_MANUAL,
+                'source_detail' => $sourceDetail,
+            ]);
+
+            $contactId = (int) $connection->lastInsertId();
+
+            if ($message !== '') {
+                $note = $connection->prepare(
+                    'INSERT INTO notes (business_id, contact_id, created_by_user_id, note_body, created_at, updated_at)
+                     VALUES (:business_id, :contact_id, :created_by_user_id, :note_body, NOW(), NOW())'
+                );
+                $note->execute([
+                    'business_id' => $businessId,
+                    'contact_id' => $contactId,
+                    'created_by_user_id' => $userId,
+                    'note_body' => $message,
+                ]);
+            }
+
+            $activity = $connection->prepare(
+                'INSERT INTO activity_logs (
+                    business_id, user_id, contact_id, module_key, activity_type,
+                    subject, description, created_at
+                 ) VALUES (
+                    :business_id, :user_id, :contact_id, :module_key, :activity_type,
+                    :subject, :description, NOW()
+                 )'
+            );
+            $activity->execute([
+                'business_id' => $businessId,
+                'user_id' => $userId,
+                'contact_id' => $contactId,
+                'module_key' => 'lead_hub',
+                'activity_type' => 'manual_contact_created',
+                'subject' => 'Manual ' . $contactType . ' created: ' . $name,
+                'description' => $message !== '' ? $message : null,
+            ]);
+
+            $connection->commit();
+
+            return $contactId;
+        } catch (Throwable $exception) {
+            $connection->rollBack();
+            throw $exception;
+        }
     }
 
     public static function contactDetail(int $businessId, int $contactId): ?array
