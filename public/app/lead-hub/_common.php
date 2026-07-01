@@ -28,7 +28,7 @@ function lead_hub_bootstrap(): array
             exit;
         }
 
-        $requestedBusinessId = (int) ($_GET['business_id'] ?? 0);
+        $requestedBusinessId = (int) ($_POST['business_id'] ?? $_GET['business_id'] ?? 0);
         $business = $requestedBusinessId > 0
             ? BusinessFoundation::businessForUser($requestedBusinessId, (int) $user['id'])
             : BusinessFoundation::firstBusinessForUser((int) $user['id']);

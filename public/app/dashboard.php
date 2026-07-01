@@ -99,6 +99,15 @@ $leadHubNavItems = lead_hub_nav_items($businessIdForLinks, 'dashboard');
             <?php endif; ?>
 
             <section class="business-switcher">
+                <h2>CRM Actions</h2>
+                <div class="button-row">
+                    <?= ui_button('Add Contact', 'lead-hub/contact.php?business_id=' . urlencode((string) $businessIdForLinks) . '&type=contact', 'primary') ?>
+                    <?= ui_button('View Contacts', 'lead-hub/contacts.php?business_id=' . urlencode((string) $businessIdForLinks), 'secondary') ?>
+                    <?= ui_button('View Leads', 'lead-hub/leads.php?business_id=' . urlencode((string) $businessIdForLinks), 'secondary') ?>
+                </div>
+            </section>
+
+            <section class="business-switcher">
                 <h2>Product Status</h2>
                 <div class="pill-list">
                     <?php foreach ($productModules as $module): ?>
