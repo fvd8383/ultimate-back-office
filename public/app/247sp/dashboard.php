@@ -291,18 +291,22 @@ require __DIR__ . '/../../../private/views/account-navigation.php';
             </section>
         <?php else: ?>
             <section class="metrics-grid" aria-label="247SP status summary">
-                <article>
+                <a class="metric-card" href="<?= e($website !== null ? 'site-preview.php?business_id=' . urlencode((string) $businessIdForLinks) : 'onboarding.php?business_id=' . urlencode((string) $businessIdForLinks) . '&step=' . urlencode((string) ($summary['current_step'] ?? 'business_information'))) ?>">
                     <span>Website Status</span>
                     <strong><?= e(sp247_status_label((string) $summary['website_status'])) ?></strong>
-                </article>
-                <article>
+                </a>
+                <a class="metric-card" href="<?= e($accountsBaseUrl . '/domains.php') ?>">
                     <span>Domain Status</span>
                     <strong><?= e(sp247_status_label((string) $summary['domain_status'])) ?></strong>
-                </article>
-                <article>
+                </a>
+                <a class="metric-card" href="<?= e($accountsBaseUrl . '/email.php') ?>">
                     <span>Email Status</span>
                     <strong><?= e(sp247_status_label((string) $summary['email_status'])) ?></strong>
-                </article>
+                </a>
+                <a class="metric-card" href="<?= e($accountsBaseUrl . '/billing.php') ?>">
+                    <span>Billing Status</span>
+                    <strong><?= e($billing ? sp247_status_label((string) $billing['status']) : 'No Subscription') ?></strong>
+                </a>
             </section>
 
             <?php

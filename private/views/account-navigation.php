@@ -75,14 +75,15 @@ if (!function_exists('application_shell_href')) {
 }
 
 if (!function_exists('application_shell_section')) {
-    function application_shell_section(string $title, array $items): string
+    function application_shell_section(string $title, array $items, bool $defaultOpen = false): string
     {
         if (count($items) === 0) {
             return '';
         }
 
-        $html = '<section class="account-nav__section">';
-        $html .= '<p class="account-nav__section-title">' . e($title) . '</p>';
+        $html = '<details class="account-nav__section"' . ($defaultOpen ? ' open' : '') . '>';
+        $html .= '<summary class="account-nav__section-title"><span>' . e($title) . '</span></summary>';
+        $html .= '<div class="account-nav__section-items">';
 
         foreach ($items as $item) {
             $html .= '<a class="account-nav__item" href="' . e((string) $item['href']) . '"' . (!empty($item['current']) ? ' aria-current="page"' : '') . '>';
@@ -92,6 +93,8 @@ if (!function_exists('application_shell_section')) {
 
             $children = $item['children'] ?? [];
             if (is_array($children) && count($children) > 0) {
+                $html .= '<details class="account-nav__subsection" open>';
+                $html .= '<summary class="account-nav__subsection-title"><span>' . e((string) $item['label']) . ' Menu</span></summary>';
                 $html .= '<nav class="account-nav__subnav" aria-label="' . e((string) $item['label'] . ' navigation') . '">';
                 foreach ($children as $child) {
                     $html .= '<a class="account-nav__subitem" href="' . e((string) ($child['href'] ?? '#')) . '"' . (!empty($child['current']) ? ' aria-current="page"' : '') . '>';
@@ -99,10 +102,11 @@ if (!function_exists('application_shell_section')) {
                     $html .= '</a>';
                 }
                 $html .= '</nav>';
+                $html .= '</details>';
             }
         }
 
-        return $html . '</section>';
+        return $html . '</div></details>';
     }
 }
 
@@ -140,13 +144,16 @@ if (!function_exists('application_navigation')) {
         $adminItems = application_shell_admin_visible($options)
             ? [['icon' => '⚙', 'label' => 'Admin Portal', 'href' => $baseUrls['app'] . '/admin/dashboard.php', 'current' => $current === 'admin']]
             : [];
+        $accountOpen = in_array($current, ['home', 'dashboard', 'businesses', 'billing', 'domains', 'email', 'profile'], true);
+        $workspaceOpen = in_array($current, ['lead_hub', '247sp'], true);
+        $adminOpen = $current === 'admin';
 
         $html = '<aside class="account-sidebar application-sidebar" aria-label="Application navigation">';
         $html .= '<div class="account-sidebar__brand"><h2>Ultimate Back Office</h2></div>';
         $html .= '<nav class="account-nav">';
-        $html .= application_shell_section('Account', $accountItems);
-        $html .= application_shell_section('Workspace', $workspaceItems);
-        $html .= application_shell_section('Admin', $adminItems);
+        $html .= application_shell_section('Account', $accountItems, $accountOpen);
+        $html .= application_shell_section('Workspace', $workspaceItems, $workspaceOpen);
+        $html .= application_shell_section('Admin', $adminItems, $adminOpen);
         $html .= '</nav>';
         $html .= '<div class="account-nav__footer">';
         $html .= '<a class="account-nav__item account-nav__logout" href="' . e($baseUrls['accounts'] . '/logout.php') . '">';

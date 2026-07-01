@@ -35,11 +35,11 @@ admin_begin('Dashboard', 'dashboard', $context);
     <?= ui_alert($loadError, 'error') ?>
 <?php else: ?>
     <section class="metrics-grid admin-metrics" aria-label="Platform metrics">
-        <article><span>Total Users</span><strong><?= e($metrics['total_users']) ?></strong></article>
-        <article><span>Total Businesses</span><strong><?= e($metrics['total_businesses']) ?></strong></article>
-        <article><span>Total Websites</span><strong><?= e($metrics['total_websites']) ?></strong></article>
-        <article><span>Businesses Ready For Build</span><strong><?= e($metrics['ready_for_build']) ?></strong></article>
-        <article><span>Generated Websites</span><strong><?= e($metrics['generated_websites']) ?></strong></article>
+        <a class="metric-card" href="users.php"><span>Total Users</span><strong><?= e($metrics['total_users']) ?></strong></a>
+        <a class="metric-card" href="businesses.php"><span>Total Businesses</span><strong><?= e($metrics['total_businesses']) ?></strong></a>
+        <a class="metric-card" href="websites.php"><span>Total Websites</span><strong><?= e($metrics['total_websites']) ?></strong></a>
+        <a class="metric-card" href="websites.php"><span>Businesses Ready For Build</span><strong><?= e($metrics['ready_for_build']) ?></strong></a>
+        <a class="metric-card" href="websites.php"><span>Generated Websites</span><strong><?= e($metrics['generated_websites']) ?></strong></a>
     </section>
 
     <section class="admin-panels">
