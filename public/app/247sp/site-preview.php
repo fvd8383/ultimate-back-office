@@ -25,7 +25,7 @@ $contentOverrides = [];
 $serviceImages = [];
 $loadError = '';
 $accessDenied = false;
-$regenerated = isset($_GET['regenerated']);
+$previewUpdated = isset($_GET['regenerated']);
 $leadNotice = '';
 $leadError = '';
 
@@ -460,7 +460,7 @@ $contactContent = sp247_preview_apply_overrides(sp247_preview_page_content($page
 $previewServices = sp247_preview_services($pages, $contentOverrides, $serviceImages);
 $serviceNavItems = sp247_preview_service_nav_tree($pages, $contentOverrides);
 $serviceArea = (string) (($content['service_area'] ?? '') ?: ($homeContent['service_area'] ?? '') ?: ($contactContent['service_area'] ?? ''));
-$phone = (string) (($contactContent['phone'] ?? '') ?: ($business['phone'] ?? ''));
+$phone = BusinessFoundation::formatPhoneForDisplay((string) (($contactContent['phone'] ?? '') ?: ($business['phone'] ?? '')));
 $email = (string) (($contactContent['email'] ?? '') ?: ($business['email'] ?? ''));
 $phoneHref = sp247_preview_tel_href($phone);
 $currentPageType = (string) ($currentPage['page_type'] ?? '');
@@ -491,11 +491,11 @@ require __DIR__ . '/../../../private/views/account-navigation.php';
         <section class="hero-panel product-hero product-hero--247sp">
             <p class="eyebrow">Private website preview</p>
             <h1><?= $business ? e($business['business_name']) : '247SP preview' ?></h1>
-            <p class="muted">Review the generated website pages and page-specific content.</p>
+            <p class="muted">Review the website pages and page-specific content.</p>
         </section>
 
-        <?php if ($regenerated): ?>
-            <?= ui_alert('Website preview regenerated from the latest website manager settings.', 'success') ?>
+        <?php if ($previewUpdated): ?>
+            <?= ui_alert('Website preview updated from the latest website manager settings.', 'success') ?>
         <?php endif; ?>
 
         <?php if ($loadError !== ''): ?>
@@ -512,8 +512,8 @@ require __DIR__ . '/../../../private/views/account-navigation.php';
             </section>
         <?php elseif ($website === null): ?>
             <section class="empty-state">
-                <h2>Website not generated</h2>
-                <p>Complete onboarding and generate the website before opening the private preview.</p>
+                <h2>Website preview unavailable</h2>
+                <p>Complete onboarding so the 247SP team can prepare your private preview.</p>
                 <div class="button-row">
                     <?= ui_button('Back to dashboard', 'dashboard.php?business_id=' . urlencode((string) $businessIdForLinks), 'secondary') ?>
                 </div>

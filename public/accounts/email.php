@@ -63,7 +63,7 @@ account_shell_begin('email');
 <section class="dashboard-card dashboard-card--wide">
     <p class="eyebrow">Accounts</p>
     <h1>Email</h1>
-    <p class="muted">Request business mailboxes and track manual setup status. No real mailbox, DNS, password, SMTP, IMAP, or provider provisioning occurs here.</p>
+    <p class="muted">Request business mailboxes and track setup status for your linked businesses.</p>
 </section>
 
 <?php if ($notice !== ''): ?>

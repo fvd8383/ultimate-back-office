@@ -155,7 +155,7 @@ require __DIR__ . '/../../../private/views/account-navigation.php';
                     <div><dt>Business</dt><dd><?= e($business['business_name']) ?></dd></div>
                     <div><dt>Contact</dt><dd><?= e($onboarding['contact_name'] ?? 'Not provided') ?></dd></div>
                     <div><dt>Email</dt><dd><?= e($business['email']) ?></dd></div>
-                    <div><dt>Phone</dt><dd><?= e($business['phone']) ?></dd></div>
+                    <div><dt>Phone</dt><dd><?= e(BusinessFoundation::formatPhoneForDisplay($business['phone'] ?? '')) ?></dd></div>
                     <div><dt>Date Business Started</dt><dd><?= e($business['business_started_on'] ?? 'Not provided') ?></dd></div>
                 </dl>
             </section>
@@ -230,11 +230,11 @@ require __DIR__ . '/../../../private/views/account-navigation.php';
 
             <section class="business-switcher">
                 <h2>Submit</h2>
-                <p class="muted">Submitting marks setup_status complete and makes the website status Ready For Build. No website, domain, DNS, email, billing, analytics, or AI provisioning runs from this action.</p>
+                <p class="muted">Submitting tells the 247SP team your setup information is ready for review and website preparation.</p>
                 <form method="post" action="review.php" class="button-row">
                     <input type="hidden" name="business_id" value="<?= e($businessIdForLinks) ?>">
                     <?= ui_button('Back to email step', sp247_review_href('email_selection', $businessIdForLinks), 'secondary') ?>
-                    <?= ui_button('Mark onboarding complete', '', 'primary', ['name' => 'complete_onboarding', 'value' => '1', 'disabled' => count($errors) > 0]) ?>
+                    <?= ui_button('Complete onboarding', '', 'primary', ['name' => 'complete_onboarding', 'value' => '1', 'disabled' => count($errors) > 0]) ?>
                 </form>
             </section>
         <?php endif; ?>

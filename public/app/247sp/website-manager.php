@@ -50,14 +50,6 @@ try {
         $accessDenied = !TwentyFourSevenSalesPartner::businessHasAccess($businessId);
 
         if (!$accessDenied && $_SERVER['REQUEST_METHOD'] === 'POST') {
-            $action = (string) ($_POST['action'] ?? 'save');
-
-            if ($action === 'save_regenerate') {
-                WebsiteManager::saveAndRegenerate($businessId, (int) $user['id'], $_POST, $_FILES);
-                header('Location: site-preview.php?business_id=' . urlencode((string) $businessId) . '&regenerated=1');
-                exit;
-            }
-
             WebsiteManager::saveWebsiteManager($businessId, (int) $user['id'], $_POST, $_FILES);
             header('Location: website-manager.php?business_id=' . urlencode((string) $businessId) . '&saved=1');
             exit;
@@ -410,10 +402,9 @@ require __DIR__ . '/../../../private/views/account-navigation.php';
 
                 <section class="business-switcher">
                     <h2>Preview</h2>
-                    <p class="muted">Saving stores the website customization. Save & Regenerate Website rebuilds the private preview from these settings and returns to Preview. No public publishing occurs.</p>
+                    <p class="muted">Saving stores the website customization. The 247SP team will refresh the private preview when needed.</p>
                     <div class="button-row">
-                        <?= ui_button('Save', '', 'secondary', ['name' => 'action', 'value' => 'save']) ?>
-                        <?= ui_button('Save & Regenerate Website', '', 'primary', ['name' => 'action', 'value' => 'save_regenerate']) ?>
+                        <?= ui_button('Save Changes', '', 'primary') ?>
                         <?php if ($website !== null): ?>
                             <?= ui_button('Open Preview', 'site-preview.php?business_id=' . urlencode((string) $businessIdForLinks), 'secondary') ?>
                         <?php endif; ?>

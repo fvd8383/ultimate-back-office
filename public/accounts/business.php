@@ -121,6 +121,8 @@ foreach ($allSubServices as $service) {
     $subServicesByCategory[(int) $service['category_id']][] = $service;
 }
 
+$selectedPrimaryCategoryId = (int) ($_POST['primary_category_id'] ?? ($business['primary_category_id'] ?? 0));
+
 function profile_value(?array $business, string $key, string $default = ''): string
 {
     if (isset($_POST[$key])) {
@@ -173,7 +175,8 @@ account_shell_begin('businesses');
                 <input name="email" type="email" required value="<?= e(profile_value($business, 'email')) ?>">
             </label>
             <label>Business Phone
-                <input name="phone" required value="<?= e(profile_value($business, 'phone')) ?>">
+                <input name="phone" type="tel" inputmode="tel" autocomplete="tel" required placeholder="(555) 123-4567" value="<?= e(BusinessFoundation::formatPhoneForDisplay(profile_value($business, 'phone'))) ?>" data-phone-format>
+                <span class="form-help">Use a US phone number such as (555) 123-4567.</span>
             </label>
             <label>Date Business Started
                 <input name="business_started_on" type="date" value="<?= e(profile_value($business, 'business_started_on')) ?>">
@@ -211,14 +214,15 @@ account_shell_begin('businesses');
                 <input name="legal_structure_other" value="<?= e(profile_value($business, 'legal_structure_other')) ?>">
             </label>
             <label>Primary Category
-                <select name="primary_category_id" required>
+                <select name="primary_category_id" required data-service-category-select>
                     <option value="">Select category</option>
                     <?php foreach ($categories as $category): ?>
-                        <option value="<?= e($category['id']) ?>" <?= (int) profile_value($business, 'primary_category_id') === (int) $category['id'] ? 'selected' : '' ?>>
+                        <option value="<?= e($category['id']) ?>" <?= $selectedPrimaryCategoryId === (int) $category['id'] ? 'selected' : '' ?>>
                             <?= e($category['name']) ?>
                         </option>
                     <?php endforeach; ?>
                 </select>
+                <span class="form-help">Select a category to show matching services.</span>
             </label>
             <label class="checkbox-line">
                 <input type="checkbox" name="is_public_physical_location" value="1" <?= (int) profile_value($business, 'is_public_physical_location', '1') === 1 ? 'checked' : '' ?>>
@@ -226,11 +230,14 @@ account_shell_begin('businesses');
             </label>
         </div>
 
+        <p class="form-guidance" data-service-category-guidance <?= $selectedPrimaryCategoryId > 0 ? 'hidden' : '' ?>>Select a primary category first. Matching services and an Other option will appear here.</p>
+
         <div class="service-groups">
             <?php foreach ($categories as $category): ?>
-                <fieldset>
+                <?php $categoryId = (int) $category['id']; ?>
+                <fieldset data-service-category="<?= e($categoryId) ?>" <?= $selectedPrimaryCategoryId !== $categoryId ? 'hidden' : '' ?>>
                     <legend><?= e($category['name']) ?></legend>
-                    <?php foreach ($subServicesByCategory[(int) $category['id']] ?? [] as $service): ?>
+                    <?php foreach ($subServicesByCategory[$categoryId] ?? [] as $service): ?>
                         <label class="checkbox-line">
                             <input type="checkbox" name="sub_services[]" value="<?= e($service['id']) ?>"<?= profile_checked($service['id'], $_POST['sub_services'] ?? $selectedSubServiceIds) ?>>
                             <?= e($service['name']) ?>
@@ -240,7 +247,7 @@ account_shell_begin('businesses');
             <?php endforeach; ?>
         </div>
 
-        <label>Custom Service
+        <label>Other Service
             <input name="custom_service" value="<?= e((string) ($_POST['custom_service'] ?? ($selectedCustomServices[0]['name'] ?? ''))) ?>" placeholder="Example: Holiday lighting">
             <span class="form-help">Optional. Use this if you selected Other or need a service that is not listed.</span>
         </label>
@@ -277,6 +284,55 @@ if (legalStructureSelect) {
 }
 
 updateLegalStructureOther();
+
+var serviceCategorySelect = document.querySelector('[data-service-category-select]');
+var serviceCategoryGuidance = document.querySelector('[data-service-category-guidance]');
+
+function updateServiceCategoryChoices() {
+    if (!serviceCategorySelect) {
+        return;
+    }
+
+    var selectedCategoryId = serviceCategorySelect.value;
+
+    document.querySelectorAll('[data-service-category]').forEach(function (group) {
+        var isActive = selectedCategoryId !== '' && group.getAttribute('data-service-category') === selectedCategoryId;
+        group.hidden = !isActive;
+        group.querySelectorAll('input').forEach(function (input) {
+            input.disabled = !isActive;
+        });
+    });
+
+    if (serviceCategoryGuidance) {
+        serviceCategoryGuidance.hidden = selectedCategoryId !== '';
+    }
+}
+
+if (serviceCategorySelect) {
+    serviceCategorySelect.addEventListener('change', updateServiceCategoryChoices);
+}
+
+updateServiceCategoryChoices();
+
+function formatUsPhone(value) {
+    var digits = value.replace(/\D/g, '');
+    if (digits.length === 11 && digits.charAt(0) === '1') {
+        digits = digits.slice(1);
+    }
+    if (digits.length <= 3) {
+        return digits;
+    }
+    if (digits.length <= 6) {
+        return '(' + digits.slice(0, 3) + ') ' + digits.slice(3);
+    }
+    return '(' + digits.slice(0, 3) + ') ' + digits.slice(3, 6) + '-' + digits.slice(6, 10);
+}
+
+document.querySelectorAll('[data-phone-format]').forEach(function (input) {
+    input.addEventListener('input', function () {
+        input.value = formatUsPhone(input.value);
+    });
+});
 </script>
 
 <?php account_shell_end(); ?>

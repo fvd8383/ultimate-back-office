@@ -231,7 +231,7 @@ final class TwentyFourSevenSalesPartner
         $businessName = trim((string) ($input['business_name'] ?? ''));
         $contactName = trim((string) ($input['contact_name'] ?? ''));
         $email = trim((string) ($input['email'] ?? ''));
-        $phone = trim((string) ($input['phone'] ?? ''));
+        $phone = BusinessFoundation::normalizePhoneForStorage((string) ($input['phone'] ?? ''));
         $businessStartedOn = self::normalizeOptionalDate($input['business_started_on'] ?? '');
 
         if ($businessName === '' || $contactName === '' || $email === '' || $phone === '') {
@@ -591,6 +591,17 @@ final class TwentyFourSevenSalesPartner
         }
     }
 
+    public static function requestWebsiteChanges(int $businessId, int $userId, string $message): void
+    {
+        $message = substr(trim($message), 0, 2000);
+
+        if ($message === '') {
+            throw new InvalidArgumentException('Tell us what you would like changed.');
+        }
+
+        self::logActivity($businessId, $userId, '247sp_website_changes_requested', 'Website changes requested', $message);
+    }
+
     public static function readinessErrors(int $businessId): array
     {
         $bundle = self::bundle($businessId);
@@ -879,11 +890,11 @@ final class TwentyFourSevenSalesPartner
         return 'not_started';
     }
 
-    private static function logActivity(int $businessId, int $userId, string $activityType, string $subject): void
+    private static function logActivity(int $businessId, int $userId, string $activityType, string $subject, ?string $description = null): void
     {
         $statement = Database::connection()->prepare(
-            'INSERT INTO activity_logs (business_id, user_id, module_key, activity_type, subject, created_at)
-             VALUES (:business_id, :user_id, :module_key, :activity_type, :subject, NOW())'
+            'INSERT INTO activity_logs (business_id, user_id, module_key, activity_type, subject, description, created_at)
+             VALUES (:business_id, :user_id, :module_key, :activity_type, :subject, :description, NOW())'
         );
         $statement->execute([
             'business_id' => $businessId,
@@ -891,6 +902,7 @@ final class TwentyFourSevenSalesPartner
             'module_key' => '247sp',
             'activity_type' => $activityType,
             'subject' => $subject,
+            'description' => $description,
         ]);
     }
 }
