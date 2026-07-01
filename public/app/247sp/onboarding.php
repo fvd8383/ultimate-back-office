@@ -162,7 +162,7 @@ require __DIR__ . '/../../../private/views/account-navigation.php';
             <img class="product-hero__logo" src="../assets/img/247sp-logo.svg" alt="24/7 Sales Partner">
             <p class="eyebrow">247SP onboarding</p>
             <h1><?= $business ? e($business['business_name']) : 'Start onboarding' ?></h1>
-            <p class="muted">Save each step as you collect the website build inputs.</p>
+            <p class="muted">Save each step as you provide the details for your website preview.</p>
         </section>
 
         <?php foreach ($errors as $error): ?>
@@ -212,7 +212,8 @@ require __DIR__ . '/../../../private/views/account-navigation.php';
                             <input name="email" type="email" required value="<?= e(sp247_form_value($business, 'email')) ?>">
                         </label>
                         <label>Phone
-                            <input name="phone" required value="<?= e(sp247_form_value($business, 'phone')) ?>">
+                            <input name="phone" type="tel" inputmode="tel" autocomplete="tel" required placeholder="(555) 123-4567" value="<?= e(BusinessFoundation::formatPhoneForDisplay(sp247_form_value($business, 'phone'))) ?>" data-phone-format>
+                            <span class="form-help">Use a US phone number such as (555) 123-4567.</span>
                         </label>
                         <label>Date Business Started
                             <input name="business_started_on" type="date" value="<?= e(sp247_form_value($business, 'business_started_on')) ?>">
@@ -393,6 +394,26 @@ function updateDomainFields() {
 }
 
 updateDomainFields();
+
+function formatUsPhone(value) {
+    var digits = value.replace(/\D/g, '');
+    if (digits.length === 11 && digits.charAt(0) === '1') {
+        digits = digits.slice(1);
+    }
+    if (digits.length <= 3) {
+        return digits;
+    }
+    if (digits.length <= 6) {
+        return '(' + digits.slice(0, 3) + ') ' + digits.slice(3);
+    }
+    return '(' + digits.slice(0, 3) + ') ' + digits.slice(3, 6) + '-' + digits.slice(6, 10);
+}
+
+document.querySelectorAll('[data-phone-format]').forEach(function (input) {
+    input.addEventListener('input', function () {
+        input.value = formatUsPhone(input.value);
+    });
+});
 </script>
 
 <?php require __DIR__ . '/../../../private/views/footer.php'; ?>

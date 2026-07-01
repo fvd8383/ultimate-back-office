@@ -271,7 +271,7 @@ final class BusinessFoundation
             'business_name' => trim((string) ($input['business_name'] ?? '')),
             'legal_name' => trim((string) ($input['legal_name'] ?? '')),
             'email' => trim((string) ($input['email'] ?? '')),
-            'phone' => trim((string) ($input['phone'] ?? '')),
+            'phone' => self::normalizePhoneForStorage((string) ($input['phone'] ?? '')),
             'address_line_1' => trim((string) ($input['address_line_1'] ?? '')),
             'address_line_2' => trim((string) ($input['address_line_2'] ?? '')),
             'city' => trim((string) ($input['city'] ?? '')),
@@ -659,6 +659,38 @@ final class BusinessFoundation
             static fn (array $module): string => (string) $module['module_key'],
             $activeModules
         ), static fn (string $moduleKey): bool => $moduleKey !== 'lead_hub'));
+    }
+
+    public static function normalizePhoneForStorage(string $phone): string
+    {
+        $phone = trim($phone);
+        $digits = preg_replace('/\D+/', '', $phone);
+
+        if (is_string($digits) && strlen($digits) === 11 && $digits[0] === '1') {
+            $digits = substr($digits, 1);
+        }
+
+        if (is_string($digits) && strlen($digits) === 10) {
+            return $digits;
+        }
+
+        return substr($phone, 0, 50);
+    }
+
+    public static function formatPhoneForDisplay(?string $phone): string
+    {
+        $phone = trim((string) $phone);
+        $digits = preg_replace('/\D+/', '', $phone);
+
+        if (is_string($digits) && strlen($digits) === 11 && $digits[0] === '1') {
+            $digits = substr($digits, 1);
+        }
+
+        if (is_string($digits) && strlen($digits) === 10) {
+            return sprintf('(%s) %s-%s', substr($digits, 0, 3), substr($digits, 3, 3), substr($digits, 6));
+        }
+
+        return $phone;
     }
 
     private static function fetchActiveRows(string $table): array

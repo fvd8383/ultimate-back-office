@@ -337,12 +337,15 @@ button:hover,
 }
 
 .site-header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
     border-bottom: 1px solid var(--ubo-line);
 }
 
 .site-header__inner {
     display: flex;
-    width: min(1180px, 100%);
+    width: min(1440px, 100%);
     align-items: center;
     justify-content: space-between;
     gap: 20px;
@@ -388,7 +391,7 @@ button:hover,
 }
 
 .page-shell {
-    width: min(1180px, calc(100% - 32px));
+    width: min(1440px, calc(100% - 32px));
     margin: 32px auto;
 }
 
@@ -399,7 +402,7 @@ button:hover,
 }
 
 .site-footer__inner {
-    width: min(1180px, 100%);
+    width: min(1440px, 100%);
     margin: 0 auto;
 }
 
@@ -736,11 +739,16 @@ button:hover,
     grid-template-columns: repeat(6, minmax(0, 1fr));
 }
 
-.service-groups,
 .module-grid,
 .service-page-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.service-groups {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
     gap: 14px;
 }
 
@@ -799,30 +807,14 @@ button:hover,
 
 .setup-checklist {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
+    gap: 6px;
     margin: 0;
-    padding: 0;
+    padding-left: 22px;
 }
 
 .setup-checklist li {
-    position: relative;
-    list-style: none;
-    border: 1px solid var(--ubo-line);
-    border-radius: var(--ubo-radius-control);
-    background: var(--ubo-bg);
-    padding: 12px 14px 12px 38px;
-}
-
-.setup-checklist li::before {
-    position: absolute;
-    top: 15px;
-    left: 14px;
-    width: 12px;
-    height: 12px;
-    border-radius: 999px;
-    background: var(--ubo-success);
-    content: "";
+    list-style: disc;
+    padding-left: 2px;
 }
 
 .review-section {

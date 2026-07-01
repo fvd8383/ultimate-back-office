@@ -64,7 +64,7 @@ account_shell_begin('domains');
                         <h3><?= e($domain['requested_domain']) ?></h3>
                         <p class="muted"><?= e($domain['business_name']) ?></p>
                         <?php if (($domain['publish_status'] ?? '') === 'ready'): ?>
-                            <?= ui_alert('This domain is assigned and the generated website is ready for staging publish validation.', 'success') ?>
+                            <?= ui_alert('This domain is assigned and your website is ready for final review.', 'success') ?>
                         <?php endif; ?>
                     </div>
                     <div class="summary-list billing-summary-list">

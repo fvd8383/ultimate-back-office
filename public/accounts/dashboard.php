@@ -144,7 +144,7 @@ account_shell_begin('dashboard');
                 <article class="business-list__item">
                     <div>
                         <h3><?= e($business['business_name']) ?></h3>
-                        <p class="muted">Use these tools only for staging onboarding tests.</p>
+                        <p class="muted">Use these tools only for onboarding tests.</p>
                     </div>
                     <div class="business-list__meta">
                         <form method="post" action="dashboard.php">

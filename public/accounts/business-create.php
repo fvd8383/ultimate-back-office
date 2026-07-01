@@ -256,6 +256,8 @@ foreach ($categories as $category) {
     $categoryNames[(int) $category['id']] = $category['name'];
 }
 
+$selectedPrimaryCategoryId = (int) ($_POST['primary_category_id'] ?? ($business['primary_category_id'] ?? 0));
+
 function form_value(?array $business, string $key, string $default = ''): string
 {
     if (isset($_POST[$key])) {
@@ -351,7 +353,8 @@ account_shell_begin('businesses');
                 <input name="email" type="email" required value="<?= e(form_value($business, 'email')) ?>">
             </label>
             <label>Business Phone
-                <input name="phone" required value="<?= e(form_value($business, 'phone')) ?>">
+                <input name="phone" type="tel" inputmode="tel" autocomplete="tel" required placeholder="(555) 123-4567" value="<?= e(BusinessFoundation::formatPhoneForDisplay(form_value($business, 'phone'))) ?>" data-phone-format>
+                <span class="form-help">Use a US phone number such as (555) 123-4567.</span>
             </label>
             <label>Date Business Started
                 <input name="business_started_on" type="date" value="<?= e(form_value($business, 'business_started_on')) ?>">
@@ -402,22 +405,25 @@ account_shell_begin('businesses');
         <input type="hidden" name="business_id" value="<?= e($businessId) ?>">
 
         <label>Primary Category
-            <select name="primary_category_id" required>
+            <select name="primary_category_id" required data-service-category-select>
                 <option value="">Select category</option>
                 <?php foreach ($categories as $category): ?>
-                    <?php $selectedCategory = (int) ($_POST['primary_category_id'] ?? ($business['primary_category_id'] ?? 0)); ?>
-                    <option value="<?= e($category['id']) ?>" <?= $selectedCategory === (int) $category['id'] ? 'selected' : '' ?>>
+                    <option value="<?= e($category['id']) ?>" <?= $selectedPrimaryCategoryId === (int) $category['id'] ? 'selected' : '' ?>>
                         <?= e($category['name']) ?>
                     </option>
                 <?php endforeach; ?>
             </select>
+            <span class="form-help">Select a category to show matching services.</span>
         </label>
+
+        <p class="form-guidance" data-service-category-guidance <?= $selectedPrimaryCategoryId > 0 ? 'hidden' : '' ?>>Select a primary category first. Matching services and an Other option will appear here.</p>
 
         <div class="service-groups">
             <?php foreach ($categories as $category): ?>
-                <fieldset>
+                <?php $categoryId = (int) $category['id']; ?>
+                <fieldset data-service-category="<?= e($categoryId) ?>" <?= $selectedPrimaryCategoryId !== $categoryId ? 'hidden' : '' ?>>
                     <legend><?= e($category['name']) ?></legend>
-                    <?php foreach ($subServicesByCategory[(int) $category['id']] ?? [] as $service): ?>
+                    <?php foreach ($subServicesByCategory[$categoryId] ?? [] as $service): ?>
                         <label class="checkbox-line">
                             <input type="checkbox" name="sub_services[]" value="<?= e($service['id']) ?>"<?= is_checked($service['id'], $_POST['sub_services'] ?? $selectedSubServiceIds) ?>>
                             <?= e($service['name']) ?>
@@ -427,7 +433,7 @@ account_shell_begin('businesses');
             <?php endforeach; ?>
         </div>
 
-        <label>Custom Service
+        <label>Other Service
             <input name="custom_service" value="<?= e((string) ($_POST['custom_service'] ?? ($selectedCustomServices[0]['name'] ?? ''))) ?>" placeholder="Example: Holiday lighting">
             <span class="form-help">Optional. Use this if you selected Other or need a service that is not listed.</span>
         </label>
@@ -444,7 +450,7 @@ account_shell_begin('businesses');
 
         <section class="module-selection">
             <h2>Available Launch Module</h2>
-            <p class="muted">24/7 Sales Partner is the active customer-ready product. Lead Hub is included automatically.</p>
+            <p class="muted">24/7 Sales Partner is the active customer-ready product. Lead tracking is included automatically.</p>
             <div class="module-grid">
                 <?php foreach ($availableModules as $module): ?>
                     <label class="module-option module-option--stacked">
@@ -470,7 +476,7 @@ account_shell_begin('businesses');
                 <div><dt>Legal Business</dt><dd><?= e($business['legal_name']) ?></dd></div>
                 <div><dt>Legal Structure</dt><dd><?= e(legal_structure_label($business, $legalStructureNames)) ?></dd></div>
                 <div><dt>Email</dt><dd><?= e($business['email']) ?></dd></div>
-                <div><dt>Phone</dt><dd><?= e($business['phone']) ?></dd></div>
+                <div><dt>Phone</dt><dd><?= e(BusinessFoundation::formatPhoneForDisplay($business['phone'] ?? '')) ?></dd></div>
                 <div><dt>Address</dt><dd><?= e($business['address_line_1']) ?>, <?= e($business['city']) ?>, <?= e($business['state']) ?> <?= e($business['postal_code']) ?></dd></div>
                 <div><dt>Category</dt><dd><?= e($categoryNames[(int) ($business['primary_category_id'] ?? 0)] ?? 'Not selected') ?></dd></div>
                 <div><dt>Product Setup</dt><dd>Continues inside each active module.</dd></div>
@@ -486,7 +492,9 @@ account_shell_begin('businesses');
             <h3>Selected Modules</h3>
             <div class="pill-list">
                 <?php foreach ($activeModules as $module): ?>
-                    <?= ui_badge((string) $module['name'], 'module') ?>
+                    <?php if (($module['module_key'] ?? '') !== 'lead_hub'): ?>
+                        <?= ui_badge((string) $module['name'], 'module') ?>
+                    <?php endif; ?>
                 <?php endforeach; ?>
             </div>
 
@@ -523,6 +531,55 @@ if (legalStructureSelect) {
 }
 
 updateLegalStructureOther();
+
+var serviceCategorySelect = document.querySelector('[data-service-category-select]');
+var serviceCategoryGuidance = document.querySelector('[data-service-category-guidance]');
+
+function updateServiceCategoryChoices() {
+    if (!serviceCategorySelect) {
+        return;
+    }
+
+    var selectedCategoryId = serviceCategorySelect.value;
+
+    document.querySelectorAll('[data-service-category]').forEach(function (group) {
+        var isActive = selectedCategoryId !== '' && group.getAttribute('data-service-category') === selectedCategoryId;
+        group.hidden = !isActive;
+        group.querySelectorAll('input').forEach(function (input) {
+            input.disabled = !isActive;
+        });
+    });
+
+    if (serviceCategoryGuidance) {
+        serviceCategoryGuidance.hidden = selectedCategoryId !== '';
+    }
+}
+
+if (serviceCategorySelect) {
+    serviceCategorySelect.addEventListener('change', updateServiceCategoryChoices);
+}
+
+updateServiceCategoryChoices();
+
+function formatUsPhone(value) {
+    var digits = value.replace(/\D/g, '');
+    if (digits.length === 11 && digits.charAt(0) === '1') {
+        digits = digits.slice(1);
+    }
+    if (digits.length <= 3) {
+        return digits;
+    }
+    if (digits.length <= 6) {
+        return '(' + digits.slice(0, 3) + ') ' + digits.slice(3);
+    }
+    return '(' + digits.slice(0, 3) + ') ' + digits.slice(3, 6) + '-' + digits.slice(6, 10);
+}
+
+document.querySelectorAll('[data-phone-format]').forEach(function (input) {
+    input.addEventListener('input', function () {
+        input.value = formatUsPhone(input.value);
+    });
+});
 </script>
 
 <?php account_shell_end(); ?>

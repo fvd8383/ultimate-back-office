@@ -23,8 +23,7 @@ $loadError = '';
 $actionError = '';
 $accessDenied = false;
 $completed = isset($_GET['completed']);
-$generated = isset($_GET['generated']);
-$regenerated = isset($_GET['regenerated']);
+$changesRequested = isset($_GET['changes_requested']);
 
 try {
     $user = Auth::currentUser();
@@ -44,15 +43,9 @@ try {
         $accessDenied = !TwentyFourSevenSalesPartner::businessHasAccess($businessId);
 
         if (!$accessDenied && $_SERVER['REQUEST_METHOD'] === 'POST') {
-            if (isset($_POST['generate_website'])) {
-                SiteGenerator::generateWebsite($businessId, (int) $user['id']);
-                header('Location: dashboard.php?business_id=' . $businessId . '&generated=1');
-                exit;
-            }
-
-            if (isset($_POST['regenerate_website'])) {
-                SiteGenerator::regenerateWebsite($businessId, (int) $user['id']);
-                header('Location: dashboard.php?business_id=' . $businessId . '&regenerated=1');
+            if (isset($_POST['request_changes'])) {
+                TwentyFourSevenSalesPartner::requestWebsiteChanges($businessId, (int) $user['id'], (string) ($_POST['change_request'] ?? ''));
+                header('Location: dashboard.php?business_id=' . $businessId . '&changes_requested=1');
                 exit;
             }
         }
@@ -88,8 +81,8 @@ function sp247_status_label(string $status): string
     $labels = [
         'not_started' => 'Not Started',
         'in_progress' => 'In Progress',
-        'ready_for_build' => 'Ready For Build',
-        'generated' => 'Generated',
+        'ready_for_build' => 'Ready For Preview',
+        'generated' => 'Preview Ready',
         'published' => 'Published',
         'not_selected' => 'Not Selected',
         'pending' => 'Pending',
@@ -132,17 +125,14 @@ require __DIR__ . '/../../../private/views/account-navigation.php';
             <img class="product-hero__logo" src="../assets/img/247sp-logo.svg" alt="24/7 Sales Partner">
             <p class="eyebrow">24/7 Sales Partner</p>
             <h1><?= $business ? e($business['business_name']) : '247SP onboarding' ?></h1>
-            <p class="muted">Collect the website setup details needed for the build handoff.</p>
+            <p class="muted">Track onboarding, preview status, change requests, domain status, and email status.</p>
         </section>
 
         <?php if ($completed): ?>
-            <?= ui_alert('247SP onboarding is complete and ready for build.', 'success') ?>
+            <?= ui_alert('247SP onboarding is complete. The team can prepare your website preview.', 'success') ?>
         <?php endif; ?>
-        <?php if ($generated): ?>
-            <?= ui_alert('Website generated. Preview is available inside 247SP.', 'success') ?>
-        <?php endif; ?>
-        <?php if ($regenerated): ?>
-            <?= ui_alert('Website regenerated from the latest onboarding data.', 'success') ?>
+        <?php if ($changesRequested): ?>
+            <?= ui_alert('Change request sent. The 247SP team will review it.', 'success') ?>
         <?php endif; ?>
         <?php if ($actionError !== ''): ?>
             <?= ui_alert($actionError, 'error') ?>
@@ -189,7 +179,7 @@ require __DIR__ . '/../../../private/views/account-navigation.php';
                     <div><dt>Current Step</dt><dd><?= e(sp247_status_label((string) $summary['current_step'])) ?></dd></div>
                     <div><dt>Completed At</dt><dd><?= e($summary['completed_at'] ?: 'Not complete') ?></dd></div>
                     <div><dt>Template</dt><dd><?= e($website['template_name'] ?? 'Not assigned') ?></dd></div>
-                    <div><dt>Generation Date</dt><dd><?= e($website['generated_at'] ?? 'Not generated') ?></dd></div>
+                    <div><dt>Preview Updated</dt><dd><?= e($website['generated_at'] ?? 'Preview pending') ?></dd></div>
                     <div><dt>Billing Status</dt><dd><?= e($billing ? sp247_status_label((string) $billing['status']) : 'No Subscription') ?></dd></div>
                 </div>
                 <div class="button-row">
@@ -201,18 +191,29 @@ require __DIR__ . '/../../../private/views/account-navigation.php';
             </section>
 
             <section class="business-switcher">
-                <h2>Website Generation</h2>
-                <p class="muted">Generate a six-page private preview from completed onboarding data. This does not register domains, update DNS, provision email, add analytics, or generate AI content.</p>
-                <form method="post" action="dashboard.php" class="button-row">
-                    <input type="hidden" name="business_id" value="<?= e($businessIdForLinks) ?>">
-                    <?php if ($website === null): ?>
-                        <?= ui_button('Generate Website', '', 'primary', ['name' => 'generate_website', 'value' => '1', 'disabled' => $summary['setup_status'] !== 'complete']) ?>
-                    <?php else: ?>
-                        <?= ui_button('Regenerate Website', '', 'primary', ['name' => 'regenerate_website', 'value' => '1']) ?>
-                        <?= ui_button('Preview Website', 'site-preview.php?business_id=' . urlencode((string) $businessIdForLinks), 'secondary') ?>
+                <h2>Website Preview</h2>
+                <?php if ($website === null): ?>
+                    <p class="muted">Complete onboarding so the 247SP team can prepare your private website preview.</p>
+                    <div class="button-row">
+                        <?= ui_button($summary['setup_status'] === 'complete' ? 'Review onboarding' : 'Complete onboarding', $summary['setup_status'] === 'complete'
+                            ? 'review.php?business_id=' . urlencode((string) $businessIdForLinks)
+                            : 'onboarding.php?business_id=' . urlencode((string) $businessIdForLinks) . '&step=' . urlencode((string) $summary['current_step'])) ?>
+                    </div>
+                <?php else: ?>
+                    <p class="muted">Review your private website preview, adjust customer-editable content, or request changes from the 247SP team.</p>
+                    <div class="button-row">
+                        <?= ui_button('Preview Website', 'site-preview.php?business_id=' . urlencode((string) $businessIdForLinks), 'primary') ?>
                         <?= ui_button('Website Manager', 'website-manager.php?business_id=' . urlencode((string) $businessIdForLinks), 'secondary') ?>
-                    <?php endif; ?>
-                </form>
+                    </div>
+                    <form method="post" action="dashboard.php" class="form-stack">
+                        <input type="hidden" name="business_id" value="<?= e($businessIdForLinks) ?>">
+                        <label>Request Changes
+                            <textarea name="change_request" rows="4" maxlength="2000" placeholder="Tell us what you would like changed on the website preview."></textarea>
+                        </label>
+                        <?= ui_button('Send change request', '', 'secondary', ['name' => 'request_changes', 'value' => '1']) ?>
+                    </form>
+                    <p class="muted">If the preview looks ready, contact your 247SP team member to approve the website.</p>
+                <?php endif; ?>
             </section>
 
             <section class="business-switcher">
