@@ -1,0 +1,58 @@
+<?php
+
+return [
+    'ultimate-back-office' => [
+        'name' => 'Ultimate Back Office',
+        'slug' => 'ultimate-back-office',
+        'logo' => '/assets/brands/ultimate-back-office/logo.svg',
+        'logo_dark' => '/assets/brands/ultimate-back-office/logo-dark.svg',
+        'logo_light' => '/assets/brands/ultimate-back-office/logo-light.svg',
+        'app_icon' => '/assets/brands/ultimate-back-office/app-icon.svg',
+        'favicon' => '/assets/brands/ultimate-back-office/favicon.svg',
+    ],
+    'lead-hub' => [
+        'name' => 'Lead Hub',
+        'slug' => 'lead-hub',
+        'logo' => '/assets/brands/lead-hub/logo.svg',
+        'logo_dark' => '/assets/brands/lead-hub/logo-dark.svg',
+        'logo_light' => '/assets/brands/lead-hub/logo-light.svg',
+        'app_icon' => '/assets/brands/lead-hub/app-icon.svg',
+        'favicon' => '/assets/brands/lead-hub/favicon.svg',
+    ],
+    '247sp' => [
+        'name' => '24/7 Sales Partner',
+        'slug' => '247sp',
+        'logo' => '/assets/brands/247sp/logo.svg',
+        'logo_dark' => '/assets/brands/247sp/logo-dark.svg',
+        'logo_light' => '/assets/brands/247sp/logo-light.svg',
+        'app_icon' => '/assets/brands/247sp/app-icon.svg',
+        'favicon' => '/assets/brands/247sp/favicon.svg',
+    ],
+    'supersimplepayments' => [
+        'name' => 'Super Simple Payments',
+        'slug' => 'supersimplepayments',
+        'logo' => '/assets/brands/supersimplepayments/logo.svg',
+        'logo_dark' => '/assets/brands/supersimplepayments/logo-dark.svg',
+        'logo_light' => '/assets/brands/supersimplepayments/logo-light.svg',
+        'app_icon' => '/assets/brands/supersimplepayments/app-icon.svg',
+        'favicon' => '/assets/brands/supersimplepayments/favicon.svg',
+    ],
+    'tellushowwedid' => [
+        'name' => 'Tell Us How We Did',
+        'slug' => 'tellushowwedid',
+        'logo' => '/assets/brands/tellushowwedid/logo.svg',
+        'logo_dark' => '/assets/brands/tellushowwedid/logo-dark.svg',
+        'logo_light' => '/assets/brands/tellushowwedid/logo-light.svg',
+        'app_icon' => '/assets/brands/tellushowwedid/app-icon.svg',
+        'favicon' => '/assets/brands/tellushowwedid/favicon.svg',
+    ],
+    'emd' => [
+        'name' => 'EMD Network',
+        'slug' => 'emd',
+        'logo' => '/assets/brands/emd/logo.svg',
+        'logo_dark' => '/assets/brands/emd/logo-dark.svg',
+        'logo_light' => '/assets/brands/emd/logo-light.svg',
+        'app_icon' => '/assets/brands/emd/app-icon.svg',
+        'favicon' => '/assets/brands/emd/favicon.svg',
+    ],
+];
