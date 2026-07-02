@@ -93,8 +93,6 @@ if (!function_exists('application_shell_section')) {
 
             $children = $item['children'] ?? [];
             if (is_array($children) && count($children) > 0) {
-                $html .= '<details class="account-nav__subsection" open>';
-                $html .= '<summary class="account-nav__subsection-title"><span>' . e((string) $item['label']) . ' Menu</span></summary>';
                 $html .= '<nav class="account-nav__subnav" aria-label="' . e((string) $item['label'] . ' navigation') . '">';
                 foreach ($children as $child) {
                     $html .= '<a class="account-nav__subitem" href="' . e((string) ($child['href'] ?? '#')) . '"' . (!empty($child['current']) ? ' aria-current="page"' : '') . '>';
@@ -102,7 +100,6 @@ if (!function_exists('application_shell_section')) {
                     $html .= '</a>';
                 }
                 $html .= '</nav>';
-                $html .= '</details>';
             }
         }
 

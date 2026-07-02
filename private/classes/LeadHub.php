@@ -265,6 +265,65 @@ final class LeadHub
         }
     }
 
+    public static function createManualNote(int $businessId, int $userId, array $input): int
+    {
+        $contactId = (int) ($input['contact_id'] ?? 0);
+        $noteBody = self::cleanTextArea($input['note_body'] ?? '', 2000);
+
+        if ($noteBody === '') {
+            throw new InvalidArgumentException('Note text is required.');
+        }
+
+        if ($contactId > 0 && self::contactForBusiness($businessId, $contactId) === null) {
+            throw new InvalidArgumentException('Select a valid contact for this business.');
+        }
+
+        $contactIdForStorage = $contactId > 0 ? $contactId : null;
+        $connection = Database::connection();
+        $connection->beginTransaction();
+
+        try {
+            $statement = $connection->prepare(
+                'INSERT INTO notes (business_id, contact_id, created_by_user_id, note_body, created_at, updated_at)
+                 VALUES (:business_id, :contact_id, :created_by_user_id, :note_body, NOW(), NOW())'
+            );
+            $statement->execute([
+                'business_id' => $businessId,
+                'contact_id' => $contactIdForStorage,
+                'created_by_user_id' => $userId,
+                'note_body' => $noteBody,
+            ]);
+
+            $noteId = (int) $connection->lastInsertId();
+
+            $activity = $connection->prepare(
+                'INSERT INTO activity_logs (
+                    business_id, user_id, contact_id, module_key, activity_type,
+                    subject, description, created_at
+                 ) VALUES (
+                    :business_id, :user_id, :contact_id, :module_key, :activity_type,
+                    :subject, :description, NOW()
+                 )'
+            );
+            $activity->execute([
+                'business_id' => $businessId,
+                'user_id' => $userId,
+                'contact_id' => $contactIdForStorage,
+                'module_key' => 'lead_hub',
+                'activity_type' => 'manual_note_created',
+                'subject' => 'Manual note created',
+                'description' => $noteBody,
+            ]);
+
+            $connection->commit();
+
+            return $noteId;
+        } catch (Throwable $exception) {
+            $connection->rollBack();
+            throw $exception;
+        }
+    }
+
     public static function contactDetail(int $businessId, int $contactId): ?array
     {
         $statement = Database::connection()->prepare(
@@ -291,6 +350,24 @@ final class LeadHub
             'tasks' => self::tasksForContact($businessId, $contactId),
             'activity' => self::activityForContact($businessId, $contactId),
         ];
+    }
+
+    private static function contactForBusiness(int $businessId, int $contactId): ?array
+    {
+        $statement = Database::connection()->prepare(
+            'SELECT id
+             FROM contacts
+             WHERE business_id = :business_id
+               AND id = :contact_id
+             LIMIT 1'
+        );
+        $statement->execute([
+            'business_id' => $businessId,
+            'contact_id' => $contactId,
+        ]);
+        $contact = $statement->fetch();
+
+        return $contact ?: null;
     }
 
     public static function tasksForBusiness(int $businessId, int $limit = 100): array
