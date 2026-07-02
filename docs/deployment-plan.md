@@ -106,14 +106,19 @@ Run on staging server:
 
 ```bash
 cd /var/www/ubo-repo
-git checkout main
-git pull origin main
+bash scripts/deploy-staging.sh
 ```
 
-Then run PHP lint:
+The script checks out `main`, pulls with `--ff-only`, runs PHP lint, and reloads `apache2` only after lint passes.
+
+Manual equivalent:
 
 ```bash
+cd /var/www/ubo-repo
+git checkout main
+git pull --ff-only origin main
 find private public shared -name "*.php" -print0 | xargs -0 -n1 php -l
+systemctl reload apache2
 ```
 
 If a migration exists for the sprint, run it manually.
@@ -128,12 +133,6 @@ mysql \
 -p \
 --ssl-mode=REQUIRED \
 ubo_staging < database/migrations/005_admin_portal.sql
-```
-
-Reload Apache:
-
-```bash
-systemctl reload apache2
 ```
 
 ---
