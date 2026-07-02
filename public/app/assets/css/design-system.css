@@ -461,11 +461,6 @@ button:hover,
     scrollbar-gutter: stable;
 }
 
-.account-sidebar h2 {
-    margin: 0;
-    font-size: 20px;
-}
-
 .account-nav {
     display: grid;
     gap: 16px;
@@ -518,7 +513,6 @@ button:hover,
 
 .account-nav__item--module {
     min-height: 52px;
-    gap: 9px;
 }
 
 .account-nav__item--module.is-expanded {
@@ -558,15 +552,6 @@ button:hover,
     width: 24px;
     flex: 0 0 24px;
     font-size: 18px;
-    line-height: 1;
-    text-align: center;
-}
-
-.account-nav__module-state {
-    width: 14px;
-    flex: 0 0 14px;
-    color: var(--ubo-muted);
-    font-size: 11px;
     line-height: 1;
     text-align: center;
 }
