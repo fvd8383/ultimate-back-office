@@ -477,46 +477,13 @@ button:hover,
 }
 
 .account-nav__section-title {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-    border-radius: var(--ubo-radius-control);
     margin: 0;
     color: var(--ubo-muted);
-    cursor: pointer;
     font-size: 12px;
     font-weight: 700;
     letter-spacing: 0;
-    list-style: none;
-    padding: 6px 8px;
+    padding: 0 8px;
     text-transform: uppercase;
-}
-
-.account-nav__section-title::-webkit-details-marker {
-    display: none;
-}
-
-.account-nav__section-title::after {
-    content: "v";
-    font-size: 11px;
-    line-height: 1;
-    transform: rotate(-90deg);
-    transition: transform .16s ease;
-}
-
-.account-nav__section[open] > .account-nav__section-title::after {
-    transform: rotate(0deg);
-}
-
-.account-nav__section-title:hover {
-    background: var(--ubo-bg);
-    color: var(--ubo-charcoal);
-}
-
-.account-nav__section-title:focus-visible {
-    outline: 3px solid var(--ubo-focus);
-    outline-offset: 2px;
 }
 
 .account-nav__section-items {
@@ -549,10 +516,20 @@ button:hover,
     font-weight: 700;
 }
 
+.account-nav__item--module {
+    min-height: 52px;
+    gap: 9px;
+}
+
+.account-nav__item--module.is-expanded {
+    border-color: rgba(59, 108, 122, .18);
+    background: rgba(59, 108, 122, .06);
+}
+
 .account-nav__subnav {
     display: grid;
     gap: 4px;
-    margin: -2px 0 4px 34px;
+    margin: -2px 0 6px 49px;
     padding-left: 12px;
     border-left: 2px solid var(--ubo-line);
 }
@@ -583,6 +560,34 @@ button:hover,
     font-size: 18px;
     line-height: 1;
     text-align: center;
+}
+
+.account-nav__module-state {
+    width: 14px;
+    flex: 0 0 14px;
+    color: var(--ubo-muted);
+    font-size: 11px;
+    line-height: 1;
+    text-align: center;
+}
+
+.account-nav__logo {
+    display: inline-grid;
+    width: 28px;
+    height: 28px;
+    flex: 0 0 28px;
+    place-items: center;
+    overflow: hidden;
+    border: 1px solid var(--ubo-line);
+    border-radius: 8px;
+    background: var(--ubo-surface);
+}
+
+.account-nav__logo img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
 }
 
 .account-nav__footer {
