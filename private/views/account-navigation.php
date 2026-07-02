@@ -92,9 +92,6 @@ if (!function_exists('application_shell_section')) {
             $itemClass = 'account-nav__item' . ($isModule ? ' account-nav__item--module' : '') . ($hasChildren ? ' is-expanded' : '');
 
             $html .= '<a class="' . e($itemClass) . '" href="' . e((string) $item['href']) . '"' . (!empty($item['current']) ? ' aria-current="page"' : '') . '>';
-            if ($isModule) {
-                $html .= '<span class="account-nav__module-state" aria-hidden="true">' . ($hasChildren ? '&#9662;' : '&#9656;') . '</span>';
-            }
             $html .= application_shell_item_icon($item);
             $html .= '<span>' . e((string) $item['label']) . '</span>';
             $html .= '</a>';
@@ -174,7 +171,6 @@ if (!function_exists('application_navigation')) {
             : [];
 
         $html = '<aside class="account-sidebar application-sidebar" aria-label="Application navigation">';
-        $html .= '<div class="account-sidebar__brand"><h2>Ultimate Back Office</h2></div>';
         $html .= '<nav class="account-nav">';
         $html .= application_shell_section('Account', $accountItems);
         $html .= application_shell_section('Workspace', $workspaceItems);

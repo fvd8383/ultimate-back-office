@@ -27,11 +27,11 @@ The header should remain clean. Module-specific links belong in the left navigat
 
 The left navigation is the primary application navigation. It is not a floating utility card and it should not be replaced when entering a module.
 
-The shell structure is:
+The sticky header owns the Ultimate Back Office logo and brand name. The sidebar starts with account navigation and should not repeat the platform brand title.
+
+The sidebar structure is:
 
 ```text
-Ultimate Back Office
-
 ACCOUNT
 - Home
 - Businesses
@@ -60,6 +60,8 @@ Workspace module rows should use the generic module navigation pattern:
 * module logo or favicon on the left
 * module name beside the logo
 * optional child links nested under the active module
+
+Module rows should not show separate expand/collapse arrows. Active state and nested child indentation communicate hierarchy.
 
 Adding a future workspace module should require only a module logo path, module name, route, and child links. It should not require custom shell HTML.
 
