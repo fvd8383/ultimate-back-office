@@ -43,6 +43,7 @@ ACCOUNT
 WORKSPACE
 - Lead Hub
 - 24/7 Sales Partner
+- future modules
 
 ADMIN
 - Admin Portal
@@ -50,7 +51,17 @@ ADMIN
 Log out
 ```
 
-Icons should appear with labels. The current shell uses simple text or symbol icons because the repo does not currently include a shared icon library.
+ACCOUNT, WORKSPACE, and ADMIN are section labels only. They are not collapsible controls and should not show expand/collapse arrows.
+
+Workspace module rows may expand to show secondary navigation. Only the active module should be expanded at a time. Inactive modules remain visible as top-level WORKSPACE entries without their secondary links.
+
+Workspace module rows should use the generic module navigation pattern:
+
+* module logo or favicon on the left
+* module name beside the logo
+* optional child links nested under the active module
+
+Adding a future workspace module should require only a module logo path, module name, route, and child links. It should not require custom shell HTML.
 
 ## Account Section
 
@@ -119,6 +130,8 @@ Lead Hub secondary navigation appears nested under the active Lead Hub WORKSPACE
 * Contacts
 * Tasks
 * Notes
+
+Module secondary navigation should not add redundant labels such as "Lead Hub Menu" or "24/7 Sales Partner Menu"; the expanded child links already sit under the active module row.
 
 Admin pages keep the global shell visible, while admin routes such as Users, Businesses, Websites, Billing, Domains, and Email appear as secondary admin navigation in the content area.
 
