@@ -135,7 +135,7 @@ if (!function_exists('application_navigation')) {
 
         $accountItems = [
             ['icon' => '🏠', 'label' => 'Home', 'href' => $baseUrls['accounts'] . '/dashboard.php', 'current' => $current === 'home' || $current === 'dashboard'],
-            ['icon' => '🏢', 'label' => 'Businesses', 'href' => $baseUrls['accounts'] . '/dashboard.php#businesses', 'current' => $current === 'businesses'],
+            ['icon' => '🏢', 'label' => 'Businesses', 'href' => $baseUrls['accounts'] . '/businesses.php', 'current' => $current === 'businesses'],
             ['icon' => '💳', 'label' => 'Billing', 'href' => $baseUrls['accounts'] . '/billing.php', 'current' => $current === 'billing'],
             ['icon' => '🌐', 'label' => 'Domains', 'href' => $baseUrls['accounts'] . '/domains.php', 'current' => $current === 'domains'],
             ['icon' => '✉️', 'label' => 'Email', 'href' => $baseUrls['accounts'] . '/email.php', 'current' => $current === 'email'],

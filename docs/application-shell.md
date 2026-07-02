@@ -70,13 +70,13 @@ ACCOUNT links are account-level destinations. They are not module-specific.
 Current routing:
 
 * Home: `public/accounts/dashboard.php`
-* Businesses: `public/accounts/dashboard.php#businesses`
+* Businesses: `public/accounts/businesses.php`
 * Billing: `public/accounts/billing.php`
 * Domains: `public/accounts/domains.php`
 * Email: `public/accounts/email.php`
 * Profile: `public/accounts/profile.php`
 
-Businesses uses the dashboard businesses section because no standalone `public/accounts/businesses.php` route is currently implemented.
+Account Home is the account overview surface for welcome content, alerts, and reporting placeholders. Business lists belong on the standalone Businesses page.
 
 ## Workspace Section
 
