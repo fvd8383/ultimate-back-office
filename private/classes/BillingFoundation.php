@@ -76,6 +76,49 @@ final class BillingFoundation
         return $statement->fetchAll();
     }
 
+    public static function customerPaymentsForUser(int $userId): array
+    {
+        $statement = Database::connection()->prepare(
+            'SELECT payments.id,
+                    payments.subscription_id,
+                    payments.payment_type,
+                    payments.amount,
+                    payments.status,
+                    payments.transaction_reference,
+                    payments.created_at,
+                    b.id AS business_id,
+                    b.business_name,
+                    p.product_key,
+                    p.name AS plan_name
+             FROM payments
+             INNER JOIN subscriptions s ON s.id = payments.subscription_id
+             INNER JOIN businesses b ON b.id = s.business_id
+             INNER JOIN business_users bu ON bu.business_id = b.id
+             INNER JOIN plans p ON p.id = s.plan_id
+             WHERE bu.user_id = :user_id
+               AND bu.status = :link_status
+               AND b.status = :business_status
+             ORDER BY payments.created_at DESC, payments.id DESC'
+        );
+        $statement->execute([
+            'user_id' => $userId,
+            'link_status' => 'active',
+            'business_status' => 'active',
+        ]);
+
+        return $statement->fetchAll();
+    }
+
+    public static function activePlans(): array
+    {
+        return Database::connection()->query(
+            'SELECT product_key, name, setup_fee, monthly_fee
+             FROM plans
+             WHERE active = 1
+             ORDER BY name ASC'
+        )->fetchAll();
+    }
+
     public static function subscriptionForBusiness(int $businessId, string $productKey = '247sp'): ?array
     {
         $statement = Database::connection()->prepare(
