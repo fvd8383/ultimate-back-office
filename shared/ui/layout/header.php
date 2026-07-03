@@ -16,6 +16,9 @@ $layoutLogoutHref = $layoutLogoutHref ?? '';
     <title><?= e($pageTitle) ?></title>
     <link rel="icon" href="<?= e($layoutFaviconPath) ?>" type="image/svg+xml">
     <link rel="stylesheet" href="<?= e($designSystemPath) ?>">
+    <?php if (!empty($layoutHeadHtml)): ?>
+        <?= $layoutHeadHtml ?>
+    <?php endif; ?>
 </head>
 <body class="<?= e($bodyClass) ?>">
 <header class="site-header">

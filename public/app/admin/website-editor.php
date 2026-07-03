@@ -354,6 +354,10 @@ admin_begin('Website Editor', 'websites', $context);
                 <label>Secondary Brand Color
                     <input type="text" name="secondary_color" value="<?= e($branding['secondary_color'] ?? '') ?>" maxlength="7" placeholder="#D1892A">
                 </label>
+                <label>Google Analytics Measurement ID
+                    <input type="text" name="ga_measurement_id" value="<?= e($branding['ga_measurement_id'] ?? '') ?>" maxlength="32" placeholder="G-XXXXXXXXXX">
+                    <span class="form-help">Example: G-XXXXXXXXXX</span>
+                </label>
             </div>
             <div class="form-grid website-manager-upload-grid">
                 <label>Logo

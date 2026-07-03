@@ -44,7 +44,7 @@ Launch pricing:
 
 Setup Fee: $100
 
-Monthly Subscription: $27
+Monthly Subscription: $47
 
 ---
 
@@ -119,7 +119,7 @@ Initial seed:
 
 Setup Fee: 100.00
 
-Monthly Fee: 27.00
+Monthly Fee: 47.00
 
 ---
 

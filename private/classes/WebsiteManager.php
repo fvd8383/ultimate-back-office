@@ -49,11 +49,13 @@ final class WebsiteManager
                 'secondary_color' => null,
                 'hero_image_path' => null,
                 'about_image_path' => null,
+                'ga_measurement_id' => null,
             ];
         }
 
         $branding['primary_color'] = self::normalizeHexColor((string) ($branding['primary_color'] ?? self::DEFAULT_PRIMARY_COLOR)) ?: self::DEFAULT_PRIMARY_COLOR;
         $branding['secondary_color'] = self::normalizeHexColor((string) ($branding['secondary_color'] ?? ''));
+        $branding['ga_measurement_id'] = self::normalizeGaMeasurementId((string) ($branding['ga_measurement_id'] ?? ''));
 
         return $branding;
     }
@@ -110,12 +112,23 @@ final class WebsiteManager
         }
 
         $existingBranding = self::brandingForBusiness($businessId);
+        $gaMeasurementId = $existingBranding['ga_measurement_id'] ?? null;
+
+        if (array_key_exists('ga_measurement_id', $input)) {
+            $gaMeasurementId = self::normalizeGaMeasurementId((string) $input['ga_measurement_id']);
+
+            if (trim((string) $input['ga_measurement_id']) !== '' && $gaMeasurementId === null) {
+                throw new InvalidArgumentException('Google Analytics Measurement ID must use a format like G-XXXXXXXXXX.');
+            }
+        }
+
         $branding = [
             'logo_path' => $existingBranding['logo_path'] ?? null,
             'primary_color' => $primaryColor,
             'secondary_color' => $secondaryColor,
             'hero_image_path' => $existingBranding['hero_image_path'] ?? null,
             'about_image_path' => $existingBranding['about_image_path'] ?? null,
+            'ga_measurement_id' => $gaMeasurementId,
         ];
 
         foreach (self::BRANDING_UPLOADS as $fieldName => $rules) {
@@ -324,13 +337,24 @@ final class WebsiteManager
         return trim((string) $value);
     }
 
+    private static function normalizeGaMeasurementId(string $value): ?string
+    {
+        $normalized = strtoupper(trim($value));
+
+        if ($normalized === '') {
+            return null;
+        }
+
+        return preg_match('/^G-[A-Z0-9]{6,20}$/', $normalized) === 1 ? $normalized : null;
+    }
+
     private static function upsertBranding(int $businessId, array $branding): void
     {
         $statement = Database::connection()->prepare(
             'INSERT INTO `247sp_website_branding` (
-                business_id, logo_path, primary_color, secondary_color, hero_image_path, about_image_path, created_at, updated_at
+                business_id, logo_path, primary_color, secondary_color, hero_image_path, about_image_path, ga_measurement_id, created_at, updated_at
              ) VALUES (
-                :business_id, :logo_path, :primary_color, :secondary_color, :hero_image_path, :about_image_path, NOW(), NOW()
+                :business_id, :logo_path, :primary_color, :secondary_color, :hero_image_path, :about_image_path, :ga_measurement_id, NOW(), NOW()
              )
              ON DUPLICATE KEY UPDATE
                 logo_path = VALUES(logo_path),
@@ -338,6 +362,7 @@ final class WebsiteManager
                 secondary_color = VALUES(secondary_color),
                 hero_image_path = VALUES(hero_image_path),
                 about_image_path = VALUES(about_image_path),
+                ga_measurement_id = VALUES(ga_measurement_id),
                 updated_at = NOW()'
         );
         $statement->execute([
@@ -347,6 +372,7 @@ final class WebsiteManager
             'secondary_color' => $branding['secondary_color'],
             'hero_image_path' => $branding['hero_image_path'],
             'about_image_path' => $branding['about_image_path'],
+            'ga_measurement_id' => $branding['ga_measurement_id'],
         ]);
     }
 

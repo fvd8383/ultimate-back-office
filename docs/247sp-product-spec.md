@@ -53,14 +53,15 @@ Includes:
 
 ## Monthly Fee
 
-$27/month
+$47/month
 
 Includes:
 
-* Website hosting
-* Lead tracking
-* Basic reporting
-* One business email account
+* 247SP website
+* Lead Hub access
+* 1 business mailbox
+* Basic SEO setup
+* Google Analytics tracking
 
 ---
 
@@ -286,13 +287,32 @@ Additional mailboxes available.
 
 # Analytics
 
-Google Analytics integration.
+Google Analytics tracking is configured per business website.
 
-Track:
+Admin users can store a Google Analytics Measurement ID, such as G-XXXXXXXXXX, in the Admin Website Editor. Customers do not need to edit code.
+
+When a Measurement ID exists, the 247SP preview and generated/published site rendering include the GA tracking script in the page head. When no Measurement ID exists, the script is omitted cleanly.
+
+The included foundation supports Google Analytics pageview tracking for:
 
 * Visits
-* Form submissions
 * Top pages
+* Page engagement in Google Analytics
+
+Tracking must not use one shared Google Analytics Measurement ID for all businesses unless traffic is also distinguishable by business.
+
+---
+
+# Basic SEO Setup
+
+Basic SEO setup includes:
+
+* Customer-friendly site structure
+* Launch-ready service pages
+* Page titles and metadata foundations
+* Local service-area copy support
+
+Basic SEO setup does not include Search Console API integration, SEO reporting dashboards, ranking trackers, or ongoing SEO service workflows.
 
 ---
 
@@ -358,5 +378,6 @@ Site generation will be Sprint 4.
 - Every 247SP lead is automatically stored in Lead Hub.
 - One business per account unless Enterprise is active.
 - One included mailbox per 247SP subscription.
+- Basic SEO setup and Google Analytics tracking are included in the 247SP monthly package.
 - Additional mailboxes are billed separately.
 - Customers may purchase a domain through 247SP or connect an existing domain.
