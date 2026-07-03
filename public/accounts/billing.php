@@ -8,6 +8,7 @@ Session::requireAuth('login.php');
 $loadError = '';
 $user = null;
 $subscriptions = [];
+$payments = [];
 
 try {
     $user = Auth::currentUser();
@@ -19,6 +20,7 @@ try {
     }
 
     $subscriptions = BillingFoundation::customerSubscriptionsForUser((int) $user['id']);
+    $payments = BillingFoundation::customerPaymentsForUser((int) $user['id']);
 } catch (Throwable $exception) {
     $loadError = 'Billing information could not be loaded. Check the environment and database setup.';
 }
@@ -41,13 +43,13 @@ function accounts_billing_status(?string $status): string
     return ucwords(str_replace('_', ' ', $status));
 }
 
-function accounts_billing_module_access_label($isActive): string
+function accounts_billing_payment_label(?string $value): string
 {
-    if ($isActive === null || $isActive === '') {
-        return 'No Module Linked';
+    if ($value === null || $value === '') {
+        return 'Not recorded';
     }
 
-    return (int) $isActive === 1 ? 'Active' : 'Inactive';
+    return ucwords(str_replace('_', ' ', $value));
 }
 
 $pageTitle = 'Billing - Ultimate Back Office';
@@ -62,7 +64,7 @@ account_shell_begin('billing');
 <section class="dashboard-card dashboard-card--wide">
     <p class="eyebrow">Accounts</p>
     <h1>Billing</h1>
-    <p class="muted">View subscription records, fees, and active product access for your linked businesses. Billing records and module access are tracked separately.</p>
+    <p class="muted">View payment method status, invoices, charges, fees, and billing status for your linked businesses.</p>
 </section>
 
 <?php if ($loadError !== ''): ?>
@@ -75,38 +77,65 @@ account_shell_begin('billing');
     </section>
 <?php else: ?>
     <section class="dashboard-card">
-        <h2>Current Billing</h2>
+        <h2>Billing Status</h2>
         <div class="business-list">
             <?php foreach ($subscriptions as $subscription): ?>
                 <?php
-                    $hasSubscription = (int) ($subscription['subscription_id'] ?? 0) > 0;
-                    $is247spSubscription = (string) ($subscription['product_key'] ?? '') === '247sp';
-                    $moduleAccessActive = (int) ($subscription['module_access_active'] ?? 0) === 1;
-                    $moduleAccessLabel = accounts_billing_module_access_label($subscription['module_access_active'] ?? null);
+                    $billingStatus = accounts_billing_status($subscription['subscription_status']);
                 ?>
                 <article class="business-list__item">
                     <div>
                         <h3><?= e($subscription['business_name']) ?></h3>
                         <p class="muted">Business ID <?= e($subscription['business_id']) ?></p>
                         <?php if (in_array((string) $subscription['subscription_status'], ['pending_payment', 'past_due'], true)): ?>
-                            <?= ui_alert('Billing status needs attention. Active module access is shown separately below.', 'warning') ?>
-                        <?php endif; ?>
-                        <?php if ($hasSubscription && $is247spSubscription && !$moduleAccessActive): ?>
-                            <?= ui_alert('Subscription exists, but 24/7 Sales Partner module access is not active.', 'warning') ?>
+                            <?= ui_alert('Billing status needs attention.', 'warning') ?>
                         <?php endif; ?>
                     </div>
                     <div class="summary-list billing-summary-list">
-                        <div><dt>Current Plan</dt><dd><?= e($subscription['plan_name'] ?: 'No plan recorded') ?></dd></div>
+                        <div><dt>Payment Method</dt><dd><?= e('Payment setup not on file yet') ?></dd></div>
+                        <div><dt>Billing Status</dt><dd><?= ui_badge($billingStatus, in_array((string) $subscription['subscription_status'], ['past_due', 'cancelled'], true) ? 'role' : 'status') ?></dd></div>
                         <div><dt>Monthly Fee</dt><dd><?= e(accounts_billing_money($subscription['monthly_fee'])) ?></dd></div>
                         <div><dt>Setup Fee</dt><dd><?= e(accounts_billing_money($subscription['setup_fee'])) ?></dd></div>
-                        <div><dt>Subscription Status</dt><dd><?= ui_badge(accounts_billing_status($subscription['subscription_status']), in_array((string) $subscription['subscription_status'], ['past_due', 'cancelled'], true) ? 'role' : 'status') ?></dd></div>
-                        <div><dt>Module Access</dt><dd><?= ui_badge($moduleAccessLabel, $moduleAccessActive ? 'status' : 'role') ?></dd></div>
-                        <div><dt>Start Date</dt><dd><?= e($subscription['started_at'] ?: 'Not started') ?></dd></div>
+                        <div><dt>Product</dt><dd><?= e($subscription['plan_name'] ?: 'No plan recorded') ?></dd></div>
                     </div>
-                    <p class="muted">Module access changes do not automatically cancel or deactivate billing subscription records.</p>
                 </article>
             <?php endforeach; ?>
         </div>
+    </section>
+
+    <section class="dashboard-card">
+        <h2>Past Invoices</h2>
+        <section class="empty-state">
+            <h2>No invoices yet</h2>
+            <p>Invoices will appear here after your first payment.</p>
+        </section>
+    </section>
+
+    <section class="dashboard-card">
+        <h2>Charges and Payments</h2>
+        <?php if (count($payments) === 0): ?>
+            <section class="empty-state">
+                <h2>No charges yet</h2>
+                <p>Charges and payment activity will appear here after billing begins.</p>
+            </section>
+        <?php else: ?>
+            <div class="business-list">
+                <?php foreach ($payments as $payment): ?>
+                    <article class="business-list__item">
+                        <div>
+                            <h3><?= e(accounts_billing_payment_label($payment['payment_type'] ?? 'Payment')) ?></h3>
+                            <p class="muted"><?= e($payment['business_name']) ?> · <?= e($payment['plan_name']) ?></p>
+                        </div>
+                        <div class="summary-list billing-summary-list">
+                            <div><dt>Amount</dt><dd><?= e(accounts_billing_money($payment['amount'])) ?></dd></div>
+                            <div><dt>Status</dt><dd><?= ui_badge(accounts_billing_payment_label($payment['status'] ?? ''), in_array((string) ($payment['status'] ?? ''), ['failed', 'cancelled'], true) ? 'role' : 'status') ?></dd></div>
+                            <div><dt>Date</dt><dd><?= e($payment['created_at'] ?: 'Not recorded') ?></dd></div>
+                            <div><dt>Reference</dt><dd><?= e($payment['transaction_reference'] ?: 'Not recorded') ?></dd></div>
+                        </div>
+                    </article>
+                <?php endforeach; ?>
+            </div>
+        <?php endif; ?>
     </section>
 <?php endif; ?>
 <?php account_shell_end(); ?>

@@ -28,6 +28,8 @@ Ultimate Back Office includes:
 * Accounts
 * Business profiles
 * Module activation
+* Subscriptions
+* Billing
 * Lead Hub
 * 247SP
 * Future financial, reputation, and lead marketplace tools
@@ -55,6 +57,8 @@ Product Output
 A user may own or manage one or more businesses.
 
 A business may have one or more active modules.
+
+Subscriptions represent the products and services connected to an account or business. Billing represents financial records such as payment status, invoices, charges, and fees. These are related but separate surfaces in the account navigation.
 
 ---
 
@@ -116,6 +120,8 @@ Lead Hub is automatically included when a business activates:
 
 For 247SP customers, Lead Hub should feel like part of the product experience, not a separate product purchase.
 
+Lead Hub is also the shared CRM feature area for the future Full OS navigation model.
+
 ---
 
 # 24/7 Sales Partner
@@ -127,6 +133,8 @@ Standalone product and UBO module.
 ## Purpose
 
 247SP creates a simple professional website and lead capture experience for local service businesses.
+
+In Standalone Module Mode, 247SP appears as "24/7 Sales Partner" in WORKSPACE navigation. In the future Full OS navigation model, the same website capabilities should appear under feature areas such as Websites rather than as a standalone product name.
 
 ## Current Scope
 
@@ -257,6 +265,23 @@ Full Ultimate Back Office operating system bundle.
 ## Behavior
 
 Full OS should include all active core modules when the OS is ready.
+
+Full OS customers should use feature-area navigation instead of standalone product navigation:
+
+```text
+Dashboard
+CRM
+Websites
+Sales
+Payments
+Reviews
+Operations
+Accounting
+Reports
+Settings
+```
+
+The feature areas may map to existing modules internally, but the customer-facing model should feel like one operating system rather than a collection of separate products.
 
 ## Status
 

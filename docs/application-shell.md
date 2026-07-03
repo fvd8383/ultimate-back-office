@@ -35,6 +35,7 @@ The sidebar structure is:
 ACCOUNT
 - Home
 - Businesses
+- Subscriptions
 - Billing
 - Domains
 - Email
@@ -73,6 +74,7 @@ Current routing:
 
 * Home: `public/accounts/dashboard.php`
 * Businesses: `public/accounts/businesses.php`
+* Subscriptions: `public/accounts/subscriptions.php`
 * Billing: `public/accounts/billing.php`
 * Domains: `public/accounts/domains.php`
 * Email: `public/accounts/email.php`
@@ -80,9 +82,36 @@ Current routing:
 
 Account Home is the account overview surface for welcome content, alerts, and reporting placeholders. Business lists belong on the standalone Businesses page.
 
+Subscriptions and Billing are separate account destinations:
+
+* Subscriptions shows products and services connected to the account, subscription status, plan names, product/module access, and available products when data exists.
+* Billing shows financial records and billing status such as payment method status, fees, charges, and invoice history.
+* Subscription management controls must not imply Stripe Checkout, payment collection, plan changes, or cancellation automation until those workflows exist.
+
 ## Workspace Section
 
-WORKSPACE links launch product/module areas.
+WORKSPACE links launch either standalone product/module areas or Full OS feature areas, depending on the account navigation mode.
+
+## Standalone Module Mode
+
+Standalone Module Mode is the active customer navigation model during the 24/7 Sales Partner launch phase.
+
+```text
+ACCOUNT
+- Home
+- Businesses
+- Subscriptions
+- Billing
+- Domains
+- Email
+- Profile
+
+WORKSPACE
+- Lead Hub
+- 24/7 Sales Partner
+```
+
+Standalone products use product/module navigation. Lead Hub remains the CRM workspace, and 24/7 Sales Partner remains the website workspace.
 
 Current routing:
 
@@ -98,6 +127,37 @@ When a business is selected or discoverable, workspace links include the `busine
 Lead Hub must be shown as a workspace module/action. It must not be used as the global sidebar title.
 
 Future customer modules should plug into WORKSPACE as additional items. They should not create a separate global shell.
+
+## Full OS Mode
+
+Full OS Mode is a future navigation model for customers who have the complete Ultimate Back Office operating system. It is not active for regular customers during the 24/7 Sales Partner launch phase unless an existing subscription or module flag clearly supports it.
+
+Full OS users should navigate by feature area rather than standalone product names.
+
+```text
+ACCOUNT
+- Home
+- Businesses
+- Subscriptions
+- Billing
+- Domains
+- Email
+- Profile
+
+WORKSPACE
+- Dashboard
+- CRM
+- Websites
+- Sales
+- Payments
+- Reviews
+- Operations
+- Accounting
+- Reports
+- Settings
+```
+
+In Full OS Mode, feature areas replace product labels such as "24/7 Sales Partner" in the primary workspace navigation. The underlying implementation may still reuse module routes until dedicated feature-area routes exist, but customer-facing navigation should describe the operating-system area rather than the standalone product brand.
 
 ## Admin Section
 

@@ -133,6 +133,7 @@ if (!function_exists('application_navigation')) {
         $accountItems = [
             ['icon' => '🏠', 'label' => 'Home', 'href' => $baseUrls['accounts'] . '/dashboard.php', 'current' => $current === 'home' || $current === 'dashboard'],
             ['icon' => '🏢', 'label' => 'Businesses', 'href' => $baseUrls['accounts'] . '/businesses.php', 'current' => $current === 'businesses'],
+            ['icon' => '📦', 'label' => 'Subscriptions', 'href' => $baseUrls['accounts'] . '/subscriptions.php', 'current' => $current === 'subscriptions'],
             ['icon' => '💳', 'label' => 'Billing', 'href' => $baseUrls['accounts'] . '/billing.php', 'current' => $current === 'billing'],
             ['icon' => '🌐', 'label' => 'Domains', 'href' => $baseUrls['accounts'] . '/domains.php', 'current' => $current === 'domains'],
             ['icon' => '✉️', 'label' => 'Email', 'href' => $baseUrls['accounts'] . '/email.php', 'current' => $current === 'email'],
@@ -165,6 +166,21 @@ if (!function_exists('application_navigation')) {
             $leadHubItem,
             $salesPartnerItem,
         ];
+
+        if ((string) ($options['workspace_mode'] ?? 'standalone') === 'full_os') {
+            $workspaceItems = [
+                ['icon' => '▦', 'label' => 'Dashboard', 'href' => application_shell_href($baseUrls['app'], 'dashboard.php', $business), 'current' => $current === 'full_os_dashboard'],
+                ['icon' => '☎', 'label' => 'CRM', 'href' => application_shell_href($baseUrls['app'], 'dashboard.php', $business), 'current' => $current === 'full_os_crm'],
+                ['icon' => '⌂', 'label' => 'Websites', 'href' => application_shell_href($baseUrls['app'], '247sp/dashboard.php', $business), 'current' => $current === 'full_os_websites'],
+                ['icon' => '$', 'label' => 'Sales', 'href' => application_shell_href($baseUrls['app'], 'dashboard.php', $business), 'current' => $current === 'full_os_sales'],
+                ['icon' => '¢', 'label' => 'Payments', 'href' => application_shell_href($baseUrls['app'], 'dashboard.php', $business), 'current' => $current === 'full_os_payments'],
+                ['icon' => '★', 'label' => 'Reviews', 'href' => application_shell_href($baseUrls['app'], 'dashboard.php', $business), 'current' => $current === 'full_os_reviews'],
+                ['icon' => '⚙', 'label' => 'Operations', 'href' => application_shell_href($baseUrls['app'], 'dashboard.php', $business), 'current' => $current === 'full_os_operations'],
+                ['icon' => '#', 'label' => 'Accounting', 'href' => application_shell_href($baseUrls['app'], 'dashboard.php', $business), 'current' => $current === 'full_os_accounting'],
+                ['icon' => '↗', 'label' => 'Reports', 'href' => application_shell_href($baseUrls['app'], 'dashboard.php', $business), 'current' => $current === 'full_os_reports'],
+                ['icon' => '⚙', 'label' => 'Settings', 'href' => application_shell_href($baseUrls['app'], 'dashboard.php', $business), 'current' => $current === 'full_os_settings'],
+            ];
+        }
 
         $adminItems = application_shell_admin_visible($options)
             ? [['icon' => '⚙', 'label' => 'Admin Portal', 'href' => $baseUrls['app'] . '/admin/dashboard.php', 'current' => $current === 'admin']]
