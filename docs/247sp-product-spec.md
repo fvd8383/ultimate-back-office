@@ -217,6 +217,43 @@ Customer Website Manager may edit existing active service content, but add/remov
 
 ---
 
+# Admin Website Editor Sections
+
+Admin Website Editor settings should be organized around:
+
+* Branding
+* Pages
+* Services
+* Calls to Action
+* SEO
+* Integrations
+* Advanced
+
+The current editor may remain a single form. These sections define where future website settings belong.
+
+SEO includes:
+
+* Titles
+* Meta descriptions
+* Sitemap
+* Robots
+* Canonicals
+
+Canonical controls are reserved for future SEO settings and should not be mixed into page copy fields.
+
+Integrations include:
+
+* Google Analytics
+* Google Search Console
+* Google Tag Manager
+* Microsoft Clarity
+* Meta Pixel
+* Google Business Profile
+
+Only Google Analytics is rendered into generated sites today. The other integration values are stored for admin reference and should not inject scripts or verification behavior.
+
+---
+
 # About Page
 
 Includes:
@@ -287,7 +324,7 @@ Additional mailboxes available.
 
 # Analytics
 
-Google Analytics tracking is configured per business website.
+Google Analytics tracking is configured per business website through the website integrations model.
 
 Admin users can store a Google Analytics Measurement ID, such as G-XXXXXXXXXX, in the Admin Website Editor. Customers do not need to edit code.
 
@@ -300,6 +337,8 @@ The included foundation supports Google Analytics pageview tracking for:
 * Page engagement in Google Analytics
 
 Tracking must not use one shared Google Analytics Measurement ID for all businesses unless traffic is also distinguishable by business.
+
+Admin users may also store Google Search Console Property, Google Tag Manager ID, Microsoft Clarity ID, Meta Pixel ID, and Google Business Profile URL values. These are not rendered into generated sites in the current implementation.
 
 ---
 

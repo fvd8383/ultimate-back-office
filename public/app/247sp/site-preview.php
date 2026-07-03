@@ -21,6 +21,7 @@ $website = null;
 $pages = [];
 $currentPage = null;
 $branding = [];
+$integrations = [];
 $contentOverrides = [];
 $serviceImages = [];
 $loadError = '';
@@ -70,6 +71,7 @@ try {
             if ($website !== null) {
                 $pages = SiteGenerator::pagesForWebsite((int) $website['id']);
                 $branding = WebsiteManager::brandingForBusiness($businessId);
+                $integrations = WebsiteManager::integrationsForBusiness($businessId);
                 $contentOverrides = WebsiteManager::contentOverridesForBusiness($businessId);
                 $serviceImages = WebsiteManager::serviceImagesForBusiness($businessId);
                 $requestedSlug = (string) ($_GET['page'] ?? ($pages[0]['slug'] ?? ''));
@@ -503,7 +505,7 @@ $bodyClass = 'app-dashboard theme-247sp';
 $layoutHomeHref = '../dashboard.php';
 $layoutUserName = $user ? trim((string) $user['first_name'] . ' ' . (string) $user['last_name']) : '';
 $layoutLogoutHref = $accountsBaseUrl . '/logout.php';
-$layoutHeadHtml = sp247_preview_ga_head($branding['ga_measurement_id'] ?? null);
+$layoutHeadHtml = sp247_preview_ga_head($integrations['ga_measurement_id'] ?? null);
 require __DIR__ . '/../../../private/views/header.php';
 require __DIR__ . '/../../../private/views/account-navigation.php';
 ?>
