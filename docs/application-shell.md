@@ -44,7 +44,7 @@ ACCOUNT
 WORKSPACE
 - Lead Hub
 - 24/7 Sales Partner
-- future modules
+- future modules after 24/7 Sales Partner launch readiness
 
 ADMIN
 - Admin Portal
@@ -82,11 +82,32 @@ Current routing:
 
 Account Home is the account overview surface for welcome content, alerts, and reporting placeholders. Business lists belong on the standalone Businesses page.
 
-Subscriptions and Billing are separate account destinations:
+Subscriptions and Billing are separate permanent account destinations.
 
-* Subscriptions shows products and services connected to the account, subscription status, plan names, product/module access, launch readiness status, available products, and customer-friendly upgrade/cancellation request guidance when data exists.
-* Billing shows financial records and billing status such as current monthly charges, upcoming renewal, payment method status, launch readiness payment state, fees, charges, and invoice history.
-* Subscription management controls must not imply Stripe Checkout, payment collection, plan changes, or cancellation automation until those workflows exist.
+Subscriptions is product and service management. It owns:
+
+* current products
+* active subscriptions
+* module access
+* plan status
+* upgrades and downgrades
+* cancellations
+* available products
+* launch readiness status when a product requires setup before launch
+
+Billing is financial management. It owns:
+
+* payment method status
+* invoices
+* charges
+* upcoming renewal
+* billing status
+* payment history
+* launch readiness payment state when payment is required before launch
+
+Subscription management controls must not imply Stripe Checkout, payment collection, plan changes, or cancellation automation until those workflows exist. Stripe payment collection will connect to Billing later for customers paying Ultimate Back Office, but Stripe is not live in the current account shell.
+
+Stripe Connect is not part of 24/7 Sales Partner customers paying UBO. Stripe Connect belongs to future customer payment processing features, such as Super Simple Payments, where a business accepts payments from its own customers.
 
 ## Workspace Section
 
@@ -112,6 +133,8 @@ WORKSPACE
 ```
 
 Standalone products use product/module navigation. Lead Hub remains the CRM workspace, and 24/7 Sales Partner remains the website workspace.
+
+Future modules remain paused for regular customer navigation until 24/7 Sales Partner is launch-ready. They may appear in documentation, admin planning, or database foundations, but they should not be exposed as usable customer workspace modules ahead of the 24/7 Sales Partner launch path.
 
 Current routing:
 
@@ -158,6 +181,8 @@ WORKSPACE
 ```
 
 In Full OS Mode, feature areas replace product labels such as "24/7 Sales Partner" in the primary workspace navigation. The underlying implementation may still reuse module routes until dedicated feature-area routes exist, but customer-facing navigation should describe the operating-system area rather than the standalone product brand.
+
+Full OS Mode is not the current regular-customer navigation model. It should remain inactive until the product set is ready for Full OS customers and 24/7 Sales Partner launch readiness is complete.
 
 ## Admin Section
 
