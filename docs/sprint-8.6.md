@@ -87,6 +87,50 @@ Filtering
 
 ---
 
+# Milestone 2A - Subscriptions & Billing UX
+
+## Objective
+
+Separate customer product management from financial management while preparing the account experience for future payment collection.
+
+### Deliverables
+
+Subscriptions page
+
+* Current subscriptions
+* Product name
+* Subscription status
+* Monthly price
+* Setup fee
+* Launch readiness status
+* Available products
+* Upgrade request guidance
+* Cancellation request guidance
+
+Billing page
+
+* Current monthly charges
+* Upcoming renewal
+* Payment method status
+* Invoice history
+* Invoice download when an invoice file is available
+* 24/7 Sales Partner launch-readiness payment state
+
+24/7 Sales Partner dashboard
+
+* Business Profile
+* Website Content
+* Website Preview
+* Domain
+* Email
+* Website Approval
+* Payment Method
+* Ready to Launch
+
+If the website preview is ready and payment is incomplete, the dashboard routes "Complete Payment & Launch" to Billing. No Stripe checkout, Stripe Connect onboarding, payment processing, domain automation, or email automation is part of this milestone.
+
+---
+
 # Milestone 3 — Stripe Automation
 
 ## Objective

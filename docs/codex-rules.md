@@ -204,7 +204,8 @@ Current pricing assumptions:
 ```text
 247SP:
 $100 setup
-$27/month
+$47/month
+includes 247SP website, Lead Hub access, 1 business mailbox, basic SEO setup, and Google Analytics tracking
 
 247SP professional email setup:
 $25 one-time

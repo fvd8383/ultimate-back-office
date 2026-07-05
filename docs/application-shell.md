@@ -84,8 +84,8 @@ Account Home is the account overview surface for welcome content, alerts, and re
 
 Subscriptions and Billing are separate account destinations:
 
-* Subscriptions shows products and services connected to the account, subscription status, plan names, product/module access, and available products when data exists.
-* Billing shows financial records and billing status such as payment method status, fees, charges, and invoice history.
+* Subscriptions shows products and services connected to the account, subscription status, plan names, product/module access, launch readiness status, available products, and customer-friendly upgrade/cancellation request guidance when data exists.
+* Billing shows financial records and billing status such as current monthly charges, upcoming renewal, payment method status, launch readiness payment state, fees, charges, and invoice history.
 * Subscription management controls must not imply Stripe Checkout, payment collection, plan changes, or cancellation automation until those workflows exist.
 
 ## Workspace Section
@@ -351,6 +351,19 @@ The readiness section should:
 * avoid internal planning language in customer-facing copy
 
 For 24/7 Sales Partner, payment belongs after website preview review and launch approval, not during signup or business onboarding. Customer payment acceptance belongs to separate payment-processing products, not the 24/7 Sales Partner setup workflow.
+
+The 24/7 Sales Partner dashboard readiness checklist uses these customer-facing items:
+
+* Business Profile
+* Website Content
+* Website Preview
+* Domain
+* Email
+* Website Approval
+* Payment Method
+* Ready to Launch
+
+When the website preview is ready and payment is not complete, the primary dashboard action should read "Complete Payment & Launch" and route to Billing until payment collection is available through the billing foundation.
 
 ## Base URL Rules
 

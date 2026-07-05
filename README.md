@@ -394,7 +394,9 @@ Billing controls support:
 - View manual MRR calculated from active subscriptions.
 - Manually set subscription status to trial, pending payment, active, past due, or cancelled.
 
-Customer billing visibility lives at `public/accounts/billing.php` and shows each linked business, current plan, setup fee, monthly fee, subscription status, and start date.
+Customer subscription visibility lives at `public/accounts/subscriptions.php` and shows current subscriptions, product status, monthly price, setup fee, launch readiness status, available products, and support-assisted upgrade or cancellation guidance.
+
+Customer billing visibility lives at `public/accounts/billing.php` and focuses on financial status: current monthly charges, upcoming renewal, payment method status, invoice history, and the launch-readiness payment state. Billing does not collect payment yet; incomplete 24/7 Sales Partner payment readiness routes customers back to Billing from the launch checklist.
 
 Domain controls support:
 

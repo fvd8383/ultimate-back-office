@@ -56,6 +56,43 @@ function accounts_subscription_access_label($isActive): string
     return (int) $isActive === 1 ? 'Active' : 'Inactive';
 }
 
+function accounts_subscription_launch_readiness(array $subscription): array
+{
+    $status = (string) ($subscription['subscription_status'] ?? '');
+    $productKey = (string) ($subscription['product_key'] ?? '');
+
+    if ($productKey !== '247sp') {
+        return ['label' => 'Product setup', 'type' => 'status', 'detail' => 'Setup status is tracked inside the product workspace.'];
+    }
+
+    if ($status === 'active') {
+        return ['label' => 'Payment ready', 'type' => 'status', 'detail' => 'Billing is active for launch readiness.'];
+    }
+
+    if (in_array($status, ['pending_payment', 'past_due'], true)) {
+        return ['label' => 'Payment needed', 'type' => 'role', 'detail' => 'Complete payment from Billing after your website preview is ready.'];
+    }
+
+    if ($status === 'trial') {
+        return ['label' => 'Setup in progress', 'type' => 'status', 'detail' => 'Payment is completed later in the launch flow.'];
+    }
+
+    if ($status === 'cancelled') {
+        return ['label' => 'Not launch ready', 'type' => 'role', 'detail' => 'This subscription is cancelled.'];
+    }
+
+    return ['label' => 'Not ready yet', 'type' => 'role', 'detail' => 'Launch readiness updates as setup continues.'];
+}
+
+function accounts_subscription_plan_summary(array $plan): string
+{
+    if ((string) ($plan['product_key'] ?? '') === '247sp') {
+        return 'Includes the 24/7 Sales Partner website, Lead Hub access, one business mailbox, basic SEO setup, and Google Analytics tracking.';
+    }
+
+    return 'Product details can be reviewed with support before it is connected to your account.';
+}
+
 function accounts_subscription_plan_available(array $plan, array $subscriptions): bool
 {
     foreach ($subscriptions as $subscription) {
@@ -86,19 +123,20 @@ account_shell_begin('subscriptions');
     <?= ui_alert($loadError, 'error') ?>
 <?php elseif (count($productSubscriptions) === 0): ?>
     <section class="dashboard-card">
-        <h2>No active products yet</h2>
+        <h2>Current Subscriptions</h2>
         <p class="muted">Create a business and select a product before subscription details can be shown.</p>
         <?= ui_button('Create Business', 'business-create.php') ?>
     </section>
 <?php else: ?>
     <section class="dashboard-card">
-        <h2>Current Products</h2>
+        <h2>Current Subscriptions</h2>
         <div class="business-list">
             <?php foreach ($productSubscriptions as $subscription): ?>
                 <?php
                     $accessActive = (int) ($subscription['module_access_active'] ?? 0) === 1;
                     $accessLabel = accounts_subscription_access_label($subscription['module_access_active'] ?? null);
                     $status = (string) ($subscription['subscription_status'] ?? '');
+                    $launchReadiness = accounts_subscription_launch_readiness($subscription);
                 ?>
                 <article class="business-list__item">
                     <div>
@@ -113,10 +151,12 @@ account_shell_begin('subscriptions');
                         <div><dt>Subscription Status</dt><dd><?= ui_badge(accounts_subscription_status($status), in_array($status, ['past_due', 'cancelled'], true) ? 'role' : 'status') ?></dd></div>
                         <div><dt>Monthly Fee</dt><dd><?= e(accounts_subscription_money($subscription['monthly_fee'])) ?></dd></div>
                         <div><dt>Setup Fee</dt><dd><?= e(accounts_subscription_money($subscription['setup_fee'])) ?></dd></div>
+                        <div><dt>Launch Readiness</dt><dd><?= ui_badge($launchReadiness['label'], $launchReadiness['type']) ?></dd></div>
                         <div><dt>Product Access</dt><dd><?= ui_badge($accessLabel, $accessActive ? 'status' : 'role') ?></dd></div>
                         <div><dt>Start Date</dt><dd><?= e($subscription['started_at'] ?: 'Not started') ?></dd></div>
                     </div>
-                    <p class="muted">Product changes, upgrades, and cancellations are handled with support.</p>
+                    <p class="muted"><?= e($launchReadiness['detail']) ?></p>
+                    <p class="muted">Upgrade options and cancellation requests can be reviewed with support.</p>
                 </article>
             <?php endforeach; ?>
         </div>
@@ -133,6 +173,7 @@ account_shell_begin('subscriptions');
                 <article class="business-list__item">
                     <div>
                         <h3><?= e($plan['name']) ?></h3>
+                        <p class="muted"><?= e(accounts_subscription_plan_summary($plan)) ?></p>
                         <p class="muted"><?= $isAvailable ? 'Available to discuss with support.' : 'Already connected to one of your businesses.' ?></p>
                     </div>
                     <div class="summary-list billing-summary-list">
@@ -148,7 +189,7 @@ account_shell_begin('subscriptions');
 
 <section class="dashboard-card">
     <h2>Manage Subscription</h2>
-    <p class="muted">Upgrade, change, and cancellation requests can be reviewed with support. Payment setup and product changes are handled directly with the support team.</p>
+    <p class="muted">Upgrade options and cancellation requests can be reviewed with support. Product changes stay here; payment status and invoices live on Billing.</p>
 </section>
 <?php account_shell_end(); ?>
 <?php require __DIR__ . '/../../private/views/footer.php'; ?>
