@@ -24,6 +24,7 @@ $bundle = [
 ];
 $pages = [];
 $branding = [];
+$integrations = [];
 $serviceImages = [];
 $overrides = [];
 $adminServicePages = [];
@@ -248,6 +249,7 @@ try {
     $bundle = TwentyFourSevenSalesPartner::bundle($businessId);
     $pages = $website !== null ? SiteGenerator::pagesForWebsite((int) $website['id']) : [];
     $branding = WebsiteManager::brandingForBusiness($businessId);
+    $integrations = WebsiteManager::integrationsForBusiness($businessId);
     $serviceImages = WebsiteManager::serviceImagesForBusiness($businessId);
     $overrides = WebsiteManager::contentOverridesForBusiness($businessId);
     $adminServicePages = TwentyFourSevenSalesPartner::servicePagesForAdmin($businessId);
@@ -345,7 +347,14 @@ admin_begin('Website Editor', 'websites', $context);
     <form method="post" action="website-editor.php" enctype="multipart/form-data" class="website-manager-form">
         <input type="hidden" name="business_id" value="<?= e($businessId) ?>">
 
-        <section class="business-switcher website-manager-section">
+        <?php
+        /*
+         * Future Website Settings sections:
+         * Branding, Pages, Services, Calls to Action, SEO, Integrations, Advanced.
+         * Keep the current form layout until tabbed settings are introduced.
+         */
+        ?>
+        <section class="business-switcher website-manager-section" data-settings-section="branding">
             <h2>Branding</h2>
             <div class="form-grid">
                 <label>Primary Brand Color
@@ -371,7 +380,7 @@ admin_begin('Website Editor', 'websites', $context);
             </div>
         </section>
 
-        <section class="business-switcher website-manager-section">
+        <section class="business-switcher website-manager-section" data-settings-section="pages calls-to-action advanced">
             <h2>Homepage</h2>
             <label>Homepage Heading
                 <input type="text" name="home_headline" value="<?= e($homeHeadline) ?>" required>
@@ -434,7 +443,7 @@ admin_begin('Website Editor', 'websites', $context);
             </div>
         </section>
 
-        <section class="business-switcher website-manager-section">
+        <section class="business-switcher website-manager-section" data-settings-section="pages">
             <h2>About Page</h2>
             <label>About Heading
                 <input type="text" name="about_heading" value="<?= e($aboutHeading) ?>" required>
@@ -448,7 +457,7 @@ admin_begin('Website Editor', 'websites', $context);
             </label>
         </section>
 
-        <section class="business-switcher website-manager-section">
+        <section class="business-switcher website-manager-section" data-settings-section="pages">
             <h2>Contact Page</h2>
             <label>Contact Heading
                 <input type="text" name="contact_heading" value="<?= e($contactHeading) ?>" required>
@@ -462,7 +471,7 @@ admin_begin('Website Editor', 'websites', $context);
             </label>
         </section>
 
-        <section class="business-switcher website-manager-section">
+        <section class="business-switcher website-manager-section" data-settings-section="services">
             <h2>Service Pages</h2>
             <p class="muted">Admins can manage the service page structure shown in the website Services dropdown. Inactive service pages remain saved but do not appear in preview navigation after regeneration.</p>
             <div class="service-page-grid website-manager-services">
@@ -568,6 +577,32 @@ admin_begin('Website Editor', 'websites', $context);
                         <textarea name="new_service_description" rows="5"></textarea>
                     </label>
                 </fieldset>
+            </div>
+        </section>
+
+        <section class="business-switcher website-manager-section" data-settings-section="integrations">
+            <h2>Integrations</h2>
+            <p class="muted">Store per-business website integration values here. Google Analytics is added to website output when present; the other values are stored for admin reference.</p>
+            <div class="form-grid">
+                <label>Google Analytics Measurement ID
+                    <input type="text" name="ga_measurement_id" value="<?= e($integrations['ga_measurement_id'] ?? '') ?>" maxlength="32" placeholder="G-XXXXXXXXXX">
+                    <span class="form-help">Example: G-XXXXXXXXXX</span>
+                </label>
+                <label>Google Search Console Property
+                    <input type="text" name="google_search_console_property" value="<?= e($integrations['google_search_console_property'] ?? '') ?>" maxlength="255" placeholder="sc-domain:example.com">
+                </label>
+                <label>Google Tag Manager ID
+                    <input type="text" name="google_tag_manager_id" value="<?= e($integrations['google_tag_manager_id'] ?? '') ?>" maxlength="32" placeholder="GTM-XXXXXXX">
+                </label>
+                <label>Microsoft Clarity ID
+                    <input type="text" name="microsoft_clarity_id" value="<?= e($integrations['microsoft_clarity_id'] ?? '') ?>" maxlength="64">
+                </label>
+                <label>Meta Pixel ID
+                    <input type="text" name="meta_pixel_id" value="<?= e($integrations['meta_pixel_id'] ?? '') ?>" maxlength="64">
+                </label>
+                <label>Google Business Profile URL
+                    <input type="url" name="google_business_profile_url" value="<?= e($integrations['google_business_profile_url'] ?? '') ?>" maxlength="255" placeholder="https://www.google.com/maps/place/...">
+                </label>
             </div>
         </section>
 

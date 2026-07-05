@@ -21,6 +21,7 @@ $website = null;
 $pages = [];
 $currentPage = null;
 $branding = [];
+$integrations = [];
 $contentOverrides = [];
 $serviceImages = [];
 $loadError = '';
@@ -70,6 +71,7 @@ try {
             if ($website !== null) {
                 $pages = SiteGenerator::pagesForWebsite((int) $website['id']);
                 $branding = WebsiteManager::brandingForBusiness($businessId);
+                $integrations = WebsiteManager::integrationsForBusiness($businessId);
                 $contentOverrides = WebsiteManager::contentOverridesForBusiness($businessId);
                 $serviceImages = WebsiteManager::serviceImagesForBusiness($businessId);
                 $requestedSlug = (string) ($_GET['page'] ?? ($pages[0]['slug'] ?? ''));
@@ -96,6 +98,25 @@ function sp247_preview_content(?array $page): array
 function sp247_preview_href(int $businessId, string $slug): string
 {
     return 'site-preview.php?business_id=' . urlencode((string) $businessId) . '&page=' . urlencode($slug);
+}
+
+function sp247_preview_ga_head(?string $measurementId): string
+{
+    $normalized = strtoupper(trim((string) $measurementId));
+
+    if ($normalized === '' || preg_match('/^G-[A-Z0-9]{6,20}$/', $normalized) !== 1) {
+        return '';
+    }
+
+    $id = htmlspecialchars($normalized, ENT_QUOTES, 'UTF-8');
+
+    return '<script async src="https://www.googletagmanager.com/gtag/js?id=' . $id . '"></script>' . PHP_EOL
+        . '<script>' . PHP_EOL
+        . 'window.dataLayer = window.dataLayer || [];' . PHP_EOL
+        . 'function gtag(){dataLayer.push(arguments);}' . PHP_EOL
+        . "gtag('js', new Date());" . PHP_EOL
+        . "gtag('config', '" . $id . "');" . PHP_EOL
+        . '</script>';
 }
 
 function sp247_preview_page_content(array $pages, string $slug): array
@@ -484,6 +505,7 @@ $bodyClass = 'app-dashboard theme-247sp';
 $layoutHomeHref = '../dashboard.php';
 $layoutUserName = $user ? trim((string) $user['first_name'] . ' ' . (string) $user['last_name']) : '';
 $layoutLogoutHref = $accountsBaseUrl . '/logout.php';
+$layoutHeadHtml = sp247_preview_ga_head($integrations['ga_measurement_id'] ?? null);
 require __DIR__ . '/../../../private/views/header.php';
 require __DIR__ . '/../../../private/views/account-navigation.php';
 ?>

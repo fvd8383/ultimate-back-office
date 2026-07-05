@@ -40,7 +40,7 @@ CREATE TABLE payments (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 INSERT INTO plans (product_key, name, setup_fee, monthly_fee, active, created_at)
-SELECT '247sp', '24/7 Sales Partner', 100.00, 27.00, 1, NOW()
+SELECT '247sp', '24/7 Sales Partner', 100.00, 47.00, 1, NOW()
 WHERE NOT EXISTS (
     SELECT 1 FROM plans WHERE product_key = '247sp'
 );

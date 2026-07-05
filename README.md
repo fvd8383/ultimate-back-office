@@ -106,7 +106,7 @@ Then run the Sprint 6 billing foundation migration:
 mysql -h DB_HOST -P DB_PORT -u DB_USER -p DB_NAME < database/migrations/008_billing_foundation.sql
 ```
 
-The Sprint 6 migration adds local billing foundation tables for `plans`, `subscriptions`, and `payments`. It seeds the 24/7 Sales Partner plan with a $100.00 setup fee and $27.00 monthly fee, then creates trial subscription records for existing businesses with active 247SP access.
+The Sprint 6 migration adds local billing foundation tables for `plans`, `subscriptions`, and `payments`. It seeds the 24/7 Sales Partner plan with a $100.00 setup fee and $47.00 monthly fee, then creates trial subscription records for existing businesses with active 247SP access.
 
 Then run the Sprint 7 domain workflow migration:
 
@@ -115,6 +115,14 @@ mysql -h DB_HOST -P DB_PORT -u DB_USER -p DB_NAME < database/migrations/009_doma
 ```
 
 The Sprint 7 migration adds manual domain workflow tables for `domain_requests`, `domain_assignments`, and `website_domains`. It also creates request records from existing 247SP onboarding domain selections when they exist.
+
+Then run the 247SP pricing and analytics foundation migration:
+
+```bash
+mysql -h DB_HOST -P DB_PORT -u DB_USER -p DB_NAME < database/migrations/014_247sp_pricing_analytics.sql
+```
+
+The pricing and analytics migration updates the 24/7 Sales Partner monthly fee to $47.00 and adds per-business website integrations storage for Google Analytics, Google Search Console, Google Tag Manager, Microsoft Clarity, Meta Pixel, and Google Business Profile references.
 
 ## Testing OTP Login In Staging
 
@@ -335,6 +343,7 @@ Website controls support:
 - View generated website details.
 - View a read-only asset and branding summary.
 - Edit 24/7 Sales Partner website branding, page content, service content, and upload assets through the DFY admin site editor.
+- Store per-business website integration values for Google Analytics, Google Search Console, Google Tag Manager, Microsoft Clarity, Meta Pixel, and Google Business Profile.
 - Edit service page supporting copy, trust cards, and page-specific hero images through the shared 247SP website override model.
 - Add, reorder, deactivate, and assign parent services for service/sub-service pages, such as Clogged Drain with Clogged Toilet or Clogged Sink Drain underneath it.
 - Edit homepage stat cards and primary/secondary CTA labels and types through the shared 247SP website override model.
@@ -345,6 +354,16 @@ Website controls support:
 The DFY admin site editor at `public/app/admin/website-editor.php` reuses the existing 247SP Website Manager storage and generation logic. Internal Admin and Super Admin users can save edits, preview sites, and regenerate private previews without customer impersonation. Regular customer users cannot access admin editor routes.
 
 Business display phone, email, and service area remain sourced from the existing business profile and 247SP onboarding records; the DFY editor shows that context and does not create separate display-field overrides.
+
+The Admin Website Editor is organized around the permanent website settings sections: Branding, Pages, Services, Calls to Action, SEO, Integrations, and Advanced. The current form layout remains in place, but new website settings should be added under the matching section.
+
+SEO settings cover titles, meta descriptions, sitemap, robots, and canonical URL foundations. Current basic SEO setup covers launch-ready content and metadata foundations; sitemap, robots, canonical management, ranking reports, and analytics dashboards are outside this implementation.
+
+Integrations settings cover Google Analytics, Google Search Console, Google Tag Manager, Microsoft Clarity, Meta Pixel, and Google Business Profile. Google Analytics is the only integration rendered into 247SP website output today. The other values are stored for admin reference and are not injected into generated sites.
+
+24/7 Sales Partner is priced at a $100 setup fee and $47/month. The monthly package includes the 247SP website, Lead Hub access, one business mailbox, basic SEO setup, and Google Analytics tracking. Basic SEO setup means customer-friendly site structure, service-page copy support, page titles, and launch-ready metadata foundations; it does not include Search Console API integration, SEO reporting dashboards, ranking trackers, or ongoing SEO service workflows.
+
+Google Analytics tracking is stored per business website through the admin website editor. When a valid Measurement ID such as `G-XXXXXXXXXX` exists, the 247SP preview and generated/published site rendering include the GA script in the page head. When no Measurement ID exists, the script is omitted. This foundation covers pageview tracking; Search Console API access, Tag Manager rendering, Meta Pixel rendering, Clarity rendering, ranking reports, analytics dashboards, and custom conversion events are outside this scope.
 
 247SP CTA controls support customer-facing primary labels such as Call Now, Request Service, Book Appointment, Instant Quote, Get Estimate, Request Inspection, Apply Now, and Reserve Spot. Secondary labels support Free Estimate, Contact Us, View Pricing, and Learn More.
 

@@ -238,6 +238,22 @@ Admin-only responsibilities include:
 * pricing-list upload/replacement
 * private preview regeneration
 
+Admin Website Editor settings should be organized around these permanent sections:
+
+* Branding
+* Pages
+* Services
+* Calls to Action
+* SEO
+* Integrations
+* Advanced
+
+The current editor may continue to render as one form, but future controls should be placed under the matching section rather than added as unrelated page blocks.
+
+SEO settings include titles, meta descriptions, sitemap, robots, and canonical URL foundations. Canonicals are planned as a future SEO control and should not be mixed into unrelated content fields.
+
+Integrations settings include Google Analytics, Google Search Console, Google Tag Manager, Microsoft Clarity, Meta Pixel, and Google Business Profile. Google Analytics Measurement ID is the only integration rendered into 24/7 Sales Partner website output today. Search Console properties, Tag Manager IDs, Clarity IDs, Meta Pixel IDs, and Google Business Profile URLs may be stored in the admin editor, but they must not inject scripts or external verification behavior until a dedicated implementation exists.
+
 ## CTA And Pricing Behavior
 
 CTA configuration belongs inside the 24/7 Sales Partner website workflow.

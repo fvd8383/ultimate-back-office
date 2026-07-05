@@ -58,6 +58,41 @@ final class WebsiteManager
         return $branding;
     }
 
+    public static function integrationsForBusiness(int $businessId): array
+    {
+        $defaults = [
+            'business_id' => $businessId,
+            'ga_measurement_id' => null,
+            'google_search_console_property' => null,
+            'google_tag_manager_id' => null,
+            'microsoft_clarity_id' => null,
+            'meta_pixel_id' => null,
+            'google_business_profile_url' => null,
+        ];
+
+        $statement = Database::connection()->prepare(
+            'SELECT *
+             FROM `247sp_website_integrations`
+             WHERE business_id = :business_id
+             LIMIT 1'
+        );
+        $statement->execute(['business_id' => $businessId]);
+        $integrations = $statement->fetch();
+
+        if (!$integrations) {
+            return $defaults;
+        }
+
+        return array_merge($defaults, [
+            'ga_measurement_id' => self::normalizeGaMeasurementId((string) ($integrations['ga_measurement_id'] ?? '')),
+            'google_search_console_property' => self::optionalNullableText($integrations['google_search_console_property'] ?? null),
+            'google_tag_manager_id' => self::optionalNullableText($integrations['google_tag_manager_id'] ?? null),
+            'microsoft_clarity_id' => self::optionalNullableText($integrations['microsoft_clarity_id'] ?? null),
+            'meta_pixel_id' => self::optionalNullableText($integrations['meta_pixel_id'] ?? null),
+            'google_business_profile_url' => self::optionalNullableText($integrations['google_business_profile_url'] ?? null),
+        ]);
+    }
+
     public static function serviceImagesForBusiness(int $businessId): array
     {
         $statement = Database::connection()->prepare(
@@ -110,6 +145,7 @@ final class WebsiteManager
         }
 
         $existingBranding = self::brandingForBusiness($businessId);
+        $integrations = self::integrationsFromInput($businessId, $input);
         $branding = [
             'logo_path' => $existingBranding['logo_path'] ?? null,
             'primary_color' => $primaryColor,
@@ -178,6 +214,7 @@ final class WebsiteManager
 
         try {
             self::upsertBranding($businessId, $branding);
+            self::upsertIntegrations($businessId, $integrations);
             self::replaceContentOverrides($businessId, $contentFields);
             self::upsertServiceImages($businessId, $serviceImages);
             self::logActivity($businessId, $userId, '247sp_website_manager_saved', '247SP website manager settings saved');
@@ -324,6 +361,51 @@ final class WebsiteManager
         return trim((string) $value);
     }
 
+    private static function optionalNullableText($value): ?string
+    {
+        $text = trim((string) $value);
+
+        return $text !== '' ? $text : null;
+    }
+
+    private static function normalizeGaMeasurementId(string $value): ?string
+    {
+        $normalized = strtoupper(trim($value));
+
+        if ($normalized === '') {
+            return null;
+        }
+
+        return preg_match('/^G-[A-Z0-9]{6,20}$/', $normalized) === 1 ? $normalized : null;
+    }
+
+    private static function integrationsFromInput(int $businessId, array $input): array
+    {
+        $integrations = self::integrationsForBusiness($businessId);
+
+        if (array_key_exists('ga_measurement_id', $input)) {
+            $integrations['ga_measurement_id'] = self::normalizeGaMeasurementId((string) $input['ga_measurement_id']);
+
+            if (trim((string) $input['ga_measurement_id']) !== '' && $integrations['ga_measurement_id'] === null) {
+                throw new InvalidArgumentException('Google Analytics Measurement ID must use a format like G-XXXXXXXXXX.');
+            }
+        }
+
+        foreach ([
+            'google_search_console_property',
+            'google_tag_manager_id',
+            'microsoft_clarity_id',
+            'meta_pixel_id',
+            'google_business_profile_url',
+        ] as $field) {
+            if (array_key_exists($field, $input)) {
+                $integrations[$field] = self::optionalNullableText($input[$field]);
+            }
+        }
+
+        return $integrations;
+    }
+
     private static function upsertBranding(int $businessId, array $branding): void
     {
         $statement = Database::connection()->prepare(
@@ -347,6 +429,36 @@ final class WebsiteManager
             'secondary_color' => $branding['secondary_color'],
             'hero_image_path' => $branding['hero_image_path'],
             'about_image_path' => $branding['about_image_path'],
+        ]);
+    }
+
+    private static function upsertIntegrations(int $businessId, array $integrations): void
+    {
+        $statement = Database::connection()->prepare(
+            'INSERT INTO `247sp_website_integrations` (
+                business_id, ga_measurement_id, google_search_console_property, google_tag_manager_id,
+                microsoft_clarity_id, meta_pixel_id, google_business_profile_url, created_at, updated_at
+             ) VALUES (
+                :business_id, :ga_measurement_id, :google_search_console_property, :google_tag_manager_id,
+                :microsoft_clarity_id, :meta_pixel_id, :google_business_profile_url, NOW(), NOW()
+             )
+             ON DUPLICATE KEY UPDATE
+                ga_measurement_id = VALUES(ga_measurement_id),
+                google_search_console_property = VALUES(google_search_console_property),
+                google_tag_manager_id = VALUES(google_tag_manager_id),
+                microsoft_clarity_id = VALUES(microsoft_clarity_id),
+                meta_pixel_id = VALUES(meta_pixel_id),
+                google_business_profile_url = VALUES(google_business_profile_url),
+                updated_at = NOW()'
+        );
+        $statement->execute([
+            'business_id' => $businessId,
+            'ga_measurement_id' => $integrations['ga_measurement_id'],
+            'google_search_console_property' => $integrations['google_search_console_property'],
+            'google_tag_manager_id' => $integrations['google_tag_manager_id'],
+            'microsoft_clarity_id' => $integrations['microsoft_clarity_id'],
+            'meta_pixel_id' => $integrations['meta_pixel_id'],
+            'google_business_profile_url' => $integrations['google_business_profile_url'],
         ]);
     }
 
