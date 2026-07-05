@@ -157,49 +157,49 @@ function sp247_build_launch_readiness(
 
     $items = [
         [
-            'label' => 'Business profile complete',
+            'label' => 'Business Profile',
             'completed' => sp247_business_profile_complete($business),
             'detail' => sp247_business_profile_complete($business) ? 'Your business contact and service area details are saved.' : 'Add the core business details used for your website.',
             'action' => ['label' => 'Update profile', 'href' => $accountsBaseUrl . '/business.php?business_id=' . $businessId],
         ],
         [
-            'label' => 'Website onboarding complete',
+            'label' => 'Website Content',
             'completed' => $setupComplete,
             'detail' => $setupComplete ? 'Your website setup answers have been submitted.' : 'Finish the website setup steps so your preview can be prepared.',
             'action' => ['label' => 'Continue onboarding', 'href' => 'onboarding.php?business_id=' . $businessId . '&step=' . urlencode((string) ($summary['current_step'] ?? 'business_information'))],
         ],
         [
-            'label' => 'Website preview ready',
+            'label' => 'Website Preview',
             'completed' => $previewReady,
             'detail' => $previewReady ? 'Your private website preview is ready to review.' : 'Your preview appears here after onboarding and website preparation.',
             'action' => ['label' => $setupComplete ? 'Review onboarding' : 'Finish onboarding', 'href' => $setupComplete ? 'review.php?business_id=' . $businessId : 'onboarding.php?business_id=' . $businessId],
         ],
         [
-            'label' => 'Domain selected/requested',
+            'label' => 'Domain',
             'completed' => $domainReady,
             'detail' => $domainReady ? 'Your domain request is saved and visible in your account.' : 'Choose the domain you want connected to this website.',
             'action' => ['label' => 'Choose domain', 'href' => 'onboarding.php?business_id=' . $businessId . '&step=domain_selection'],
         ],
         [
-            'label' => 'Email selected/requested',
+            'label' => 'Email',
             'completed' => $emailReady,
             'detail' => $emailReady ? 'Your first mailbox request is saved.' : 'Choose the mailbox name you want for your business email.',
             'action' => ['label' => 'Choose email', 'href' => 'onboarding.php?business_id=' . $businessId . '&step=email_selection'],
         ],
         [
-            'label' => 'Website approved',
+            'label' => 'Website Approval',
             'completed' => $websiteApproved,
             'detail' => $websiteApproved ? 'Your approval has been saved.' : ($previewReady ? 'Approve the preview when it looks ready, or request changes below.' : 'Review and approve your preview once it is ready.'),
             'action' => ['label' => 'Preview website', 'href' => 'site-preview.php?business_id=' . $businessId],
         ],
         [
-            'label' => 'Payment method added',
+            'label' => 'Payment Method',
             'completed' => $paymentComplete,
             'detail' => $paymentComplete ? 'Your billing status is active.' : 'Complete payment setup after reviewing your website preview.',
-            'action' => ['label' => 'View billing', 'href' => $accountsBaseUrl . '/billing.php'],
+            'action' => ['label' => 'Complete payment', 'href' => $accountsBaseUrl . '/billing.php'],
         ],
         [
-            'label' => 'Ready to launch',
+            'label' => 'Ready to Launch',
             'completed' => $readyToLaunch,
             'detail' => $readyToLaunch ? 'Your launch requirements are complete.' : 'Complete the remaining items above to prepare this website for launch.',
         ],
