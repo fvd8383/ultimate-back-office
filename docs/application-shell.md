@@ -254,6 +254,8 @@ SEO settings include titles, meta descriptions, sitemap, robots, and canonical U
 
 Integrations settings include Google Analytics, Google Search Console, Google Tag Manager, Microsoft Clarity, Meta Pixel, and Google Business Profile. Google Analytics Measurement ID is the only integration rendered into 24/7 Sales Partner website output today. Search Console properties, Tag Manager IDs, Clarity IDs, Meta Pixel IDs, and Google Business Profile URLs may be stored in the admin editor, but they must not inject scripts or external verification behavior until a dedicated implementation exists.
 
+Website integration values are stored in `website_integrations`, which is shared by current and future website-enabled products.
+
 ## CTA And Pricing Behavior
 
 CTA configuration belongs inside the 24/7 Sales Partner website workflow.

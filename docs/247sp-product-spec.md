@@ -252,6 +252,8 @@ Integrations include:
 
 Only Google Analytics is rendered into generated sites today. The other integration values are stored for admin reference and should not inject scripts or verification behavior.
 
+Integration values are stored in `website_integrations`, a shared table for current and future website-enabled products.
+
 ---
 
 # About Page
@@ -324,7 +326,7 @@ Additional mailboxes available.
 
 # Analytics
 
-Google Analytics tracking is configured per business website through the website integrations model.
+Google Analytics tracking is configured per business website through the `website_integrations` model.
 
 Admin users can store a Google Analytics Measurement ID, such as G-XXXXXXXXXX, in the Admin Website Editor. Customers do not need to edit code.
 

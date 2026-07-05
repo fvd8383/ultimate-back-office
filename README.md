@@ -122,7 +122,15 @@ Then run the 247SP pricing and analytics foundation migration:
 mysql -h DB_HOST -P DB_PORT -u DB_USER -p DB_NAME < database/migrations/014_247sp_pricing_analytics.sql
 ```
 
-The pricing and analytics migration updates the 24/7 Sales Partner monthly fee to $47.00 and adds per-business website integrations storage for Google Analytics, Google Search Console, Google Tag Manager, Microsoft Clarity, Meta Pixel, and Google Business Profile references.
+The pricing and analytics migration updates the 24/7 Sales Partner monthly fee to $47.00 and adds `website_integrations` per-business storage for Google Analytics, Google Search Console, Google Tag Manager, Microsoft Clarity, Meta Pixel, and Google Business Profile references. `website_integrations` is shared by current and future website-enabled products, not scoped only to 247SP.
+
+If staging previously applied an earlier version of the pricing and analytics migration, run the legacy website integrations rename migration:
+
+```bash
+mysql -h DB_HOST -P DB_PORT -u DB_USER -p DB_NAME < database/migrations/015_rename_legacy_website_integrations.sql
+```
+
+This staging repair migration only renames the legacy table when it exists and `website_integrations` does not already exist.
 
 ## Testing OTP Login In Staging
 
@@ -360,6 +368,8 @@ The Admin Website Editor is organized around the permanent website settings sect
 SEO settings cover titles, meta descriptions, sitemap, robots, and canonical URL foundations. Current basic SEO setup covers launch-ready content and metadata foundations; sitemap, robots, canonical management, ranking reports, and analytics dashboards are outside this implementation.
 
 Integrations settings cover Google Analytics, Google Search Console, Google Tag Manager, Microsoft Clarity, Meta Pixel, and Google Business Profile. Google Analytics is the only integration rendered into 247SP website output today. The other values are stored for admin reference and are not injected into generated sites.
+
+Website integration values are stored in `website_integrations` so the same foundation can support future website-enabled products without product-specific table names.
 
 24/7 Sales Partner is priced at a $100 setup fee and $47/month. The monthly package includes the 247SP website, Lead Hub access, one business mailbox, basic SEO setup, and Google Analytics tracking. Basic SEO setup means customer-friendly site structure, service-page copy support, page titles, and launch-ready metadata foundations; it does not include Search Console API integration, SEO reporting dashboards, ranking trackers, or ongoing SEO service workflows.
 

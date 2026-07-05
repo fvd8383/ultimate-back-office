@@ -72,7 +72,7 @@ final class WebsiteManager
 
         $statement = Database::connection()->prepare(
             'SELECT *
-             FROM `247sp_website_integrations`
+             FROM website_integrations
              WHERE business_id = :business_id
              LIMIT 1'
         );
@@ -435,7 +435,7 @@ final class WebsiteManager
     private static function upsertIntegrations(int $businessId, array $integrations): void
     {
         $statement = Database::connection()->prepare(
-            'INSERT INTO `247sp_website_integrations` (
+            'INSERT INTO website_integrations (
                 business_id, ga_measurement_id, google_search_console_property, google_tag_manager_id,
                 microsoft_clarity_id, meta_pixel_id, google_business_profile_url, created_at, updated_at
              ) VALUES (
