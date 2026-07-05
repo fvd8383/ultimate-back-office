@@ -580,6 +580,8 @@ Rules:
 
 Local reference to Stripe subscriptions.
 
+Current Sprint 8.6 implementation uses the `subscriptions` table for 24/7 Sales Partner customers paying UBO through Stripe Checkout. It stores Stripe customer, subscription, checkout session, latest invoice, payment method status, current billing period, and cancellation-at-period-end fields. This is separate from future Stripe Connect records for businesses accepting payments from their own customers.
+
 Suggested fields:
 
 ```text
@@ -1734,6 +1736,8 @@ paid_at nullable
 created_at
 updated_at
 ```
+
+Current Sprint 8.6 implementation also uses local `payments` records for UBO billing invoice history. Stripe invoice, payment intent, checkout session, event, and hosted invoice URL references are stored so webhook delivery can update payment status without creating duplicate invoice records.
 
 ---
 

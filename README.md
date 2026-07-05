@@ -132,6 +132,14 @@ mysql -h DB_HOST -P DB_PORT -u DB_USER -p DB_NAME < database/migrations/015_rena
 
 This staging repair migration only renames the legacy table when it exists and `website_integrations` does not already exist.
 
+Then run the Stripe billing integration migration:
+
+```bash
+mysql -h DB_HOST -P DB_PORT -u DB_USER -p DB_NAME < database/migrations/016_stripe_billing_integration.sql
+```
+
+The Stripe billing migration extends local `subscriptions` and `payments` records with Stripe customer, subscription, checkout session, invoice, payment intent, payment method status, and invoice URL references. It also adds `stripe_webhook_events` for webhook idempotency. This milestone is for 24/7 Sales Partner customers paying Ultimate Back Office. It does not add Stripe Connect, customer payouts, or customer merchant onboarding.
+
 ## Testing OTP Login In Staging
 
 1. Insert an active test user into the `users` table.
@@ -393,10 +401,29 @@ Billing controls support:
 - View active, trial, and past-due counts.
 - View manual MRR calculated from active subscriptions.
 - Manually set subscription status to trial, pending payment, active, past due, or cancelled.
+- View Stripe customer ID, subscription ID, payment method status, and latest invoice/payment status when Stripe has synchronized those values.
 
 Customer subscription visibility lives at `public/accounts/subscriptions.php` and shows current subscriptions, product status, monthly price, setup fee, launch readiness status, available products, and support-assisted upgrade or cancellation guidance.
 
-Customer billing visibility lives at `public/accounts/billing.php` and focuses on financial status: current monthly charges, upcoming renewal, payment method status, invoice history, and the launch-readiness payment state. Billing does not collect payment yet; incomplete 24/7 Sales Partner payment readiness routes customers back to Billing from the launch checklist.
+Customer billing visibility lives at `public/accounts/billing.php` and focuses on financial status: current monthly charges, upcoming renewal, payment method status, invoice history, and the launch-readiness payment state. Incomplete 24/7 Sales Partner payment readiness routes customers to `public/accounts/checkout.php`, which creates a Stripe Checkout Session using server-side Stripe Price IDs.
+
+Required Stripe configuration values live in `private/config/env.php` and are shown with empty placeholders in `private/config/env.example.php`:
+
+- `STRIPE_SECRET_KEY`
+- `STRIPE_PUBLISHABLE_KEY`
+- `STRIPE_WEBHOOK_SECRET`
+- `STRIPE_247SP_PRICE_ID`
+- `STRIPE_247SP_SETUP_FEE_PRICE_ID`
+- `STRIPE_SUCCESS_URL`
+- `STRIPE_CANCEL_URL`
+
+The current accounts-root webhook endpoint is:
+
+```text
+https://staging-accounts.ultimatebackoffice.com/stripe-webhook.php
+```
+
+The repository also includes `public/webhooks/stripe.php` as a suggested standalone webhook path if a future Apache mapping exposes `public/webhooks`. The webhook handles `checkout.session.completed`, `customer.subscription.created`, `customer.subscription.updated`, `customer.subscription.deleted`, `invoice.payment_succeeded`, and `invoice.payment_failed`.
 
 Domain controls support:
 

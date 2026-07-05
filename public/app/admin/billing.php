@@ -53,7 +53,7 @@ admin_begin('Billing', 'billing', $context);
 <section class="hero-panel">
     <p class="eyebrow">Billing</p>
     <h1>Subscription management</h1>
-    <p class="muted">Track 24/7 Sales Partner plans, manual billing statuses, active module access, and recurring revenue. No payment processing runs here.</p>
+    <p class="muted">Track 24/7 Sales Partner plans, Stripe billing references, subscription status, active module access, and recurring revenue.</p>
 </section>
 
 <?php if ($notice !== ''): ?>
@@ -76,7 +76,7 @@ admin_begin('Billing', 'billing', $context);
     <section class="business-switcher">
         <div class="admin-table admin-table--billing">
             <div class="admin-table__head">
-                <span>Business</span><span>Plan</span><span>Status</span><span>Module Access</span><span>Setup Fee</span><span>Monthly Fee</span><span>Start Date</span><span>Controls</span>
+                <span>Business</span><span>Plan</span><span>Status</span><span>Module Access</span><span>Fees</span><span>Stripe</span><span>Latest Payment</span><span>Controls</span>
             </div>
             <?php foreach ($subscriptions as $subscription): ?>
                 <?php
@@ -93,9 +93,21 @@ admin_begin('Billing', 'billing', $context);
                             <small class="admin-table__cell-note">Subscription exists; module access inactive.</small>
                         <?php endif; ?>
                     </span>
-                    <span><?= e(billing_money($subscription['setup_fee'])) ?></span>
-                    <span><?= e(billing_money($subscription['monthly_fee'])) ?></span>
-                    <span><?= e($subscription['started_at'] ?: 'Not started') ?></span>
+                    <span>
+                        <strong>Setup:</strong> <?= e(billing_money($subscription['setup_fee'])) ?><br>
+                        <strong>Monthly:</strong> <?= e(billing_money($subscription['monthly_fee'])) ?><br>
+                        <small class="admin-table__cell-note">Starts: <?= e($subscription['started_at'] ?: 'Not started') ?></small>
+                    </span>
+                    <span>
+                        <small class="admin-table__cell-note">Customer: <?= e($subscription['stripe_customer_id'] ?: 'Not recorded') ?></small><br>
+                        <small class="admin-table__cell-note">Subscription: <?= e($subscription['stripe_subscription_id'] ?: 'Not recorded') ?></small><br>
+                        <small class="admin-table__cell-note">Payment: <?= e($subscription['payment_method_status'] ?: 'Not recorded') ?></small>
+                    </span>
+                    <span>
+                        <small class="admin-table__cell-note">Status: <?= e($subscription['latest_payment_status'] ?: 'No payment yet') ?></small><br>
+                        <small class="admin-table__cell-note">Invoice: <?= e($subscription['latest_stripe_invoice_id'] ?: 'Not recorded') ?></small><br>
+                        <small class="admin-table__cell-note">At: <?= e($subscription['latest_payment_at'] ?: 'Not recorded') ?></small>
+                    </span>
                     <span>
                         <form method="post" action="billing.php" class="billing-status-form">
                             <input type="hidden" name="subscription_id" value="<?= e($subscription['id']) ?>">
