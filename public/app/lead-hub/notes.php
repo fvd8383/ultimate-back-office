@@ -8,6 +8,7 @@ $notes = [];
 $contacts = [];
 $error = '';
 $notice = isset($_GET['saved']) ? 'Note saved.' : '';
+$selectedContactId = (string) ($_POST['contact_id'] ?? $_GET['contact_id'] ?? '');
 
 if ((int) $context['business_id'] > 0) {
     if ($_SERVER['REQUEST_METHOD'] === 'POST' && is_array($context['user'])) {
@@ -54,7 +55,7 @@ if ($ready): ?>
                             $contactName = trim((string) $contact['first_name'] . ' ' . (string) $contact['last_name']);
                             $contactLabel = $contactName !== '' ? $contactName : 'Contact #' . (string) $contact['id'];
                         ?>
-                        <option value="<?= e($contact['id']) ?>" <?= (string) ($_POST['contact_id'] ?? '') === (string) $contact['id'] ? 'selected' : '' ?>>
+                        <option value="<?= e($contact['id']) ?>" <?= $selectedContactId === (string) $contact['id'] ? 'selected' : '' ?>>
                             <?= e($contactLabel) ?>
                         </option>
                     <?php endforeach; ?>

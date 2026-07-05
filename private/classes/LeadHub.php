@@ -69,7 +69,7 @@ final class LeadHub
                 $created = true;
             } else {
                 $contactId = (int) $existingContact['id'];
-                self::updateContact($contactId, $nameParts, $email, $phone, $statusId, $sourceDetail);
+                self::updateContact($businessId, $contactId, $nameParts, $email, $phone, $statusId, $sourceDetail);
                 $created = false;
             }
 
@@ -170,6 +170,20 @@ final class LeadHub
         return $statement->fetchAll();
     }
 
+    public static function statusesForBusiness(int $businessId): array
+    {
+        $statement = Database::connection()->prepare(
+            'SELECT *
+             FROM contact_statuses
+             WHERE is_active = 1
+               AND (business_id = :business_id OR business_id IS NULL)
+             ORDER BY business_id DESC, sort_order ASC, name ASC'
+        );
+        $statement->execute(['business_id' => $businessId]);
+
+        return $statement->fetchAll();
+    }
+
     public static function createManualContact(int $businessId, int $userId, array $input): int
     {
         $name = self::cleanText($input['name'] ?? '', 150);
@@ -177,7 +191,7 @@ final class LeadHub
         $email = strtolower(self::cleanText($input['email'] ?? '', 255));
         $message = self::cleanTextArea($input['message'] ?? '', 2000);
         $sourceDetail = self::cleanText($input['source_detail'] ?? 'Manual entry', 255);
-        $contactType = (string) ($input['contact_type'] ?? 'lead') === 'contact' ? 'contact' : 'lead';
+        $contactType = self::normalizeContactType($input['contact_type'] ?? 'lead');
 
         if ($name === '') {
             throw new InvalidArgumentException('Name is required.');
@@ -196,7 +210,7 @@ final class LeadHub
         }
 
         $nameParts = self::splitName($name);
-        $statusId = self::newLeadStatusId($businessId);
+        $statusId = self::statusIdFromInput($businessId, $input, self::newLeadStatusId($businessId));
         $connection = Database::connection();
         $connection->beginTransaction();
 
@@ -259,6 +273,74 @@ final class LeadHub
             $connection->commit();
 
             return $contactId;
+        } catch (Throwable $exception) {
+            $connection->rollBack();
+            throw $exception;
+        }
+    }
+
+    public static function updateManualContact(int $businessId, int $userId, int $contactId, array $input): void
+    {
+        $existingContact = self::contactForBusiness($businessId, $contactId);
+        if ($existingContact === null) {
+            throw new InvalidArgumentException('Select a valid lead or contact for this business.');
+        }
+
+        $name = self::cleanText($input['name'] ?? '', 150);
+        $phone = self::cleanText($input['phone'] ?? '', 50);
+        $email = strtolower(self::cleanText($input['email'] ?? '', 255));
+        $sourceDetail = self::cleanText($input['source_detail'] ?? '', 255);
+        $contactType = self::normalizeContactType($input['contact_type'] ?? ($existingContact['contact_type'] ?? 'lead'));
+        $statusId = self::statusIdFromInput($businessId, $input, isset($existingContact['status_id']) ? (int) $existingContact['status_id'] : null);
+
+        if ($name === '') {
+            throw new InvalidArgumentException('Name is required.');
+        }
+
+        if ($phone === '' && $email === '') {
+            throw new InvalidArgumentException('Enter a phone number or email address.');
+        }
+
+        if ($email !== '' && filter_var($email, FILTER_VALIDATE_EMAIL) === false) {
+            throw new InvalidArgumentException('Enter a valid email address.');
+        }
+
+        if ($sourceDetail === '') {
+            $sourceDetail = 'Manual entry';
+        }
+
+        $nameParts = self::splitName($name);
+        $connection = Database::connection();
+        $connection->beginTransaction();
+
+        try {
+            $statement = $connection->prepare(
+                'UPDATE contacts
+                 SET first_name = :first_name,
+                     last_name = :last_name,
+                     email = :email,
+                     phone = :phone,
+                     contact_type = :contact_type,
+                     status_id = :status_id,
+                     source_detail = :source_detail,
+                     updated_at = NOW()
+                 WHERE business_id = :business_id
+                   AND id = :contact_id'
+            );
+            $statement->execute([
+                'first_name' => $nameParts['first_name'],
+                'last_name' => $nameParts['last_name'],
+                'email' => $email !== '' ? $email : null,
+                'phone' => $phone !== '' ? $phone : null,
+                'contact_type' => $contactType,
+                'status_id' => $statusId,
+                'source_detail' => $sourceDetail,
+                'business_id' => $businessId,
+                'contact_id' => $contactId,
+            ]);
+
+            self::logLeadHubActivity($businessId, $userId, $contactId, 'manual_contact_updated', 'Lead Hub record updated: ' . $name);
+            $connection->commit();
         } catch (Throwable $exception) {
             $connection->rollBack();
             throw $exception;
@@ -355,7 +437,7 @@ final class LeadHub
     private static function contactForBusiness(int $businessId, int $contactId): ?array
     {
         $statement = Database::connection()->prepare(
-            'SELECT id
+            'SELECT *
              FROM contacts
              WHERE business_id = :business_id
                AND id = :contact_id
@@ -375,7 +457,7 @@ final class LeadHub
         $statement = Database::connection()->prepare(
             'SELECT t.*, c.first_name, c.last_name
              FROM tasks t
-             LEFT JOIN contacts c ON c.id = t.contact_id
+             LEFT JOIN contacts c ON c.id = t.contact_id AND c.business_id = t.business_id
              WHERE t.business_id = :business_id
              ORDER BY t.created_at DESC, t.id DESC
              LIMIT :limit'
@@ -392,7 +474,7 @@ final class LeadHub
         $statement = Database::connection()->prepare(
             'SELECT n.*, c.first_name, c.last_name
              FROM notes n
-             LEFT JOIN contacts c ON c.id = n.contact_id
+             LEFT JOIN contacts c ON c.id = n.contact_id AND c.business_id = n.business_id
              WHERE n.business_id = :business_id
              ORDER BY n.created_at DESC, n.id DESC
              LIMIT :limit'
@@ -402,6 +484,90 @@ final class LeadHub
         $statement->execute();
 
         return $statement->fetchAll();
+    }
+
+    public static function createManualTask(int $businessId, int $userId, array $input): int
+    {
+        $contactId = (int) ($input['contact_id'] ?? 0);
+        $title = self::cleanText($input['title'] ?? '', 255);
+        $description = self::cleanTextArea($input['description'] ?? '', 2000);
+        $dueDate = self::normalizeDate($input['due_date'] ?? '');
+        $status = self::normalizeTaskStatus($input['status'] ?? 'open');
+        $priority = self::normalizeTaskPriority($input['priority'] ?? 'normal');
+
+        if ($title === '') {
+            throw new InvalidArgumentException('Task title is required.');
+        }
+
+        if ($contactId > 0 && self::contactForBusiness($businessId, $contactId) === null) {
+            throw new InvalidArgumentException('Select a valid lead or contact for this business.');
+        }
+
+        $contactIdForStorage = $contactId > 0 ? $contactId : null;
+        $connection = Database::connection();
+        $connection->beginTransaction();
+
+        try {
+            $statement = $connection->prepare(
+                'INSERT INTO tasks (
+                    business_id, contact_id, assigned_to_user_id, created_by_user_id,
+                    title, description, due_date, status, priority, created_at, updated_at
+                 ) VALUES (
+                    :business_id, :contact_id, NULL, :created_by_user_id,
+                    :title, :description, :due_date, :status, :priority, NOW(), NOW()
+                 )'
+            );
+            $statement->execute([
+                'business_id' => $businessId,
+                'contact_id' => $contactIdForStorage,
+                'created_by_user_id' => $userId,
+                'title' => $title,
+                'description' => $description !== '' ? $description : null,
+                'due_date' => $dueDate,
+                'status' => $status,
+                'priority' => $priority,
+            ]);
+
+            $taskId = (int) $connection->lastInsertId();
+            self::logLeadHubActivity($businessId, $userId, $contactIdForStorage, 'manual_task_created', 'Task created: ' . $title, $description !== '' ? $description : null);
+            $connection->commit();
+
+            return $taskId;
+        } catch (Throwable $exception) {
+            $connection->rollBack();
+            throw $exception;
+        }
+    }
+
+    public static function updateTaskStatus(int $businessId, int $userId, int $taskId, string $status): void
+    {
+        $task = self::taskForBusiness($businessId, $taskId);
+        if ($task === null) {
+            throw new InvalidArgumentException('Select a valid task for this business.');
+        }
+
+        $normalizedStatus = self::normalizeTaskStatus($status);
+        $statement = Database::connection()->prepare(
+            'UPDATE tasks
+             SET status = :status,
+                 updated_at = NOW()
+             WHERE business_id = :business_id
+               AND id = :task_id'
+        );
+        $statement->execute([
+            'status' => $normalizedStatus,
+            'business_id' => $businessId,
+            'task_id' => $taskId,
+        ]);
+
+        self::logLeadHubActivity(
+            $businessId,
+            $userId,
+            isset($task['contact_id']) ? (int) $task['contact_id'] : null,
+            'manual_task_status_updated',
+            'Task status updated: ' . (string) $task['title'],
+            'Status: ' . $normalizedStatus
+        );
     }
 
     private static function websiteSubmissionContext(int $businessId, int $websiteId, int $pageId): array
@@ -508,7 +674,7 @@ final class LeadHub
         return (int) Database::connection()->lastInsertId();
     }
 
-    private static function updateContact(int $contactId, array $nameParts, string $email, string $phone, ?int $statusId, string $sourceDetail): void
+    private static function updateContact(int $businessId, int $contactId, array $nameParts, string $email, string $phone, ?int $statusId, string $sourceDetail): void
     {
         $statement = Database::connection()->prepare(
             'UPDATE contacts
@@ -521,7 +687,8 @@ final class LeadHub
                  source_module_key = :source_module_key,
                  source_detail = :source_detail,
                  updated_at = NOW()
-             WHERE id = :contact_id'
+             WHERE business_id = :business_id
+               AND id = :contact_id'
         );
         $statement->execute([
             'first_name' => $nameParts['first_name'],
@@ -532,6 +699,7 @@ final class LeadHub
             'status_id' => $statusId,
             'source_module_key' => self::SOURCE_247SP_WEBSITE,
             'source_detail' => $sourceDetail,
+            'business_id' => $businessId,
             'contact_id' => $contactId,
         ]);
     }
@@ -681,6 +849,24 @@ final class LeadHub
         return $statement->fetchAll();
     }
 
+    private static function taskForBusiness(int $businessId, int $taskId): ?array
+    {
+        $statement = Database::connection()->prepare(
+            'SELECT *
+             FROM tasks
+             WHERE business_id = :business_id
+               AND id = :task_id
+             LIMIT 1'
+        );
+        $statement->execute([
+            'business_id' => $businessId,
+            'task_id' => $taskId,
+        ]);
+        $task = $statement->fetch();
+
+        return $task ?: null;
+    }
+
     private static function newLeadStatusId(int $businessId): ?int
     {
         $statement = Database::connection()->prepare(
@@ -696,6 +882,84 @@ final class LeadHub
         $statusId = $statement->fetchColumn();
 
         return $statusId ? (int) $statusId : null;
+    }
+
+    private static function statusIdFromInput(int $businessId, array $input, ?int $fallbackStatusId): ?int
+    {
+        $statusId = (int) ($input['status_id'] ?? 0);
+        if ($statusId <= 0) {
+            return $fallbackStatusId;
+        }
+
+        $statement = Database::connection()->prepare(
+            'SELECT id
+             FROM contact_statuses
+             WHERE id = :status_id
+               AND is_active = 1
+               AND (business_id = :business_id OR business_id IS NULL)
+             LIMIT 1'
+        );
+        $statement->execute([
+            'status_id' => $statusId,
+            'business_id' => $businessId,
+        ]);
+        $validStatusId = $statement->fetchColumn();
+
+        if (!$validStatusId) {
+            throw new InvalidArgumentException('Select a valid status for this business.');
+        }
+
+        return (int) $validStatusId;
+    }
+
+    private static function normalizeContactType($value): string
+    {
+        return (string) $value === 'contact' ? 'contact' : 'lead';
+    }
+
+    private static function normalizeTaskStatus($value): string
+    {
+        $status = trim((string) $value);
+        $allowedStatuses = ['open', 'in_progress', 'completed', 'cancelled'];
+
+        return in_array($status, $allowedStatuses, true) ? $status : 'open';
+    }
+
+    private static function normalizeTaskPriority($value): string
+    {
+        $priority = trim((string) $value);
+        $allowedPriorities = ['low', 'normal', 'high', 'urgent'];
+
+        return in_array($priority, $allowedPriorities, true) ? $priority : 'normal';
+    }
+
+    private static function normalizeDate($value): ?string
+    {
+        $date = trim((string) $value);
+
+        return preg_match('/^\d{4}-\d{2}-\d{2}$/', $date) === 1 ? $date : null;
+    }
+
+    private static function logLeadHubActivity(int $businessId, int $userId, ?int $contactId, string $activityType, string $subject, ?string $description = null): void
+    {
+        $statement = Database::connection()->prepare(
+            'INSERT INTO activity_logs (
+                business_id, user_id, contact_id, module_key, activity_type,
+                subject, description, created_at
+             ) VALUES (
+                :business_id, :user_id, :contact_id, :module_key, :activity_type,
+                :subject, :description, NOW()
+             )'
+        );
+        $statement->execute([
+            'business_id' => $businessId,
+            'user_id' => $userId,
+            'contact_id' => $contactId,
+            'module_key' => 'lead_hub',
+            'activity_type' => $activityType,
+            'subject' => $subject,
+            'description' => $description,
+        ]);
     }
 
     private static function splitName(string $name): array

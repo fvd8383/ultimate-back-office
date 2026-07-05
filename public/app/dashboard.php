@@ -44,6 +44,7 @@ try {
         'lead_count' => 0,
         'contact_count' => 0,
         'task_count' => 0,
+        'activity_count' => 0,
         'recent_activity' => [],
     ];
     $recentWebsiteLeads = $business ? LeadHub::recent247spWebsiteLeads((int) $business['id'], 5) : [];
@@ -59,6 +60,7 @@ try {
         'lead_count' => 0,
         'contact_count' => 0,
         'task_count' => 0,
+        'activity_count' => 0,
         'recent_activity' => [],
     ];
     $recentWebsiteLeads = [];
@@ -110,22 +112,22 @@ $leadHubNavItems = lead_hub_nav_items($businessIdForLinks, 'dashboard');
             </section>
 
             <section class="business-switcher">
-                <h2>Product Status</h2>
+                <h2>Connected Workspaces</h2>
                 <div class="pill-list">
                     <?php foreach ($productModules as $module): ?>
-                        <?= ui_badge((string) $module['name'] . ' · ' . (string) $module['activation_source'], 'module') ?>
+                        <?= ui_badge((string) $module['name'], 'module') ?>
                     <?php endforeach; ?>
                     <?php if (count($productModules) === 0): ?>
-                        <?= ui_badge('No active products', 'status') ?>
+                        <?= ui_badge('No connected workspaces', 'status') ?>
                     <?php endif; ?>
                 </div>
             </section>
 
             <?php if ($has247spAccess): ?>
                 <section class="business-switcher product-action-card">
-                    <p class="eyebrow">Active module</p>
+                    <p class="eyebrow">Website workspace</p>
                     <h2>24/7 Sales Partner</h2>
-                    <p class="muted">Open the website onboarding dashboard for this business.</p>
+                    <p class="muted">Open the website dashboard for this business.</p>
                     <?= ui_button('Open 24/7 Sales Partner', '247sp/dashboard.php?business_id=' . urlencode((string) $business['id']), 'primary', ['class' => 'ubo-dashboard-action ubo-dashboard-action--247sp']) ?>
                 </section>
             <?php endif; ?>
@@ -145,7 +147,7 @@ $leadHubNavItems = lead_hub_nav_items($businessIdForLinks, 'dashboard');
                 </a>
                 <a class="metric-card" href="lead-hub/notes.php?business_id=<?= e($businessIdForLinks) ?>">
                     <span>Activity</span>
-                    <strong><?= e(count($summary['recent_activity'])) ?></strong>
+                    <strong><?= e($summary['activity_count'] ?? 0) ?></strong>
                 </a>
             </section>
 

@@ -16,7 +16,10 @@ if ((int) $context['business_id'] > 0 && $contactId > 0) {
     }
 }
 
-$ready = lead_hub_shell_begin($context, 'leads', 'Lead Detail');
+$detailContactType = is_array($detail) ? (string) ($detail['contact']['contact_type'] ?? 'lead') : 'lead';
+$currentNav = $detailContactType === 'contact' ? 'contacts' : 'leads';
+$pageHeading = $detailContactType === 'contact' ? 'Contact Detail' : 'Lead Detail';
+$ready = lead_hub_shell_begin($context, $currentNav, $pageHeading);
 if ($ready): ?>
     <?php if ($error !== ''): ?>
         <?= ui_alert($error, 'error') ?>
@@ -30,16 +33,21 @@ if ($ready): ?>
         <?php
         $contact = $detail['contact'];
         $leadName = trim((string) $contact['first_name'] . ' ' . (string) $contact['last_name']);
+        $backHref = ((string) ($contact['contact_type'] ?? 'lead') === 'contact' ? 'contacts.php' : 'leads.php') . '?business_id=' . urlencode((string) $context['business_id']);
         ?>
         <section class="business-switcher">
             <div class="button-row secondary-link">
-                <?= ui_button('Back to Leads', 'leads.php?business_id=' . urlencode((string) $context['business_id']), 'secondary') ?>
+                <?= ui_button('Back', $backHref, 'secondary') ?>
+                <?= ui_button('Edit', 'contact.php?business_id=' . urlencode((string) $context['business_id']) . '&contact_id=' . urlencode((string) $contact['id']), 'primary') ?>
+                <?= ui_button('Add Note', 'notes.php?business_id=' . urlencode((string) $context['business_id']) . '&contact_id=' . urlencode((string) $contact['id']), 'secondary') ?>
+                <?= ui_button('Add Task', 'tasks.php?business_id=' . urlencode((string) $context['business_id']) . '&contact_id=' . urlencode((string) $contact['id']), 'secondary') ?>
             </div>
             <h2><?= e($leadName !== '' ? $leadName : 'Website lead') ?></h2>
             <div class="summary-list">
                 <div><dt>Status</dt><dd><?= e($contact['status_name'] ?: 'New Lead') ?></dd></div>
                 <div><dt>Phone</dt><dd><?= e($contact['phone'] ?: 'Not provided') ?></dd></div>
                 <div><dt>Email</dt><dd><?= e($contact['email'] ?: 'Not provided') ?></dd></div>
+                <div><dt>Type</dt><dd><?= e((string) ($contact['contact_type'] ?? 'lead') === 'contact' ? 'Contact' : 'Lead') ?></dd></div>
                 <div><dt>Source</dt><dd><?= e($contact['source_detail'] ?: '247SP website') ?></dd></div>
                 <div><dt>Created</dt><dd><?= e($contact['created_at']) ?></dd></div>
                 <div><dt>Updated</dt><dd><?= e($contact['updated_at']) ?></dd></div>
