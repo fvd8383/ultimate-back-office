@@ -127,7 +127,7 @@ Billing page
 * Payment Method
 * Ready to Launch
 
-If the website preview is ready and payment is incomplete, the dashboard routes "Complete Payment & Launch" to Billing. No Stripe checkout, Stripe Connect onboarding, payment processing, domain automation, or email automation is part of this milestone.
+Milestone 2A originally routes "Complete Payment & Launch" to Billing as a payment-readiness placeholder. Milestone 3 replaces that placeholder with Stripe Checkout for 24/7 Sales Partner customers paying UBO. Stripe Connect onboarding, domain automation, and email automation remain outside Milestone 2A and Milestone 3.
 
 ---
 

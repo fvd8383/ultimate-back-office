@@ -105,7 +105,7 @@ Billing is financial management. It owns:
 * payment history
 * launch readiness payment state when payment is required before launch
 
-Subscription management controls must not imply Stripe Checkout, payment collection, plan changes, or cancellation automation until those workflows exist. Stripe payment collection will connect to Billing later for customers paying Ultimate Back Office, but Stripe is not live in the current account shell.
+Subscription management controls must not imply automated plan changes or cancellation automation until those workflows exist. Stripe Checkout for 24/7 Sales Partner customers paying Ultimate Back Office starts from Billing, Subscriptions, or the 24/7 Sales Partner launch readiness payment action and synchronizes back into local billing records through Stripe webhooks.
 
 Stripe Connect is not part of 24/7 Sales Partner customers paying UBO. Stripe Connect belongs to future customer payment processing features, such as Super Simple Payments, where a business accepts payments from its own customers.
 
@@ -388,7 +388,7 @@ The 24/7 Sales Partner dashboard readiness checklist uses these customer-facing 
 * Payment Method
 * Ready to Launch
 
-When the website preview is ready and payment is not complete, the primary dashboard action should read "Complete Payment & Launch" and route to Billing until payment collection is available through the billing foundation.
+When the website preview is ready and payment is not complete, the primary dashboard action should read "Complete Payment & Launch" and route to Stripe Checkout through the account Checkout route. Stripe webhooks then synchronize payment and subscription status back into local billing records.
 
 ## Base URL Rules
 

@@ -9,6 +9,8 @@ $loadError = '';
 $user = null;
 $subscriptions = [];
 $payments = [];
+$checkoutSuccess = (string) ($_GET['checkout'] ?? '') === 'success';
+$checkoutCancelled = (string) ($_GET['checkout'] ?? '') === 'cancelled';
 
 try {
     $user = Auth::currentUser();
@@ -52,6 +54,16 @@ function accounts_billing_payment_label(?string $value): string
     return ucwords(str_replace('_', ' ', $value));
 }
 
+function accounts_billing_payment_method_label(?string $value, ?string $subscriptionStatus = null): string
+{
+    $value = trim((string) $value);
+    if ($value === '' || $value === 'not_on_file') {
+        return (string) $subscriptionStatus === 'active' ? 'Payment setup complete' : 'Payment setup not complete';
+    }
+
+    return accounts_billing_payment_label($value);
+}
+
 function accounts_billing_billable_status(string $status): bool
 {
     return in_array($status, ['active', 'past_due', 'pending_payment'], true);
@@ -74,28 +86,19 @@ function accounts_billing_current_monthly_charges(array $subscriptions): float
 
 function accounts_billing_next_renewal(array $subscriptions): string
 {
-    $today = strtotime('today');
     $renewals = [];
 
     foreach ($subscriptions as $subscription) {
         $status = (string) ($subscription['subscription_status'] ?? '');
-        $startedAt = trim((string) ($subscription['started_at'] ?? ''));
+        $periodEnd = trim((string) ($subscription['current_period_end'] ?? ''));
 
-        if (!in_array($status, ['active', 'past_due'], true) || $startedAt === '') {
+        if (!in_array($status, ['active', 'past_due'], true) || $periodEnd === '') {
             continue;
         }
 
-        $renewal = strtotime($startedAt);
+        $renewal = strtotime($periodEnd);
         if ($renewal === false) {
             continue;
-        }
-
-        while ($renewal < $today) {
-            $nextRenewal = strtotime('+1 month', $renewal);
-            if ($nextRenewal === false || $nextRenewal <= $renewal) {
-                break;
-            }
-            $renewal = $nextRenewal;
         }
 
         $renewals[] = $renewal;
@@ -110,26 +113,27 @@ function accounts_billing_next_renewal(array $subscriptions): string
 
 function accounts_billing_payment_method_status(array $subscriptions): array
 {
-    $hasActive = false;
+    $hasComplete = false;
     $needsAttention = false;
-    $hasTrial = false;
+    $hasPending = false;
 
     foreach ($subscriptions as $subscription) {
         $status = (string) ($subscription['subscription_status'] ?? '');
-        $hasActive = $hasActive || $status === 'active';
-        $needsAttention = $needsAttention || in_array($status, ['pending_payment', 'past_due'], true);
-        $hasTrial = $hasTrial || $status === 'trial';
+        $paymentMethodStatus = (string) ($subscription['payment_method_status'] ?? '');
+        $hasComplete = $hasComplete || $paymentMethodStatus === 'complete' || $status === 'active';
+        $needsAttention = $needsAttention || in_array($paymentMethodStatus, ['failed', 'cancelled'], true) || $status === 'past_due';
+        $hasPending = $hasPending || $paymentMethodStatus === 'pending' || in_array($status, ['trial', 'pending_payment'], true);
     }
 
     if ($needsAttention) {
         return ['label' => 'Payment attention needed', 'type' => 'role'];
     }
 
-    if ($hasActive) {
+    if ($hasComplete) {
         return ['label' => 'Payment setup complete', 'type' => 'status'];
     }
 
-    if ($hasTrial) {
+    if ($hasPending) {
         return ['label' => 'Payment setup not complete', 'type' => 'role'];
     }
 
@@ -166,6 +170,11 @@ function accounts_billing_launch_payment_state(array $subscriptions): array
 
 function accounts_billing_invoice_download_href(array $payment): string
 {
+    $invoiceUrl = trim((string) ($payment['invoice_url'] ?? ''));
+    if (preg_match('/^https?:\/\//i', $invoiceUrl) === 1) {
+        return $invoiceUrl;
+    }
+
     $reference = trim((string) ($payment['transaction_reference'] ?? ''));
 
     if (preg_match('/^https?:\/\//i', $reference) !== 1) {
@@ -173,6 +182,12 @@ function accounts_billing_invoice_download_href(array $payment): string
     }
 
     return $reference;
+}
+
+function accounts_billing_needs_checkout(array $subscription): bool
+{
+    return (string) ($subscription['product_key'] ?? '') === '247sp'
+        && in_array((string) ($subscription['subscription_status'] ?? ''), ['trial', 'pending_payment', 'past_due'], true);
 }
 
 $currentMonthlyCharges = accounts_billing_current_monthly_charges($subscriptions);
@@ -197,6 +212,14 @@ account_shell_begin('billing');
 
 <?php if ($loadError !== ''): ?>
     <?= ui_alert($loadError, 'error') ?>
+<?php elseif ($checkoutSuccess): ?>
+    <?= ui_alert('Stripe Checkout completed. Billing status will update when Stripe confirms the payment.', 'success') ?>
+<?php elseif ($checkoutCancelled): ?>
+    <?= ui_alert('Payment setup was cancelled. You can restart checkout when you are ready.', 'warning') ?>
+<?php endif; ?>
+
+<?php if ($loadError !== ''): ?>
+    <?php /* load error already shown above */ ?>
 <?php elseif (count($subscriptions) === 0): ?>
     <section class="dashboard-card">
         <h2>No businesses found</h2>
@@ -221,7 +244,8 @@ account_shell_begin('billing');
             <?php foreach ($subscriptions as $subscription): ?>
                 <?php
                     $billingStatus = accounts_billing_status($subscription['subscription_status']);
-                    $paymentMethod = (string) $subscription['subscription_status'] === 'active' ? 'Payment setup complete' : 'Payment setup not complete';
+                    $paymentMethod = accounts_billing_payment_method_label($subscription['payment_method_status'] ?? '', $subscription['subscription_status'] ?? '');
+                    $needsCheckout = accounts_billing_needs_checkout($subscription);
                 ?>
                 <article class="business-list__item">
                     <div>
@@ -230,12 +254,16 @@ account_shell_begin('billing');
                         <?php if (in_array((string) $subscription['subscription_status'], ['pending_payment', 'past_due'], true)): ?>
                             <?= ui_alert('Billing status needs attention.', 'warning') ?>
                         <?php endif; ?>
+                        <?php if ($needsCheckout): ?>
+                            <?= ui_button('Complete Payment', 'checkout.php?business_id=' . urlencode((string) $subscription['business_id']), 'primary', ['class' => 'ubo-button--compact']) ?>
+                        <?php endif; ?>
                     </div>
                     <div class="summary-list billing-summary-list">
                         <div><dt>Payment Method</dt><dd><?= e($paymentMethod) ?></dd></div>
                         <div><dt>Billing Status</dt><dd><?= ui_badge($billingStatus, in_array((string) $subscription['subscription_status'], ['past_due', 'cancelled'], true) ? 'role' : 'status') ?></dd></div>
                         <div><dt>Monthly Fee</dt><dd><?= e(accounts_billing_money($subscription['monthly_fee'])) ?></dd></div>
                         <div><dt>Setup Fee</dt><dd><?= e(accounts_billing_money($subscription['setup_fee'])) ?></dd></div>
+                        <div><dt>Upcoming Renewal</dt><dd><?= e($subscription['current_period_end'] ?: 'Appears after payment setup') ?></dd></div>
                         <div><dt>Start Date</dt><dd><?= e($subscription['started_at'] ?: 'Not started') ?></dd></div>
                     </div>
                 </article>

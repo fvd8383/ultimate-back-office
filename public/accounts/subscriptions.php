@@ -70,7 +70,7 @@ function accounts_subscription_launch_readiness(array $subscription): array
     }
 
     if (in_array($status, ['pending_payment', 'past_due'], true)) {
-        return ['label' => 'Payment needed', 'type' => 'role', 'detail' => 'Complete payment from Billing after your website preview is ready.'];
+        return ['label' => 'Payment needed', 'type' => 'role', 'detail' => 'Complete payment setup after your website preview is ready.'];
     }
 
     if ($status === 'trial') {
@@ -82,6 +82,12 @@ function accounts_subscription_launch_readiness(array $subscription): array
     }
 
     return ['label' => 'Not ready yet', 'type' => 'role', 'detail' => 'Launch readiness updates as setup continues.'];
+}
+
+function accounts_subscription_needs_checkout(array $subscription): bool
+{
+    return (string) ($subscription['product_key'] ?? '') === '247sp'
+        && in_array((string) ($subscription['subscription_status'] ?? ''), ['trial', 'pending_payment', 'past_due'], true);
 }
 
 function accounts_subscription_plan_summary(array $plan): string
@@ -137,6 +143,7 @@ account_shell_begin('subscriptions');
                     $accessLabel = accounts_subscription_access_label($subscription['module_access_active'] ?? null);
                     $status = (string) ($subscription['subscription_status'] ?? '');
                     $launchReadiness = accounts_subscription_launch_readiness($subscription);
+                    $needsCheckout = accounts_subscription_needs_checkout($subscription);
                 ?>
                 <article class="business-list__item">
                     <div>
@@ -144,6 +151,9 @@ account_shell_begin('subscriptions');
                         <p class="muted"><?= e($subscription['business_name']) ?></p>
                         <?php if (in_array($status, ['pending_payment', 'past_due'], true)): ?>
                             <?= ui_alert('This subscription needs billing attention before everything is fully ready.', 'warning') ?>
+                        <?php endif; ?>
+                        <?php if ($needsCheckout): ?>
+                            <?= ui_button('Complete Payment', 'checkout.php?business_id=' . urlencode((string) $subscription['business_id']), 'primary', ['class' => 'ubo-button--compact']) ?>
                         <?php endif; ?>
                     </div>
                     <div class="summary-list billing-summary-list">

@@ -54,19 +54,19 @@ Sprint 8.5 is complete. The remaining work is not Sprint 8.5 UX polish; it is th
 
 Severity: Critical
 
-Status: Not Started
+Status: Implementation Added, Staging Validation Pending
 
 Issue:
 
-No Stripe payment processing exists for setup fees or recurring subscriptions.
+Stripe payment processing for setup fees and recurring subscriptions must be validated end to end on staging before first-customer use.
 
 Impact:
 
-Cannot accept a first paying customer or validate revenue collection.
+Cannot accept a first paying customer or validate revenue collection until Stripe Checkout, webhooks, subscription sync, failed-payment handling, and invoice/payment records pass staging validation.
 
 Recommended Action:
 
-Implement Stripe payment integration for setup fee collection, subscription creation, billing status sync, failure handling, and cancellation handling.
+Validate Stripe Checkout for 24/7 Sales Partner customer payments, apply the Stripe billing migration, configure the webhook endpoint, confirm subscription/payment synchronization, and confirm failed-payment handling. Do not add Stripe Connect for this milestone.
 
 ---
 
@@ -380,8 +380,7 @@ Customer can:
 
 Customer cannot yet:
 
-* Pay setup fee through Stripe
-* Start or manage a recurring Stripe subscription
+* Use Stripe payment in production before staging validation is complete
 * Publish a customer domain through the launch workflow
 * Submit a public website lead that creates Lead Hub records
 * Receive automated business email provisioning

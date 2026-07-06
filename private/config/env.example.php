@@ -14,4 +14,11 @@ return [
     'ACCOUNTS_BASE_URL' => 'https://staging-accounts.ultimatebackoffice.com',
     'SESSION_COOKIE_NAME' => '',
     'SESSION_COOKIE_DOMAIN' => '',
+    'STRIPE_SECRET_KEY' => '',
+    'STRIPE_PUBLISHABLE_KEY' => '',
+    'STRIPE_WEBHOOK_SECRET' => '',
+    'STRIPE_247SP_PRICE_ID' => '',
+    'STRIPE_247SP_SETUP_FEE_PRICE_ID' => '',
+    'STRIPE_SUCCESS_URL' => 'https://staging-accounts.ultimatebackoffice.com/billing.php?checkout=success&business_id={BUSINESS_ID}&checkout_session_id={CHECKOUT_SESSION_ID}',
+    'STRIPE_CANCEL_URL' => 'https://staging-accounts.ultimatebackoffice.com/billing.php?checkout=cancelled&business_id={BUSINESS_ID}',
 ];

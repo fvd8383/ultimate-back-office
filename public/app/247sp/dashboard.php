@@ -144,6 +144,7 @@ function sp247_build_launch_readiness(
     int $businessIdForLinks
 ): array {
     $businessId = urlencode((string) $businessIdForLinks);
+    $checkoutHref = $accountsBaseUrl . '/checkout.php?business_id=' . $businessId;
     $setupComplete = (string) ($summary['setup_status'] ?? '') === 'complete';
     $previewReady = $website !== null && in_array((string) ($website['status'] ?? ''), ['generated', 'published'], true);
     $domainReady = !in_array((string) ($summary['domain_status'] ?? 'not_selected'), ['', 'not_selected'], true);
@@ -196,7 +197,7 @@ function sp247_build_launch_readiness(
             'label' => 'Payment Method',
             'completed' => $paymentComplete,
             'detail' => $paymentComplete ? 'Your billing status is active.' : 'Complete payment setup after reviewing your website preview.',
-            'action' => ['label' => 'Complete payment', 'href' => $accountsBaseUrl . '/billing.php'],
+            'action' => ['label' => 'Complete payment', 'href' => $checkoutHref],
         ],
         [
             'label' => 'Ready to Launch',
@@ -209,7 +210,7 @@ function sp247_build_launch_readiness(
     $supportingText = '';
 
     if ($previewReady && !$paymentComplete) {
-        $primaryAction = ['label' => 'Complete Payment & Launch', 'href' => $accountsBaseUrl . '/billing.php'];
+        $primaryAction = ['label' => 'Complete Payment & Launch', 'href' => $checkoutHref];
         $supportingText = 'Payment is requested only after your website preview is ready for approval.';
     } elseif ($previewReady && $paymentComplete && !$websiteApproved) {
         $primaryAction = [

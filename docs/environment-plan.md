@@ -2,7 +2,13 @@ Pending Credentials
 
 STAGING
 --------
+STRIPE_SECRET_KEY
+STRIPE_PUBLISHABLE_KEY
 STRIPE_WEBHOOK_SECRET
+STRIPE_247SP_PRICE_ID
+STRIPE_247SP_SETUP_FEE_PRICE_ID
+STRIPE_SUCCESS_URL
+STRIPE_CANCEL_URL
 NAMECHEAP_API_USER
 NAMECHEAP_API_KEY
 NAMECHEAP_USERNAME
@@ -10,12 +16,19 @@ NAMECHEAP_CLIENT_IP
 
 PRODUCTION
 ----------
+STRIPE_SECRET_KEY
+STRIPE_PUBLISHABLE_KEY
 STRIPE_WEBHOOK_SECRET
+STRIPE_247SP_PRICE_ID
+STRIPE_247SP_SETUP_FEE_PRICE_ID
+STRIPE_SUCCESS_URL
+STRIPE_CANCEL_URL
 NAMECHEAP_API_USER
 NAMECHEAP_API_KEY
 NAMECHEAP_USERNAME
 NAMECHEAP_CLIENT_IP
 
 Notes:
-- Stripe webhook secret created during SSP build.
+- Stripe credentials here are for 24/7 Sales Partner customers paying UBO through Stripe Checkout.
+- Stripe Connect credentials are not part of the 247SP billing milestone; Connect belongs to future SSP/customer payment-processing work.
 - Namecheap credentials created during 24/7 Sales Partner build.

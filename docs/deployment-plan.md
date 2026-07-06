@@ -135,6 +135,26 @@ mysql \
 ubo_staging < database/migrations/005_admin_portal.sql
 ```
 
+For Sprint 8.6 Milestone 3, run:
+
+```bash
+mysql \
+-h ubo-stage-mysql-do-user-18803129-0.g.db.ondigitalocean.com \
+-P 25060 \
+-u ubo_stage_user \
+-p \
+--ssl-mode=REQUIRED \
+ubo_staging < database/migrations/016_stripe_billing_integration.sql
+```
+
+Then configure the Stripe webhook endpoint in Stripe:
+
+```text
+https://staging-accounts.ultimatebackoffice.com/stripe-webhook.php
+```
+
+The repository also contains `public/webhooks/stripe.php` for a future standalone webhook mapping, but the current staging accounts document root can use `/stripe-webhook.php`.
+
 ---
 
 # Web Root Structure
@@ -279,6 +299,20 @@ private/config/env.example.php
 
 Do not commit real credentials.
 
+Stripe billing configuration for 24/7 Sales Partner customer payments also lives in `private/config/env.php`:
+
+```text
+STRIPE_SECRET_KEY
+STRIPE_PUBLISHABLE_KEY
+STRIPE_WEBHOOK_SECRET
+STRIPE_247SP_PRICE_ID
+STRIPE_247SP_SETUP_FEE_PRICE_ID
+STRIPE_SUCCESS_URL
+STRIPE_CANCEL_URL
+```
+
+These values are for customers paying Ultimate Back Office for 24/7 Sales Partner. Do not configure Stripe Connect here; Stripe Connect is reserved for future customer payment-processing products such as Super Simple Payments.
+
 ---
 
 # Database Migrations
@@ -312,6 +346,17 @@ After every deploy:
 * Test role permissions.
 * Test database writes.
 * Check Apache logs if errors occur.
+
+For Stripe billing changes, also validate on staging:
+
+* `private/config/env.php` contains Stripe test-mode keys and Price IDs, with no real secrets committed.
+* `public/accounts/checkout.php?business_id={BUSINESS_ID}` redirects an authenticated linked 24/7 Sales Partner business to Stripe Checkout.
+* Missing Stripe config shows a safe account-page error instead of a white screen.
+* Completing Checkout updates the local subscription after Stripe webhook delivery.
+* `invoice.payment_succeeded` creates or updates one local payment record for the Stripe invoice.
+* `invoice.payment_failed` marks the local subscription `past_due` and shows warnings in Billing, Subscriptions, and 24/7 Sales Partner Launch Readiness.
+* Admin Billing shows Stripe customer ID, Stripe subscription ID, payment method status, and latest payment/invoice status.
+* Module access remains unchanged by failed payment handling.
 
 Logs:
 
