@@ -147,6 +147,90 @@ mysql \
 ubo_staging < database/migrations/016_stripe_billing_integration.sql
 ```
 
+Migration 016 is order-independent from migration 015. Migration 015 only repairs a legacy website integrations table name; migration 016 only extends billing tables and creates Stripe webhook event storage. If migration 016 was accidentally run before migration 015 on staging, do not rerun migration 016. Run migration 015 next:
+
+```bash
+mysql \
+-h ubo-stage-mysql-do-user-18803129-0.g.db.ondigitalocean.com \
+-P 25060 \
+-u ubo_stage_user \
+-p \
+--ssl-mode=REQUIRED \
+ubo_staging < database/migrations/015_rename_legacy_website_integrations.sql
+```
+
+Then verify the final schema state:
+
+```sql
+SELECT table_name, table_rows
+FROM information_schema.tables
+WHERE table_schema = DATABASE()
+  AND table_name IN (
+    'website_integrations',
+    '247sp_website_integrations',
+    'subscriptions',
+    'payments',
+    'stripe_webhook_events'
+  )
+ORDER BY table_name;
+
+SELECT table_name, column_name
+FROM information_schema.columns
+WHERE table_schema = DATABASE()
+  AND (
+    (table_name = 'website_integrations' AND column_name IN (
+      'ga_measurement_id',
+      'google_search_console_property',
+      'google_tag_manager_id',
+      'microsoft_clarity_id',
+      'meta_pixel_id',
+      'google_business_profile_url'
+    ))
+    OR (table_name = 'subscriptions' AND column_name IN (
+      'stripe_customer_id',
+      'stripe_subscription_id',
+      'stripe_checkout_session_id',
+      'stripe_latest_invoice_id',
+      'payment_method_status',
+      'current_period_start',
+      'current_period_end',
+      'cancel_at_period_end',
+      'updated_at'
+    ))
+    OR (table_name = 'payments' AND column_name IN (
+      'stripe_invoice_id',
+      'stripe_payment_intent_id',
+      'stripe_checkout_session_id',
+      'stripe_event_id',
+      'invoice_url',
+      'updated_at'
+    ))
+  )
+ORDER BY table_name, column_name;
+
+SELECT table_name, index_name, column_name
+FROM information_schema.statistics
+WHERE table_schema = DATABASE()
+  AND (
+    (table_name = 'website_integrations' AND index_name = 'uq_website_integrations_business')
+    OR (table_name = 'subscriptions' AND index_name IN (
+      'uq_subscriptions_stripe_subscription',
+      'idx_subscriptions_stripe_customer',
+      'idx_subscriptions_stripe_checkout_session',
+      'idx_subscriptions_payment_method_status'
+    ))
+    OR (table_name = 'payments' AND index_name IN (
+      'uq_payments_stripe_invoice',
+      'idx_payments_stripe_payment_intent',
+      'idx_payments_stripe_event'
+    ))
+    OR (table_name = 'stripe_webhook_events' AND index_name = 'uq_stripe_webhook_events_event')
+  )
+ORDER BY table_name, index_name, seq_in_index;
+```
+
+Expected state: `website_integrations`, `subscriptions`, `payments`, and `stripe_webhook_events` exist with the listed columns and indexes. `247sp_website_integrations` should not exist after a clean repair. If both `website_integrations` and `247sp_website_integrations` exist, pause and review table row counts before deleting or merging anything.
+
 Then configure the Stripe webhook endpoint in Stripe:
 
 ```text

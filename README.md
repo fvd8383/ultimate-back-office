@@ -140,6 +140,58 @@ mysql -h DB_HOST -P DB_PORT -u DB_USER -p DB_NAME < database/migrations/016_stri
 
 The Stripe billing migration extends local `subscriptions` and `payments` records with Stripe customer, subscription, checkout session, invoice, payment intent, payment method status, and invoice URL references. It also adds `stripe_webhook_events` for webhook idempotency. This milestone is for 24/7 Sales Partner customers paying Ultimate Back Office. It does not add Stripe Connect, customer payouts, or customer merchant onboarding.
 
+Migration order note: migration 016 does not depend on migration 015. Migration 015 only repairs the website integrations table name, while migration 016 only extends billing tables and creates Stripe webhook event storage. If migration 016 was accidentally applied before migration 015 on staging, do not rerun migration 016. Run migration 015 next, then verify the final schema:
+
+```sql
+SELECT table_name, table_rows
+FROM information_schema.tables
+WHERE table_schema = DATABASE()
+  AND table_name IN (
+    'website_integrations',
+    '247sp_website_integrations',
+    'subscriptions',
+    'payments',
+    'stripe_webhook_events'
+  )
+ORDER BY table_name;
+
+SELECT table_name, column_name
+FROM information_schema.columns
+WHERE table_schema = DATABASE()
+  AND (
+    (table_name = 'website_integrations' AND column_name IN (
+      'ga_measurement_id',
+      'google_search_console_property',
+      'google_tag_manager_id',
+      'microsoft_clarity_id',
+      'meta_pixel_id',
+      'google_business_profile_url'
+    ))
+    OR (table_name = 'subscriptions' AND column_name IN (
+      'stripe_customer_id',
+      'stripe_subscription_id',
+      'stripe_checkout_session_id',
+      'stripe_latest_invoice_id',
+      'payment_method_status',
+      'current_period_start',
+      'current_period_end',
+      'cancel_at_period_end',
+      'updated_at'
+    ))
+    OR (table_name = 'payments' AND column_name IN (
+      'stripe_invoice_id',
+      'stripe_payment_intent_id',
+      'stripe_checkout_session_id',
+      'stripe_event_id',
+      'invoice_url',
+      'updated_at'
+    ))
+  )
+ORDER BY table_name, column_name;
+```
+
+Expected state: `website_integrations`, `subscriptions`, `payments`, and `stripe_webhook_events` exist; `247sp_website_integrations` should not exist unless staging has a legacy table that needs manual review before cleanup.
+
 ## Testing OTP Login In Staging
 
 1. Insert an active test user into the `users` table.
