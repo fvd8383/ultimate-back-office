@@ -239,6 +239,77 @@ https://staging-accounts.ultimatebackoffice.com/stripe-webhook.php
 
 The repository also contains `public/webhooks/stripe.php` for a future standalone webhook mapping, but the current staging accounts document root can use `/stripe-webhook.php`.
 
+For Sprint 8.6 Milestone 4, run:
+
+```bash
+mysql \
+-h ubo-stage-mysql-do-user-18803129-0.g.db.ondigitalocean.com \
+-P 25060 \
+-u ubo_stage_user \
+-p \
+--ssl-mode=REQUIRED \
+ubo_staging < database/migrations/017_domain_services_automation.sql
+```
+
+Then configure domain environment values in `private/config/env.php`:
+
+```text
+NAMECHEAP_API_USER
+NAMECHEAP_API_KEY
+NAMECHEAP_USERNAME
+NAMECHEAP_CLIENT_IP
+NAMECHEAP_SANDBOX
+DOMAIN_DEFAULT_REGISTRAR
+DOMAIN_TARGET_IPV4
+DOMAIN_TARGET_IPV6
+DOMAIN_WWW_CNAME
+DOMAIN_TXT_VERIFICATION_NAME
+DOMAIN_TXT_VERIFICATION_VALUE
+DOMAIN_MAIL_MX_HOST
+```
+
+Use Namecheap sandbox credentials for staging. `NAMECHEAP_CLIENT_IP` must be the whitelisted IPv4 address configured in Namecheap API access. Keep `DOMAIN_DEFAULT_REGISTRAR=namecheap` until another `RegistrarInterface` implementation is added.
+
+Verify the domain schema after migration:
+
+```sql
+SELECT table_name
+FROM information_schema.tables
+WHERE table_schema = DATABASE()
+  AND table_name IN ('domain_requests', 'domain_assignments', 'domain_dns_records', 'domain_events')
+ORDER BY table_name;
+
+SELECT table_name, column_name
+FROM information_schema.columns
+WHERE table_schema = DATABASE()
+  AND (
+    (table_name = 'domain_requests' AND column_name IN (
+      'request_type',
+      'registrar_domain_id',
+      'registrar_order_id',
+      'registrar_transaction_id',
+      'registrar_response_json',
+      'dns_status',
+      'dns_verified_at',
+      'ssl_status',
+      'ssl_updated_at',
+      'next_action',
+      'last_error',
+      'last_checked_at'
+    ))
+    OR (table_name = 'domain_assignments' AND column_name IN (
+      'registrar',
+      'registrar_domain_id',
+      'ownership_type',
+      'auto_renew',
+      'expiration_date',
+      'ssl_status'
+    ))
+    OR table_name IN ('domain_dns_records', 'domain_events')
+  )
+ORDER BY table_name, column_name;
+```
+
 ---
 
 # Web Root Structure
@@ -397,6 +468,25 @@ STRIPE_CANCEL_URL
 
 These values are for customers paying Ultimate Back Office for 24/7 Sales Partner. Do not configure Stripe Connect here; Stripe Connect is reserved for future customer payment-processing products such as Super Simple Payments.
 
+Domain services configuration also lives in `private/config/env.php`:
+
+```text
+NAMECHEAP_API_USER
+NAMECHEAP_API_KEY
+NAMECHEAP_USERNAME
+NAMECHEAP_CLIENT_IP
+NAMECHEAP_SANDBOX
+DOMAIN_DEFAULT_REGISTRAR
+DOMAIN_TARGET_IPV4
+DOMAIN_TARGET_IPV6
+DOMAIN_WWW_CNAME
+DOMAIN_TXT_VERIFICATION_NAME
+DOMAIN_TXT_VERIFICATION_VALUE
+DOMAIN_MAIL_MX_HOST
+```
+
+Do not commit Namecheap credentials. `DOMAIN_TARGET_IPV4`, optional `DOMAIN_TARGET_IPV6`, and optional `DOMAIN_WWW_CNAME` define the website launch DNS records the Domain Manager prepares. TXT verification and MX host values are optional placeholders for verification and future email provisioning.
+
 ---
 
 # Database Migrations
@@ -441,6 +531,16 @@ For Stripe billing changes, also validate on staging:
 * `invoice.payment_failed` marks the local subscription `past_due` and shows warnings in Billing, Subscriptions, and 24/7 Sales Partner Launch Readiness.
 * Admin Billing shows Stripe customer ID, Stripe subscription ID, payment method status, and latest payment/invoice status.
 * Module access remains unchanged by failed payment handling.
+
+For Domain Services changes, also validate on staging:
+
+* `private/config/env.php` contains Namecheap sandbox values and domain target DNS values, with no real secrets committed.
+* `public/accounts/domains.php` allows an authenticated customer to request a new domain and connect an existing domain for a linked business.
+* Customer Domains shows status, progress, next action, estimated timing, DNS records, and SSL status.
+* `public/app/admin/domains.php` allows admins to check availability, purchase a domain in sandbox, refresh registrar status, sync DNS, verify DNS, update SSL status, and mark a ready domain live.
+* Failed Namecheap calls show a safe admin error and store domain status/error details for support review.
+* 24/7 Sales Partner Launch Readiness marks Domain complete only after domain, DNS, and SSL readiness are satisfied.
+* SSL status tracking does not claim certificate automation unless staging infrastructure has completed that step.
 
 Logs:
 

@@ -103,7 +103,14 @@ function sp247_status_label(string $status): string
         'pending' => 'Pending',
         'registered' => 'Registered',
         'requested' => 'Requested',
+        'awaiting_customer' => 'Awaiting Customer',
         'pending_purchase' => 'Pending Purchase',
+        'pending_dns' => 'Pending DNS',
+        'pending_verification' => 'Pending Verification',
+        'ssl_pending' => 'SSL Pending',
+        'ready' => 'Ready',
+        'live' => 'Live',
+        'error' => 'Error',
         'transferred' => 'Transferred',
         'expired' => 'Expired',
         'cancelled' => 'Cancelled',
@@ -147,7 +154,8 @@ function sp247_build_launch_readiness(
     $checkoutHref = $accountsBaseUrl . '/checkout.php?business_id=' . $businessId;
     $setupComplete = (string) ($summary['setup_status'] ?? '') === 'complete';
     $previewReady = $website !== null && in_array((string) ($website['status'] ?? ''), ['generated', 'published'], true);
-    $domainReady = !in_array((string) ($summary['domain_status'] ?? 'not_selected'), ['', 'not_selected'], true);
+    $domainSelected = !in_array((string) ($summary['domain_status'] ?? 'not_selected'), ['', 'not_selected'], true);
+    $domainReady = !empty($summary['domain_launch_ready']);
     $emailReady = !in_array((string) ($summary['email_status'] ?? 'not_selected'), ['', 'not_selected'], true);
     $paymentComplete = sp247_subscription_paid($billing);
     $approvalDate = (string) ($websiteApproval['created_at'] ?? '');
@@ -178,8 +186,10 @@ function sp247_build_launch_readiness(
         [
             'label' => 'Domain',
             'completed' => $domainReady,
-            'detail' => $domainReady ? 'Your domain request is saved and visible in your account.' : 'Choose the domain you want connected to this website.',
-            'action' => ['label' => 'Choose domain', 'href' => 'onboarding.php?business_id=' . $businessId . '&step=domain_selection'],
+            'detail' => $domainReady
+                ? 'Your domain, DNS, and SSL status are ready for launch.'
+                : ($domainSelected ? (string) ($summary['domain_next_action'] ?? 'Domain setup is in progress.') : 'Choose the domain you want connected to this website.'),
+            'action' => ['label' => $domainSelected ? 'View domains' : 'Choose domain', 'href' => $domainSelected ? $accountsBaseUrl . '/domains.php' : 'onboarding.php?business_id=' . $businessId . '&step=domain_selection'],
         ],
         [
             'label' => 'Email',

@@ -219,6 +219,10 @@ final class TwentyFourSevenSalesPartner
         return [
             'website_status' => self::websiteStatus($onboarding, $configuration),
             'domain_status' => $domainWorkflow['domain_status'] ?? ($domain['status'] ?? 'not_selected'),
+            'domain_dns_status' => $domainWorkflow['dns_status'] ?? 'not_started',
+            'domain_ssl_status' => $domainWorkflow['ssl_status'] ?? 'pending',
+            'domain_next_action' => $domainWorkflow ? DomainAutomation::nextActionForDomain($domainWorkflow) : '',
+            'domain_launch_ready' => $domainWorkflow ? DomainAutomation::launchReady($domainWorkflow) : false,
             'email_status' => EmailProvisioningFoundation::currentEmailStatusForBusiness($businessId) ?: ($email['status'] ?? 'not_selected'),
             'current_step' => $onboarding['current_step'] ?? 'business_information',
             'setup_status' => $onboarding['setup_status'] ?? 'not_started',
