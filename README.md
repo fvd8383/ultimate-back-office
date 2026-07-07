@@ -192,13 +192,25 @@ ORDER BY table_name, column_name;
 
 Expected state: `website_integrations`, `subscriptions`, `payments`, and `stripe_webhook_events` exist; `247sp_website_integrations` should not exist unless staging has a legacy table that needs manual review before cleanup.
 
-Then run the Sprint 8.6 domain services migration:
+Then run the Sprint 8.6 domain services migration. If staging already has `domain_requests.request_type`, migration 017 can fail with a duplicate-column error; in that case run migration 019 instead of rerunning 017.
 
 ```bash
 mysql -h DB_HOST -P DB_PORT -u DB_USER -p DB_NAME < database/migrations/017_domain_services_automation.sql
 ```
 
-The domain services migration extends `domain_requests` and `domain_assignments` with registrar, DNS, SSL, next-action, error, and response-tracking fields. It also adds `domain_dns_records` for managed DNS plans and `domain_events` for domain workflow history.
+Repair/completion path:
+
+```bash
+mysql -h DB_HOST -P DB_PORT -u DB_USER -p DB_NAME < database/migrations/019_repair_domain_services_schema.sql
+```
+
+Then run migration 018 only if it has not already been applied:
+
+```bash
+mysql -h DB_HOST -P DB_PORT -u DB_USER -p DB_NAME < database/migrations/018_247sp_service_area_radius.sql
+```
+
+The domain services migrations extend `domain_requests` and `domain_assignments` with registrar, DNS, SSL, next-action, error, and response-tracking fields. They also add `domain_dns_records` for managed DNS plans and `domain_events` for domain workflow history. Migration 019 is additive and skips existing Domain Services columns, indexes, and tables.
 
 ## Testing OTP Login In Staging
 
