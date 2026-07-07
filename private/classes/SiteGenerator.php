@@ -392,10 +392,24 @@ final class SiteGenerator
             return '';
         }
 
-        return trim(implode(', ', array_filter([
+        $cityState = trim(implode(', ', array_filter([
             $configuration['service_area_city'] ?? '',
             $configuration['service_area_state'] ?? '',
-            $configuration['service_area_postal_code'] ?? '',
+        ])));
+        $postalCode = trim((string) ($configuration['service_area_postal_code'] ?? ''));
+
+        if ((int) ($configuration['service_area_business'] ?? 0) === 1) {
+            $radiusLabel = TwentyFourSevenSalesPartner::travelRadiusLabel($configuration);
+            if ($cityState !== '' && $radiusLabel !== '') {
+                return $cityState . ' and nearby areas within ' . $radiusLabel;
+            }
+
+            return $cityState !== '' ? $cityState . ' and nearby areas' : '';
+        }
+
+        return trim(implode(', ', array_filter([
+            $cityState,
+            $postalCode,
         ])));
     }
 

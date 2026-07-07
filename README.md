@@ -192,6 +192,14 @@ ORDER BY table_name, column_name;
 
 Expected state: `website_integrations`, `subscriptions`, `payments`, and `stripe_webhook_events` exist; `247sp_website_integrations` should not exist unless staging has a legacy table that needs manual review before cleanup.
 
+Then run the Sprint 8.6 domain services migration:
+
+```bash
+mysql -h DB_HOST -P DB_PORT -u DB_USER -p DB_NAME < database/migrations/017_domain_services_automation.sql
+```
+
+The domain services migration extends `domain_requests` and `domain_assignments` with registrar, DNS, SSL, next-action, error, and response-tracking fields. It also adds `domain_dns_records` for managed DNS plans and `domain_events` for domain workflow history.
+
 ## Testing OTP Login In Staging
 
 1. Insert an active test user into the `users` table.
@@ -477,18 +485,41 @@ https://staging-accounts.ultimatebackoffice.com/stripe-webhook.php
 
 The repository also includes `public/webhooks/stripe.php` as a suggested standalone webhook path if a future Apache mapping exposes `public/webhooks`. The webhook handles `checkout.session.completed`, `customer.subscription.created`, `customer.subscription.updated`, `customer.subscription.deleted`, `invoice.payment_succeeded`, and `invoice.payment_failed`.
 
+Domain Services live under:
+
+- `private/classes/domains/DomainManager.php`
+- `private/classes/domains/RegistrarInterface.php`
+- `private/classes/registrars/NamecheapRegistrar.php`
+
+`DomainManager` owns the customer/admin domain lifecycle, launch readiness, DNS record planning, SSL status tracking, event history, and registrar selection. `RegistrarInterface` defines the contract future registrar adapters must implement. `NamecheapRegistrar` contains Namecheap-specific XML API calls only.
+
 Domain controls support:
 
-- View 24/7 Sales Partner domain requests.
-- Track requested, pending purchase, active, transferred, expired, and cancelled lifecycle states.
-- Store registrar, annual cost, purchase date, and expiration date.
-- Assign an active or transferred domain to the business.
-- Associate assigned domains with generated 247SP websites through `website_domains`.
-- Set website-domain publish status to `ready` when a generated website has an active assigned domain.
+- Customer request of a new 247SP-purchased domain.
+- Customer connection of an existing domain.
+- Customer progress, next action, estimated timing, DNS record, and SSL status visibility.
+- Admin availability checks, domain purchase, failed purchase retry, registrar status refresh, DNS sync, DNS verification, SSL status updates, and live-status marking.
+- Registrar response and domain event history visibility.
+- Future registrar support without changing customer/admin workflow code.
 
-Customer domain visibility lives at `public/accounts/domains.php` and shows each linked business domain request, status, assigned domain, registrar, annual cost, purchase date, expiration date, and publish-readiness state.
+Required domain configuration values live in `private/config/env.php` and are shown with empty placeholders in `private/config/env.example.php`:
 
-Sprint 7 adds the admin route `/admin/domains.php` under the app document root. It does not add Namecheap API integration, Cloudflare integration, DNS automation, SSL automation, email provisioning, payment processing, website publishing, Apache changes, DNS changes, SSL changes, server config changes, or credential changes.
+- `NAMECHEAP_API_USER`
+- `NAMECHEAP_API_KEY`
+- `NAMECHEAP_USERNAME`
+- `NAMECHEAP_CLIENT_IP`
+- `NAMECHEAP_SANDBOX`
+- `DOMAIN_DEFAULT_REGISTRAR`
+- `DOMAIN_TARGET_IPV4`
+- `DOMAIN_TARGET_IPV6`
+- `DOMAIN_WWW_CNAME`
+- `DOMAIN_TXT_VERIFICATION_NAME`
+- `DOMAIN_TXT_VERIFICATION_VALUE`
+- `DOMAIN_MAIL_MX_HOST`
+
+Namecheap is the first registrar implementation. The adapter supports availability checks, registration, DNS host retrieval, DNS host updates, renewal calls, ownership/status retrieval, and transfer submission when an authorization code is available. SSL is tracked through UBO workflow statuses (`pending`, `issued`, `renewed`, `failed`); full certificate automation is not claimed until infrastructure support is confirmed.
+
+Customer domain visibility lives at `public/accounts/domains.php`. Admin domain management lives at `public/app/admin/domains.php`.
 
 Sprint 6 does not add Stripe integration, ACH integration, credit card processing, automatic renewals, automated invoicing, tax calculations, refund workflows, collections workflows, domain automation, email provisioning, Apache changes, DNS changes, SSL changes, server config changes, or credential changes.
 

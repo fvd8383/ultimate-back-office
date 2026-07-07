@@ -170,7 +170,10 @@ require __DIR__ . '/../../../private/views/account-navigation.php';
                     <div><dt>City</dt><dd><?= e($configuration['service_area_city'] ?? $business['city']) ?></dd></div>
                     <div><dt>State</dt><dd><?= e($configuration['service_area_state'] ?? $business['state']) ?></dd></div>
                     <div><dt>ZIP</dt><dd><?= e($configuration['service_area_postal_code'] ?? $business['postal_code']) ?></dd></div>
-                    <div><dt>Service Area Business</dt><dd><?= e(sp247_yes_no($configuration['service_area_business'] ?? 0)) ?></dd></div>
+                    <div><dt>Service model</dt><dd><?= e(TwentyFourSevenSalesPartner::serviceModelLabel($configuration, $business)) ?></dd></div>
+                    <?php if ((int) ($configuration['service_area_business'] ?? 0) === 1): ?>
+                        <div><dt>Travel radius</dt><dd><?= e(TwentyFourSevenSalesPartner::travelRadiusLabel($configuration) ?: '25 miles') ?></dd></div>
+                    <?php endif; ?>
                 </dl>
             </section>
 

@@ -77,6 +77,16 @@ $3/month per mailbox
 
 247SP retains ownership until transferred.
 
+Domain workflow:
+
+1. Customer requests a domain.
+2. Admin checks availability through the Domain Services layer.
+3. Admin purchases the domain through the configured registrar.
+4. Domain Manager prepares DNS records.
+5. Admin syncs and verifies DNS.
+6. SSL status is tracked.
+7. Domain becomes launch-ready when purchase/connection, DNS verification, and SSL readiness are complete.
+
 Transfer fee:
 
 Months 0–12: $150
@@ -92,6 +102,36 @@ Months 25+: $350
 Customer retains ownership.
 
 No transfer fees apply.
+
+Customer-owned domain workflow:
+
+1. Customer enters the existing domain.
+2. Domain Manager stores the request as customer-owned.
+3. Customer sees the DNS records needed to connect the domain.
+4. Admin verifies DNS and tracks SSL status.
+5. Domain becomes launch-ready when DNS and SSL readiness are complete.
+
+Customer-friendly domain statuses are:
+
+* Requested
+* Awaiting Customer
+* Pending Purchase
+* Pending DNS
+* Pending Verification
+* SSL Pending
+* Ready
+* Live
+* Error
+
+Domain Services architecture:
+
+* `DomainManager` owns the customer/admin domain lifecycle, statuses, launch readiness, DNS planning, SSL status tracking, registrar selection, and domain event history.
+* `RegistrarInterface` defines the registrar contract for availability checks, registration, transfers, domain status, DNS reads/writes, ownership verification, auto-renew, renewal, and status retrieval.
+* `NamecheapRegistrar` is the first registrar adapter and contains Namecheap-specific API calls only.
+
+Future registrar adapters such as Cloudflare, Porkbun, GoDaddy, Hover, and Dynadot should implement the same interface without changing 247SP business workflow code.
+
+DNS automation prepares A records, optional AAAA records, `www` CNAME records, optional TXT verification records, and optional MX placeholders for later email provisioning. SSL automation is not claimed unless supported by staging/production infrastructure; current Sprint 8.6 behavior tracks SSL as Pending, Issued, Renewed, or Failed.
 
 ---
 
@@ -116,9 +156,14 @@ During onboarding, customer provides:
 * State
 * ZIP Code
 
-Optional:
+Service model:
 
-* Service Area Only
+* Customers come to my business
+* We travel to our customers
+
+When the business travels to customers, 247SP stores the business as a service-area business and collects a travel radius. Default radius is 25 miles, with supported choices of 10, 15, 20, 25, 35, 50, 75, or a custom mileage value.
+
+Customer-facing website output for service-area businesses should emphasize city/state and service-area language instead of the street address.
 
 ---
 

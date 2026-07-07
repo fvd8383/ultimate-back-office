@@ -94,11 +94,11 @@ Implement public lead capture that creates Lead Hub contacts, activity, and any 
 
 Severity: Critical
 
-Status: Foundation Complete, Automation Pending
+Status: Implementation Added, Staging Validation Pending
 
 Issue:
 
-Domain request tracking exists, but customer domain publishing and DNS automation are not launch-ready.
+Domain request tracking and the Domain Services implementation exist, but Namecheap sandbox validation, DNS propagation validation, SSL workflow validation, and publish-readiness QA must pass on staging before first-customer use.
 
 Impact:
 
@@ -106,7 +106,7 @@ A first customer cannot reliably receive a live website on a customer domain wit
 
 Recommended Action:
 
-Complete domain automation, DNS configuration, publish workflow management, and publish-readiness QA.
+Apply the domain services migration, configure Namecheap sandbox credentials and launch DNS targets, validate customer domain request/connect flows, validate admin availability/purchase/DNS/SSL workflows, and confirm 24/7 Sales Partner Launch Readiness marks Domain complete only after domain, DNS, and SSL readiness are satisfied.
 
 ---
 
@@ -390,7 +390,7 @@ Primary Blockers:
 
 * Payment Processing
 * 247SP Lead Capture -> Lead Hub
-* Domain Publishing / Automation
+* Domain Publishing / Automation staging validation
 * Email Automation
 * Production Deployment Readiness
 

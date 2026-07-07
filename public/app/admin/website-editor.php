@@ -130,9 +130,22 @@ function admin_site_editor_service_area(?array $configuration): string
         return 'Not set';
     }
 
-    $serviceArea = trim(implode(', ', array_filter([
+    $cityState = trim(implode(', ', array_filter([
         $configuration['service_area_city'] ?? '',
         $configuration['service_area_state'] ?? '',
+    ])));
+
+    if ((int) ($configuration['service_area_business'] ?? 0) === 1) {
+        $radiusLabel = TwentyFourSevenSalesPartner::travelRadiusLabel($configuration);
+        if ($cityState !== '' && $radiusLabel !== '') {
+            return $cityState . ' and nearby areas within ' . $radiusLabel;
+        }
+
+        return $cityState !== '' ? $cityState . ' and nearby areas' : 'Not set';
+    }
+
+    $serviceArea = trim(implode(', ', array_filter([
+        $cityState,
         $configuration['service_area_postal_code'] ?? '',
     ])));
 
@@ -341,6 +354,10 @@ admin_begin('Website Editor', 'websites', $context);
             <div><dt>Display Phone</dt><dd><?= e($business['phone'] ?? 'Not set') ?></dd></div>
             <div><dt>Display Email</dt><dd><?= e($business['email'] ?? 'Not set') ?></dd></div>
             <div><dt>Service Area</dt><dd><?= e($serviceAreaDisplay) ?></dd></div>
+            <div><dt>Service Model</dt><dd><?= e(TwentyFourSevenSalesPartner::serviceModelLabel($configuration, $business)) ?></dd></div>
+            <?php if ((int) ($configuration['service_area_business'] ?? 0) === 1): ?>
+                <div><dt>Travel Radius</dt><dd><?= e(TwentyFourSevenSalesPartner::travelRadiusLabel($configuration) ?: '25 miles') ?></dd></div>
+            <?php endif; ?>
         </div>
     </section>
 

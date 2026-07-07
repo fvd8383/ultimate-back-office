@@ -200,7 +200,13 @@ final class AdminPortal
                     onboarding.setup_status AS onboarding_status,
                     onboarding.current_step AS onboarding_step,
                     onboarding.completed_at AS onboarding_completed_at,
-                    config.website_status
+                    config.website_status,
+                    config.service_area_city,
+                    config.service_area_state,
+                    config.service_area_postal_code,
+                    config.service_area_business,
+                    config.service_area_radius_miles,
+                    config.service_area_radius_is_custom
              FROM businesses b
              LEFT JOIN users u ON u.id = b.owner_user_id
              LEFT JOIN `247sp_onboarding` onboarding ON onboarding.business_id = b.id

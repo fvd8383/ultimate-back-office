@@ -1913,6 +1913,16 @@ created_at
 updated_at
 ```
 
+Current Sprint 8.6 domain services implementation uses `domain_requests`, `domain_assignments`, `website_domains`, `domain_dns_records`, and `domain_events`.
+
+`domain_requests` tracks the customer/admin workflow and now includes request type, registrar IDs, registrar response JSON, DNS status, DNS verification timestamp, SSL status, next action, last error, and last checked timestamp.
+
+`domain_assignments` tracks the selected domain for the business and now includes registrar, registrar domain ID, ownership type, auto-renew flag, expiration date, and SSL status.
+
+`domain_dns_records` stores the managed DNS plan for A, AAAA, CNAME, TXT, and future MX records. `domain_events` stores availability checks, registrar purchases, DNS syncs, DNS verification, SSL updates, and live-status changes for admin history.
+
+Registrar-specific logic must live behind `RegistrarInterface`; table names should remain registrar-neutral.
+
 Rules:
 
 If 247SP purchases the domain:
@@ -1951,6 +1961,16 @@ Rules:
 * Multiple pages are allowed.
 * Multiple websites are not supported for a single business.
 * Additional lead flow comes from EMD or Enterprise.
+
+Current 247SP onboarding also stores service-area settings on `247sp_website_configurations`:
+
+```text
+service_area_business
+service_area_radius_miles
+service_area_radius_is_custom
+```
+
+`service_area_business` distinguishes businesses customers visit from businesses that travel to customers. Travel radius is stored for 247SP website service-area copy and to preserve later use by service-area pages, lead matching, and setup workflows.
 
 ---
 
