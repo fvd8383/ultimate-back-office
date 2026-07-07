@@ -1962,6 +1962,16 @@ Rules:
 * Multiple websites are not supported for a single business.
 * Additional lead flow comes from EMD or Enterprise.
 
+Current 247SP onboarding also stores service-area settings on `247sp_website_configurations`:
+
+```text
+service_area_business
+service_area_radius_miles
+service_area_radius_is_custom
+```
+
+`service_area_business` distinguishes businesses customers visit from businesses that travel to customers. Travel radius is stored for 247SP website service-area copy and to preserve later use by service-area pages, lead matching, and setup workflows.
+
 ---
 
 ## website_pages

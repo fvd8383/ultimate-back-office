@@ -156,9 +156,14 @@ During onboarding, customer provides:
 * State
 * ZIP Code
 
-Optional:
+Service model:
 
-* Service Area Only
+* Customers come to my business
+* We travel to our customers
+
+When the business travels to customers, 247SP stores the business as a service-area business and collects a travel radius. Default radius is 25 miles, with supported choices of 10, 15, 20, 25, 35, 50, 75, or a custom mileage value.
+
+Customer-facing website output for service-area businesses should emphasize city/state and service-area language instead of the street address.
 
 ---
 

@@ -185,7 +185,7 @@ require __DIR__ . '/../../../private/views/account-navigation.php';
         <?php else: ?>
             <nav class="step-nav step-nav--247sp" aria-label="247SP onboarding steps">
                 <a class="<?= $step === 'business_information' ? 'is-active' : '' ?>" href="<?= e(sp247_step_href('business_information', $businessIdForLinks)) ?>">1. Business</a>
-                <a class="<?= $step === 'service_area' ? 'is-active' : '' ?>" href="<?= e(sp247_step_href('service_area', $businessIdForLinks)) ?>">2. Area</a>
+                <a class="<?= $step === 'service_area' ? 'is-active' : '' ?>" href="<?= e(sp247_step_href('service_area', $businessIdForLinks)) ?>">2. Service Area</a>
                 <a class="<?= $step === 'services' ? 'is-active' : '' ?>" href="<?= e(sp247_step_href('services', $businessIdForLinks)) ?>">3. Services</a>
                 <a class="<?= $step === 'website_content' ? 'is-active' : '' ?>" href="<?= e(sp247_step_href('website_content', $businessIdForLinks)) ?>">4. Content</a>
                 <a class="<?= $step === 'domain_selection' ? 'is-active' : '' ?>" href="<?= e(sp247_step_href('domain_selection', $businessIdForLinks)) ?>">5. Domain</a>
@@ -223,6 +223,17 @@ require __DIR__ . '/../../../private/views/account-navigation.php';
                     <?= ui_button('Save and continue') ?>
                 </form>
             <?php elseif ($step === 'service_area'): ?>
+                <?php
+                $isTravelBusiness = (int) sp247_form_value($configuration, 'service_area_business', (int) !$business['is_public_physical_location']) === 1;
+                $serviceModel = (string) ($_POST['service_model'] ?? ($isTravelBusiness ? 'we_travel' : 'customers_visit'));
+                $storedRadius = (int) ($configuration['service_area_radius_miles'] ?? TwentyFourSevenSalesPartner::DEFAULT_SERVICE_AREA_RADIUS);
+                $isCustomRadius = (int) ($configuration['service_area_radius_is_custom'] ?? 0) === 1;
+                $selectedRadius = (string) ($_POST['service_area_radius'] ?? ($isCustomRadius ? 'custom' : $storedRadius));
+                if (!in_array((int) $selectedRadius, TwentyFourSevenSalesPartner::SERVICE_AREA_RADIUS_OPTIONS, true) && $selectedRadius !== 'custom') {
+                    $selectedRadius = (string) TwentyFourSevenSalesPartner::DEFAULT_SERVICE_AREA_RADIUS;
+                }
+                $customRadius = (string) ($_POST['custom_service_area_radius'] ?? ($isCustomRadius ? $storedRadius : ''));
+                ?>
                 <form method="post" action="onboarding.php" class="dashboard-card form-stack">
                     <input type="hidden" name="step" value="service_area">
                     <input type="hidden" name="business_id" value="<?= e($businessIdForLinks) ?>">
@@ -240,11 +251,39 @@ require __DIR__ . '/../../../private/views/account-navigation.php';
                         <label>ZIP
                             <input name="postal_code" required value="<?= e(sp247_form_value($configuration, 'service_area_postal_code', (string) $business['postal_code'])) ?>">
                         </label>
-                        <label class="checkbox-line">
-                            <input type="checkbox" name="service_area_business" value="1" <?= (int) sp247_form_value($configuration, 'service_area_business', (int) !$business['is_public_physical_location']) === 1 ? 'checked' : '' ?>>
-                            Service Area Business
-                        </label>
                     </div>
+
+                    <fieldset class="package-options">
+                        <legend>Do customers come to your business, or do you travel to them?</legend>
+                        <label class="module-option">
+                            <input type="radio" name="service_model" value="customers_visit" <?= $serviceModel !== 'we_travel' ? 'checked' : '' ?>>
+                            <strong>Customers come to my business</strong>
+                            <span>Best for retail stores, restaurants, offices, salons, and other businesses with a physical location customers visit.</span>
+                        </label>
+                        <label class="module-option">
+                            <input type="radio" name="service_model" value="we_travel" <?= $serviceModel === 'we_travel' ? 'checked' : '' ?>>
+                            <strong>We travel to our customers</strong>
+                            <span>Best for plumbers, electricians, HVAC, landscapers, cleaners, painters, roofers, and similar businesses.</span>
+                        </label>
+                    </fieldset>
+
+                    <fieldset class="package-options" data-service-area-radius>
+                        <legend>How far do you typically travel?</legend>
+                        <?php foreach (TwentyFourSevenSalesPartner::SERVICE_AREA_RADIUS_OPTIONS as $radiusOption): ?>
+                            <label class="module-option">
+                                <input type="radio" name="service_area_radius" value="<?= e((string) $radiusOption) ?>" <?= $selectedRadius === (string) $radiusOption ? 'checked' : '' ?>>
+                                <strong><?= e((string) $radiusOption) ?> miles</strong>
+                            </label>
+                        <?php endforeach; ?>
+                        <label class="module-option">
+                            <input type="radio" name="service_area_radius" value="custom" <?= $selectedRadius === 'custom' ? 'checked' : '' ?>>
+                            <strong>Custom</strong>
+                            <span>Enter the mileage that best matches your normal service area.</span>
+                        </label>
+                        <label data-custom-travel-radius>Custom mileage
+                            <input type="number" name="custom_service_area_radius" min="1" max="250" step="1" value="<?= e($customRadius) ?>">
+                        </label>
+                    </fieldset>
 
                     <div class="button-row">
                         <?= ui_button('Back', sp247_step_href('business_information', $businessIdForLinks), 'secondary') ?>
@@ -394,6 +433,33 @@ function updateDomainFields() {
 }
 
 updateDomainFields();
+
+document.querySelectorAll('input[name="service_model"], input[name="service_area_radius"]').forEach(function (input) {
+    input.addEventListener('change', updateServiceAreaFields);
+});
+
+function updateServiceAreaFields() {
+    var travelSelected = document.querySelector('input[name="service_model"][value="we_travel"]:checked') !== null;
+    var radiusFieldset = document.querySelector('[data-service-area-radius]');
+    var customRadiusField = document.querySelector('[data-custom-travel-radius]');
+    var customRadiusSelected = document.querySelector('input[name="service_area_radius"][value="custom"]:checked') !== null;
+
+    if (radiusFieldset) {
+        radiusFieldset.hidden = !travelSelected;
+        radiusFieldset.querySelectorAll('input').forEach(function (input) {
+            input.disabled = !travelSelected;
+        });
+    }
+
+    if (customRadiusField) {
+        customRadiusField.hidden = !travelSelected || !customRadiusSelected;
+        customRadiusField.querySelectorAll('input').forEach(function (input) {
+            input.disabled = !travelSelected || !customRadiusSelected;
+        });
+    }
+}
+
+updateServiceAreaFields();
 
 function formatUsPhone(value) {
     var digits = value.replace(/\D/g, '');

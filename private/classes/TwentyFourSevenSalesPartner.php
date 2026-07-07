@@ -7,6 +7,9 @@ require_once __DIR__ . '/EmailProvisioningFoundation.php';
 
 final class TwentyFourSevenSalesPartner
 {
+    public const SERVICE_AREA_RADIUS_OPTIONS = [10, 15, 20, 25, 35, 50, 75];
+    public const DEFAULT_SERVICE_AREA_RADIUS = 25;
+
     public const STEPS = [
         'business_information',
         'service_area',
@@ -230,6 +233,29 @@ final class TwentyFourSevenSalesPartner
         ];
     }
 
+    public static function serviceModelLabel(?array $configuration, ?array $business = null): string
+    {
+        $isServiceAreaBusiness = $configuration !== null && isset($configuration['service_area_business'])
+            ? (int) $configuration['service_area_business'] === 1
+            : false;
+
+        if (($configuration === null || !isset($configuration['service_area_business'])) && $business !== null) {
+            $isServiceAreaBusiness = (int) ($business['is_public_physical_location'] ?? 1) === 0;
+        }
+
+        return $isServiceAreaBusiness ? 'We travel to customers' : 'Customers visit us';
+    }
+
+    public static function travelRadiusLabel(?array $configuration): string
+    {
+        $radiusMiles = (int) ($configuration['service_area_radius_miles'] ?? 0);
+        if ($radiusMiles <= 0) {
+            return '';
+        }
+
+        return $radiusMiles . ' miles';
+    }
+
     public static function saveBusinessInformation(int $businessId, int $userId, array $input): void
     {
         $businessName = trim((string) ($input['business_name'] ?? ''));
@@ -297,7 +323,16 @@ final class TwentyFourSevenSalesPartner
         $city = trim((string) ($input['city'] ?? ''));
         $state = trim((string) ($input['state'] ?? ''));
         $postalCode = trim((string) ($input['postal_code'] ?? ''));
-        $isServiceAreaBusiness = isset($input['service_area_business']) ? 1 : 0;
+        $serviceModel = (string) ($input['service_model'] ?? '');
+        if ($serviceModel === '' && isset($input['service_area_business'])) {
+            $serviceModel = 'we_travel';
+        }
+        if (!in_array($serviceModel, ['customers_visit', 'we_travel'], true)) {
+            throw new InvalidArgumentException('Select how customers work with your business.');
+        }
+
+        $isServiceAreaBusiness = $serviceModel === 'we_travel' ? 1 : 0;
+        [$travelRadiusMiles, $travelRadiusIsCustom] = self::normalizeTravelRadius($input, $isServiceAreaBusiness === 1);
 
         if ($address === '' || $city === '' || $state === '' || $postalCode === '') {
             throw new InvalidArgumentException('Address, city, state, and ZIP are required.');
@@ -333,6 +368,8 @@ final class TwentyFourSevenSalesPartner
                 'service_area_state' => $state,
                 'service_area_postal_code' => $postalCode,
                 'service_area_business' => $isServiceAreaBusiness,
+                'service_area_radius_miles' => $travelRadiusMiles,
+                'service_area_radius_is_custom' => $travelRadiusIsCustom,
                 'website_status' => 'in_progress',
             ]);
             self::advance($businessId, self::NEXT_STEP['service_area']);
@@ -342,6 +379,34 @@ final class TwentyFourSevenSalesPartner
             Database::connection()->rollBack();
             throw $exception;
         }
+    }
+
+    private static function normalizeTravelRadius(array $input, bool $applies): array
+    {
+        if (!$applies) {
+            return [null, 0];
+        }
+
+        $selectedRadius = (string) ($input['service_area_radius'] ?? (string) self::DEFAULT_SERVICE_AREA_RADIUS);
+        $isCustom = $selectedRadius === 'custom';
+
+        if ($isCustom) {
+            $radiusMiles = (int) ($input['custom_service_area_radius'] ?? 0);
+            if ($radiusMiles <= 0) {
+                throw new InvalidArgumentException('Enter a custom travel radius.');
+            }
+        } else {
+            $radiusMiles = (int) $selectedRadius;
+            if (!in_array($radiusMiles, self::SERVICE_AREA_RADIUS_OPTIONS, true)) {
+                $radiusMiles = self::DEFAULT_SERVICE_AREA_RADIUS;
+            }
+        }
+
+        if ($radiusMiles > 250) {
+            throw new InvalidArgumentException('Enter a travel radius of 250 miles or less.');
+        }
+
+        return [$radiusMiles, $isCustom ? 1 : 0];
     }
 
     public static function saveServices(int $businessId, int $userId, array $input): void
@@ -813,6 +878,8 @@ final class TwentyFourSevenSalesPartner
             'service_area_state' => $values['service_area_state'] ?? ($existing['service_area_state'] ?? null),
             'service_area_postal_code' => $values['service_area_postal_code'] ?? ($existing['service_area_postal_code'] ?? null),
             'service_area_business' => $values['service_area_business'] ?? ($existing['service_area_business'] ?? 0),
+            'service_area_radius_miles' => $values['service_area_radius_miles'] ?? ($existing['service_area_radius_miles'] ?? null),
+            'service_area_radius_is_custom' => $values['service_area_radius_is_custom'] ?? ($existing['service_area_radius_is_custom'] ?? 0),
             'website_status' => $values['website_status'] ?? ($existing['website_status'] ?? 'in_progress'),
         ];
 
@@ -820,11 +887,13 @@ final class TwentyFourSevenSalesPartner
             'INSERT INTO `247sp_website_configurations` (
                 business_id, onboarding_id, primary_category_id, service_area_address,
                 service_area_city, service_area_state, service_area_postal_code,
-                service_area_business, website_status, created_at, updated_at
+                service_area_business, service_area_radius_miles, service_area_radius_is_custom,
+                website_status, created_at, updated_at
              ) VALUES (
                 :business_id, :onboarding_id, :primary_category_id, :service_area_address,
                 :service_area_city, :service_area_state, :service_area_postal_code,
-                :service_area_business, :website_status, NOW(), NOW()
+                :service_area_business, :service_area_radius_miles, :service_area_radius_is_custom,
+                :website_status, NOW(), NOW()
              )
              ON DUPLICATE KEY UPDATE
                 primary_category_id = VALUES(primary_category_id),
@@ -833,6 +902,8 @@ final class TwentyFourSevenSalesPartner
                 service_area_state = VALUES(service_area_state),
                 service_area_postal_code = VALUES(service_area_postal_code),
                 service_area_business = VALUES(service_area_business),
+                service_area_radius_miles = VALUES(service_area_radius_miles),
+                service_area_radius_is_custom = VALUES(service_area_radius_is_custom),
                 website_status = VALUES(website_status),
                 updated_at = NOW()'
         );

@@ -108,6 +108,10 @@ admin_begin('Business Detail', 'businesses', $context);
             <div><dt>Phone</dt><dd><?= e($business['phone']) ?></dd></div>
             <div><dt>Onboarding</dt><dd><?= e(AdminPortal::statusLabel($business['onboarding_status'])) ?><?= $business['onboarding_step'] ? ' · ' . e(AdminPortal::statusLabel($business['onboarding_step'])) : '' ?></dd></div>
             <div><dt>Website</dt><dd><?= e(AdminPortal::statusLabel($business['website_status'])) ?></dd></div>
+            <div><dt>Service Model</dt><dd><?= e(TwentyFourSevenSalesPartner::serviceModelLabel($business, $business)) ?></dd></div>
+            <?php if ((int) ($business['service_area_business'] ?? 0) === 1): ?>
+                <div><dt>Travel Radius</dt><dd><?= e(TwentyFourSevenSalesPartner::travelRadiusLabel($business) ?: '25 miles') ?></dd></div>
+            <?php endif; ?>
             <div><dt>247SP Subscription</dt><dd><?= $has247spSubscription ? ui_badge(AdminPortal::statusLabel($billingSubscription['status']), in_array((string) $billingSubscription['status'], ['past_due', 'cancelled'], true) ? 'role' : 'status') . ' ' . e($billingSubscription['plan_name']) : e('No subscription') ?></dd></div>
             <div><dt>247SP Module Access</dt><dd><?= ui_badge($has247spAccess ? 'Active' : 'Inactive', $has247spAccess ? 'status' : 'role') ?></dd></div>
         </div>

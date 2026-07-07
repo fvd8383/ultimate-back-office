@@ -997,6 +997,11 @@ button:hover,
     font-size: 14px;
 }
 
+.package-options > label[data-custom-travel-radius] {
+    display: grid;
+    gap: 8px;
+}
+
 .summary-list {
     display: grid;
     gap: 10px;
