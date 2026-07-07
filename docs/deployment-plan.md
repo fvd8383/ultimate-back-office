@@ -271,6 +271,24 @@ mysql \
 ubo_staging < database/migrations/019_repair_domain_services_schema.sql
 ```
 
+If migration 019 fails while creating `domain_dns_records` with:
+
+```text
+ERROR 1071 (42000): Specified key was too long; max key length is 3072 bytes
+```
+
+do not rerun 019 as-is. The failed key is `UNIQUE KEY uq_domain_dns_record (domain_name, record_type, host, value)`. Run migration 020 to create or repair `domain_dns_records` with a generated `record_hash` identity and `UNIQUE KEY uq_domain_dns_record_hash (record_hash)`. Migration 020 also creates `domain_events` if migration 019 stopped before that table.
+
+```bash
+mysql \
+-h ubo-stage-mysql-do-user-18803129-0.g.db.ondigitalocean.com \
+-P 25060 \
+-u ubo_stage_user \
+-p \
+--ssl-mode=REQUIRED \
+ubo_staging < database/migrations/020_repair_domain_dns_records.sql
+```
+
 Then run migration 018 if it has not already been applied:
 
 ```bash
@@ -356,7 +374,7 @@ WHERE table_schema = DATABASE()
       'idx_domain_assignments_ssl_status'
     ))
     OR (table_name = 'domain_dns_records' AND index_name IN (
-      'uq_domain_dns_record',
+      'uq_domain_dns_record_hash',
       'idx_domain_dns_records_business',
       'idx_domain_dns_records_request',
       'idx_domain_dns_records_assignment',
@@ -373,7 +391,7 @@ WHERE table_schema = DATABASE()
 ORDER BY table_name, index_name, seq_in_index;
 ```
 
-Expected state after 019: `domain_requests.request_type` exists on `domain_requests`, not `website_domains`; all Domain Services columns listed above exist; `domain_dns_records` and `domain_events` exist; and the listed indexes exist. Migration 019 is additive and skips columns/indexes/tables that already exist.
+Expected state after 019 plus 020 repair: `domain_requests.request_type` exists on `domain_requests`, not `website_domains`; all Domain Services columns listed above exist; `domain_dns_records.record_hash` exists as the DNS record identity; `domain_dns_records` has `uq_domain_dns_record_hash`; `domain_events` exists; and the listed indexes exist. Migration 020 is additive and skips Domain DNS columns/indexes/tables that already exist.
 
 ---
 

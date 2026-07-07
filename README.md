@@ -204,13 +204,19 @@ Repair/completion path:
 mysql -h DB_HOST -P DB_PORT -u DB_USER -p DB_NAME < database/migrations/019_repair_domain_services_schema.sql
 ```
 
+If migration 019 fails on `domain_dns_records` with `ERROR 1071 (42000): Specified key was too long`, do not rerun 019 as-is. Run migration 020:
+
+```bash
+mysql -h DB_HOST -P DB_PORT -u DB_USER -p DB_NAME < database/migrations/020_repair_domain_dns_records.sql
+```
+
 Then run migration 018 only if it has not already been applied:
 
 ```bash
 mysql -h DB_HOST -P DB_PORT -u DB_USER -p DB_NAME < database/migrations/018_247sp_service_area_radius.sql
 ```
 
-The domain services migrations extend `domain_requests` and `domain_assignments` with registrar, DNS, SSL, next-action, error, and response-tracking fields. They also add `domain_dns_records` for managed DNS plans and `domain_events` for domain workflow history. Migration 019 is additive and skips existing Domain Services columns, indexes, and tables.
+The domain services migrations extend `domain_requests` and `domain_assignments` with registrar, DNS, SSL, next-action, error, and response-tracking fields. They also add `domain_dns_records` for managed DNS plans and `domain_events` for domain workflow history. Migration 020 repairs the oversized DNS record unique key by using a generated `record_hash` column and `uq_domain_dns_record_hash`.
 
 ## Testing OTP Login In Staging
 
