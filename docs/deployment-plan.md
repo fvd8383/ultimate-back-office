@@ -239,7 +239,7 @@ https://staging-accounts.ultimatebackoffice.com/stripe-webhook.php
 
 The repository also contains `public/webhooks/stripe.php` for a future standalone webhook mapping, but the current staging accounts document root can use `/stripe-webhook.php`.
 
-For Sprint 8.6 Milestone 4, run:
+For Sprint 8.6 Milestone 4, migration 017 was originally the Domain Services migration:
 
 ```bash
 mysql \
@@ -249,6 +249,38 @@ mysql \
 -p \
 --ssl-mode=REQUIRED \
 ubo_staging < database/migrations/017_domain_services_automation.sql
+```
+
+If staging already contains `domain_requests.request_type`, migration 017 fails at line 1 with:
+
+```text
+ERROR 1060 (42S21): Duplicate column name 'request_type'
+```
+
+The duplicate is on `domain_requests`. `website_domains` does not use `request_type`. In the repository migration history, migration 009 creates the baseline domain tables and migration 017 adds the Domain Services columns/indexes, so this error indicates staging already had at least one 017-era column before 017 was run.
+
+In that case, do not rerun 017. Run the repair/completion migration 019:
+
+```bash
+mysql \
+-h ubo-stage-mysql-do-user-18803129-0.g.db.ondigitalocean.com \
+-P 25060 \
+-u ubo_stage_user \
+-p \
+--ssl-mode=REQUIRED \
+ubo_staging < database/migrations/019_repair_domain_services_schema.sql
+```
+
+Then run migration 018 if it has not already been applied:
+
+```bash
+mysql \
+-h ubo-stage-mysql-do-user-18803129-0.g.db.ondigitalocean.com \
+-P 25060 \
+-u ubo_stage_user \
+-p \
+--ssl-mode=REQUIRED \
+ubo_staging < database/migrations/018_247sp_service_area_radius.sql
 ```
 
 Then configure domain environment values in `private/config/env.php`:
@@ -308,7 +340,40 @@ WHERE table_schema = DATABASE()
     OR table_name IN ('domain_dns_records', 'domain_events')
   )
 ORDER BY table_name, column_name;
+
+SELECT table_name, index_name, column_name
+FROM information_schema.statistics
+WHERE table_schema = DATABASE()
+  AND (
+    (table_name = 'domain_requests' AND index_name IN (
+      'idx_domain_requests_request_type',
+      'idx_domain_requests_dns_status',
+      'idx_domain_requests_ssl_status'
+    ))
+    OR (table_name = 'domain_assignments' AND index_name IN (
+      'idx_domain_assignments_registrar',
+      'idx_domain_assignments_ownership',
+      'idx_domain_assignments_ssl_status'
+    ))
+    OR (table_name = 'domain_dns_records' AND index_name IN (
+      'uq_domain_dns_record',
+      'idx_domain_dns_records_business',
+      'idx_domain_dns_records_request',
+      'idx_domain_dns_records_assignment',
+      'idx_domain_dns_records_status'
+    ))
+    OR (table_name = 'domain_events' AND index_name IN (
+      'idx_domain_events_business',
+      'idx_domain_events_request',
+      'idx_domain_events_assignment',
+      'idx_domain_events_type',
+      'idx_domain_events_status'
+    ))
+  )
+ORDER BY table_name, index_name, seq_in_index;
 ```
+
+Expected state after 019: `domain_requests.request_type` exists on `domain_requests`, not `website_domains`; all Domain Services columns listed above exist; `domain_dns_records` and `domain_events` exist; and the listed indexes exist. Migration 019 is additive and skips columns/indexes/tables that already exist.
 
 ---
 
