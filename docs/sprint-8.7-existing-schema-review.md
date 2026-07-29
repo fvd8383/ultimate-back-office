@@ -4,7 +4,7 @@
 
 The repository already has strong Sprint 8.7 building blocks: authenticated users, business ownership through `business_users`, core business identity on `businesses`, selected service categories through `categories`, `sub_services`, `business_sub_services`, custom service names through `business_custom_services`, 247SP onboarding/content tables, website generation/override tables, domain workflow tables, email provisioning tables, LeadHub contacts/notes/tasks/activity logs, local billing/subscription tables, and Stripe webhook idempotency through `stripe_webhook_events`.
 
-The current implementation does not have an implemented Shared Business Profile table, `CommunicationsManager`, provider interfaces for Retell/Twilio, provider account/channel tables, conversations, conversation participants, conversation messages, calls, SMS messages, chat messages, phone numbers, AI agents/sessions, transfer rules, escalation rules, profile hours, FAQs, pricing guidance, appointment rules, or notification preferences.
+Before migration `021_shared_business_profile.sql`, the implementation did not have an implemented Shared Business Profile table, `CommunicationsManager`, provider interfaces for Retell/Twilio, provider account/channel tables, conversations, conversation participants, conversation messages, calls, SMS messages, chat messages, phone numbers, AI agents/sessions, transfer rules, escalation rules, profile hours, FAQs, pricing guidance, appointment rules, or notification preferences.
 
 What must be extended is mostly schema and documentation, not current production behavior. Sprint 8.7 Milestone 2 should add a provider-neutral Shared Business Profile layer that reuses current `businesses`, service, service-area, website, domain, and email data instead of duplicating it. It should not create a second service catalog. It should also avoid communications provider columns in core business/profile tables.
 
@@ -352,27 +352,25 @@ These should not be part of Milestone 2 unless the scope is expanded beyond Shar
 Sprint 8.7 Milestone 2 should be one focused migration:
 
 - Next migration number: `021`.
-- Suggested migration filename: `021_shared_business_profile_schema.sql`.
+- Migration filename: `021_shared_business_profile.sql`.
 - Reused tables: `businesses`, `categories`, `sub_services`, `business_sub_services`, `business_custom_services`, `247sp_website_configurations`, `247sp_business_content`, `247sp_service_pages`, `activity_logs`.
 - Extended existing tables: none unless a small nullable `businesses` field is proven core. Prefer new profile tables.
-- New tables needed: `business_profiles`, `business_profile_service_areas`, `business_profile_hours`; optionally `business_profile_services`, `business_profile_faqs`, and `business_profile_pricing_guidance` if Milestone 2 must cover all Shared Business Profile facts.
-- Fields to backfill: profile display name from `businesses.business_name`; short/long description from `247sp_business_content.business_description`/`about_company`; service-area flags/radius/city/state/postal from `businesses` and `247sp_website_configurations`; services from `business_sub_services`, `business_custom_services`, and optionally `247sp_service_pages.short_description` as an initial description source.
+- New tables needed: `business_profiles`, `business_profile_service_areas`, `business_profile_hours`, `business_profile_hour_exceptions`, `business_profile_faqs`, `business_profile_pricing_guidance`, `business_appointment_rules`, `business_transfer_rules`, `business_escalation_rules`, and `business_notification_preferences`.
+- Fields to backfill: profile display name from `businesses.business_name`; short/long description from `247sp_business_content.business_description`/`about_company`; service-area flags/radius/city/state/postal from `businesses` and `247sp_website_configurations`. Do not backfill a second service catalog from website service pages.
 - Expected FKs: every new table should reference `businesses.id`; child tables should reference `business_profiles.id`; optional links to `sub_services.id`, `business_custom_services.id`, and `247sp_business_content.id` should be nullable.
 - Expected indexes: unique `business_profiles.business_id`; child indexes on `business_id`; child indexes on `business_profile_id`; status/sort indexes where list views need them.
 - Expected rollback or repair approach: additive migration with no destructive moves. If backfill misses fields, add a later repair migration; do not edit 021 after staging applies it.
 - Validation queries: confirm new tables exist; confirm one `business_profiles` row per existing `businesses` row; confirm no duplicate `business_profiles.business_id`; sample profile rows joined to 247SP content/config; confirm FKs and indexes in `information_schema.statistics` and `information_schema.table_constraints`.
 - Regression checks: account business create/edit still loads; 247SP onboarding/review/preview/website-manager still loads; LeadHub leads/contacts/notes/tasks still load; website lead submit still creates contact/note/task/activity; admin business/website editor still loads; billing/domain/email pages still load.
 
-Do not create the migration in this task.
-
 # 13. Open Architecture Questions
 
 | Issue | Why it matters | Recommended default | Alternatives | Consequence of postponing |
 | --- | --- | --- | --- | --- |
-| Should Milestone 2 include `business_profile_services` or defer it? | Services are the highest-risk source-of-truth conflict because account services and website service pages differ. | Add a profile service detail table that links to existing selected services and copies website descriptions only as seed data. | Defer and rely on existing selected services plus website pages temporarily. | AI/voice/chat work may need another migration before services can be safely consumed. |
+| Should Milestone 2 include `business_profile_services` or defer it? | Services are the highest-risk source-of-truth conflict because account services and website service pages differ. | Defer and rely on existing selected services plus website pages temporarily. | Add a profile service detail table that links to existing selected services and copies website descriptions only as seed data. | AI/voice/chat work may need another migration before services can be safely consumed. |
 | Should time zone default to a value or remain incomplete? | Hours and after-hours behavior need time zone. | Store nullable `timezone`; mark profile incomplete until selected. | Default to `America/New_York` or infer later from address. | Provider behavior could be wrong if defaulted silently. |
-| Are FAQs and pricing guidance required in the first schema migration? | They are profile facts but may not be needed before profile UI. | Include nullable/draft child tables now if Sprint 8.7 expects AI readiness, otherwise defer to profile UI milestone. | Use JSON columns on `business_profiles` temporarily. | Later migration required; fewer backfill risks now. |
-| Should transfer/escalation rules be Milestone 2 tables or communications-core tables? | They are profile rules but depend on future phone/users/employees/channels. | Add provider-neutral business/profile rule tables with nullable channel references later. | Defer until communications schema exists. | Launch readiness cannot mark transfer/escalation configured from structured records. |
+| Are FAQs and pricing guidance required in the first schema migration? | They are profile facts but may not be needed before profile UI. | Include nullable/draft child tables now for AI readiness. | Use JSON columns on `business_profiles` temporarily. | Later migration required; fewer backfill risks now. |
+| Should transfer/escalation rules be Milestone 2 tables or communications-core tables? | They are profile rules but depend on future phone/users/employees/channels. | Add provider-neutral business/profile rule tables now without provider/channel references. | Defer until communications schema exists. | Launch readiness cannot mark transfer/escalation configured from structured records. |
 | Should contact matching add normalized email/phone columns now? | Future webhooks need reliable matching, but current contacts have loose duplicates. | Defer uniqueness; add normalized helper columns only when a dedupe plan exists. | Add `normalized_email`/`normalized_phone` without unique constraints now. | Matching remains exact-string and may create/choose imperfect contacts. |
 
 # 14. Recommended Next Codex Task
@@ -381,13 +379,13 @@ Sprint 8.7 Milestone 2 - Shared Business Profile Schema
 
 Task outline:
 
-1. Start from clean `main`, synchronize with origin, create a focused `codex/` branch.
+1. Continue on the focused Sprint 8.7 branch if it remains scoped to schema review and Milestone 2.
 2. Do not edit historical migrations `001` through `020`.
-3. Create `database/migrations/021_shared_business_profile_schema.sql`.
+3. Create `database/migrations/021_shared_business_profile.sql`.
 4. Add `business_profiles` with one row per business, nullable draft fields, unique `business_id`, FK to `businesses.id`, status/completeness fields, timestamps, and idempotent backfill from `businesses` and `247sp_business_content`.
 5. Add `business_profile_service_areas` with one row per profile/business, FK to `business_profiles` and `businesses`, backfilled from `businesses.is_public_physical_location` and `247sp_website_configurations.service_area_*`.
 6. Add `business_profile_hours` with business/profile/day-of-week structure and no forced complete defaults.
-7. Decide before implementation whether to include `business_profile_services`, `business_profile_faqs`, and `business_profile_pricing_guidance` in migration 021 or defer them to profile UI.
+7. Include profile FAQs, pricing guidance, appointment rules, transfer rules, escalation rules, and notification preferences as provider-neutral child tables.
 8. Update `docs/database-plan.md` and `README.md` migration list with factual migration 021 documentation and validation queries.
 9. Run `git diff --check` and `git diff --cached --check`.
 10. Do not run migrations locally, do not call Twilio/Retell, do not change production/staging config, and do not modify PHP behavior unless a documentation reference requires a factual correction.

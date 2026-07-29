@@ -539,28 +539,33 @@ created_at
 
 ## business_profiles
 
-Represents the operational profile for one business. This is the configuration root for 247SP front-office channels.
+Represents the shared operational profile for one business. Sprint 8.7 Milestone 2 implements this as the provider-neutral configuration root for 247SP front-office channels without introducing communications provider tables.
 
-Suggested fields:
+Current implementation is migration `021_shared_business_profile.sql`.
 
 ```text
 id
 business_id
-primary_website_id nullable
-primary_domain_id nullable
-primary_phone_number_id nullable
-primary_email_address nullable
-ai_receptionist_enabled
-sms_assistant_enabled
-website_chat_enabled
-leadhub_routing_enabled
-default_transfer_rule_id nullable
-default_escalation_rule_id nullable
-timezone
-business_hours_json nullable
-after_hours_behavior
-emergency_keywords_json nullable
-status
+lifecycle_status
+public_display_name nullable
+website_url nullable
+timezone nullable
+default_language
+short_description nullable
+long_description nullable
+primary_greeting nullable
+value_proposition nullable
+tone nullable
+personality nullable
+prohibited_claims nullable
+appointment_requests_enabled
+automatic_booking_enabled
+minimum_notice_minutes nullable
+default_appointment_duration_minutes nullable
+emergency_service_enabled
+readiness_snapshot_json nullable
+profile_completed_at nullable
+activated_at nullable
 created_at
 updated_at
 ```
@@ -568,25 +573,42 @@ updated_at
 Foreign keys:
 
 * `business_profiles.business_id` -> `businesses.id`
-* `business_profiles.primary_website_id` -> `websites.id`
-* `business_profiles.primary_domain_id` -> `domains.id`
-* `business_profiles.primary_phone_number_id` -> `phone_numbers.id`
-* `business_profiles.default_transfer_rule_id` -> `transfer_rules.id`
-* `business_profiles.default_escalation_rule_id` -> `escalation_rules.id`
 
 Indexes:
 
 * Unique: `business_id`
-* Index: `status`
-* Index: `primary_phone_number_id`
-* Index: `primary_website_id`
+* Index: `lifecycle_status`
+* Index: `timezone`
+
+Milestone 2 child tables:
+
+```text
+business_profile_service_areas
+business_profile_hours
+business_profile_hour_exceptions
+business_profile_faqs
+business_profile_pricing_guidance
+business_appointment_rules
+business_transfer_rules
+business_escalation_rules
+business_notification_preferences
+```
+
+Backfill:
+
+* One `business_profiles` row is inserted per existing `businesses` row.
+* `public_display_name` is copied from `businesses.business_name`.
+* `short_description` and `long_description` are copied from `247sp_business_content.business_description` and `247sp_business_content.about_company`.
+* One `business_profile_service_areas` row is inserted per profile and seeded from `businesses.is_public_physical_location`, `businesses.city/state/postal_code/country`, and `247sp_website_configurations.service_area_*`.
+* `timezone` remains nullable; profiles stay in `draft` until explicit profile completion data exists.
 
 Rules:
 
-* One business has one active Business Profile.
+* One business has one Shared Business Profile.
 * The Business Profile stores business-owned configuration and routing intent.
 * Provider-specific identifiers belong in communications tables, not in `business_profiles`.
-* Website, AI Receptionist, SMS Assistant, Website Chat, LeadHub routing, transfer rules, and escalation rules should all resolve through the Business Profile.
+* Website, AI Receptionist, SMS Assistant, Website Chat, LeadHub routing, transfer rules, and escalation rules should all resolve through the Business Profile when their services are implemented.
+* Service references must link to existing `sub_services` or `business_custom_services`; do not create a second service catalog.
 
 ---
 
