@@ -320,6 +320,37 @@ DOMAIN_MAIL_MX_HOST
 
 Use Namecheap sandbox credentials for staging. `NAMECHEAP_CLIENT_IP` must be the whitelisted IPv4 address configured in Namecheap API access. Keep `DOMAIN_DEFAULT_REGISTRAR=namecheap` until another `RegistrarInterface` implementation is added.
 
+For the future Communications Layer, provider credentials also live in `private/config/env.php`:
+
+```text
+RETELL_API_KEY
+RETELL_WEBHOOK_SECRET
+RETELL_VOICE_AGENT_ID
+RETELL_CHAT_AGENT_ID
+TWILIO_ACCOUNT_SID
+TWILIO_AUTH_TOKEN
+TWILIO_VOICE_APPLICATION_SID
+TWILIO_MESSAGING_SERVICE_SID
+TWILIO_DEFAULT_FROM_NUMBER
+COMMUNICATIONS_DEFAULT_VOICE_PROVIDER
+COMMUNICATIONS_DEFAULT_MESSAGING_PROVIDER
+COMMUNICATIONS_DEFAULT_CHAT_PROVIDER
+COMMUNICATIONS_DEFAULT_TELEPHONY_PROVIDER
+```
+
+Retell and Twilio credentials must be used only by internal UBO communications services. Public routes, account pages, app pages, admin pages, and LeadHub screens should interact with normalized UBO records or the future `CommunicationsManager`, not provider SDKs or raw provider APIs.
+
+Initial provider mapping:
+
+```text
+Retell Voice -> VoiceProviderInterface
+Retell Chat -> ChatProviderInterface
+Twilio Voice -> TelephonyProviderInterface
+Twilio Messaging -> MessagingProviderInterface
+```
+
+Use test/sandbox provider credentials for staging where the provider supports them. Production credentials should not be configured until staging validates provider setup, webhook verification, LeadHub routing, transfer rules, escalation rules, and usage tracking.
+
 Verify the domain schema after migration:
 
 ```sql
@@ -570,6 +601,26 @@ DOMAIN_MAIL_MX_HOST
 
 Do not commit Namecheap credentials. `DOMAIN_TARGET_IPV4`, optional `DOMAIN_TARGET_IPV6`, and optional `DOMAIN_WWW_CNAME` define the website launch DNS records the Domain Manager prepares. TXT verification and MX host values are optional placeholders for verification and future email provisioning.
 
+Communications provider configuration also lives in `private/config/env.php`:
+
+```text
+RETELL_API_KEY
+RETELL_WEBHOOK_SECRET
+RETELL_VOICE_AGENT_ID
+RETELL_CHAT_AGENT_ID
+TWILIO_ACCOUNT_SID
+TWILIO_AUTH_TOKEN
+TWILIO_VOICE_APPLICATION_SID
+TWILIO_MESSAGING_SERVICE_SID
+TWILIO_DEFAULT_FROM_NUMBER
+COMMUNICATIONS_DEFAULT_VOICE_PROVIDER
+COMMUNICATIONS_DEFAULT_MESSAGING_PROVIDER
+COMMUNICATIONS_DEFAULT_CHAT_PROVIDER
+COMMUNICATIONS_DEFAULT_TELEPHONY_PROVIDER
+```
+
+Do not commit Retell or Twilio credentials. Default provider values should point to internal provider adapter keys such as `retell_voice`, `retell_chat`, `twilio_voice`, and `twilio_messaging`, not external class names.
+
 ---
 
 # Database Migrations
@@ -624,6 +675,19 @@ For Domain Services changes, also validate on staging:
 * Failed Namecheap calls show a safe admin error and store domain status/error details for support review.
 * 24/7 Sales Partner Launch Readiness marks Domain complete only after domain, DNS, and SSL readiness are satisfied.
 * SSL status tracking does not claim certificate automation unless staging infrastructure has completed that step.
+
+For Communications Layer changes, also validate on staging:
+
+* `private/config/env.php` contains Retell and Twilio test credentials, with no real secrets committed.
+* Business Profile setup can represent Website, AI Receptionist, SMS Assistant, Website Chat, LeadHub routing, transfer rules, and escalation rules.
+* Provider calls are made only through internal UBO services or the future `CommunicationsManager`.
+* Retell Voice events normalize through `VoiceProviderInterface`.
+* Retell Chat events normalize through `ChatProviderInterface`.
+* Twilio Voice events normalize through `TelephonyProviderInterface`.
+* Twilio Messaging events normalize through `MessagingProviderInterface`.
+* Inbound calls, texts, and chat events create or connect to LeadHub records.
+* Transfer rules and escalation rules create customer-safe LeadHub activity, tasks, or notifications.
+* Usage tracking records AI minutes, outbound owner minutes, SMS segments, and AI chat responses.
 
 Logs:
 

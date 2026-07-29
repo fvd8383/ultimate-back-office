@@ -113,6 +113,47 @@ Stripe Connect is not part of 24/7 Sales Partner customers paying UBO. Stripe Co
 
 WORKSPACE links launch either standalone product/module areas or Full OS feature areas, depending on the account navigation mode.
 
+The application shell should treat the Business Profile as the customer-facing setup root for 247SP front-office configuration. The Business Profile configures the website, AI Receptionist, SMS Assistant, Website Chat, LeadHub routing, transfer rules, and escalation rules. Channel-specific screens may appear inside 24/7 Sales Partner or LeadHub, but the shell should not imply that each provider is a separate customer product.
+
+## Application Architecture Diagram
+
+```mermaid
+flowchart TD
+  Account["Accounts Area"]
+  Workspace["Workspace Shell"]
+  BusinessProfile["Business Profile"]
+  SalesPartner["24/7 Sales Partner"]
+  LeadHub["LeadHub CRM and Unified Inbox"]
+  Website["Website"]
+  AIReceptionist["AI Receptionist"]
+  SMSAssistant["SMS Assistant"]
+  WebsiteChat["Website Chat"]
+  Routing["LeadHub Routing"]
+  Rules["Transfer and Escalation Rules"]
+  Comms["Internal Communications Services"]
+  Providers["Provider Adapters"]
+
+  Account --> Workspace
+  Workspace --> BusinessProfile
+  Workspace --> SalesPartner
+  Workspace --> LeadHub
+  BusinessProfile --> Website
+  BusinessProfile --> AIReceptionist
+  BusinessProfile --> SMSAssistant
+  BusinessProfile --> WebsiteChat
+  BusinessProfile --> Routing
+  BusinessProfile --> Rules
+  SalesPartner --> Website
+  SalesPartner --> Comms
+  AIReceptionist --> Comms
+  SMSAssistant --> Comms
+  WebsiteChat --> Comms
+  Comms --> Providers
+  Comms --> LeadHub
+  Routing --> LeadHub
+  Rules --> LeadHub
+```
+
 ## Standalone Module Mode
 
 Standalone Module Mode is the active customer navigation model during the 24/7 Sales Partner launch phase.
@@ -143,6 +184,7 @@ Current routing:
 * Lead Hub Contacts: `public/app/lead-hub/contacts.php`
 * Lead Hub Tasks: `public/app/lead-hub/tasks.php`
 * Lead Hub Notes: `public/app/lead-hub/notes.php`
+* Lead Hub Conversations / Inbox: future route
 * 24/7 Sales Partner: `public/app/247sp/dashboard.php`
 
 When a business is selected or discoverable, workspace links include the `business_id` query parameter. If no business is available, links fall back to the safest existing route and the destination page handles the empty state.
@@ -170,6 +212,8 @@ ACCOUNT
 WORKSPACE
 - Dashboard
 - CRM
+- Inbox
+- Phones
 - Websites
 - Sales
 - Payments
@@ -215,6 +259,7 @@ Lead Hub secondary navigation appears nested under the active Lead Hub WORKSPACE
 * Dashboard
 * Leads
 * Contacts
+* Conversations / Inbox when implemented
 * Tasks
 * Notes
 
@@ -373,7 +418,7 @@ The readiness section should:
 * show the module-specific checklist items required before launch or first use
 * clearly distinguish completed and incomplete items
 * provide customer-friendly next actions for incomplete items
-* use existing module, billing, domain, email, or workflow records where available
+* use existing module, billing, domain, email, communications, or workflow records where available
 * avoid requesting payment before the customer has reached the module-specific approval or launch step
 * avoid internal planning language in customer-facing copy
 
@@ -386,11 +431,17 @@ The 24/7 Sales Partner dashboard readiness checklist uses these customer-facing 
 * Website Preview
 * Domain
 * Email
+* AI Receptionist
+* SMS Assistant
+* Website Chat
+* LeadHub Routing
+* Transfer Rules
+* Escalation Rules
 * Website Approval
 * Payment Method
 * Ready to Launch
 
-When the website preview is ready and payment is not complete, the primary dashboard action should read "Complete Payment & Launch" and route to Stripe Checkout through the account Checkout route. Stripe webhooks then synchronize payment and subscription status back into local billing records.
+When the website preview and required communications setup are ready and payment is not complete, the primary dashboard action should read "Complete Payment & Launch" and route to Stripe Checkout through the account Checkout route. Stripe webhooks then synchronize payment and subscription status back into local billing records.
 
 ## Base URL Rules
 

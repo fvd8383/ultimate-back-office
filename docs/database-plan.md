@@ -212,6 +212,24 @@ Customer portal app
 
 Business logic should be separated from presentation where practical.
 
+## 3.5 Business Profile Configuration Rule
+
+The Business Profile is the configuration root for 247SP front-office behavior.
+
+One Business Profile configures:
+
+```text
+Website
+AI Receptionist
+SMS Assistant
+Website Chat
+LeadHub routing
+Transfer rules
+Escalation rules
+```
+
+Business Profile records should store business-owned settings and rules. Provider-specific IDs, webhook payloads, API response data, transcripts, call IDs, message IDs, and chat IDs should live in communications tables owned by internal UBO services.
+
 ---
 
 # 4. Core Platform Tables
@@ -2425,11 +2443,258 @@ complete jobs
 
 ---
 
-# 20. Communications and VoIP Tables
+# 20. Communications Platform Tables
 
-Future Full OS support using Twilio.
+247SP includes a communications platform for AI Receptionist, SMS Assistant, Website Chat, local phone numbers, calls, and LeadHub conversation routing.
 
-UBO should eventually support a VoIP system similar to RingCentral.
+The communications platform must use provider abstraction similar to Domain Services. Domain workflow code talks to `DomainManager`, `RegistrarInterface`, and registrar adapters. Communications workflow code should talk to the future `CommunicationsManager`, provider interfaces, and provider adapters.
+
+All providers are accessed through internal UBO services. App pages, account pages, admin pages, public webhooks, LeadHub screens, and website routes should never call Retell, Twilio, or future provider APIs directly.
+
+## Communications Provider Interfaces
+
+Internal interface responsibilities:
+
+```text
+VoiceProviderInterface
+- AI voice agent configuration
+- inbound AI call session handling
+- transcript and summary normalization
+- handoff metadata
+- AI minute usage
+- webhook normalization
+
+MessagingProviderInterface
+- outbound SMS/MMS
+- inbound SMS/MMS
+- delivery status
+- segment counting
+- opt-out handling
+- webhook normalization
+
+ChatProviderInterface
+- AI website chat sessions
+- visitor messages
+- AI responses
+- transcript normalization
+- lead capture events
+- AI chat response usage
+- webhook normalization
+
+TelephonyProviderInterface
+- local phone number search and provisioning
+- inbound call routing
+- outbound owner calls
+- call status
+- recordings and voicemail metadata
+- owner minute usage
+- webhook normalization
+```
+
+Initial implementations:
+
+```text
+Retell Voice -> VoiceProviderInterface
+Retell Chat -> ChatProviderInterface
+Twilio Voice -> TelephonyProviderInterface
+Twilio Messaging -> MessagingProviderInterface
+```
+
+Future implementations may replace or supplement these providers without changing Business Profile configuration, LeadHub routing, transfer rules, escalation rules, or customer/admin workflow code.
+
+## Communications Architecture Diagram
+
+```mermaid
+flowchart TD
+  Profile["Business Profile"]
+  Manager["CommunicationsManager"]
+  VoiceInterface["VoiceProviderInterface"]
+  MessagingInterface["MessagingProviderInterface"]
+  ChatInterface["ChatProviderInterface"]
+  TelephonyInterface["TelephonyProviderInterface"]
+  RetellVoice["Retell Voice"]
+  RetellChat["Retell Chat"]
+  TwilioVoice["Twilio Voice"]
+  TwilioMessaging["Twilio Messaging"]
+  LeadHub["LeadHub CRM and Unified Inbox"]
+
+  Profile --> Manager
+  Manager --> VoiceInterface
+  Manager --> MessagingInterface
+  Manager --> ChatInterface
+  Manager --> TelephonyInterface
+  VoiceInterface --> RetellVoice
+  ChatInterface --> RetellChat
+  TelephonyInterface --> TwilioVoice
+  MessagingInterface --> TwilioMessaging
+  Manager --> LeadHub
+```
+
+## business_communication_profiles
+
+Represents communication settings for one business profile.
+
+Suggested fields:
+
+```text
+id
+business_id
+website_enabled
+ai_receptionist_enabled
+sms_assistant_enabled
+website_chat_enabled
+default_voice_provider
+default_messaging_provider
+default_chat_provider
+default_telephony_provider
+leadhub_routing_status
+status
+created_at
+updated_at
+```
+
+Rules:
+
+* One business should have one active communication profile.
+* This record stores business intent, not provider API implementation details.
+* Provider keys should identify internal adapters, not raw external API classes.
+
+---
+
+## communication_channels
+
+Represents an enabled communication channel for a business.
+
+Suggested fields:
+
+```text
+id
+business_id
+communication_profile_id
+channel_type
+provider_key
+provider_channel_id nullable
+display_name nullable
+status
+configuration_json nullable
+created_at
+updated_at
+```
+
+Channel types:
+
+```text
+website_form
+ai_receptionist
+sms_assistant
+website_chat
+voice_calling
+professional_email
+```
+
+Rules:
+
+* Provider channel IDs are stored here for internal services.
+* Customer-facing code should read normalized status and configuration from UBO records.
+
+---
+
+## leadhub_routing_rules
+
+Defines how channel events enter LeadHub.
+
+Suggested fields:
+
+```text
+id
+business_id
+communication_profile_id
+channel_type
+source_filter nullable
+target_type
+target_id nullable
+assignment_user_id nullable
+create_task
+task_due_minutes nullable
+status
+created_at
+updated_at
+```
+
+Rules:
+
+* Routing rules should support contacts, leads, conversations, tasks, notes, and activity logs.
+* Default 247SP behavior should route every active channel into LeadHub.
+
+---
+
+## transfer_rules
+
+Defines when AI or automated handling transfers to a human owner or staff member.
+
+Suggested fields:
+
+```text
+id
+business_id
+communication_profile_id
+channel_type
+rule_name
+condition_key
+condition_json nullable
+destination_type
+destination_id nullable
+status
+created_at
+updated_at
+```
+
+Destination examples:
+
+```text
+owner_phone
+staff_user
+employee
+voicemail
+leadhub_task
+```
+
+---
+
+## escalation_rules
+
+Defines urgent or unresolved communication handling.
+
+Suggested fields:
+
+```text
+id
+business_id
+communication_profile_id
+channel_type nullable
+rule_name
+trigger_key
+trigger_json nullable
+severity
+notify_user_id nullable
+create_task
+status
+created_at
+updated_at
+```
+
+Trigger examples:
+
+```text
+urgent_keyword
+missed_call
+unanswered_text
+high_value_lead
+after_hours
+ai_confidence_low
+```
+
+---
 
 ## phone_numbers
 
@@ -2441,6 +2706,8 @@ business_id nullable
 user_id nullable
 employee_id nullable
 twilio_phone_number_sid nullable
+provider_key
+provider_phone_number_id nullable
 phone_number
 number_type
 status
@@ -2476,6 +2743,9 @@ duration_seconds nullable
 status
 recording_file_id nullable
 twilio_call_sid nullable
+provider_key
+provider_call_id nullable
+provider_payload_json nullable
 created_at
 updated_at
 ```
@@ -2497,6 +2767,10 @@ to_number
 message_body
 status
 twilio_message_sid nullable
+provider_key
+provider_message_id nullable
+segment_count nullable
+provider_payload_json nullable
 created_at
 updated_at
 ```
