@@ -537,6 +537,59 @@ created_at
 
 ---
 
+## business_profiles
+
+Represents the operational profile for one business. This is the configuration root for 247SP front-office channels.
+
+Suggested fields:
+
+```text
+id
+business_id
+primary_website_id nullable
+primary_domain_id nullable
+primary_phone_number_id nullable
+primary_email_address nullable
+ai_receptionist_enabled
+sms_assistant_enabled
+website_chat_enabled
+leadhub_routing_enabled
+default_transfer_rule_id nullable
+default_escalation_rule_id nullable
+timezone
+business_hours_json nullable
+after_hours_behavior
+emergency_keywords_json nullable
+status
+created_at
+updated_at
+```
+
+Foreign keys:
+
+* `business_profiles.business_id` -> `businesses.id`
+* `business_profiles.primary_website_id` -> `websites.id`
+* `business_profiles.primary_domain_id` -> `domains.id`
+* `business_profiles.primary_phone_number_id` -> `phone_numbers.id`
+* `business_profiles.default_transfer_rule_id` -> `transfer_rules.id`
+* `business_profiles.default_escalation_rule_id` -> `escalation_rules.id`
+
+Indexes:
+
+* Unique: `business_id`
+* Index: `status`
+* Index: `primary_phone_number_id`
+* Index: `primary_website_id`
+
+Rules:
+
+* One business has one active Business Profile.
+* The Business Profile stores business-owned configuration and routing intent.
+* Provider-specific identifiers belong in communications tables, not in `business_profiles`.
+* Website, AI Receptionist, SMS Assistant, Website Chat, LeadHub routing, transfer rules, and escalation rules should all resolve through the Business Profile.
+
+---
+
 # 6. Product Access and Billing Tables
 
 ## modules
@@ -1184,6 +1237,10 @@ Rules:
 * Do not create separate leads/customers tables for v1.
 * A contact must be tied to a business.
 * A contact may later connect to a shared portal user.
+* One contact may have many conversations.
+* One contact may participate across many channels.
+* The unified timeline for a contact should be composed from conversations, conversation messages, calls, call recordings, call transcripts, call summaries, SMS messages, chat messages, AI sessions, notes, tasks, and activity logs.
+* LeadHub contact detail should not depend on a single latest lead record; it should aggregate communication history by `business_id` and `contact_id`.
 
 ---
 
@@ -1476,33 +1533,7 @@ Businesses should be able to choose which notifications they receive.
 
 ## notification_preferences
 
-Suggested fields:
-
-```text
-id
-business_id
-user_id nullable
-event_key
-email_enabled
-sms_enabled
-in_app_enabled
-created_at
-updated_at
-```
-
-Example event keys:
-
-```text
-new_lead
-estimate_viewed
-estimate_accepted
-estimate_change_requested
-invoice_paid
-review_submitted
-appointment_requested
-job_assigned
-call_missed
-```
+The canonical `notification_preferences` schema is defined in the Communications Platform Tables section because 247SP notification preferences now depend on communication channels, LeadHub routing, transfer rules, and escalation rules.
 
 ---
 
@@ -2502,6 +2533,25 @@ Twilio Messaging -> MessagingProviderInterface
 
 Future implementations may replace or supplement these providers without changing Business Profile configuration, LeadHub routing, transfer rules, escalation rules, or customer/admin workflow code.
 
+Design goal:
+
+```text
+One contact
+Many conversations
+Many channels
+One unified timeline
+```
+
+Key relationships:
+
+* `contacts.id` is the LeadHub person/company record.
+* `conversations.contact_id` links a LeadHub contact to many conversation threads.
+* `communication_channels.id` identifies each channel a business uses.
+* `conversation_messages.conversation_id` creates the ordered unified timeline for each conversation.
+* `conversation_messages.contact_id` allows LeadHub to aggregate one contact timeline across all conversations and channels.
+* Source tables such as `calls`, `sms_messages`, `chat_messages`, `call_recordings`, `call_transcripts`, `call_summaries`, `ai_sessions`, and `usage_events` link back to `conversations`, `contacts`, and `communication_channels`.
+* LeadHub contact detail should render one timeline by querying normalized conversation messages and connected source records for the selected `business_id` and `contact_id`.
+
 ## Communications Architecture Diagram
 
 ```mermaid
@@ -2530,34 +2580,183 @@ flowchart TD
   Manager --> LeadHub
 ```
 
-## business_communication_profiles
+## conversations
 
-Represents communication settings for one business profile.
+Represents one conversation thread between a business and one or more participants.
 
 Suggested fields:
 
 ```text
 id
 business_id
-website_enabled
-ai_receptionist_enabled
-sms_assistant_enabled
-website_chat_enabled
-default_voice_provider
-default_messaging_provider
-default_chat_provider
-default_telephony_provider
-leadhub_routing_status
+contact_id nullable
+primary_channel_id nullable
+source_module_id nullable
+conversation_type
+subject nullable
 status
+priority
+assigned_to_user_id nullable
+last_message_at nullable
+last_activity_at nullable
+opened_at nullable
+closed_at nullable
+metadata_json nullable
 created_at
 updated_at
 ```
 
+Conversation types:
+
+```text
+website_form
+voice_call
+sms
+website_chat
+email
+manual
+mixed_channel
+```
+
+Foreign keys:
+
+* `conversations.business_id` -> `businesses.id`
+* `conversations.contact_id` -> `contacts.id`
+* `conversations.primary_channel_id` -> `communication_channels.id`
+* `conversations.source_module_id` -> `modules.id`
+* `conversations.assigned_to_user_id` -> `users.id`
+
+Indexes:
+
+* Index: `business_id, status, last_activity_at`
+* Index: `business_id, contact_id, last_activity_at`
+* Index: `business_id, assigned_to_user_id, status`
+* Index: `primary_channel_id`
+* Index: `conversation_type`
+
 Rules:
 
-* One business should have one active communication profile.
-* This record stores business intent, not provider API implementation details.
-* Provider keys should identify internal adapters, not raw external API classes.
+* A contact may have many conversations.
+* A conversation may begin on one channel and later include messages from other channels.
+* `contact_id` is nullable only until identity matching creates or connects the LeadHub contact.
+* LeadHub contact detail should show conversations as the primary grouped communication record.
+
+---
+
+## conversation_participants
+
+Represents people, users, AI agents, and external endpoints participating in a conversation.
+
+Suggested fields:
+
+```text
+id
+conversation_id
+business_id
+contact_id nullable
+user_id nullable
+ai_agent_id nullable
+participant_type
+display_name nullable
+email nullable
+phone nullable
+external_identifier nullable
+joined_at nullable
+left_at nullable
+created_at
+updated_at
+```
+
+Participant types:
+
+```text
+contact
+business_user
+employee
+ai_agent
+external
+system
+```
+
+Foreign keys:
+
+* `conversation_participants.conversation_id` -> `conversations.id`
+* `conversation_participants.business_id` -> `businesses.id`
+* `conversation_participants.contact_id` -> `contacts.id`
+* `conversation_participants.user_id` -> `users.id`
+* `conversation_participants.ai_agent_id` -> `ai_agents.id`
+
+Indexes:
+
+* Index: `conversation_id, participant_type`
+* Index: `business_id, contact_id`
+* Index: `business_id, user_id`
+* Index: `ai_agent_id`
+
+---
+
+## conversation_messages
+
+Represents normalized messages and timeline entries inside a conversation.
+
+Suggested fields:
+
+```text
+id
+conversation_id
+business_id
+contact_id nullable
+communication_channel_id nullable
+participant_id nullable
+source_record_type nullable
+source_record_id nullable
+message_type
+direction
+body_text nullable
+body_json nullable
+delivery_status nullable
+sent_at nullable
+received_at nullable
+created_at
+updated_at
+```
+
+Message types:
+
+```text
+text
+chat
+call_event
+call_summary
+voicemail
+form_submission
+email
+system_event
+note
+task
+```
+
+Foreign keys:
+
+* `conversation_messages.conversation_id` -> `conversations.id`
+* `conversation_messages.business_id` -> `businesses.id`
+* `conversation_messages.contact_id` -> `contacts.id`
+* `conversation_messages.communication_channel_id` -> `communication_channels.id`
+* `conversation_messages.participant_id` -> `conversation_participants.id`
+
+Indexes:
+
+* Index: `conversation_id, created_at`
+* Index: `business_id, contact_id, created_at`
+* Index: `communication_channel_id, created_at`
+* Index: `source_record_type, source_record_id`
+* Index: `delivery_status`
+
+Rules:
+
+* This table powers the unified timeline.
+* Source-specific tables such as `sms_messages`, `chat_messages`, and `calls` keep provider detail.
+* Every source-specific communication record should create or connect to a `conversation_messages` row.
 
 ---
 
@@ -2570,11 +2769,16 @@ Suggested fields:
 ```text
 id
 business_id
-communication_profile_id
+business_profile_id nullable
 channel_type
 provider_key
 provider_channel_id nullable
 display_name nullable
+address nullable
+phone_number_id nullable
+website_id nullable
+ai_agent_id nullable
+is_primary
 status
 configuration_json nullable
 created_at
@@ -2590,12 +2794,31 @@ sms_assistant
 website_chat
 voice_calling
 professional_email
+manual
 ```
+
+Foreign keys:
+
+* `communication_channels.business_id` -> `businesses.id`
+* `communication_channels.business_profile_id` -> `business_profiles.id`
+* `communication_channels.phone_number_id` -> `phone_numbers.id`
+* `communication_channels.website_id` -> `websites.id`
+* `communication_channels.ai_agent_id` -> `ai_agents.id`
+
+Indexes:
+
+* Index: `business_id, channel_type, status`
+* Index: `provider_key, provider_channel_id`
+* Index: `phone_number_id`
+* Index: `website_id`
+* Index: `ai_agent_id`
 
 Rules:
 
 * Provider channel IDs are stored here for internal services.
 * Customer-facing code should read normalized status and configuration from UBO records.
+* A business may have many channels.
+* A contact may interact through many channels through `conversations` and `conversation_messages`.
 
 ---
 
@@ -2608,8 +2831,9 @@ Suggested fields:
 ```text
 id
 business_id
-communication_profile_id
-channel_type
+business_profile_id nullable
+communication_channel_id nullable
+channel_type nullable
 source_filter nullable
 target_type
 target_id nullable
@@ -2621,9 +2845,22 @@ created_at
 updated_at
 ```
 
+Foreign keys:
+
+* `leadhub_routing_rules.business_id` -> `businesses.id`
+* `leadhub_routing_rules.business_profile_id` -> `business_profiles.id`
+* `leadhub_routing_rules.communication_channel_id` -> `communication_channels.id`
+* `leadhub_routing_rules.assignment_user_id` -> `users.id`
+
+Indexes:
+
+* Index: `business_id, channel_type, status`
+* Index: `communication_channel_id`
+* Index: `assignment_user_id`
+
 Rules:
 
-* Routing rules should support contacts, leads, conversations, tasks, notes, and activity logs.
+* Routing rules should support contacts, conversations, tasks, notes, and activity logs.
 * Default 247SP behavior should route every active channel into LeadHub.
 
 ---
@@ -2637,13 +2874,18 @@ Suggested fields:
 ```text
 id
 business_id
-communication_profile_id
-channel_type
+business_profile_id nullable
+communication_channel_id nullable
+channel_type nullable
 rule_name
 condition_key
 condition_json nullable
 destination_type
-destination_id nullable
+destination_user_id nullable
+destination_employee_id nullable
+destination_phone_number_id nullable
+destination_value nullable
+priority
 status
 created_at
 updated_at
@@ -2657,7 +2899,24 @@ staff_user
 employee
 voicemail
 leadhub_task
+external_phone
 ```
+
+Foreign keys:
+
+* `transfer_rules.business_id` -> `businesses.id`
+* `transfer_rules.business_profile_id` -> `business_profiles.id`
+* `transfer_rules.communication_channel_id` -> `communication_channels.id`
+* `transfer_rules.destination_user_id` -> `users.id`
+* `transfer_rules.destination_employee_id` -> `employees.id`
+* `transfer_rules.destination_phone_number_id` -> `phone_numbers.id`
+
+Indexes:
+
+* Index: `business_id, channel_type, status`
+* Index: `business_profile_id`
+* Index: `communication_channel_id`
+* Index: `priority`
 
 ---
 
@@ -2670,7 +2929,8 @@ Suggested fields:
 ```text
 id
 business_id
-communication_profile_id
+business_profile_id nullable
+communication_channel_id nullable
 channel_type nullable
 rule_name
 trigger_key
@@ -2678,6 +2938,7 @@ trigger_json nullable
 severity
 notify_user_id nullable
 create_task
+task_due_minutes nullable
 status
 created_at
 updated_at
@@ -2694,9 +2955,69 @@ after_hours
 ai_confidence_low
 ```
 
+Foreign keys:
+
+* `escalation_rules.business_id` -> `businesses.id`
+* `escalation_rules.business_profile_id` -> `business_profiles.id`
+* `escalation_rules.communication_channel_id` -> `communication_channels.id`
+* `escalation_rules.notify_user_id` -> `users.id`
+
+Indexes:
+
+* Index: `business_id, channel_type, status`
+* Index: `business_profile_id`
+* Index: `communication_channel_id`
+* Index: `severity`
+
+---
+
+## notification_preferences
+
+Represents business and user notification preferences for communication events.
+
+Suggested fields:
+
+```text
+id
+business_id
+user_id nullable
+communication_channel_id nullable
+event_type
+delivery_channel
+destination_value nullable
+enabled
+quiet_hours_json nullable
+status
+created_at
+updated_at
+```
+
+Delivery channels:
+
+```text
+email
+sms
+in_app
+voice_call
+```
+
+Foreign keys:
+
+* `notification_preferences.business_id` -> `businesses.id`
+* `notification_preferences.user_id` -> `users.id`
+* `notification_preferences.communication_channel_id` -> `communication_channels.id`
+
+Indexes:
+
+* Index: `business_id, event_type, enabled`
+* Index: `user_id, event_type`
+* Index: `communication_channel_id`
+
 ---
 
 ## phone_numbers
+
+Represents phone numbers owned, assigned, or tracked by UBO.
 
 Suggested fields:
 
@@ -2705,12 +3026,17 @@ id
 business_id nullable
 user_id nullable
 employee_id nullable
-twilio_phone_number_sid nullable
+communication_channel_id nullable
 provider_key
 provider_phone_number_id nullable
 phone_number
+e164_phone_number
 number_type
+capabilities_json nullable
+forwarding_number nullable
 status
+provisioned_at nullable
+released_at nullable
 created_at
 updated_at
 ```
@@ -2723,26 +3049,48 @@ user_direct
 employee_direct
 tracking_number
 emd_number
+ai_receptionist
 ```
+
+Foreign keys:
+
+* `phone_numbers.business_id` -> `businesses.id`
+* `phone_numbers.user_id` -> `users.id`
+* `phone_numbers.employee_id` -> `employees.id`
+* `phone_numbers.communication_channel_id` -> `communication_channels.id`
+
+Indexes:
+
+* Unique: `e164_phone_number`
+* Index: `business_id, number_type, status`
+* Index: `provider_key, provider_phone_number_id`
+* Index: `communication_channel_id`
 
 ---
 
-## call_logs
+## calls
+
+Represents one inbound or outbound phone call.
 
 Suggested fields:
 
 ```text
 id
 business_id
-phone_number_id nullable
+conversation_id nullable
 contact_id nullable
+phone_number_id nullable
+communication_channel_id nullable
+ai_session_id nullable
 direction
 from_number
 to_number
+started_at nullable
+answered_at nullable
+ended_at nullable
 duration_seconds nullable
-status
-recording_file_id nullable
-twilio_call_sid nullable
+billable_seconds nullable
+call_status
 provider_key
 provider_call_id nullable
 provider_payload_json nullable
@@ -2750,68 +3098,462 @@ created_at
 updated_at
 ```
 
+Foreign keys:
+
+* `calls.business_id` -> `businesses.id`
+* `calls.conversation_id` -> `conversations.id`
+* `calls.contact_id` -> `contacts.id`
+* `calls.phone_number_id` -> `phone_numbers.id`
+* `calls.communication_channel_id` -> `communication_channels.id`
+* `calls.ai_session_id` -> `ai_sessions.id`
+
+Indexes:
+
+* Index: `business_id, contact_id, started_at`
+* Index: `conversation_id, started_at`
+* Index: `phone_number_id, started_at`
+* Index: `provider_key, provider_call_id`
+* Index: `call_status`
+
 ---
 
-## sms_messages
+## call_recordings
+
+Represents recording metadata for a call.
 
 Suggested fields:
 
 ```text
 id
 business_id
-phone_number_id nullable
+call_id
+file_id nullable
+provider_key
+provider_recording_id nullable
+recording_url nullable
+duration_seconds nullable
+storage_status
+created_at
+updated_at
+```
+
+Foreign keys:
+
+* `call_recordings.business_id` -> `businesses.id`
+* `call_recordings.call_id` -> `calls.id`
+* `call_recordings.file_id` -> `files.id`
+
+Indexes:
+
+* Index: `call_id`
+* Index: `business_id, created_at`
+* Index: `provider_key, provider_recording_id`
+* Index: `storage_status`
+
+---
+
+## call_transcripts
+
+Represents transcript text and structured transcript data for a call.
+
+Suggested fields:
+
+```text
+id
+business_id
+call_id
+provider_key nullable
+provider_transcript_id nullable
+transcript_text nullable
+transcript_json nullable
+language nullable
+confidence_score nullable
+created_at
+updated_at
+```
+
+Foreign keys:
+
+* `call_transcripts.business_id` -> `businesses.id`
+* `call_transcripts.call_id` -> `calls.id`
+
+Indexes:
+
+* Index: `call_id`
+* Index: `business_id, created_at`
+* Index: `provider_key, provider_transcript_id`
+
+---
+
+## call_summaries
+
+Represents human-readable and AI-generated summaries for calls.
+
+Suggested fields:
+
+```text
+id
+business_id
+call_id
+conversation_id nullable
 contact_id nullable
+ai_session_id nullable
+summary_text
+intent nullable
+sentiment nullable
+urgency nullable
+next_action nullable
+created_task_id nullable
+created_note_id nullable
+created_at
+updated_at
+```
+
+Foreign keys:
+
+* `call_summaries.business_id` -> `businesses.id`
+* `call_summaries.call_id` -> `calls.id`
+* `call_summaries.conversation_id` -> `conversations.id`
+* `call_summaries.contact_id` -> `contacts.id`
+* `call_summaries.ai_session_id` -> `ai_sessions.id`
+* `call_summaries.created_task_id` -> `tasks.id`
+* `call_summaries.created_note_id` -> `notes.id`
+
+Indexes:
+
+* Index: `call_id`
+* Index: `conversation_id`
+* Index: `business_id, contact_id, created_at`
+* Index: `urgency`
+
+---
+
+## sms_messages
+
+Represents provider-level SMS/MMS messages.
+
+Suggested fields:
+
+```text
+id
+business_id
+conversation_id nullable
+conversation_message_id nullable
+contact_id nullable
+phone_number_id nullable
+communication_channel_id nullable
 direction
 from_number
 to_number
 message_body
-status
-twilio_message_sid nullable
+media_json nullable
+delivery_status
 provider_key
 provider_message_id nullable
-segment_count nullable
+segment_count
+sent_at nullable
+received_at nullable
 provider_payload_json nullable
 created_at
 updated_at
 ```
 
+Foreign keys:
+
+* `sms_messages.business_id` -> `businesses.id`
+* `sms_messages.conversation_id` -> `conversations.id`
+* `sms_messages.conversation_message_id` -> `conversation_messages.id`
+* `sms_messages.contact_id` -> `contacts.id`
+* `sms_messages.phone_number_id` -> `phone_numbers.id`
+* `sms_messages.communication_channel_id` -> `communication_channels.id`
+
+Indexes:
+
+* Index: `business_id, contact_id, created_at`
+* Index: `conversation_id, created_at`
+* Index: `phone_number_id, created_at`
+* Index: `provider_key, provider_message_id`
+* Index: `delivery_status`
+
 ---
 
-## voicemail_messages
+## chat_messages
+
+Represents website chat messages and provider-level chat events.
 
 Suggested fields:
 
 ```text
 id
 business_id
-phone_number_id nullable
+conversation_id nullable
+conversation_message_id nullable
 contact_id nullable
-caller_number
-transcription_text nullable
-recording_file_id nullable
-status
+communication_channel_id nullable
+ai_session_id nullable
+visitor_session_id nullable
+direction
+sender_type
+message_body nullable
+message_json nullable
+delivery_status nullable
+provider_key nullable
+provider_message_id nullable
+sent_at nullable
+received_at nullable
 created_at
 updated_at
 ```
 
+Foreign keys:
+
+* `chat_messages.business_id` -> `businesses.id`
+* `chat_messages.conversation_id` -> `conversations.id`
+* `chat_messages.conversation_message_id` -> `conversation_messages.id`
+* `chat_messages.contact_id` -> `contacts.id`
+* `chat_messages.communication_channel_id` -> `communication_channels.id`
+* `chat_messages.ai_session_id` -> `ai_sessions.id`
+
+Indexes:
+
+* Index: `business_id, contact_id, created_at`
+* Index: `conversation_id, created_at`
+* Index: `communication_channel_id, created_at`
+* Index: `ai_session_id`
+* Index: `provider_key, provider_message_id`
+
 ---
 
-## call_routing_rules
+## ai_agents
+
+Represents configured AI agents for voice, SMS, and chat.
 
 Suggested fields:
 
 ```text
 id
 business_id
-phone_number_id
-rule_name
-routing_type
-destination_type
-destination_id nullable
+business_profile_id nullable
+communication_channel_id nullable
+agent_type
+provider_key
+provider_agent_id nullable
+name
+instructions_json nullable
+voice_settings_json nullable
+handoff_settings_json nullable
 status
 created_at
 updated_at
 ```
+
+Agent types:
+
+```text
+voice_receptionist
+sms_assistant
+website_chat
+follow_up_assistant
+```
+
+Foreign keys:
+
+* `ai_agents.business_id` -> `businesses.id`
+* `ai_agents.business_profile_id` -> `business_profiles.id`
+* `ai_agents.communication_channel_id` -> `communication_channels.id`
+
+Indexes:
+
+* Index: `business_id, agent_type, status`
+* Index: `provider_key, provider_agent_id`
+* Index: `communication_channel_id`
+
+---
+
+## ai_sessions
+
+Represents one AI interaction session.
+
+Suggested fields:
+
+```text
+id
+business_id
+ai_agent_id
+conversation_id nullable
+contact_id nullable
+communication_channel_id nullable
+session_type
+provider_key
+provider_session_id nullable
+started_at nullable
+ended_at nullable
+status
+input_tokens nullable
+output_tokens nullable
+metadata_json nullable
+created_at
+updated_at
+```
+
+Foreign keys:
+
+* `ai_sessions.business_id` -> `businesses.id`
+* `ai_sessions.ai_agent_id` -> `ai_agents.id`
+* `ai_sessions.conversation_id` -> `conversations.id`
+* `ai_sessions.contact_id` -> `contacts.id`
+* `ai_sessions.communication_channel_id` -> `communication_channels.id`
+
+Indexes:
+
+* Index: `business_id, started_at`
+* Index: `ai_agent_id, started_at`
+* Index: `conversation_id`
+* Index: `provider_key, provider_session_id`
+* Index: `status`
+
+---
+
+## ai_usage
+
+Represents measured AI usage from sessions and provider events.
+
+Suggested fields:
+
+```text
+id
+business_id
+ai_agent_id nullable
+ai_session_id nullable
+conversation_id nullable
+usage_type
+quantity
+unit
+provider_key nullable
+provider_usage_id nullable
+usage_started_at nullable
+usage_ended_at nullable
+created_at
+updated_at
+```
+
+Usage types:
+
+```text
+ai_voice_minutes
+ai_chat_responses
+ai_sms_responses
+tokens
+```
+
+Foreign keys:
+
+* `ai_usage.business_id` -> `businesses.id`
+* `ai_usage.ai_agent_id` -> `ai_agents.id`
+* `ai_usage.ai_session_id` -> `ai_sessions.id`
+* `ai_usage.conversation_id` -> `conversations.id`
+
+Indexes:
+
+* Index: `business_id, usage_type, usage_started_at`
+* Index: `ai_session_id`
+* Index: `provider_key, provider_usage_id`
+
+---
+
+## usage_events
+
+Represents normalized usage events before billing aggregation.
+
+Suggested fields:
+
+```text
+id
+business_id
+module_id nullable
+conversation_id nullable
+communication_channel_id nullable
+source_record_type
+source_record_id
+usage_category
+quantity
+unit
+occurred_at
+billing_period_start nullable
+billing_period_end nullable
+status
+created_at
+updated_at
+```
+
+Usage categories:
+
+```text
+ai_minutes
+outbound_owner_minutes
+sms_segments
+ai_chat_responses
+```
+
+Foreign keys:
+
+* `usage_events.business_id` -> `businesses.id`
+* `usage_events.module_id` -> `modules.id`
+* `usage_events.conversation_id` -> `conversations.id`
+* `usage_events.communication_channel_id` -> `communication_channels.id`
+
+Indexes:
+
+* Index: `business_id, usage_category, occurred_at`
+* Index: `business_id, billing_period_start, billing_period_end`
+* Index: `source_record_type, source_record_id`
+* Index: `status`
+
+---
+
+## billing_usage
+
+Represents billing-period usage totals and overage calculations.
+
+Suggested fields:
+
+```text
+id
+business_id
+subscription_id nullable
+module_id nullable
+billing_period_start
+billing_period_end
+usage_category
+included_quantity
+used_quantity
+overage_quantity
+unit
+unit_price_cents nullable
+overage_total_cents nullable
+status
+created_at
+updated_at
+```
+
+Foreign keys:
+
+* `billing_usage.business_id` -> `businesses.id`
+* `billing_usage.subscription_id` -> `subscriptions.id`
+* `billing_usage.module_id` -> `modules.id`
+
+Indexes:
+
+* Unique: `business_id, billing_period_start, billing_period_end, usage_category`
+* Index: `subscription_id, billing_period_start`
+* Index: `module_id, usage_category`
+* Index: `status`
+
+Rules:
+
+* `usage_events` is the detailed usage ledger.
+* `billing_usage` is the monthly rollup used for allowance and overage reporting.
+* 247SP usage categories map to 200 AI minutes, 500 outbound owner minutes, 500 SMS segments, and 500 AI chat responses unless the active pricing plan overrides them.
 
 ---
 
@@ -3057,6 +3799,7 @@ Codex should start with:
 ```text
 users
 businesses
+business_profiles
 business_users
 employees
 roles
@@ -3088,6 +3831,29 @@ Then:
 portal_users
 client_business_relationships
 customer_portal_tokens
+```
+
+Then communications platform tables:
+
+```text
+communication_channels
+conversations
+conversation_participants
+conversation_messages
+phone_numbers
+calls
+call_recordings
+call_transcripts
+call_summaries
+sms_messages
+chat_messages
+ai_agents
+ai_sessions
+ai_usage
+transfer_rules
+escalation_rules
+usage_events
+billing_usage
 ```
 
 Feature-specific tables should come after the platform foundation is working.
@@ -3123,7 +3889,7 @@ Codex must follow these rules:
 23. Build notification support as a shared platform layer.
 24. Separate employees from users.
 25. Not every employee needs a login.
-26. Preserve future support for Twilio phone numbers, SMS, call routing, voicemail, and call logs.
+26. Preserve future support for provider-abstracted phone numbers, SMS, AI voice, AI chat, call routing, transfer rules, escalation rules, usage events, and billing usage.
 27. Preserve future support for field tech workflows.
 28. Preserve future support for mobile apps and APIs.
 29. Keep the schema understandable and maintainable for a solo founder.
