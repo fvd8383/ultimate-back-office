@@ -18,9 +18,9 @@ Ultimate Back Office has three commercial levels:
 2. Full OS
 3. Enterprise
 
-Lead Hub is the central dashboard and CRM layer for all products.
+LeadHub is the central dashboard, CRM, and unified conversation layer for all products.
 
-Every business that purchases any module receives Lead Hub access.
+Every business that purchases any module receives LeadHub access.
 
 ---
 
@@ -45,12 +45,13 @@ Know Your Numbers
 
 Rules:
 
-* Lead Hub is included with every purchased module.
+* LeadHub is included with every purchased module.
 * Know Your Numbers requires Super Simple Payments.
-* 24/7 Sales Partner includes Lead Hub.
-* EMD Network includes Lead Hub.
-* Super Simple Payments includes Lead Hub.
-* Tell Us How We Did includes Lead Hub.
+* 24/7 Sales Partner includes LeadHub.
+* EMD Network includes LeadHub.
+* Super Simple Payments includes LeadHub.
+* Tell Us How We Did includes LeadHub.
+* 24/7 Sales Partner also includes a done-for-you website, domain, professional email, local business phone number, AI receptionist, business texting, AI website chat, and unified conversation inbox.
 
 ---
 
@@ -66,7 +67,7 @@ $37/month per additional user
 Full OS includes:
 
 ```text
-Lead Hub
+LeadHub
 24/7 Sales Partner
 EMD access
 Super Simple Payments
@@ -1130,9 +1131,9 @@ specific_enterprise
 
 ---
 
-# 9. Lead Hub Tables
+# 9. LeadHub Tables
 
-Lead Hub is the base dashboard and CRM for all modules.
+LeadHub is the base dashboard, CRM, and unified conversation inbox for all modules.
 
 ## contacts
 
@@ -1161,6 +1162,7 @@ updated_at
 Rules:
 
 * Use contacts with statuses.
+* Store or connect every 247SP communication channel activity to LeadHub, including website forms, AI website chat, business texting, calls, AI receptionist summaries, supported email lead activity, notes, tasks, and follow-up history.
 * Do not create separate leads/customers tables for v1.
 * A contact must be tied to a business.
 * A contact may later connect to a shared portal user.
@@ -1893,6 +1895,8 @@ Rules:
 
 # 15. 24/7 Sales Partner Tables
 
+24/7 Sales Partner is a digital front-office platform, not just a website builder. Database planning for 247SP should account for the done-for-you website, domain, professional email, local business phone number, AI receptionist, business texting, AI website chat, LeadHub CRM records, and unified conversation inbox records.
+
 ## domains
 
 Suggested fields:
@@ -1960,6 +1964,7 @@ Rules:
 * One site gets one domain.
 * Multiple pages are allowed.
 * Multiple websites are not supported for a single business.
+* Website records are one lead-source component inside the broader 247SP front-office product.
 * Additional lead flow comes from EMD or Enterprise.
 
 Current 247SP onboarding also stores service-area settings on `247sp_website_configurations`:
@@ -2017,7 +2022,8 @@ updated_at
 
 Rules:
 
-* Website leads should create or connect to Lead Hub contacts.
+* Website leads should create or connect to LeadHub contacts.
+* AI website chat, business texting, inbound and outbound calls, AI receptionist summaries, and supported email lead activity should create or connect to LeadHub contacts, activities, conversations, notes, or tasks.
 
 ---
 
@@ -2044,7 +2050,7 @@ updated_at
 
 ## email_setup_requests
 
-V1 manual tracking for $25 one-time professional email setup.
+Professional email is included in the current 247SP package. This table tracks setup requests, mailbox lifecycle status, and any future additional mailbox, alias, or advanced email options defined by the active pricing plan, order form, or billing policy.
 
 Suggested fields:
 
@@ -2827,7 +2833,7 @@ Codex must follow these rules:
 7. Do not allow multi-business access unless Enterprise is enabled.
 8. Each Enterprise location/business is its own business record.
 9. Enterprise may also have parent-level expenses.
-10. Keep Lead Hub as the center of the application.
+10. Keep LeadHub as the center of the application.
 11. Design customer interactions around secure token links in v1.
 12. Preserve future support for full customer portal login.
 13. Preserve future support for customers interacting with multiple businesses.

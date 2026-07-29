@@ -2,9 +2,23 @@
 
 ## Product Overview
 
-24/7 Sales Partner (247SP) is a website and lead tracking platform for local service businesses.
+24/7 Sales Partner (247SP) is a complete digital front-office platform for small local service businesses.
 
-The goal is to provide a professional online presence that works as a 24/7 salesperson for the business owner.
+The goal is to help a business generate leads, capture leads, respond immediately, organize every conversation, and follow up until each opportunity is won or lost.
+
+247SP includes the front-office tools a small service business needs to look established and respond quickly:
+
+* Done-for-you website
+* Domain
+* Professional email
+* Local business phone number
+* AI receptionist
+* Business texting
+* AI website chat
+* LeadHub CRM
+* Unified conversation inbox
+
+LeadHub is the central system of record for every 247SP communication channel. Website forms, website chat, calls, texts, AI receptionist interactions, email-related lead activity, manual notes, tasks, and follow-up activity should create or connect to LeadHub records.
 
 247SP is both:
 
@@ -31,43 +45,97 @@ Primary audience:
 Characteristics:
 
 * 1–10 employees
-* Little or no website experience
-* Needs an affordable online presence
-* Wants more leads
+* Little or no digital marketing or CRM experience
+* Needs an affordable, professional front office
+* Wants more leads and faster response times
+* Needs one place to manage calls, texts, chats, forms, email, and follow-up
 
 ---
 
 # Pricing
 
-## Setup Fee
+## Founding Customers
 
-$100 one-time
+Setup fee:
+
+$249 one-time
+
+Monthly fee:
+
+$99/month
 
 Includes:
 
-* Website setup
-* Domain connection
+* Done-for-you website setup
+* Domain setup or connection
+* Professional email setup
+* Local business phone number setup
+* AI receptionist setup
+* Business texting setup
+* AI website chat setup
+* LeadHub CRM setup
+* Unified conversation inbox setup
 * Initial configuration
 
 ---
 
-## Monthly Fee
+## Standard
 
-$47/month
+Setup fee:
+
+$249 one-time
+
+Monthly fee:
+
+$129/month
 
 Includes:
 
-* 247SP website
-* Lead Hub access
-* 1 business mailbox
+* Done-for-you website
+* Domain
+* Professional email
+* Local business phone number
+* AI receptionist
+* Business texting
+* AI website chat
+* LeadHub CRM
+* Unified conversation inbox
 * Basic SEO setup
 * Google Analytics tracking
 
 ---
 
-## Additional Emails
+## Included Usage Allowances
 
-$3/month per mailbox
+Each active 247SP subscription includes:
+
+* 200 AI minutes
+* 500 outbound owner minutes
+* 500 SMS segments
+* 500 AI chat responses
+
+Included usage is measured per billing month and does not roll over.
+
+---
+
+## Overage Policy
+
+Usage above the included monthly allowances is billed as overage usage.
+
+Overage categories:
+
+* AI receptionist minutes above 200 AI minutes
+* Outbound owner calling minutes above 500 minutes
+* SMS segments above 500 segments
+* AI website chat responses above 500 responses
+
+Overage rates must be published in the active pricing plan, order form, or billing policy before launch. Do not present unlimited AI, calling, texting, or chat usage unless the customer has a written plan that explicitly includes it.
+
+---
+
+## Additional Professional Email
+
+Professional email is included in the 247SP package. Additional mailboxes, aliases, or advanced email features may be billed separately when an active pricing policy defines them.
 
 ---
 
@@ -214,6 +282,24 @@ Use 247SP defaults.
 
 ---
 
+# Front-Office Platform Components
+
+247SP is not just a website builder. The website is one lead source inside a broader front-office system.
+
+Core components:
+
+* Done-for-you website: a professionally prepared local service website designed to convert visitors into calls, chats, texts, and form submissions.
+* Domain: a new 247SP-purchased domain or a customer-owned domain connected to the platform.
+* Professional email: customer-facing business email tied to the business domain.
+* Local business phone number: a business number used for customer calls, AI receptionist handling, owner callbacks, and business texting.
+* AI receptionist: immediate phone response for inbound callers, with call outcomes stored in LeadHub.
+* Business texting: SMS conversations tied to LeadHub contacts and opportunities.
+* AI website chat: website chat responses that qualify visitors and capture contact details.
+* LeadHub CRM: the system of record for contacts, opportunities, statuses, notes, tasks, activities, and follow-up.
+* Unified conversation inbox: one inbox for website forms, AI chat, calls, texts, AI receptionist summaries, and future supported channels.
+
+---
+
 # Website Structure
 
 Every site includes:
@@ -324,9 +410,9 @@ Includes:
 
 ---
 
-# Lead Tracking
+# Lead Capture
 
-All contact forms generate leads.
+Website forms, AI website chat, inbound calls, AI receptionist interactions, business texts, and supported email lead activity generate or update LeadHub records.
 
 Store:
 
@@ -334,38 +420,62 @@ Store:
 * Email
 * Phone
 * Message
-* Source Page
-* Date Submitted
+* Source channel
+* Source page or conversation reference when available
+* Date submitted or received
+* Conversation summary when available
+* Assigned owner when available
 
 ---
 
-# Lead Hub Integration
+# LeadHub CRM
 
-Every lead automatically appears in Lead Hub.
+Every lead and conversation automatically appears in LeadHub.
 
 Lead status:
 
 * New
 * Contacted
+* Scheduled
 * Won
 * Lost
 * Spam
 
+LeadHub is the central system of record for every 247SP communication channel. A contact should not be trapped inside a standalone website form, call log, text thread, chat transcript, or email thread without a corresponding LeadHub record or activity.
+
 ---
 
-# Email
+# Professional Email, Phone, Texting, And AI
 
-Includes:
+247SP includes the business communication foundation needed to respond quickly and track every opportunity.
 
-1 mailbox
+Professional email:
 
-Examples:
+* Includes business email tied to the customer domain.
+* Supports customer-facing addresses such as [info@business.com](mailto:info@business.com) or [support@business.com](mailto:support@business.com).
+* Email-related lead activity should connect to LeadHub when supported by the active implementation.
 
-[info@business.com](mailto:info@business.com)
+Local business phone number:
 
-[support@business.com](mailto:support@business.com)
+* Provides a customer-facing phone number for the business.
+* Supports inbound call handling, outbound owner calls, and future call reporting.
 
-Additional mailboxes available.
+AI receptionist:
+
+* Responds immediately to inbound calls when configured.
+* Captures caller details, reason for call, urgency, and next-step context.
+* Stores call summaries and follow-up tasks in LeadHub.
+
+Business texting:
+
+* Supports SMS conversations with leads and customers.
+* Stores text activity in the unified conversation inbox and LeadHub.
+
+AI website chat:
+
+* Responds to website visitors.
+* Captures lead details.
+* Creates or updates LeadHub records.
 
 ---
 
@@ -408,9 +518,15 @@ Customer can view:
 
 * Website status
 * Domain status
-* Lead count
-* Recent leads
-* Email count
+* Professional email status
+* Business phone status
+* AI receptionist status
+* Business texting status
+* AI website chat status
+* LeadHub lead and opportunity counts
+* Recent conversations
+* Unified inbox activity
+* Usage allowance status
 
 ---
 
@@ -432,7 +548,6 @@ Not part of Sprint 3.
 
 Future items:
 
-* AI content generation
 * Multiple templates
 * Blog support
 * Online scheduling
@@ -459,11 +574,14 @@ Site generation will be Sprint 4.
 
 247SP Package Rules
 
-- 247SP automatically includes Lead Hub access.
-- Customers do not see Lead Hub as a separate product.
-- Every 247SP lead is automatically stored in Lead Hub.
+- 247SP automatically includes LeadHub CRM access.
+- Customers do not see LeadHub as a separate product purchase.
+- Every 247SP lead, conversation, call, text, chat, form submission, and supported email lead activity is automatically stored in or connected to LeadHub.
 - One business per account unless Enterprise is active.
-- One included mailbox per 247SP subscription.
+- Professional email is included in each 247SP subscription.
+- A local business phone number is included in each 247SP subscription.
 - Basic SEO setup and Google Analytics tracking are included in the 247SP monthly package.
-- Additional mailboxes are billed separately.
+- Usage allowances include 200 AI minutes, 500 outbound owner minutes, 500 SMS segments, and 500 AI chat responses per billing month.
+- Usage above included allowances is billed as overage usage according to the active pricing plan, order form, or billing policy.
+- Additional mailboxes, aliases, or advanced email features may be billed separately when defined by the active pricing policy.
 - Customers may purchase a domain through 247SP or connect an existing domain.

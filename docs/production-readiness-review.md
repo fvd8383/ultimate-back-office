@@ -21,11 +21,17 @@ Current platform status:
 * Sprint 8.5 UX/Application Shell/Admin QA: Complete
 * Sprint 8.5 Documentation: Complete
 
+Current product positioning:
+
+24/7 Sales Partner is a digital front-office platform for small service businesses. It includes a done-for-you website, domain, professional email, local business phone number, AI receptionist, business texting, AI website chat, LeadHub CRM, and a unified conversation inbox.
+
+LeadHub is the central system of record for every 247SP communication channel.
+
 Overall Readiness:
 
 Not yet ready for first paying customer.
 
-Roadmap priority has narrowed to 247SP launch readiness. New module development is paused until 24/7 Sales Partner is ready for a first paying customer. EMD, SSP, TUHWD, and other future modules are deferred until after 247SP can collect payment, publish a customer site, capture leads into Lead Hub, provision domain/email workflows, and operate in production.
+Roadmap priority has narrowed to 247SP launch readiness. New module development is paused until 24/7 Sales Partner is ready for a first paying customer. EMD, SSP, TUHWD, and other future modules are deferred until after 247SP can collect payment, publish a customer site, capture and respond to leads, provision domain/email/phone/text/chat workflows, store every communication in LeadHub, and operate in production.
 
 Current readiness estimate based on 247SP only:
 
@@ -39,9 +45,9 @@ Sprint 8.5 is complete. The remaining work is not Sprint 8.5 UX polish; it is th
 
 1. Sprint 8.5: UX/Application Shell/Admin QA - Complete
 2. Sprint 9: Stripe Payment Integration
-3. Sprint 10: 247SP Lead Capture -> Lead Hub
+3. Sprint 10: 247SP Lead Capture -> LeadHub
 4. Sprint 11: Domain Automation
-5. Sprint 12: Email Automation
+5. Sprint 12: Email, Phone, Texting, And AI Channel Automation
 6. Sprint 13: Production Readiness / First Customer Pilot
 7. First Paying Customer
 8. Resume future modules: EMD, SSP, TUHWD
@@ -70,7 +76,7 @@ Validate Stripe Checkout for 24/7 Sales Partner customer payments, apply the Str
 
 ---
 
-## 247SP Lead Capture -> Lead Hub
+## 247SP Lead Capture -> LeadHub
 
 Severity: Critical
 
@@ -78,15 +84,35 @@ Status: Not Started
 
 Issue:
 
-Generated 247SP websites do not yet create Lead Hub records from public website lead submissions.
+Generated 247SP websites do not yet create LeadHub records from public website lead submissions.
 
 Impact:
 
-The website cannot complete the core customer value loop of turning visitor inquiries into actionable leads.
+247SP cannot complete the core customer value loop of turning visitor inquiries into actionable leads and follow-up tasks.
 
 Recommended Action:
 
-Implement public lead capture that creates Lead Hub contacts, activity, and any required follow-up records with validation and spam controls.
+Implement public lead capture that creates LeadHub contacts, activity, and any required follow-up records with validation and spam controls.
+
+---
+
+## Unified Conversation Inbox
+
+Severity: Critical
+
+Status: Not Started
+
+Issue:
+
+247SP now includes a unified conversation inbox, but the current platform does not yet consolidate website forms, AI chat, calls, texts, AI receptionist summaries, and supported email lead activity into one customer-facing inbox.
+
+Impact:
+
+Customers cannot reliably organize every conversation or follow up from one operating surface.
+
+Recommended Action:
+
+Define and implement the LeadHub conversation model, channel attribution, assignment workflow, unread/needs-response states, filtering, and activity timeline behavior.
 
 ---
 
@@ -110,23 +136,23 @@ Apply the domain services migration, configure Namecheap sandbox credentials and
 
 ---
 
-## Email Automation
+## Email, Phone, Texting, And AI Channel Automation
 
 Severity: Critical
 
-Status: Foundation Complete, Automation Pending
+Status: Email Foundation Complete, Phone/Text/AI Channel Foundation Pending
 
 Issue:
 
-Email request tracking exists, but mailbox provisioning, setup confirmation, and customer login instructions are not automated.
+Email request tracking exists, but mailbox provisioning, setup confirmation, and customer login instructions are not automated. Local business phone number provisioning, business texting, AI receptionist, AI website chat, usage tracking, and channel setup workflows are not yet production-ready.
 
 Impact:
 
-The first customer cannot receive the expected 247SP email setup without manual handling.
+The first customer cannot receive the expected 247SP front-office setup without manual handling.
 
 Recommended Action:
 
-Complete email provisioning automation, admin/customer status visibility, login instructions, and support workflow QA.
+Complete email provisioning automation, local phone provisioning, texting setup, AI receptionist setup, AI website chat setup, usage allowance tracking, admin/customer status visibility, login instructions, and support workflow QA.
 
 ---
 
@@ -259,6 +285,7 @@ Missing:
 * Welcome Email
 * Domain Status Notifications
 * Email Status Notifications
+* Phone/Text/Chat Status Notifications
 * Lead Capture Notifications
 * Payment Failure Notifications
 
@@ -377,21 +404,27 @@ Customer can:
 * Request Email
 * View Billing Status
 * Navigate Customer Dashboard
+* Capture public website leads into LeadHub when the current lead-submit path is active
 
 Customer cannot yet:
 
 * Use Stripe payment in production before staging validation is complete
 * Publish a customer domain through the launch workflow
-* Submit a public website lead that creates Lead Hub records
 * Receive automated business email provisioning
+* Receive automated local business phone number provisioning
+* Use production-ready business texting
+* Use production-ready AI receptionist handling
+* Use production-ready AI website chat
+* Manage all channels through a unified conversation inbox
 * Be supported in a fully reviewed production environment
 
 Primary Blockers:
 
 * Payment Processing
-* 247SP Lead Capture -> Lead Hub
+* 247SP Lead Capture -> LeadHub staging validation
+* Unified Conversation Inbox
 * Domain Publishing / Automation staging validation
-* Email Automation
+* Email, Phone, Texting, And AI Channel Automation
 * Production Deployment Readiness
 
 ---
@@ -412,9 +445,9 @@ No new module implementation should be prioritized ahead of the 247SP launch blo
 # Recommended Next Roadmap
 
 1. Sprint 9: Stripe Payment Integration
-2. Sprint 10: 247SP Lead Capture -> Lead Hub
+2. Sprint 10: 247SP Lead Capture -> LeadHub
 3. Sprint 11: Domain Automation
-4. Sprint 12: Email Automation
+4. Sprint 12: Email, Phone, Texting, And AI Channel Automation
 5. Sprint 13: Production Readiness / First Customer Pilot
 6. First Paying Customer
 7. Resume Future Modules: EMD, SSP, TUHWD
@@ -430,9 +463,10 @@ Current Readiness Estimate:
 Primary Remaining Blockers:
 
 * Payment Processing
-* 247SP Lead Capture -> Lead Hub
+* 247SP Lead Capture -> LeadHub
+* Unified Conversation Inbox
 * Domain Publishing / Automation
-* Email Automation
+* Email, Phone, Texting, And AI Channel Automation
 * Production Deployment Readiness
 
 Secondary Blockers:

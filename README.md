@@ -1,6 +1,10 @@
 # Ultimate Back Office
 
-Ultimate Back Office is a raw PHP/LAMP business operating platform for service businesses. It includes the Accounts area, persistent workspace shell, Lead Hub, 24/7 Sales Partner, admin tools, and the supporting business, billing, domain, email, and website-management foundations.
+Ultimate Back Office is a raw PHP/LAMP business operating platform for service businesses. It includes the Accounts area, persistent workspace shell, LeadHub, 24/7 Sales Partner, admin tools, and the supporting business, billing, domain, email, phone, texting, AI reception, AI chat, and website-management foundations.
+
+24/7 Sales Partner is the current launch product. It is a digital front-office platform for small service businesses, not just a website builder. It includes a done-for-you website, domain, professional email, local business phone number, AI receptionist, business texting, AI website chat, LeadHub CRM, and a unified conversation inbox.
+
+LeadHub is the central system of record for every 247SP communication channel.
 
 ## Environment Configuration
 
@@ -106,7 +110,7 @@ Then run the Sprint 6 billing foundation migration:
 mysql -h DB_HOST -P DB_PORT -u DB_USER -p DB_NAME < database/migrations/008_billing_foundation.sql
 ```
 
-The Sprint 6 migration adds local billing foundation tables for `plans`, `subscriptions`, and `payments`. It seeds the 24/7 Sales Partner plan with a $100.00 setup fee and $47.00 monthly fee, then creates trial subscription records for existing businesses with active 247SP access.
+The Sprint 6 migration adds local billing foundation tables for `plans`, `subscriptions`, and `payments`. It originally seeded legacy 24/7 Sales Partner plan values, then created trial subscription records for existing businesses with active 247SP access. Current product pricing is documented below and should be reflected in billing configuration before customer launch.
 
 Then run the Sprint 7 domain workflow migration:
 
@@ -122,7 +126,7 @@ Then run the 247SP pricing and analytics foundation migration:
 mysql -h DB_HOST -P DB_PORT -u DB_USER -p DB_NAME < database/migrations/014_247sp_pricing_analytics.sql
 ```
 
-The pricing and analytics migration updates the 24/7 Sales Partner monthly fee to $47.00 and adds `website_integrations` per-business storage for Google Analytics, Google Search Console, Google Tag Manager, Microsoft Clarity, Meta Pixel, and Google Business Profile references. `website_integrations` is shared by current and future website-enabled products, not scoped only to 247SP.
+The pricing and analytics migration updated legacy 24/7 Sales Partner plan values and adds `website_integrations` per-business storage for Google Analytics, Google Search Console, Google Tag Manager, Microsoft Clarity, Meta Pixel, and Google Business Profile references. Current product pricing is documented below and should be reflected in billing configuration before customer launch. `website_integrations` is shared by current and future website-enabled products, not scoped only to 247SP.
 
 If staging previously applied an earlier version of the pricing and analytics migration, run the legacy website integrations rename migration:
 
@@ -360,9 +364,9 @@ The private preview is available at `public/app/247sp/site-preview.php` for auth
 
 Sprint 4 creates website records and private preview pages only. It does not register domains, modify DNS, provision email, add Stripe billing, add analytics, add media uploads, or generate AI content.
 
-## 24/7 Sales Partner Website Management
+## 24/7 Sales Partner Front-Office Management
 
-Sprint 5.5 adds `public/app/247sp/website-manager.php` for customers with active 247SP access.
+Sprint 5.5 adds `public/app/247sp/website-manager.php` for customers with active 247SP access. The current product direction treats website management as one part of the broader 247SP front-office platform.
 
 The Website Manager supports:
 
@@ -457,7 +461,21 @@ Integrations settings cover Google Analytics, Google Search Console, Google Tag 
 
 Website integration values are stored in `website_integrations` so the same foundation can support future website-enabled products without product-specific table names.
 
-24/7 Sales Partner is priced at a $100 setup fee and $47/month. The monthly package includes the 247SP website, Lead Hub access, one business mailbox, basic SEO setup, and Google Analytics tracking. Basic SEO setup means customer-friendly site structure, service-page copy support, page titles, and launch-ready metadata foundations; it does not include Search Console API integration, SEO reporting dashboards, ranking trackers, or ongoing SEO service workflows.
+24/7 Sales Partner pricing:
+
+- Founding Customers: $249 setup and $99/month.
+- Standard: $249 setup and $129/month.
+
+The monthly package includes the done-for-you website, domain, professional email, local business phone number, AI receptionist, business texting, AI website chat, LeadHub CRM, unified conversation inbox, basic SEO setup, and Google Analytics tracking. Basic SEO setup means customer-friendly site structure, service-page copy support, page titles, and launch-ready metadata foundations; it does not include Search Console API integration, SEO reporting dashboards, ranking trackers, or ongoing SEO service workflows.
+
+Included monthly usage allowances:
+
+- 200 AI minutes.
+- 500 outbound owner minutes.
+- 500 SMS segments.
+- 500 AI chat responses.
+
+Usage above the included allowances is billed as overage usage. Overage categories are AI receptionist minutes, outbound owner calling minutes, SMS segments, and AI website chat responses above the included monthly allowances. Overage rates must be published in the active pricing plan, order form, or billing policy before launch.
 
 Google Analytics tracking is stored per business website through the admin website editor. When a valid Measurement ID such as `G-XXXXXXXXXX` exists, the 247SP preview and generated/published site rendering include the GA script in the page head. When no Measurement ID exists, the script is omitted. This foundation covers pageview tracking; Search Console API access, Tag Manager rendering, Meta Pixel rendering, Clarity rendering, ranking reports, analytics dashboards, and custom conversion events are outside this scope.
 
