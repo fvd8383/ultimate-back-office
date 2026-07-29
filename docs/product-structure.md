@@ -47,6 +47,8 @@ User
   ↓
 Business
   ↓
+Business Profile
+  ↓
 Modules / Products
   ↓
 Product Configuration
@@ -59,6 +61,113 @@ A user may own or manage one or more businesses.
 A business may have one or more active modules.
 
 Subscriptions represent the products and services connected to an account or business. Billing represents financial records such as payment status, invoices, charges, and fees. These are related but separate surfaces in the account navigation.
+
+---
+
+# Business Profile Architecture
+
+The Business Profile is the primary configuration root for a business. 247SP and future communications features should read from the Business Profile instead of creating separate disconnected setup records for each channel.
+
+One Business Profile configures:
+
+* Website
+* AI Receptionist
+* SMS Assistant
+* Website Chat
+* LeadHub routing
+* Transfer rules
+* Escalation rules
+
+Business Profile configuration should answer:
+
+* which channels are active
+* which phone number, domain, email, and website belong to the business
+* how inbound conversations are routed into LeadHub
+* when AI can respond automatically
+* when a conversation transfers to the owner or staff
+* when a lead escalates because it is urgent, unanswered, high-value, or outside AI handling rules
+
+Business Profile records own business-level intent and rules. Provider-specific IDs, tokens, webhook payloads, and API responses belong in provider-specific communication records behind internal UBO services.
+
+---
+
+# Communications Platform Architecture
+
+247SP includes a shared communications layer for AI voice, SMS, AI website chat, and phone-number/call infrastructure. The communications layer should follow the same architectural pattern as Domain Services:
+
+```text
+Business Profile
+  ↓
+CommunicationsManager
+  ↓
+Provider Interfaces
+  ↓
+Provider Adapters
+  ↓
+External Providers
+```
+
+`CommunicationsManager` is the future internal orchestration service for channel setup, provider selection, routing, usage tracking, webhook normalization, and LeadHub record creation.
+
+All external communications providers must be accessed through internal UBO services. Application routes, admin pages, customer pages, public webhooks, and LeadHub screens must not call Retell, Twilio, or future provider APIs directly.
+
+Provider interfaces:
+
+* `VoiceProviderInterface`: AI voice agent configuration, call session handling, transcripts, summaries, handoff metadata, usage minutes, and webhook normalization.
+* `MessagingProviderInterface`: SMS/MMS sending, inbound message parsing, delivery status, segment counts, opt-out handling, and webhook normalization.
+* `ChatProviderInterface`: AI website chat sessions, visitor messages, AI responses, transcripts, lead capture events, usage counts, and webhook normalization.
+* `TelephonyProviderInterface`: local phone number search/provisioning, inbound call routing, outbound calls, call status, recordings, voicemail metadata, and webhook normalization.
+
+Initial provider adapters:
+
+* Retell Voice implements `VoiceProviderInterface`.
+* Retell Chat implements `ChatProviderInterface`.
+* Twilio Voice implements `TelephonyProviderInterface`.
+* Twilio Messaging implements `MessagingProviderInterface`.
+
+Future providers may implement the same interfaces without changing Business Profile rules, LeadHub routing behavior, customer navigation, or admin workflow code.
+
+---
+
+# Architecture Diagram
+
+```mermaid
+flowchart TD
+  User["User"]
+  Business["Business"]
+  Profile["Business Profile"]
+  Website["Website"]
+  AIReceptionist["AI Receptionist"]
+  SMSAssistant["SMS Assistant"]
+  WebsiteChat["Website Chat"]
+  Routing["LeadHub Routing"]
+  Transfer["Transfer Rules"]
+  Escalation["Escalation Rules"]
+  Comms["CommunicationsManager"]
+  Interfaces["Provider Interfaces"]
+  Providers["Retell Voice / Retell Chat / Twilio Voice / Twilio Messaging"]
+  LeadHub["LeadHub CRM and Unified Inbox"]
+
+  User --> Business
+  Business --> Profile
+  Profile --> Website
+  Profile --> AIReceptionist
+  Profile --> SMSAssistant
+  Profile --> WebsiteChat
+  Profile --> Routing
+  Profile --> Transfer
+  Profile --> Escalation
+  AIReceptionist --> Comms
+  SMSAssistant --> Comms
+  WebsiteChat --> Comms
+  Comms --> Interfaces
+  Interfaces --> Providers
+  Website --> LeadHub
+  Comms --> LeadHub
+  Routing --> LeadHub
+  Transfer --> LeadHub
+  Escalation --> LeadHub
+```
 
 ---
 
@@ -146,6 +255,7 @@ In Standalone Module Mode, 247SP appears as "24/7 Sales Partner" in WORKSPACE na
 * Local business phone number
 * AI receptionist
 * Business texting
+* SMS Assistant
 * AI website chat
 * LeadHub CRM
 * Unified conversation inbox
@@ -178,6 +288,7 @@ Future 247SP sprints will include:
 * Local business phone number provisioning
 * AI receptionist
 * Business texting
+* SMS Assistant
 * AI website chat
 * Unified conversation inbox
 * Public publishing
