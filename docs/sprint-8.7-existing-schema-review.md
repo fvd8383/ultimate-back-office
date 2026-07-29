@@ -52,6 +52,8 @@ Service-area structures:
 - `247sp_website_configurations.service_area_address`, `service_area_city`, `service_area_state`, `service_area_postal_code`: 247SP website/onboarding service-area fields.
 - `247sp_website_configurations.service_area_radius_miles`, `service_area_radius_is_custom`: added by migration `018`.
 
+Migration `021_shared_business_profile.sql` intentionally does not add `business_profile_service_areas`. The proposed table only duplicated existing scalar service-area fields, and no current application code reads it. Existing service-area fields remain authoritative until a future milestone needs genuinely repeating geographic records such as served ZIP codes, counties, named regions, or exclusions.
+
 The website, onboarding, and LeadHub do not currently use the same service records:
 
 - Account/business onboarding uses `categories`, `sub_services`, `business_sub_services`, and `business_custom_services`.
@@ -241,17 +243,6 @@ Proposed `business_profiles`
 - Migration/backfill: create one row for every existing business; seed display name from `businesses.business_name`; descriptions from `247sp_business_content` where present; timezone nullable or default explicitly documented.
 - Milestone: 2.
 
-Proposed `business_profile_service_areas`
-
-- Purpose: normalize shared service-area rules without deleting current 247SP configuration.
-- Why existing structures cannot fully support it: 247SP service-area fields are website/onboarding-specific and only support address/city/state/postal/radius.
-- Key columns: `id`, `business_id`, `business_profile_id`, `customers_visit_business`, `business_travels_to_customers`, `travel_radius_miles`, `travel_radius_is_custom`, `primary_city`, `primary_state`, `primary_postal_code`, `regions_json`, `excluded_regions_json`, `remote_service_available`, timestamps.
-- Business ownership: `business_id` and `business_profile_id`.
-- Relationships: FKs to `businesses`, `business_profiles`.
-- Indexes: unique `business_profile_id`; index `business_id`; index `primary_city, primary_state` if bounded.
-- Backfill: from `businesses.is_public_physical_location` and `247sp_website_configurations.service_area_*`.
-- Milestone: 2.
-
 Proposed `business_profile_services`
 
 - Purpose: business-owned service facts used by AI/communications and later website generation.
@@ -355,10 +346,10 @@ Sprint 8.7 Milestone 2 should be one focused migration:
 - Migration filename: `021_shared_business_profile.sql`.
 - Reused tables: `businesses`, `categories`, `sub_services`, `business_sub_services`, `business_custom_services`, `247sp_website_configurations`, `247sp_business_content`, `247sp_service_pages`, `activity_logs`.
 - Extended existing tables: none unless a small nullable `businesses` field is proven core. Prefer new profile tables.
-- New tables needed: `business_profiles`, `business_profile_service_areas`, `business_profile_hours`, `business_profile_hour_exceptions`, `business_profile_faqs`, `business_profile_pricing_guidance`, `business_appointment_rules`, `business_transfer_rules`, `business_escalation_rules`, and `business_notification_preferences`.
-- Fields to backfill: profile display name from `businesses.business_name`; short/long description from `247sp_business_content.business_description`/`about_company`; service-area flags/radius/city/state/postal from `businesses` and `247sp_website_configurations`. Do not backfill a second service catalog from website service pages.
-- Expected FKs: every new table should reference `businesses.id`; child tables should reference `business_profiles.id`; optional links to `sub_services.id`, `business_custom_services.id`, and `247sp_business_content.id` should be nullable.
-- Expected indexes: unique `business_profiles.business_id`; child indexes on `business_id`; child indexes on `business_profile_id`; status/sort indexes where list views need them.
+- New tables needed: `business_profiles`, `business_profile_hours`, `business_profile_hour_exceptions`, `business_profile_faqs`, `business_profile_pricing_guidance`, `business_appointment_rules`, `business_transfer_rules`, `business_escalation_rules`, and `business_notification_preferences`.
+- Fields to backfill: profile display name from `businesses.business_name`; short/long description from the lowest-id `247sp_business_content` row for the business. Do not backfill a second service catalog from website service pages or duplicate existing service-area scalar fields.
+- Expected FKs: every new child table should reference `businesses.id`; child tables should reference `business_profiles(id, business_id)` to ensure the stored profile and business cannot disagree; optional links to `sub_services.id` and `business_custom_services.id` should be nullable.
+- Expected indexes: unique `business_profiles.business_id`; unique `business_profiles(id, business_id)` for composite child FKs; child indexes on `business_id`; child indexes on `business_profile_id, business_id`; status/sort indexes where list views need them.
 - Expected rollback or repair approach: additive migration with no destructive moves. If backfill misses fields, add a later repair migration; do not edit 021 after staging applies it.
 - Validation queries: confirm new tables exist; confirm one `business_profiles` row per existing `businesses` row; confirm no duplicate `business_profiles.business_id`; sample profile rows joined to 247SP content/config; confirm FKs and indexes in `information_schema.statistics` and `information_schema.table_constraints`.
 - Regression checks: account business create/edit still loads; 247SP onboarding/review/preview/website-manager still loads; LeadHub leads/contacts/notes/tasks still load; website lead submit still creates contact/note/task/activity; admin business/website editor still loads; billing/domain/email pages still load.
@@ -383,7 +374,7 @@ Task outline:
 2. Do not edit historical migrations `001` through `020`.
 3. Create `database/migrations/021_shared_business_profile.sql`.
 4. Add `business_profiles` with one row per business, nullable draft fields, unique `business_id`, FK to `businesses.id`, status/completeness fields, timestamps, and idempotent backfill from `businesses` and `247sp_business_content`.
-5. Add `business_profile_service_areas` with one row per profile/business, FK to `business_profiles` and `businesses`, backfilled from `businesses.is_public_physical_location` and `247sp_website_configurations.service_area_*`.
+5. Reuse existing service-area fields for travel mode and radius; do not add `business_profile_service_areas` until repeating geographic records are needed.
 6. Add `business_profile_hours` with business/profile/day-of-week structure and no forced complete defaults.
 7. Include profile FAQs, pricing guidance, appointment rules, transfer rules, escalation rules, and notification preferences as provider-neutral child tables.
 8. Update `docs/database-plan.md` and `README.md` migration list with factual migration 021 documentation and validation queries.

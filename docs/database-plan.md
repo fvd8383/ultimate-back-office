@@ -577,13 +577,13 @@ Foreign keys:
 Indexes:
 
 * Unique: `business_id`
+* Unique: `id, business_id`
 * Index: `lifecycle_status`
 * Index: `timezone`
 
 Milestone 2 child tables:
 
 ```text
-business_profile_service_areas
 business_profile_hours
 business_profile_hour_exceptions
 business_profile_faqs
@@ -599,7 +599,7 @@ Backfill:
 * One `business_profiles` row is inserted per existing `businesses` row.
 * `public_display_name` is copied from `businesses.business_name`.
 * `short_description` and `long_description` are copied from `247sp_business_content.business_description` and `247sp_business_content.about_company`.
-* One `business_profile_service_areas` row is inserted per profile and seeded from `businesses.is_public_physical_location`, `businesses.city/state/postal_code/country`, and `247sp_website_configurations.service_area_*`.
+* If unexpected duplicate `247sp_business_content` rows exist for a business, the migration uses the lowest content `id` as the deterministic source row.
 * `timezone` remains nullable; profiles stay in `draft` until explicit profile completion data exists.
 
 Rules:
@@ -609,6 +609,12 @@ Rules:
 * Provider-specific identifiers belong in communications tables, not in `business_profiles`.
 * Website, AI Receptionist, SMS Assistant, Website Chat, LeadHub routing, transfer rules, and escalation rules should all resolve through the Business Profile when their services are implemented.
 * Service references must link to existing `sub_services` or `business_custom_services`; do not create a second service catalog.
+* Existing service-area scalar fields remain authoritative until a future milestone adds genuinely repeating geographic records. Customers-visit mode is stored in `businesses.is_public_physical_location`; business-travels mode and travel radius are stored in `247sp_website_configurations.service_area_business`, `service_area_radius_miles`, and `service_area_radius_is_custom`.
+* Profile child tables store both `business_id` and `business_profile_id`; migration 021 enforces agreement through composite foreign keys to `business_profiles(id, business_id)`.
+* Profile lifecycle values are application-owned strings. The intended set is `draft`, `in_review`, `ready`, `active`, and `incomplete`; the database default is `draft`, and existing businesses are not backfilled as ready or active.
+* Hours rows support closed days, 24-hour days, overnight hours, split shifts, and dated exceptions. Application validation must reject contradictory rows such as closed rows with times, 24-hour rows with times, or rows marked both closed and 24-hour.
+* Appointment, transfer, and escalation rules may reference either a global `sub_services` row or a `business_custom_services` row, or neither for profile-wide rules. Application validation must reject rows that reference both service types and must confirm custom services belong to the same business.
+* Notification destinations are nullable so drafts can be saved. Application readiness validation must treat enabled email or SMS notifications without a destination as incomplete.
 
 ---
 

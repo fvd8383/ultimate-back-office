@@ -228,7 +228,7 @@ After migrations 018 through 020 are in the expected state, run the Sprint 8.7 S
 mysql -h DB_HOST -P DB_PORT -u DB_USER -p DB_NAME < database/migrations/021_shared_business_profile.sql
 ```
 
-Migration 021 creates the provider-neutral Shared Business Profile root and child tables for service areas, hours, FAQs, pricing guidance, appointment rules, transfer rules, escalation rules, and notification preferences. It backfills one draft profile per business from existing `businesses` and 247SP content/configuration records without modifying historical migrations.
+Migration 021 creates the provider-neutral Shared Business Profile root and child tables for hours, FAQs, pricing guidance, appointment rules, transfer rules, escalation rules, and notification preferences. It backfills one draft profile per business from existing `businesses` and 247SP business content without modifying historical migrations. Existing service-area mode and radius fields remain authoritative until a future migration adds genuinely repeating geographic records.
 
 ## Testing OTP Login In Staging
 

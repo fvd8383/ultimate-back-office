@@ -24,35 +24,10 @@ CREATE TABLE business_profiles (
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     UNIQUE KEY uq_business_profiles_business (business_id),
+    UNIQUE KEY uq_business_profiles_id_business (id, business_id),
     INDEX idx_business_profiles_lifecycle (lifecycle_status),
     INDEX idx_business_profiles_timezone (timezone),
     CONSTRAINT fk_business_profiles_business FOREIGN KEY (business_id) REFERENCES businesses (id) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-CREATE TABLE business_profile_service_areas (
-    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    business_id BIGINT UNSIGNED NOT NULL,
-    business_profile_id BIGINT UNSIGNED NOT NULL,
-    customers_visit_business TINYINT(1) NOT NULL DEFAULT 1,
-    business_travels_to_customers TINYINT(1) NOT NULL DEFAULT 0,
-    primary_city VARCHAR(100) NULL,
-    primary_state VARCHAR(100) NULL,
-    primary_postal_code VARCHAR(30) NULL,
-    country VARCHAR(100) NULL,
-    travel_radius_miles INT UNSIGNED NULL,
-    travel_radius_is_custom TINYINT(1) NOT NULL DEFAULT 0,
-    regions_json JSON NULL,
-    excluded_regions_json JSON NULL,
-    remote_service_available TINYINT(1) NOT NULL DEFAULT 0,
-    notes TEXT NULL,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    UNIQUE KEY uq_business_profile_service_areas_business (business_id),
-    UNIQUE KEY uq_business_profile_service_areas_profile (business_profile_id),
-    INDEX idx_business_profile_service_areas_location (primary_state, primary_city),
-    INDEX idx_business_profile_service_areas_travel (business_travels_to_customers),
-    CONSTRAINT fk_business_profile_service_areas_business FOREIGN KEY (business_id) REFERENCES businesses (id) ON DELETE CASCADE,
-    CONSTRAINT fk_business_profile_service_areas_profile FOREIGN KEY (business_profile_id) REFERENCES business_profiles (id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE business_profile_hours (
@@ -69,8 +44,9 @@ CREATE TABLE business_profile_hours (
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     UNIQUE KEY uq_business_profile_hours_profile_day_order (business_profile_id, day_of_week, time_range_order),
     INDEX idx_business_profile_hours_business_day (business_id, day_of_week),
+    INDEX idx_business_profile_hours_profile_business (business_profile_id, business_id),
     CONSTRAINT fk_business_profile_hours_business FOREIGN KEY (business_id) REFERENCES businesses (id) ON DELETE CASCADE,
-    CONSTRAINT fk_business_profile_hours_profile FOREIGN KEY (business_profile_id) REFERENCES business_profiles (id) ON DELETE CASCADE
+    CONSTRAINT fk_business_profile_hours_profile_business FOREIGN KEY (business_profile_id, business_id) REFERENCES business_profiles (id, business_id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE business_profile_hour_exceptions (
@@ -88,8 +64,9 @@ CREATE TABLE business_profile_hour_exceptions (
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     UNIQUE KEY uq_business_profile_hour_exceptions_profile_date_order (business_profile_id, exception_date, time_range_order),
     INDEX idx_business_profile_hour_exceptions_business_date (business_id, exception_date),
+    INDEX idx_business_profile_hour_exceptions_profile_business (business_profile_id, business_id),
     CONSTRAINT fk_business_profile_hour_exceptions_business FOREIGN KEY (business_id) REFERENCES businesses (id) ON DELETE CASCADE,
-    CONSTRAINT fk_business_profile_hour_exceptions_profile FOREIGN KEY (business_profile_id) REFERENCES business_profiles (id) ON DELETE CASCADE
+    CONSTRAINT fk_business_profile_hour_exceptions_profile_business FOREIGN KEY (business_profile_id, business_id) REFERENCES business_profiles (id, business_id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE business_profile_faqs (
@@ -105,8 +82,9 @@ CREATE TABLE business_profile_faqs (
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX idx_business_profile_faqs_business_active_sort (business_id, is_active, sort_order),
     INDEX idx_business_profile_faqs_profile_active_sort (business_profile_id, is_active, sort_order),
+    INDEX idx_business_profile_faqs_profile_business (business_profile_id, business_id),
     CONSTRAINT fk_business_profile_faqs_business FOREIGN KEY (business_id) REFERENCES businesses (id) ON DELETE CASCADE,
-    CONSTRAINT fk_business_profile_faqs_profile FOREIGN KEY (business_profile_id) REFERENCES business_profiles (id) ON DELETE CASCADE
+    CONSTRAINT fk_business_profile_faqs_profile_business FOREIGN KEY (business_profile_id, business_id) REFERENCES business_profiles (id, business_id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE business_profile_pricing_guidance (
@@ -125,8 +103,9 @@ CREATE TABLE business_profile_pricing_guidance (
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX idx_business_profile_pricing_business_active_sort (business_id, is_active, sort_order),
     INDEX idx_business_profile_pricing_profile_type_active (business_profile_id, guidance_type, is_active),
+    INDEX idx_business_profile_pricing_profile_business (business_profile_id, business_id),
     CONSTRAINT fk_business_profile_pricing_business FOREIGN KEY (business_id) REFERENCES businesses (id) ON DELETE CASCADE,
-    CONSTRAINT fk_business_profile_pricing_profile FOREIGN KEY (business_profile_id) REFERENCES business_profiles (id) ON DELETE CASCADE
+    CONSTRAINT fk_business_profile_pricing_profile_business FOREIGN KEY (business_profile_id, business_id) REFERENCES business_profiles (id, business_id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE business_appointment_rules (
@@ -143,10 +122,11 @@ CREATE TABLE business_appointment_rules (
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX idx_business_appointment_rules_business_active_sort (business_id, is_active, sort_order),
     INDEX idx_business_appointment_rules_profile_active_sort (business_profile_id, is_active, sort_order),
+    INDEX idx_business_appointment_rules_profile_business (business_profile_id, business_id),
     INDEX idx_business_appointment_rules_sub_service (sub_service_id),
     INDEX idx_business_appointment_rules_custom_service (business_custom_service_id),
     CONSTRAINT fk_business_appointment_rules_business FOREIGN KEY (business_id) REFERENCES businesses (id) ON DELETE CASCADE,
-    CONSTRAINT fk_business_appointment_rules_profile FOREIGN KEY (business_profile_id) REFERENCES business_profiles (id) ON DELETE CASCADE,
+    CONSTRAINT fk_business_appointment_rules_profile_business FOREIGN KEY (business_profile_id, business_id) REFERENCES business_profiles (id, business_id) ON DELETE CASCADE,
     CONSTRAINT fk_business_appointment_rules_sub_service FOREIGN KEY (sub_service_id) REFERENCES sub_services (id) ON DELETE SET NULL,
     CONSTRAINT fk_business_appointment_rules_custom_service FOREIGN KEY (business_custom_service_id) REFERENCES business_custom_services (id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -171,10 +151,11 @@ CREATE TABLE business_transfer_rules (
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX idx_business_transfer_rules_business_active_priority (business_id, is_active, priority),
     INDEX idx_business_transfer_rules_profile_active_priority (business_profile_id, is_active, priority),
+    INDEX idx_business_transfer_rules_profile_business (business_profile_id, business_id),
     INDEX idx_business_transfer_rules_sub_service (sub_service_id),
     INDEX idx_business_transfer_rules_custom_service (business_custom_service_id),
     CONSTRAINT fk_business_transfer_rules_business FOREIGN KEY (business_id) REFERENCES businesses (id) ON DELETE CASCADE,
-    CONSTRAINT fk_business_transfer_rules_profile FOREIGN KEY (business_profile_id) REFERENCES business_profiles (id) ON DELETE CASCADE,
+    CONSTRAINT fk_business_transfer_rules_profile_business FOREIGN KEY (business_profile_id, business_id) REFERENCES business_profiles (id, business_id) ON DELETE CASCADE,
     CONSTRAINT fk_business_transfer_rules_sub_service FOREIGN KEY (sub_service_id) REFERENCES sub_services (id) ON DELETE SET NULL,
     CONSTRAINT fk_business_transfer_rules_custom_service FOREIGN KEY (business_custom_service_id) REFERENCES business_custom_services (id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -199,11 +180,12 @@ CREATE TABLE business_escalation_rules (
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX idx_business_escalation_rules_business_active_priority (business_id, is_active, priority),
     INDEX idx_business_escalation_rules_profile_active_priority (business_profile_id, is_active, priority),
+    INDEX idx_business_escalation_rules_profile_business (business_profile_id, business_id),
     INDEX idx_business_escalation_rules_urgency (urgency_level),
     INDEX idx_business_escalation_rules_sub_service (sub_service_id),
     INDEX idx_business_escalation_rules_custom_service (business_custom_service_id),
     CONSTRAINT fk_business_escalation_rules_business FOREIGN KEY (business_id) REFERENCES businesses (id) ON DELETE CASCADE,
-    CONSTRAINT fk_business_escalation_rules_profile FOREIGN KEY (business_profile_id) REFERENCES business_profiles (id) ON DELETE CASCADE,
+    CONSTRAINT fk_business_escalation_rules_profile_business FOREIGN KEY (business_profile_id, business_id) REFERENCES business_profiles (id, business_id) ON DELETE CASCADE,
     CONSTRAINT fk_business_escalation_rules_sub_service FOREIGN KEY (sub_service_id) REFERENCES sub_services (id) ON DELETE SET NULL,
     CONSTRAINT fk_business_escalation_rules_custom_service FOREIGN KEY (business_custom_service_id) REFERENCES business_custom_services (id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -225,8 +207,9 @@ CREATE TABLE business_notification_preferences (
     UNIQUE KEY uq_business_notification_preferences_profile_type (business_profile_id, notification_type),
     INDEX idx_business_notification_preferences_business_type (business_id, notification_type),
     INDEX idx_business_notification_preferences_active (is_active),
+    INDEX idx_business_notification_preferences_profile_business (business_profile_id, business_id),
     CONSTRAINT fk_business_notification_preferences_business FOREIGN KEY (business_id) REFERENCES businesses (id) ON DELETE CASCADE,
-    CONSTRAINT fk_business_notification_preferences_profile FOREIGN KEY (business_profile_id) REFERENCES business_profiles (id) ON DELETE CASCADE
+    CONSTRAINT fk_business_notification_preferences_profile_business FOREIGN KEY (business_profile_id, business_id) REFERENCES business_profiles (id, business_id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 INSERT INTO business_profiles (
@@ -249,45 +232,14 @@ SELECT
     NOW(),
     NOW()
 FROM businesses b
-LEFT JOIN `247sp_business_content` bc ON bc.business_id = b.id
+LEFT JOIN (
+    SELECT business_id, MIN(id) AS content_id
+    FROM `247sp_business_content`
+    GROUP BY business_id
+) bc_pick ON bc_pick.business_id = b.id
+LEFT JOIN `247sp_business_content` bc ON bc.id = bc_pick.content_id
 WHERE NOT EXISTS (
     SELECT 1
     FROM business_profiles existing
     WHERE existing.business_id = b.id
-);
-
-INSERT INTO business_profile_service_areas (
-    business_id,
-    business_profile_id,
-    customers_visit_business,
-    business_travels_to_customers,
-    primary_city,
-    primary_state,
-    primary_postal_code,
-    country,
-    travel_radius_miles,
-    travel_radius_is_custom,
-    created_at,
-    updated_at
-)
-SELECT
-    b.id,
-    bp.id,
-    IF(b.is_public_physical_location = 1, 1, 0),
-    IF(COALESCE(wc.service_area_business, 0) = 1 OR b.is_public_physical_location = 0, 1, 0),
-    COALESCE(NULLIF(wc.service_area_city, ''), b.city),
-    COALESCE(NULLIF(wc.service_area_state, ''), b.state),
-    COALESCE(NULLIF(wc.service_area_postal_code, ''), b.postal_code),
-    b.country,
-    wc.service_area_radius_miles,
-    COALESCE(wc.service_area_radius_is_custom, 0),
-    NOW(),
-    NOW()
-FROM businesses b
-INNER JOIN business_profiles bp ON bp.business_id = b.id
-LEFT JOIN `247sp_website_configurations` wc ON wc.business_id = b.id
-WHERE NOT EXISTS (
-    SELECT 1
-    FROM business_profile_service_areas existing
-    WHERE existing.business_profile_id = bp.id
 );
