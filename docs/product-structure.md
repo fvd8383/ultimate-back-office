@@ -30,7 +30,7 @@ Ultimate Back Office includes:
 * Module activation
 * Subscriptions
 * Billing
-* Lead Hub
+* LeadHub
 * 247SP
 * Future financial, reputation, and lead marketplace tools
 
@@ -83,9 +83,9 @@ Other modules exist in the platform structure but should remain hidden or unavai
 The following may be visible during the current 247SP build:
 
 * 247SP
-* Lead Hub
+* LeadHub
 
-Lead Hub is visible because it supports 247SP lead tracking.
+LeadHub is visible because it is the central CRM and conversation system of record for 247SP.
 
 ---
 
@@ -106,21 +106,23 @@ They may exist in the database, documentation, or admin controls, but customers 
 
 ---
 
-# Lead Hub
+# LeadHub
 
-Lead Hub is the shared lead tracking layer.
+LeadHub is the shared CRM, conversation inbox, and opportunity tracking layer.
 
 It is not currently sold as a standalone product.
 
-Lead Hub is automatically included when a business activates:
+LeadHub is automatically included when a business activates:
 
 * 247SP
 * EMD Network
 * Future lead-generating products
 
-For 247SP customers, Lead Hub should feel like part of the product experience, not a separate product purchase.
+For 247SP customers, LeadHub should feel like part of the product experience, not a separate product purchase.
 
-Lead Hub is also the shared CRM feature area for the future Full OS navigation model.
+LeadHub is the central system of record for every 247SP communication channel, including website forms, AI website chat, business texting, inbound and outbound calls, AI receptionist summaries, supported email lead activity, manual notes, tasks, and follow-up history.
+
+LeadHub is also the shared CRM feature area for the future Full OS navigation model.
 
 ---
 
@@ -132,9 +134,21 @@ Standalone product and UBO module.
 
 ## Purpose
 
-247SP creates a simple professional website and lead capture experience for local service businesses.
+247SP provides a complete digital front office for small local service businesses. It helps the business generate leads, capture leads, respond immediately, organize conversations, and follow up until each opportunity is won or lost.
 
-In Standalone Module Mode, 247SP appears as "24/7 Sales Partner" in WORKSPACE navigation. In the future Full OS navigation model, the same website capabilities should appear under feature areas such as Websites rather than as a standalone product name.
+In Standalone Module Mode, 247SP appears as "24/7 Sales Partner" in WORKSPACE navigation. In the future Full OS navigation model, the same capabilities should appear under feature areas such as CRM, Inbox, Phones, Websites, and Sales rather than as a standalone product name.
+
+247SP includes:
+
+* Done-for-you website
+* Domain
+* Professional email
+* Local business phone number
+* AI receptionist
+* Business texting
+* AI website chat
+* LeadHub CRM
+* Unified conversation inbox
 
 ## Current Scope
 
@@ -146,6 +160,8 @@ In Standalone Module Mode, 247SP appears as "24/7 Sales Partner" in WORKSPACE na
 * Email mailbox request storage
 * Website generation
 * Private website preview
+* LeadHub CRM foundation for contacts, notes, tasks, statuses, and activity
+* Public website lead capture into LeadHub
 
 ## Future Scope
 
@@ -159,6 +175,11 @@ Future 247SP sprints will include:
 * Billing
 * Domain provisioning
 * Email provisioning
+* Local business phone number provisioning
+* AI receptionist
+* Business texting
+* AI website chat
+* Unified conversation inbox
 * Public publishing
 
 ---
@@ -167,7 +188,7 @@ Future 247SP sprints will include:
 
 247SP automatically includes:
 
-* Lead Hub
+* LeadHub
 
 247SP does not require:
 
@@ -319,7 +340,7 @@ Customer-facing module activation should allow only:
 
 When 247SP is activated, the system should automatically activate:
 
-* Lead Hub
+* LeadHub
 
 Customers should not self-activate:
 
@@ -371,7 +392,7 @@ Account
 → Private preview
 ```
 
-This is the core 247SP workflow.
+This is the early website-preview workflow inside 247SP. It is not the full current 247SP product definition.
 
 It is not yet first paying customer ready.
 
@@ -386,8 +407,10 @@ Required before taking paying customers:
 * Module gating
 * Payment/billing workflow
 * Customer-safe module visibility
-* Website management tools
+* Front-office management tools
 * Admin support visibility
+* LeadHub as the unified system of record for website forms, AI chat, calls, texts, AI receptionist activity, and supported email lead activity
+* Local phone, texting, AI receptionist, and AI website chat provisioning
 * Basic operational workflow
 
 ---
@@ -401,3 +424,5 @@ Does this support the current 247SP launch path?
 ```
 
 If not, defer it unless it is required for platform stability.
+
+The current 247SP launch path is the digital front-office product path, not a standalone website-builder path.

@@ -132,7 +132,7 @@ WORKSPACE
 - 24/7 Sales Partner
 ```
 
-Standalone products use product/module navigation. Lead Hub remains the CRM workspace, and 24/7 Sales Partner remains the website workspace.
+Standalone products use product/module navigation. LeadHub remains the CRM and unified conversation workspace, and 24/7 Sales Partner remains the digital front-office workspace.
 
 Future modules remain paused for regular customer navigation until 24/7 Sales Partner is launch-ready. They may appear in documentation, admin planning, or database foundations, but they should not be exposed as usable customer workspace modules ahead of the 24/7 Sales Partner launch path.
 
@@ -208,7 +208,7 @@ Entering a module does not replace the primary left navigation.
 
 Website Manager remains inside the 24/7 Sales Partner workflow. It should not appear as a top-level account business action.
 
-Lead Hub remains a separate WORKSPACE item and must not be moved into 24/7 Sales Partner secondary navigation.
+LeadHub remains a separate WORKSPACE item for CRM and unified inbox work. 24/7 Sales Partner may deep-link into LeadHub records and conversations, but LeadHub must remain the system of record instead of being treated as a website-only subpage.
 
 Lead Hub secondary navigation appears nested under the active Lead Hub WORKSPACE item in the left sidebar. It includes:
 
@@ -251,6 +251,8 @@ The admin DFY Website Editor lives inside the Admin Portal at:
 It requires existing internal admin authorization. Regular customers must not see or access this route.
 
 Internal admins can use it to prepare and polish a customer's 24/7 Sales Partner website without impersonating the customer.
+
+Website Manager is one 247SP front-office surface, not the full product definition. 247SP also includes the domain, professional email, local business phone number, AI receptionist, business texting, AI website chat, LeadHub CRM, and unified conversation inbox.
 
 Admin-only responsibilities include:
 

@@ -39,16 +39,12 @@ Before integrating actual mailbox creation, these workflows must exist.
 24/7 Sales Partner includes:
 
 ```text
-1 mailbox included
+Professional email included
 ```
 
-Additional mailboxes:
+The current 247SP package includes a done-for-you website, domain, professional email, local business phone number, AI receptionist, business texting, AI website chat, LeadHub CRM, and unified conversation inbox. This sprint covers only the email provisioning foundation.
 
-```text
-$3/month each
-```
-
-Billing integration will occur later.
+Additional mailbox, alias, or advanced email pricing belongs to the active pricing plan, order form, or billing policy. Billing integration will occur later.
 
 Store mailbox counts now.
 

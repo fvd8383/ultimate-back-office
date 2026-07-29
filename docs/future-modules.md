@@ -214,13 +214,7 @@ EMD lead source
 
 # 8. Google Workspace and Email
 
-V1 247SP supports a manual professional email setup add-on.
-
-V1 pricing:
-
-```text
-$25 one-time professional email setup
-```
+The current 247SP package includes professional email. Additional mailboxes, aliases, or advanced email features may be billed separately only when defined by the active pricing plan, order form, or billing policy.
 
 Future support may include:
 

@@ -12,9 +12,9 @@ Codex should follow these rules unless explicitly instructed otherwise.
 
 Build Ultimate Back Office as a modular LAMP-stack business operating platform for service businesses.
 
-Lead Hub is the core dashboard and CRM.
+LeadHub is the core dashboard, CRM, and unified conversation inbox.
 
-All products operate through Lead Hub.
+All products operate through LeadHub.
 
 ---
 
@@ -163,7 +163,7 @@ Full OS
 Enterprise
 ```
 
-Lead Hub is included with every module.
+LeadHub is included with every module.
 
 Modular products:
 
@@ -203,12 +203,24 @@ Current pricing assumptions:
 
 ```text
 247SP:
-$100 setup
-$47/month
-includes 247SP website, Lead Hub access, 1 business mailbox, basic SEO setup, and Google Analytics tracking
+Founding Customers:
+$249 setup
+$99/month
 
-247SP professional email setup:
-$25 one-time
+Standard:
+$249 setup
+$129/month
+
+includes done-for-you website, domain, professional email, local business phone number, AI receptionist, business texting, AI website chat, LeadHub CRM, unified conversation inbox, basic SEO setup, and Google Analytics tracking
+
+included monthly usage:
+200 AI minutes
+500 outbound owner minutes
+500 SMS segments
+500 AI chat responses
+
+overages:
+AI receptionist minutes, outbound owner minutes, SMS segments, and AI chat responses above included allowances are billed according to the active pricing plan, order form, or billing policy
 
 EMD:
 pay per lead
@@ -387,11 +399,11 @@ job assignments
 
 ---
 
-# 14. Lead Hub Rules
+# 14. LeadHub Rules
 
-Lead Hub is the center of the application.
+LeadHub is the center of the application.
 
-Lead Hub should include:
+LeadHub should include:
 
 ```text
 Dashboard
@@ -401,6 +413,10 @@ Notes
 Tasks
 Activity timeline
 Module navigation
+Unified conversation inbox
+Channel attribution
+Conversation assignment
+Follow-up tracking
 ```
 
 Use contacts with statuses instead of separate leads/customers tables.
@@ -570,11 +586,15 @@ Payments should reference `business_payment_accounts` where relevant.
 247SP includes:
 
 ```text
-Website
-Hosting
-Domain purchase through Namecheap API
-Lead capture
-Lead Hub access
+Done-for-you website
+Domain
+Professional email
+Local business phone number
+AI receptionist
+Business texting
+AI website chat
+LeadHub CRM
+Unified conversation inbox
 ```
 
 Rules:
@@ -583,6 +603,8 @@ Rules:
 * One website gets one domain.
 * Multiple pages are allowed.
 * Multiple websites are not supported for one business.
+* LeadHub is the system of record for website forms, AI website chat, calls, texts, AI receptionist summaries, supported email lead activity, notes, tasks, and follow-up.
+* 247SP is a digital front-office platform, not only a website builder.
 * Additional lead flow should come from EMD or Enterprise.
 
 Domain ownership rule:
@@ -599,19 +621,13 @@ Transfer fee schedule:
 25+ months: $350
 ```
 
-V1 professional email setup:
-
-```text
-$25 one-time
-manual setup tracking
-```
-
 Future:
 
 ```text
 Vendasta
 Google Workspace provisioning
 automated DNS setup
+additional communication providers
 ```
 
 ---

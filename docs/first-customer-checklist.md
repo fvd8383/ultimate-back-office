@@ -4,7 +4,7 @@
 
 This checklist tracks what must be complete before accepting the first paying 24/7 Sales Partner customer.
 
-New module development is paused until 247SP is launch-ready. EMD, SSP, TUHWD, and other future modules should not move forward until 247SP can take payment, publish a customer website, capture leads into Lead Hub, support domain and email setup, and operate safely in production.
+New module development is paused until 247SP is launch-ready. EMD, SSP, TUHWD, and other future modules should not move forward until 247SP can take payment, publish a customer website, capture and respond to leads, support domain/email/phone/text/chat setup, store every communication in LeadHub, and operate safely in production.
 
 ---
 
@@ -12,9 +12,9 @@ New module development is paused until 247SP is launch-ready. EMD, SSP, TUHWD, a
 
 1. Sprint 8.5: UX/Application Shell/Admin QA - Complete
 2. Sprint 9: Stripe Payment Integration
-3. Sprint 10: 247SP Lead Capture -> Lead Hub
+3. Sprint 10: 247SP Lead Capture -> LeadHub
 4. Sprint 11: Domain Automation
-5. Sprint 12: Email Automation
+5. Sprint 12: Email, Phone, Texting, And AI Channel Automation
 6. Sprint 13: Production Readiness / First Customer Pilot
 7. First Paying Customer
 8. Resume future modules: EMD, SSP, TUHWD
@@ -32,7 +32,7 @@ New module development is paused until 247SP is launch-ready. EMD, SSP, TUHWD, a
 * [x] Admin Navigation
 * [x] Module Navigation
 * [x] Accounts/App Return Path
-* [x] Lead Hub Foundation
+* [x] LeadHub Foundation
 * [x] 247SP Onboarding
 * [x] Website Generation
 * [x] Website Preview
@@ -65,11 +65,15 @@ New module development is paused until 247SP is launch-ready. EMD, SSP, TUHWD, a
 
 ---
 
-# 247SP Lead Capture
+# 247SP Lead Capture And Conversations
 
 * [ ] Public Website Contact Form
-* [ ] Lead Capture Creates Lead Hub Contact
-* [ ] Lead Capture Creates Lead Hub Activity
+* [ ] Lead Capture Creates LeadHub Contact
+* [ ] Lead Capture Creates LeadHub Activity
+* [ ] AI Website Chat Creates LeadHub Contact Or Activity
+* [ ] Inbound Calls And AI Receptionist Summaries Create LeadHub Activity
+* [ ] Business Texts Create LeadHub Activity
+* [ ] Unified Conversation Inbox
 * [ ] Lead Capture Notification or Admin Visibility
 * [ ] Spam/Validation Controls
 * [ ] Lead Capture QA From Published Site
@@ -87,12 +91,17 @@ New module development is paused until 247SP is launch-ready. EMD, SSP, TUHWD, a
 
 ---
 
-# Email Automation
+# Email, Phone, Texting, And AI Channel Automation
 
 * [ ] Business Email Provisioning
 * [ ] Email Login Instructions
 * [ ] Email Setup Confirmation
 * [ ] Email Support Process
+* [ ] Local Business Phone Number Provisioning
+* [ ] Business Texting Setup
+* [ ] AI Receptionist Setup
+* [ ] AI Website Chat Setup
+* [ ] Usage Allowance Tracking
 
 ---
 
@@ -108,6 +117,8 @@ New module development is paused until 247SP is launch-ready. EMD, SSP, TUHWD, a
 * [ ] Customer Billing Page Finalized
 * [ ] Website Publish Confirmation
 * [ ] Email Setup Confirmation
+* [ ] Phone/Text/Chat Setup Confirmation
+* [ ] Unified Inbox Access
 * [ ] First Customer SOP
 
 ---
@@ -155,9 +166,10 @@ New module development is paused until 247SP is launch-ready. EMD, SSP, TUHWD, a
 # Remaining Critical Path
 
 - [ ] Stripe payment collection
-- [ ] 247SP website lead capture creating Lead Hub records
+- [ ] 247SP lead capture creating LeadHub records
+- [ ] Unified conversation inbox for website forms, AI chat, calls, texts, AI receptionist activity, and supported email lead activity
 - [ ] Domain publishing and automation
-- [ ] Email provisioning and automation
+- [ ] Email, phone, texting, and AI channel provisioning and automation
 - [ ] Production environment readiness
 - [ ] Legal and policy documents
 - [ ] First-customer admin QA and customer QA
@@ -186,10 +198,12 @@ A first paying 247SP customer can:
 5. Start a monthly Stripe subscription
 6. Complete 247SP onboarding
 7. Publish a website on a customer domain
-8. Submit a public website lead that creates Lead Hub records
+8. Submit a public website lead that creates LeadHub records
 9. Receive business email provisioning and login instructions
-10. Access Lead Hub
-11. Manage billing
+10. Receive local business phone number, business texting, AI receptionist, and AI website chat setup
+11. Access LeadHub
+12. Manage conversations through the unified inbox
+13. Manage billing
 
 Without manual database changes.
 
@@ -215,9 +229,9 @@ Sprint 8.5 UX/Application Shell/Admin QA is complete. The platform now has persi
 Major Remaining Milestones:
 
 1. Stripe Payment Integration
-2. 247SP Lead Capture -> Lead Hub
+2. 247SP Lead Capture -> LeadHub
 3. Domain Publishing / Automation
-4. Email Provisioning / Automation
+4. Email, Phone, Texting, And AI Channel Provisioning / Automation
 5. Production Deployment Readiness
 6. Legal Documents
 7. Admin and Customer QA
