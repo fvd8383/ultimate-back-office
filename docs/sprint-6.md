@@ -44,7 +44,7 @@ Launch pricing:
 
 Setup Fee: $100
 
-Monthly Subscription: $47
+Historical monthly subscription assumption: $47 (superseded by the approved Beta, Founding, and Standard cohort pricing in `docs/247sp-product-spec.md`)
 
 ---
 

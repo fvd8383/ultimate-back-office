@@ -66,7 +66,7 @@ Subscriptions represent the products and services connected to an account or bus
 
 # Business Profile Architecture
 
-The Business Profile is the primary configuration root for a business. 247SP and future communications features should read from the Business Profile instead of creating separate disconnected setup records for each channel.
+The Shared Business Profile is the central business-knowledge layer for a business. Migration 021 established the initial schema and was staging validated. 247SP and future communications features should read authoritative facts from the profile and existing business/service records instead of creating disconnected setup records for each channel.
 
 One Business Profile configures:
 
@@ -89,11 +89,15 @@ Business Profile configuration should answer:
 
 Business Profile records own business-level intent and rules. Provider-specific IDs, tokens, webhook payloads, and API responses belong in provider-specific communication records behind internal UBO services.
 
+The website is one presentation layer of these facts. Website page composition, component selection, and channel-specific wording belong to website presentation records. Shared facts may be worded differently for web, voice, SMS, and structured schema, but all wording must remain grounded in approved facts.
+
+Migration 021 does not contain every future branding, trust, marketing, SEO, image, or media category. Each new concept must be reviewed against existing business, service, website, branding, media, and integration records before adding a field or child table.
+
 ---
 
 # Communications Platform Architecture
 
-247SP includes a shared communications layer for AI voice, SMS, AI website chat, and phone-number/call infrastructure. The communications layer should follow the same architectural pattern as Domain Services:
+247SP is planned to use a shared communications layer for AI voice, SMS, AI website chat, and phone-number/call infrastructure. The layer does not yet exist and should follow the same architectural pattern as Domain Services:
 
 ```text
 Business Profile
@@ -136,21 +140,25 @@ flowchart TD
   User["User"]
   Business["Business"]
   Profile["Business Profile"]
-  Website["Website"]
-  AIReceptionist["AI Receptionist"]
-  SMSAssistant["SMS Assistant"]
-  WebsiteChat["Website Chat"]
+  WebsitePlatform["Shared Website Platform"]
+  CustomerSite["247SP Customer Site"]
+  EmdSite["EMD Property / Demo (planned)"]
+  AIReceptionist["AI Receptionist (planned)"]
+  SMSAssistant["SMS Assistant (planned)"]
+  WebsiteChat["Website Chat (planned)"]
   Routing["LeadHub Routing"]
   Transfer["Transfer Rules"]
   Escalation["Escalation Rules"]
-  Comms["CommunicationsManager"]
-  Interfaces["Provider Interfaces"]
-  Providers["Retell Voice / Retell Chat / Twilio Voice / Twilio Messaging"]
+  Comms["CommunicationsManager (planned)"]
+  Interfaces["Provider Interfaces (planned)"]
+  Providers["Retell / Twilio Adapters (planned)"]
   LeadHub["LeadHub CRM and Unified Inbox"]
 
   User --> Business
   Business --> Profile
-  Profile --> Website
+  Profile --> WebsitePlatform
+  WebsitePlatform --> CustomerSite
+  WebsitePlatform --> EmdSite
   Profile --> AIReceptionist
   Profile --> SMSAssistant
   Profile --> WebsiteChat
@@ -162,7 +170,8 @@ flowchart TD
   WebsiteChat --> Comms
   Comms --> Interfaces
   Interfaces --> Providers
-  Website --> LeadHub
+  CustomerSite --> LeadHub
+  EmdSite --> Routing
   Comms --> LeadHub
   Routing --> LeadHub
   Transfer --> LeadHub
@@ -243,7 +252,7 @@ Standalone product and UBO module.
 
 ## Purpose
 
-247SP provides a complete digital front office for small local service businesses. It helps the business generate leads, capture leads, respond immediately, organize conversations, and follow up until each opportunity is won or lost.
+24/7 Sales Partner is a done-for-you lead-generation and digital-front-office platform powered by one structured Business Profile. It generates a custom website, captures forms, calls, texts, and chats, provides immediate AI-assisted responses, and keeps every opportunity organized in LeadHub.
 
 In Standalone Module Mode, 247SP appears as "24/7 Sales Partner" in WORKSPACE navigation. In the future Full OS navigation model, the same capabilities should appear under feature areas such as CRM, Inbox, Phones, Websites, and Sales rather than as a standalone product name.
 
@@ -272,18 +281,17 @@ In Standalone Module Mode, 247SP appears as "24/7 Sales Partner" in WORKSPACE na
 * Private website preview
 * LeadHub CRM foundation for contacts, notes, tasks, statuses, and activity
 * Public website lead capture into LeadHub
+* Website Manager and internal Admin Website Editor foundations
+* Stripe billing and Domain Services foundations
+* Shared Business Profile schema from migration 021
 
 ## Future Scope
 
 Future 247SP sprints will include:
 
-* Website management
-* Logo upload
-* Brand color selection
-* Hero/service/about images
-* Content editing
-* Billing
-* Domain provisioning
+* Component-based website CMS, revisions, approval, and deployment lifecycle
+* Shared 247SP/EMD website infrastructure and controlled conversion workflows
+* Business Profile service layer and customer interface
 * Email provisioning
 * Local business phone number provisioning
 * AI receptionist
@@ -292,6 +300,12 @@ Future 247SP sprints will include:
 * AI website chat
 * Unified conversation inbox
 * Public publishing
+
+## Shared Website Platform
+
+247SP and EMD Network are planned to share site briefs, components, page generation, themes, analytics, SEO helpers, LeadHub form components, tracking, deployment, revision management, validation, and image handling. Product/site purpose determines whether leads route directly to a customer business or through the EMD routing engine.
+
+The MVP is a structured done-for-you CMS, not a customer drag-and-drop builder. See `docs/247sp-website-generation-architecture.md`.
 
 ---
 

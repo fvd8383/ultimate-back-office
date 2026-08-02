@@ -1,95 +1,63 @@
 # 24/7 Sales Partner (247SP) Product Specification
 
-## Product Overview
+## Approved Product Definition
 
-24/7 Sales Partner (247SP) is a complete digital front-office platform for small local service businesses.
+24/7 Sales Partner is a done-for-you lead-generation and digital-front-office platform powered by one structured Business Profile. It generates a custom website, captures forms, calls, texts, and chats, provides immediate AI-assisted responses, and keeps every opportunity organized in LeadHub.
 
-The goal is to help a business generate leads, capture leads, respond immediately, organize every conversation, and follow up until each opportunity is won or lost.
+Product workflow:
 
-247SP includes the front-office tools a small service business needs to look established and respond quickly:
+```text
+Present the business professionally
+  -> Capture every opportunity
+  -> Respond when the owner cannot
+  -> Organize the opportunity in LeadHub
+  -> Help the owner follow through
+```
 
-* Done-for-you website
-* Domain
-* Professional email
-* Local business phone number
+The website is a major product component and presentation layer. It is not the entire product or the primary source of business information.
+
+---
+
+# Product Status
+
+## Existing And Completed Foundations
+
+The repository currently includes:
+
+* Business onboarding and selected services
+* 247SP onboarding and content records
+* Single-template website generation and private preview
+* Customer Website Manager and internal Admin Website Editor
+* Website branding, content overrides, service hierarchy, CTA configuration, pricing-list upload, and Google Analytics rendering
+* Public website form capture into LeadHub through the existing lead-submit path
+* LeadHub contacts, statuses, notes, tasks, and activity records
+* Stripe billing foundation and Checkout/webhook integration
+* Domain request, registrar abstraction, DNS planning, SSL status, and domain-event foundations
+* Professional email request and assignment foundations
+* Shared Business Profile schema from migration 021
+
+Migration 021 is complete and staging validated. It created the initial provider-neutral Shared Business Profile root and child records for hours, FAQs, pricing guidance, appointment rules, transfer rules, escalation rules, and notification preferences.
+
+## Planned Capabilities
+
+The following approved product capabilities are not yet complete unless a later implementation document says otherwise:
+
+* Multi-component website CMS and standardized revision/deployment workflow
+* Public site lifecycle beyond the current generated-site foundation
+* Local business phone provisioning
 * AI receptionist
-* Business texting
+* Business texting and SMS Assistant
 * AI website chat
-* LeadHub CRM
 * Unified conversation inbox
-
-LeadHub is the central system of record for every 247SP communication channel. Website forms, website chat, calls, texts, AI receptionist interactions, email-related lead activity, manual notes, tasks, and follow-up activity should create or connect to LeadHub records.
-
-247SP is both:
-
-* A standalone product
-* A module included within Ultimate Back Office
+* Provider-neutral communications services and provider adapters
+* Usage metering and overage billing
+* EMD demo and bidirectional site-conversion workflows
 
 ---
 
-# Target Customer
+# Included Product
 
-Primary audience:
-
-* Plumbers
-* HVAC Contractors
-* Electricians
-* Roofers
-* Landscapers
-* Cleaning Companies
-* Handymen
-* Mobile Detailers
-* Pest Control Companies
-* Other local service businesses
-
-Characteristics:
-
-* 1–10 employees
-* Little or no digital marketing or CRM experience
-* Needs an affordable, professional front office
-* Wants more leads and faster response times
-* Needs one place to manage calls, texts, chats, forms, email, and follow-up
-
----
-
-# Pricing
-
-## Founding Customers
-
-Setup fee:
-
-$249 one-time
-
-Monthly fee:
-
-$99/month
-
-Includes:
-
-* Done-for-you website setup
-* Domain setup or connection
-* Professional email setup
-* Local business phone number setup
-* AI receptionist setup
-* Business texting setup
-* AI website chat setup
-* LeadHub CRM setup
-* Unified conversation inbox setup
-* Initial configuration
-
----
-
-## Standard
-
-Setup fee:
-
-$249 one-time
-
-Monthly fee:
-
-$129/month
-
-Includes:
+Every 247SP customer cohort receives the same core product:
 
 * Done-for-you website
 * Domain
@@ -103,485 +71,211 @@ Includes:
 * Basic SEO setup
 * Google Analytics tracking
 
+Pricing cohorts are not feature tiers.
+
 ---
 
-## Included Usage Allowances
+# Four Connected Responsibilities
 
-Each active 247SP subscription includes:
+## 1. Business Knowledge System
+
+247SP collects and maintains approved business information once:
+
+* Business identity and contact information
+* Services and service areas
+* Hours and FAQs
+* Pricing guidance and appointment rules
+* Transfer, emergency, and escalation rules
+* Notification preferences
+* Branding and trust information
+* Marketing and SEO information
+* Images and media
+* Approved customer claims
+
+The Shared Business Profile is the central knowledge layer. It is consumed by website generation and, when implemented, the AI receptionist, SMS Assistant, website chat, LeadHub routing, SEO helpers, schema markup, notifications, future email automation, future marketing tools, and future UBO modules.
+
+Migration 021 is the initial schema, not the final home for every business-data category. New concepts must be evaluated against existing business, service, branding, website, media, and integration records before adding fields or child tables.
+
+## 2. Website-Generation System
+
+247SP creates custom-looking, conversion-focused websites from structured business data, approved reusable components and variants, shared platform modules, AI-assisted composition, and standardized revision/deployment workflows.
+
+The current implementation has one starter template and private preview workflow. The component library, structured page CMS, site-revision system, and portable site lifecycle are planned.
+
+See `docs/247sp-website-generation-architecture.md`.
+
+## 3. Digital Front Office
+
+The approved long-term product handles website forms, incoming calls, business texting, website chat, AI-assisted responses, owner transfers, owner takeover, notifications, and follow-up triggers.
+
+Only website form capture and the existing LeadHub foundation are implemented today. Communications and unified-inbox capabilities remain planned.
+
+## 4. Lead-Management System
+
+LeadHub is the central system of record for contacts, leads and opportunities, website submissions, calls, text messages, website chat, notes, tasks, lead status, follow-up, conversation history, unresolved opportunities, owner activity, and AI activity.
+
+One contact may have many conversations across many channels, presented in one unified timeline. Provider systems may retain operational records, but a communication must not remain isolated in a provider-only call log, text thread, chat transcript, or form store.
+
+---
+
+# Business Facts And Presentation
+
+Authoritative business facts and channel-specific presentation remain separate.
+
+| Concept | Authoritative layer |
+| --- | --- |
+| Business hours | Shared Business Profile |
+| Services offered | Existing business service records |
+| Travel radius | Existing 247SP configuration |
+| FAQs | Shared Business Profile |
+| Licenses and certifications | Proposed structured trust records |
+| Homepage headline | Website presentation record |
+| Hero and navigation variants | Proposed website page/presentation records |
+| Lead routing | LeadHub/routing configuration |
+| Transfer behavior | Shared Business Profile |
+| Provider IDs | Proposed provider integration records |
+
+Website, voice, SMS, and schema-markup wording may differ by channel, but every version must remain grounded in approved facts.
+
+---
+
+# Target Customer
+
+247SP serves small local service businesses, including plumbers, HVAC contractors, electricians, roofers, landscapers, cleaning companies, handymen, mobile detailers, pest-control companies, and similar businesses.
+
+The primary customer typically has 1-10 employees, limited CRM or digital-marketing expertise, and needs a professional presence, rapid response, and one place to manage opportunities.
+
+---
+
+# Approved Pricing
+
+| Customer cohort | Customer numbers | Setup fee | Monthly price |
+| --- | ---: | ---: | ---: |
+| Beta Users | 1-5 | $0 | $79/month |
+| Founding Users | 6-25 | $100 | $97/month |
+| Standard Users | 26+ | $250 | $147/month |
+
+Labels are `Beta User`, `Founding User`, and `Standard User`. These cohorts price the same core product; they do not grant different feature sets.
+
+## Included Monthly Usage
+
+Each active subscription includes:
 
 * 200 AI minutes
 * 500 outbound owner minutes
 * 500 SMS segments
 * 500 AI chat responses
 
-Included usage is measured per billing month and does not roll over.
+Usage is measured per billing month and does not roll over.
+
+## Overages
+
+Overage categories are:
+
+* AI receptionist minutes above 200
+* Outbound owner minutes above 500
+* SMS segments above 500
+* AI chat responses above 500
+
+The applicable unit rates must be defined in the approved pricing plan, order form, or billing policy before charging customers. Whether rates differ by cohort remains an open commercial-policy question. Do not advertise unlimited usage without an explicit written plan.
+
+Additional mailboxes, aliases, or advanced email features may be billed separately only when an approved pricing policy defines them.
+
+## Open Commercial-Policy Questions
+
+The following are unresolved:
+
+* Whether cohort pricing is permanently grandfathered or may increase
+* Whether canceled Beta or Founding positions reopen
+* Whether position is based on signup, payment, activation, or launch
+* Whether failed, refunded, or fraudulent accounts count
+* Whether returning customers retain their prior cohort
+* Whether ownership changes preserve cohort
+* Whether multiple businesses under one owner count separately
+* Whether taxes are included
+* Whether usage allowances or overage rates differ by cohort
+* Whether setup fees are refundable or apply again after reactivation
+
+Recommended default, not approved policy:
+
+* Each independently activated business subscription counts as one customer position.
+* Cohort is assigned when the subscription becomes active.
+* The assigned cohort is stored and does not change merely because later customers cancel.
 
 ---
 
-## Overage Policy
+# Billing Direction
 
-Usage above the included monthly allowances is billed as overage usage.
+Billing must eventually distinguish product, pricing cohort, customer sequence or qualifying event, setup fee, monthly recurring price, included usage, overage rates, discounts, promotional periods, subscription status, original activation date, reactivation status, and Stripe price ID.
 
-Overage categories:
+Proposed internal cohort identifiers are `beta`, `founding`, and `standard`. They are not implemented.
 
-* AI receptionist minutes above 200 AI minutes
-* Outbound owner calling minutes above 500 minutes
-* SMS segments above 500 segments
-* AI website chat responses above 500 responses
-
-Overage rates must be published in the active pricing plan, order form, or billing policy before launch. Do not present unlimited AI, calling, texting, or chat usage unless the customer has a written plan that explicitly includes it.
-
----
-
-## Additional Professional Email
-
-Professional email is included in the 247SP package. Additional mailboxes, aliases, or advanced email features may be billed separately when an active pricing policy defines them.
+Cohort must not be permanently inferred from the current count of active customers. Once assigned, the subscription or billing record should preserve its cohort and applicable pricing reference. This document does not authorize a billing migration or change current Stripe configuration.
 
 ---
 
 # Domain Policy
 
-## Domain Purchased Through 247SP
+## FDV-Owned Domain
 
-247SP retains ownership until transferred.
+When 247SP purchases a domain, FDV owns it until an approved transfer.
 
-Domain workflow:
+Documented transfer fees remain:
 
-1. Customer requests a domain.
-2. Admin checks availability through the Domain Services layer.
-3. Admin purchases the domain through the configured registrar.
-4. Domain Manager prepares DNS records.
-5. Admin syncs and verifies DNS.
-6. SSL status is tracked.
-7. Domain becomes launch-ready when purchase/connection, DNS verification, and SSL readiness are complete.
+* Months 0-12: $150
+* Months 13-24: $250
+* Months 25+: $350
 
-Transfer fee:
+The existing `DomainManager`, `RegistrarInterface`, and `NamecheapRegistrar` architecture owns registrar-neutral workflow, DNS planning, SSL status tracking, and domain events.
 
-Months 0–12: $150
+## Customer-Owned Domain
 
-Months 13–24: $250
+A customer who brings an existing domain retains ownership. The domain may be connected to the site but must not be retained, redirected, transferred, or reassigned without contractual authority and customer authorization.
 
-Months 25+: $350
+Domain ownership is separate from site structure, site purpose, customer relationship, business association, and lead routing.
 
 ---
 
-## Bring Your Own Domain
+# Website And EMD Lifecycle
 
-Customer retains ownership.
+24/7SP and EMD Network are planned to share one website-generation infrastructure. A site may have a business, EMD lead-property, EMD demo, internal demo, or internal marketing purpose, subject to schema review.
 
-No transfer fees apply.
+An EMD/internal demo may be converted into a purchased 247SP site after facts, assets, customer association, domain, analytics, consent language, and routing are verified and approved. Lead routing then moves to the customer business.
 
-Customer-owned domain workflow:
+An eligible canceled 247SP site may enter review for conversion to an EMD property. Conversion is not automatic and not every canceled site qualifies. Domain rights, content/media rights, customer data, claims, analytics, routing, and integrations require separate review.
 
-1. Customer enters the existing domain.
-2. Domain Manager stores the request as customer-owned.
-3. Customer sees the DNS records needed to connect the domain.
-4. Admin verifies DNS and tracks SSL status.
-5. Domain becomes launch-ready when DNS and SSL readiness are complete.
+Customer CRM records, leads, conversations, private communications, and other customer-specific data must remain isolated from the EMD property. Customer routing is removed before EMD routing is configured.
 
-Customer-friendly domain statuses are:
-
-* Requested
-* Awaiting Customer
-* Pending Purchase
-* Pending DNS
-* Pending Verification
-* SSL Pending
-* Ready
-* Live
-* Error
-
-Domain Services architecture:
-
-* `DomainManager` owns the customer/admin domain lifecycle, statuses, launch readiness, DNS planning, SSL status tracking, registrar selection, and domain event history.
-* `RegistrarInterface` defines the registrar contract for availability checks, registration, transfers, domain status, DNS reads/writes, ownership verification, auto-renew, renewal, and status retrieval.
-* `NamecheapRegistrar` is the first registrar adapter and contains Namecheap-specific API calls only.
-
-Future registrar adapters such as Cloudflare, Porkbun, GoDaddy, Hover, and Dynadot should implement the same interface without changing 247SP business workflow code.
-
-DNS automation prepares A records, optional AAAA records, `www` CNAME records, optional TXT verification records, and optional MX placeholders for later email provisioning. SSL automation is not claimed unless supported by staging/production infrastructure; current Sprint 8.6 behavior tracks SSL as Pending, Issued, Renewed, or Failed.
+See `docs/247sp-website-generation-architecture.md` for the complete planned lifecycle and approval controls.
 
 ---
 
-# Customer Inputs
+# Existing Website Behavior
 
-During onboarding, customer provides:
+The current generated website includes Home, a Services dropdown, About, and Contact. Existing active service pages and configured sub-service pages appear under Services.
 
-## Business Information
+Current CTA behaviors are `call_now`, `contact_form`, and `view_pricing`. Labels that imply scheduling, quoting, applications, or reservations still route to an implemented behavior and do not create a scheduling, quote, application, reservation, checkout, or ecommerce engine.
 
-* Business Name
-* Legal Name (optional)
-* Owner Name
-* Email
-* Phone Number
+The current Admin Website Editor organizes controls around Branding, Pages, Services, Calls to Action, SEO, Integrations, and Advanced. Google Analytics is the only stored website integration currently rendered into generated output; other stored integration references do not imply implemented scripts or APIs.
+
+The MVP CMS direction is structured and done-for-you. Customers manage shared business facts; FDV manages page composition, component variants, section order, typography, imagery, visual hierarchy, revisions, and publishing. It is not a customer drag-and-drop builder.
 
 ---
 
-## Location
+# Customer Dashboard Direction
 
-* Address
-* City
-* State
-* ZIP Code
-
-Service model:
-
-* Customers come to my business
-* We travel to our customers
-
-When the business travels to customers, 247SP stores the business as a service-area business and collects a travel radius. Default radius is 25 miles, with supported choices of 10, 15, 20, 25, 35, 50, 75, or a custom mileage value.
-
-Customer-facing website output for service-area businesses should emphasize city/state and service-area language instead of the street address.
+The customer dashboard should report website, domain, professional email, business phone, AI receptionist, business texting, AI website chat, LeadHub, unified inbox, launch-readiness, billing-cohort, and usage status without presenting planned capabilities as active.
 
 ---
 
-## Services
-
-Select:
-
-* Primary Service Category
-* Service Offerings
-
-Examples:
-
-Plumber
-
-* Drain Cleaning
-* Water Heater Repair
-* Leak Detection
-
-HVAC
-
-* AC Repair
-* Furnace Repair
-* Maintenance Plans
-
----
-
-## Website Content
-
-* Business Description
-* About Company
-* Years in Business
-* Special Offers
-* Financing Available (yes/no)
-
----
-
-## Branding
-
-Optional:
-
-* Logo Upload
-* Brand Colors
-* Photos
-
-If not provided:
-
-Use 247SP defaults.
-
----
-
-# Front-Office Platform Components
-
-247SP is not just a website builder. The website is one lead source inside a broader front-office system.
-
-Core components:
-
-* Done-for-you website: a professionally prepared local service website designed to convert visitors into calls, chats, texts, and form submissions.
-* Domain: a new 247SP-purchased domain or a customer-owned domain connected to the platform.
-* Professional email: customer-facing business email tied to the business domain.
-* Local business phone number: a business number used for customer calls, AI receptionist handling, owner callbacks, and business texting.
-* AI receptionist: immediate phone response for inbound callers, with call outcomes stored in LeadHub.
-* Business texting: SMS conversations tied to LeadHub contacts and opportunities.
-* AI website chat: website chat responses that qualify visitors and capture contact details.
-* LeadHub CRM: the system of record for contacts, opportunities, statuses, notes, tasks, activities, and follow-up.
-* Unified conversation inbox: one inbox for website forms, AI chat, calls, texts, AI receptionist summaries, and future supported channels.
-
----
-
-# Website Structure
-
-Every site includes:
-
-1. Home
-2. Services dropdown
-3. About
-4. Contact
-
-The Services dropdown contains active service pages. Where configured by an internal admin, sub-service pages appear nested under parent services.
-
----
-
-# Home Page
-
-Contains:
-
-* Hero section
-* Call button
-* Contact form
-* Service highlights
-* Trust indicators
-* Service area
-* CTA
-
-CTA labels may be customer-facing service prompts such as Call Now, Request Service, Book Appointment, Instant Quote, Get Estimate, Request Inspection, Apply Now, Reserve Spot, Free Estimate, Contact Us, View Pricing, or Learn More.
-
-Active CTA behaviors are limited to call, contact form, and view pricing. Scheduling, instant quote, application, reservation, and calculator-style labels route to contact form unless an admin explicitly selects call or view pricing. View Pricing links to the uploaded pricing list when available and otherwise routes to the contact page.
-
-Pricing list uploads support PDF, PNG, JPG/JPEG, and WEBP files through the existing 247SP asset upload flow. No payment processing, checkout, scheduling engine, quote calculator, application workflow, reservation system, or ecommerce behavior is included.
-
----
-
-# Service Pages
-
-Each service page includes:
-
-* Service description
-* Benefits
-* CTA
-* Contact form
-
-Internal admins can add, edit, reorder, deactivate, and nest service pages for done-for-you website management. For example, a plumbing site may include Clogged Drain as a parent service with Clogged Toilet and Clogged Sink Drain as sub-service pages.
-
-Customer Website Manager may edit existing active service content, but add/remove/reorder/sub-service controls are admin-only for now. Future paid service or SEO page bundles may expose additional page capacity and self-serve management without adding billing logic in this sprint.
-
----
-
-# Admin Website Editor Sections
-
-Admin Website Editor settings should be organized around:
-
-* Branding
-* Pages
-* Services
-* Calls to Action
-* SEO
-* Integrations
-* Advanced
-
-The current editor may remain a single form. These sections define where future website settings belong.
-
-SEO includes:
-
-* Titles
-* Meta descriptions
-* Sitemap
-* Robots
-* Canonicals
-
-Canonical controls are reserved for future SEO settings and should not be mixed into page copy fields.
-
-Integrations include:
-
-* Google Analytics
-* Google Search Console
-* Google Tag Manager
-* Microsoft Clarity
-* Meta Pixel
-* Google Business Profile
-
-Only Google Analytics is rendered into generated sites today. The other integration values are stored for admin reference and should not inject scripts or verification behavior.
-
-Integration values are stored in `website_integrations`, a shared table for current and future website-enabled products.
-
----
-
-# About Page
-
-Includes:
-
-* Company story
-* Owner information
-* Experience
-* Service area
-
----
-
-# Contact Page
-
-Includes:
-
-* Phone
-* Email
-* Contact form
-* Address
-* Map (future enhancement)
-
----
-
-# Lead Capture
-
-Website forms, AI website chat, inbound calls, AI receptionist interactions, business texts, and supported email lead activity generate or update LeadHub records.
-
-Store:
-
-* Name
-* Email
-* Phone
-* Message
-* Source channel
-* Source page or conversation reference when available
-* Date submitted or received
-* Conversation summary when available
-* Assigned owner when available
-
----
-
-# LeadHub CRM
-
-Every lead and conversation automatically appears in LeadHub.
-
-Lead status:
-
-* New
-* Contacted
-* Scheduled
-* Won
-* Lost
-* Spam
-
-LeadHub is the central system of record for every 247SP communication channel. A contact should not be trapped inside a standalone website form, call log, text thread, chat transcript, or email thread without a corresponding LeadHub record or activity.
-
----
-
-# Professional Email, Phone, Texting, And AI
-
-247SP includes the business communication foundation needed to respond quickly and track every opportunity.
-
-Professional email:
-
-* Includes business email tied to the customer domain.
-* Supports customer-facing addresses such as [info@business.com](mailto:info@business.com) or [support@business.com](mailto:support@business.com).
-* Email-related lead activity should connect to LeadHub when supported by the active implementation.
-
-Local business phone number:
-
-* Provides a customer-facing phone number for the business.
-* Supports inbound call handling, outbound owner calls, and future call reporting.
-
-AI receptionist:
-
-* Responds immediately to inbound calls when configured.
-* Captures caller details, reason for call, urgency, and next-step context.
-* Stores call summaries and follow-up tasks in LeadHub.
-
-Business texting:
-
-* Supports SMS conversations with leads and customers.
-* Stores text activity in the unified conversation inbox and LeadHub.
-
-AI website chat:
-
-* Responds to website visitors.
-* Captures lead details.
-* Creates or updates LeadHub records.
-
----
-
-# Analytics
-
-Google Analytics tracking is configured per business website through the `website_integrations` model.
-
-Admin users can store a Google Analytics Measurement ID, such as G-XXXXXXXXXX, in the Admin Website Editor. Customers do not need to edit code.
-
-When a Measurement ID exists, the 247SP preview and generated/published site rendering include the GA tracking script in the page head. When no Measurement ID exists, the script is omitted cleanly.
-
-The included foundation supports Google Analytics pageview tracking for:
-
-* Visits
-* Top pages
-* Page engagement in Google Analytics
-
-Tracking must not use one shared Google Analytics Measurement ID for all businesses unless traffic is also distinguishable by business.
-
-Admin users may also store Google Search Console Property, Google Tag Manager ID, Microsoft Clarity ID, Meta Pixel ID, and Google Business Profile URL values. These are not rendered into generated sites in the current implementation.
-
----
-
-# Basic SEO Setup
-
-Basic SEO setup includes:
-
-* Customer-friendly site structure
-* Launch-ready service pages
-* Page titles and metadata foundations
-* Local service-area copy support
-
-Basic SEO setup does not include Search Console API integration, SEO reporting dashboards, ranking trackers, or ongoing SEO service workflows.
-
----
-
-# Customer Dashboard
-
-Customer can view:
-
-* Website status
-* Domain status
-* Professional email status
-* Business phone status
-* AI receptionist status
-* Business texting status
-* AI website chat status
-* LeadHub lead and opportunity counts
-* Recent conversations
-* Unified inbox activity
-* Usage allowance status
-
----
-
-# Internal Admin Controls
-
-Admin can:
-
-* View customer
-* View website status
-* View domain status
-* Enable/disable account
-* View onboarding progress
-
----
-
-# Future Enhancements
-
-Not part of Sprint 3.
-
-Future items:
-
-* Multiple templates
-* Blog support
-* Online scheduling
-* Review integration
-* Call tracking
-* SMS tracking
-* Google Business Profile integration
-
----
-
-# Sprint 3 Scope
-
-Sprint 3 should focus only on:
-
-* Customer onboarding
-* Business information collection
-* Service selection
-* Domain selection
-* Basic website configuration
-
-No site generation yet.
-
-Site generation will be Sprint 4.
-
-247SP Package Rules
-
-- 247SP automatically includes LeadHub CRM access.
-- Customers do not see LeadHub as a separate product purchase.
-- Every 247SP lead, conversation, call, text, chat, form submission, and supported email lead activity is automatically stored in or connected to LeadHub.
-- One business per account unless Enterprise is active.
-- Professional email is included in each 247SP subscription.
-- A local business phone number is included in each 247SP subscription.
-- Basic SEO setup and Google Analytics tracking are included in the 247SP monthly package.
-- Usage allowances include 200 AI minutes, 500 outbound owner minutes, 500 SMS segments, and 500 AI chat responses per billing month.
-- Usage above included allowances is billed as overage usage according to the active pricing plan, order form, or billing policy.
-- Additional mailboxes, aliases, or advanced email features may be billed separately when defined by the active pricing policy.
-- Customers may purchase a domain through 247SP or connect an existing domain.
+# Package Rules
+
+* 247SP automatically includes LeadHub CRM access.
+* Customers do not purchase LeadHub separately.
+* One business has one Shared Business Profile and, for the current product model, one primary customer site.
+* Every supported 247SP lead and communication must be stored in or connected to LeadHub.
+* Professional email and a local business phone number are included in the approved product.
+* Customers may use an FDV-purchased domain or connect a customer-owned domain.
+* Basic SEO setup and Google Analytics tracking are included.
+* Usage and overages follow the approved allowances and the active pricing/order/billing policy.
+* Proposed communications, CMS, MCP, EMD conversion, and billing-cohort identifiers do not become implemented merely because they are documented.
