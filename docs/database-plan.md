@@ -230,6 +230,23 @@ Escalation rules
 
 Business Profile records should store business-owned settings and rules. Provider-specific IDs, webhook payloads, API response data, transcripts, call IDs, message IDs, and chat IDs should live in communications tables owned by internal UBO services.
 
+## 3.6 Business Facts And Presentation Rule
+
+The Shared Business Profile and existing business/service records own authoritative facts. Channel-specific presentation records may select wording, components, and layout, but must reference rather than replace those facts.
+
+Examples:
+
+| Concept | Authoritative layer |
+| --- | --- |
+| Business hours and FAQs | Shared Business Profile |
+| Services | Existing business service records |
+| Travel radius | Existing 247SP configuration |
+| Homepage headline and hero variant | Website presentation records |
+| Lead routing | LeadHub/routing configuration |
+| Provider IDs | Provider integration records |
+
+Migration 021 is complete and staging validated, but it is not the final schema for branding, trust, marketing, SEO, images, or media. Each future category must be reviewed against existing business, branding, website, service, media, and integration records before adding fields or structured child tables. Avoid parallel sources of truth.
+
 ---
 
 # 4. Core Platform Tables
@@ -698,6 +715,14 @@ cancel_at_period_end
 created_at
 updated_at
 ```
+
+Approved 247SP pricing cohorts are Beta Users 1-5 at $0 setup and $79/month, Founding Users 6-25 at $100 setup and $97/month, and Standard Users 26+ at $250 setup and $147/month. These are cohorts for one core product, not feature tiers.
+
+Future billing planning must distinguish product, pricing cohort, customer sequence or qualifying event, setup fee, monthly recurring price, included usage, overage rates, discounts, promotional periods, subscription status, original activation date, reactivation status, and Stripe price ID.
+
+Proposed internal cohort identifiers are `beta`, `founding`, and `standard`. They are not implemented. Cohort must not be permanently inferred from the current active-customer count; once assigned, the subscription or related billing record should preserve its cohort and pricing reference.
+
+No billing migration is authorized by this planning document. Grandfathering, future increases, reopened positions, qualifying events, failed/refunded/fraudulent account counting, returning customers, ownership changes, multi-business counting, taxes, cohort-specific allowances/overages, and setup-fee refunds/reactivation remain open policy questions.
 
 ---
 
@@ -2019,16 +2044,42 @@ Transfer fee:
 
 ---
 
-## websites
+## Existing And Proposed Website Models
+
+Existing 247SP website storage uses `247sp_templates`, `247sp_template_assignments`, `247sp_generated_websites`, `247sp_generated_pages`, branding/image/content override tables, and `website_integrations`. These records support the current single-template generation, private preview, and editing foundations.
+
+The shared component CMS and portable 247SP/EMD site lifecycle are planned and not implemented. Proposed conceptual entities, subject to repository and schema review, are:
+
+```text
+sites
+site_pages
+site_page_sections
+site_themes
+site_revisions
+site_generation_briefs
+site_build_jobs
+site_deployments
+component_definitions
+component_variants
+site_assets
+site_conversion_events or equivalent audit records
+```
+
+Proposed `sites` fields may include:
 
 Suggested fields:
 
 ```text
 id
-business_id
-domain_id
+business_id nullable
+emd_property_id nullable
+domain_assignment_id nullable
 website_name
-template_key
+lifecycle_status
+site_purpose
+routing_mode
+current_draft_revision_id nullable
+published_revision_id nullable
 status
 published_at nullable
 created_at
@@ -2037,12 +2088,17 @@ updated_at
 
 Rules:
 
-* One business gets one site.
-* One site gets one domain.
+* The current 247SP product gives one business one primary customer site; the shared platform may also manage EMD and internal/demo properties without treating them as additional customer sites.
+* A site may have at most one active primary domain association at a time, subject to detailed schema review.
 * Multiple pages are allowed.
-* Multiple websites are not supported for a single business.
 * Website records are one lead-source component inside the broader 247SP front-office product.
-* Additional lead flow comes from EMD or Enterprise.
+* Proposed site-purpose values are `business_owned`, `emd_lead_property`, `emd_demo`, `internal_demo`, and `internal_marketing`.
+* Site purpose, lifecycle, ownership/control, customer relationship, business association, domain ownership, routing mode, CRM data, analytics ownership, and provider accounts are separate concepts.
+* Component implementation remains repository-owned; database records select components and variants and must not store arbitrary executable code.
+* 247SP sites route leads directly to the customer business; EMD properties route leads through the EMD routing engine.
+* Demo-to-247SP and canceled-247SP-to-EMD conversion are planned, eligibility-gated, approval-controlled, validated, and audited.
+* Customer CRM records, leads, conversations, and private communications must not transfer into an EMD property.
+* Customer-owned domains must not be retained or reassigned without contractual authority and customer authorization.
 
 Current 247SP onboarding also stores service-area settings on `247sp_website_configurations`:
 
@@ -2053,6 +2109,12 @@ service_area_radius_is_custom
 ```
 
 `service_area_business` distinguishes businesses customers visit from businesses that travel to customers. Travel radius is stored for 247SP website service-area copy and to preserve later use by service-area pages, lead matching, and setup workflows.
+
+Repository-owned website behavior includes component templates, shared CSS/JavaScript, LeadHub form integration, authentication integrations, analytics/tracking, validation, SEO helpers, image optimization, navigation/footer logic, and deployment tooling.
+
+Database-owned configuration includes site identity/purpose, page definitions, component/variant selection, section order, content references, theme, draft/published revisions, build/deployment status, associations, routing mode, and conversion history.
+
+See `docs/247sp-website-generation-architecture.md` for the planned lifecycle and ownership model.
 
 ---
 
@@ -2504,7 +2566,7 @@ complete jobs
 
 # 20. Communications Platform Tables
 
-247SP includes a communications platform for AI Receptionist, SMS Assistant, Website Chat, local phone numbers, calls, and LeadHub conversation routing.
+247SP is planned to include a communications platform for AI Receptionist, SMS Assistant, Website Chat, local phone numbers, calls, and LeadHub conversation routing. The schema and provider services in this section are planning only and are not implemented by Sprint 8.7 Milestone 3.
 
 The communications platform must use provider abstraction similar to Domain Services. Domain workflow code talks to `DomainManager`, `RegistrarInterface`, and registrar adapters. Communications workflow code should talk to the future `CommunicationsManager`, provider interfaces, and provider adapters.
 
@@ -3861,6 +3923,23 @@ client_business_relationships
 customer_portal_tokens
 ```
 
+Then the shared website-generation and component CMS foundation described in `docs/247sp-website-generation-architecture.md`, after a repository/schema audit:
+
+```text
+sites
+site_pages
+site_page_sections
+site_themes
+site_revisions
+site_generation_briefs
+site_build_jobs
+site_deployments
+component_definitions
+component_variants
+site_assets
+site_conversion_events or equivalent audit records
+```
+
 Then communications platform tables:
 
 ```text
@@ -3921,6 +4000,10 @@ Codex must follow these rules:
 27. Preserve future support for field tech workflows.
 28. Preserve future support for mobile apps and APIs.
 29. Keep the schema understandable and maintainable for a solo founder.
+30. Keep business facts separate from website/channel presentation.
+31. Keep site purpose, lifecycle, ownership/control, domain ownership, customer data, analytics ownership, and lead routing separate.
+32. Do not store arbitrary executable component code in database records.
+33. Preserve pricing cohort and pricing reference once assigned; do not derive cohort permanently from active-customer count.
 
 Enterprise is an account-level plan, not a business module.
 

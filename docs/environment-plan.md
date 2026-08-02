@@ -1,4 +1,4 @@
-Pending Credentials
+Pending Credentials And Planned Provider Configuration
 
 STAGING
 --------
@@ -76,7 +76,9 @@ Notes:
 - Namecheap credentials are used by Domain Services for 24/7 Sales Partner domain availability checks, registration, DNS reads/writes, and status refreshes.
 - Use Namecheap sandbox credentials for staging and production credentials only after staging validation passes.
 - Domain target values define the DNS records prepared by Domain Manager; leave optional values blank when they are not ready.
-- Retell credentials are used by internal UBO communications services for AI Receptionist and Website Chat provider adapters.
-- Twilio credentials are used by internal UBO communications services for local phone number, voice, and SMS provider adapters.
+- Retell and Twilio values are planned placeholders only. The communications services and provider adapters are not implemented, and these credentials should not be configured for live use until their implementation and staging-validation milestones.
+- Retell credentials will be used by internal UBO communications services for AI Receptionist and Website Chat provider adapters.
+- Twilio credentials will be used by internal UBO communications services for local phone number, voice, and SMS provider adapters.
 - Provider defaults should name internal adapter keys, such as `retell_voice`, `retell_chat`, `twilio_voice`, and `twilio_messaging`.
 - Do not call Retell or Twilio directly from account pages, app pages, admin pages, public website routes, or LeadHub screens. Use internal UBO services and the future CommunicationsManager.
+- The future MCP gateway is internal and administrative only. It does not introduce customer-facing MCP credentials or generic database, shell, PHP, or arbitrary-API access.

@@ -1,1191 +1,337 @@
-# Sprint 8.7 — Shared Business Profile and Communications Foundation
+# Sprint 8.7 - Shared Business Profile And Website Platform Alignment
 
 ## Status
 
-Planned
+In progress. Milestones 1 and 2 are complete; Milestone 2 is staging validated; Milestone 3 is the current documentation task.
 
 ## Product
 
 24/7 Sales Partner
 
-## Depends On
+## Objective
 
-Sprint 8.6 foundations and Sprint 8.6 Checkpoint 1.
+Align 247SP product, pricing, website-generation, EMD lifecycle, internal integration, and future communications architecture around one structured Shared Business Profile before application service-layer work begins.
 
-## Primary Outcome
-
-Establish the shared business configuration, provider-neutral communications architecture, and unified conversation data model required for future voice, SMS, website chat, owner takeover, and communication-channel workflows.
-
-This sprint is documentation and planning for the foundation. It must not require live Twilio or Retell provisioning.
+24/7 Sales Partner is a done-for-you lead-generation and digital-front-office platform powered by one structured Business Profile. It generates a custom website, captures forms, calls, texts, and chats, provides immediate AI-assisted responses, and keeps every opportunity organized in LeadHub.
 
 ---
 
-# Sprint Objective
+# Status Vocabulary
 
-Sprint 8.7 begins the transition of 24/7 Sales Partner from a website-centered workflow into a complete digital front-office platform for small service businesses.
-
-The sprint objective is to define and prepare the shared foundation that future Twilio, Retell AI, SMS, chat, calling, and appointment workflows will use.
-
-At the end of Sprint 8.7:
-
-* Each business should have one planned Shared Business Profile.
-* Website, voice, text, and chat channels should be designed to use the same business information.
-* Communication providers should be isolated behind internal interfaces.
-* LeadHub should have a provider-neutral conversation model.
-* Future phone calls, text messages, website chats, forms, and supported email activity should be able to appear in one unified customer timeline.
-* No live Twilio or Retell production workflow should be required.
-
-This sprint prioritizes architecture, data integrity, tenant isolation, and extensibility over live communications functionality.
+* **Existing:** confirmed in the repository.
+* **Complete:** implementation milestone merged.
+* **Staging validated:** runtime or schema behavior verified on staging and recorded in repository documentation.
+* **Planned:** approved future direction with no claim of implementation.
+* **Proposed:** candidate name or design requiring repository/schema review.
+* **Deferred:** intentionally outside the current milestone or sprint.
 
 ---
 
-# Product Context
+# Confirmed Current State
 
-24/7 Sales Partner is being repositioned as:
+Existing foundations include business onboarding, 247SP onboarding, one starter website template, generated pages and private previews, customer and admin website editors, LeadHub contacts/notes/tasks/activity, website lead capture, Stripe billing integration, Domain Services, and email request/assignment records.
 
-> A done-for-you lead generation and digital front-office platform for small service businesses.
+Milestone 1 reviewed the existing schema and architecture in `docs/sprint-8.7-existing-schema-review.md`.
 
-The complete product will eventually combine:
+Milestone 2 added migration `021_shared_business_profile.sql`. Migration 021 created the initial provider-neutral Shared Business Profile root and child tables, was applied to staging, and passed the validation recorded in `docs/sprint-8.7-migration-021-validation.md`.
 
-* Done-for-you lead-generation website
-* Custom domain
-* Professional email
-* Local business phone number
-* 24/7 AI receptionist
-* Two-way business texting
-* AI-powered website chat
-* Owner-initiated outbound calling
-* LeadHub CRM
-* Unified lead and conversation inbox
+Migration 021 must not be rewritten. Historical migrations 019 and 020 must not be rewritten or rerun to support later Sprint 8.7 work.
 
-The website generates opportunities, but the product value is making sure those opportunities receive a response and remain organized until the business owner closes or dismisses them.
-
-Sprint 8.7 creates the shared foundation for that workflow.
+The component CMS, site revision system, portable site conversion system, `CommunicationsManager`, provider interfaces/adapters, unified conversation inbox, and private MCP gateway do not currently exist.
 
 ---
 
-# Existing Repository Context
+# Milestone Sequence
 
-The following existing foundations were confirmed during repository inspection:
+## Milestone 1 - Existing Schema And Architecture Review
 
-* Business records exist in `businesses`, `business_users`, `categories`, `sub_services`, and `business_sub_services`.
-* 247SP onboarding and website records exist in `247sp_onboarding`, `247sp_website_configurations`, `247sp_business_content`, `247sp_service_pages`, `247sp_domain_selections`, `247sp_email_requests`, `247sp_generated_websites`, and related website override tables.
-* Service-area settings already exist on `247sp_website_configurations`, including service-area-business flags and travel radius fields.
-* Domain workflow records exist in `domain_requests`, `domain_assignments`, `website_domains`, `domain_dns_records`, and `domain_events`.
-* Email provisioning foundation records exist in `mailbox_requests`, `mailbox_assignments`, `mailbox_activity_log`, and `business_mailbox_counts`.
-* LeadHub currently uses `contacts`, `contact_statuses`, `notes`, `tasks`, and `activity_logs`.
-* `LeadHub::capture247spWebsiteSubmission()` currently handles website lead capture.
-* Domain provider abstraction exists through `DomainManager`, `RegistrarInterface`, and `NamecheapRegistrar`.
-* No current `CommunicationsManager`, `VoiceProviderInterface`, `MessagingProviderInterface`, `ChatProviderInterface`, `TelephonyProviderInterface`, Retell provider class, Twilio provider class, conversations table, or communications-provider schema was confirmed.
+Status: Complete
 
-Sprint 8.7 must not duplicate existing business, service, service-area, website, domain, email, LeadHub, note, task, or activity-log concepts without a documented compatibility reason.
+Deliverables:
 
----
+* Repository inventory of business, service, service-area, website, LeadHub, billing, domain, and email foundations
+* Source-of-truth and compatibility risks
+* Migration 021 recommendation
+* Communications schema deferred boundaries
 
-# Architectural Principles
+## Milestone 2 - Shared Business Profile Schema
 
-## Business-Scoped Configuration
+Status: Complete and staging validated
 
-All Business Profile and communications records must belong to a specific `business_id`.
-
-Configuration must not be stored only at the account or user level because one account may eventually manage multiple businesses.
-
-Every query and mutation must enforce business-level tenant isolation.
-
-## One Source Of Truth
-
-Business information must not be independently maintained inside the website editor, voice agent, text agent, and chat agent.
-
-The Shared Business Profile should become the authoritative source for:
-
-* Business identity
-* Services
-* Service areas
-* Hours
-* Frequently asked questions
-* Pricing guidance
-* Appointment rules
-* Transfer instructions
-* Emergency rules
-* Escalation instructions
-* Tone and personality
-* Notification preferences
-
-Existing website and onboarding data should be reused or migrated where practical instead of duplicated.
-
-## Provider-Neutral Application Design
-
-LeadHub and 24/7 Sales Partner must not depend directly on Twilio- or Retell-specific data structures.
-
-External providers should be accessed through internal services and provider interfaces.
-
-Intended design:
-
-```text
-24/7 Sales Partner / LeadHub
-  ↓
-CommunicationsManager
-  ↓
-Provider interfaces
-  ↓
-Twilio, Retell, or future providers
-```
-
-## LeadHub As System Of Record
-
-Provider platforms may retain recordings, messages, transcripts, and delivery data, but LeadHub must remain the primary business-facing record of:
-
-* Who contacted the business
-* Which channel they used
-* What they requested
-* What response they received
-* Whether the owner took over
-* What follow-up is still required
-* Whether the opportunity is won, lost, scheduled, pending, spam, or dismissed
-
-## Append-Only Communication History
-
-Provider events and customer communications should be preserved as historical events.
-
-Corrections, status changes, summaries, and follow-up records should not silently overwrite original activity.
-
-## Idempotent Provider Event Processing
-
-Future webhooks may be delivered more than once.
-
-The communications data model must support provider event identifiers and idempotency controls so duplicate webhook delivery does not create duplicate calls, messages, conversations, leads, or timeline entries.
-
-## Usage Must Be Measurable
-
-The architecture should make future usage billing possible from the beginning.
-
-Future usage categories include:
-
-* AI receptionist minutes
-* Owner-handled call minutes
-* SMS and MMS segments
-* AI chat responses
-* Phone numbers
-* Recording storage
-* Transcription usage
-
-Sprint 8.7 does not calculate overage invoices, but the schema must not prevent reliable usage tracking later.
-
----
-
-# Sprint Scope
-
-Sprint 8.7 includes five major workstreams:
-
-* Shared Business Profile
-* Communications architecture
-* Unified conversation schema
-* LeadHub integration foundation
-* Readiness, documentation, and validation
-
-This sprint may define schema, service boundaries, internal contracts, UI planning, migration requirements, testing requirements, and acceptance criteria.
-
-This sprint must not implement live Twilio or Retell workflows.
-
----
-
-# Workstream 1 — Shared Business Profile
-
-## Purpose
-
-Each business needs one central profile that can eventually configure:
-
-* Website content
-* AI voice receptionist
-* AI text assistant
-* Website chat assistant
-* LeadHub routing
-* Owner notifications
-* Transfer behavior
-* Escalation behavior
-
-The Business Profile is business-scoped and provider-neutral.
-
-## Profile Categories
-
-### Business Identity
-
-The Shared Business Profile should support:
-
-* Business name
-* Public display name
-* Primary phone number
-* Primary email address
-* Website URL
-* Business address
-* Time zone
-* Default language
-
-### Customer-Facing Descriptions
-
-The profile should support:
-
-* Customer-facing description
-* Short business description
-* Long business description
-* Primary greeting
-* Value proposition
-* Preferred tone
-* Preferred personality
-* Words or claims the AI should avoid
-
-### Services
-
-The profile should support:
-
-* Services offered
-* Service descriptions
-* Active or inactive status
-* Emergency availability
-* Appointment eligibility
-* Optional pricing guidance
-
-Existing `categories`, `sub_services`, `business_sub_services`, and `247sp_service_pages` must be reviewed before adding any new service table.
-
-A second conflicting service catalog must not be created without a documented reason.
-
-### Service Areas
-
-The profile should support:
-
-* Whether customers visit the business
-* Whether the business travels to customers
-* Travel radius
-* Cities, ZIP codes, counties, or regions served
-* Excluded service areas
-* Remote or virtual service availability
-
-Existing `247sp_website_configurations` service-area fields and `businesses.is_public_physical_location` must be reused or migrated where practical.
-
-### Business Hours
-
-The profile should support:
-
-* Standard hours by day
-* Closed days
-* 24-hour availability
-* After-hours behavior
-* Holiday exceptions
-* Emergency availability
-
-Hours must be interpreted in the business's configured time zone.
-
-### Frequently Asked Questions
-
-Each FAQ should support:
-
-* Question
-* Approved answer
-* Sort order
-* Active status
-* Channel availability when needed
-
-### Pricing Guidance
-
-The profile may store customer-approved guidance such as:
-
-* Whether prices may be discussed
-* Starting prices
-* Service-call fees
-* Estimate policies
-* Deposit policies
-* Financing statements
-* Prohibited pricing claims
-
-AI agents must not invent prices that are not contained in approved business information.
-
-### Appointment Rules
-
-The profile should support:
-
-* Whether appointments may be requested
-* Whether appointments may be automatically booked
-* Services eligible for appointments
-* Required customer information
-* Minimum notice
-* Appointment duration guidance
-* Confirmation instructions
-* Cancellation instructions
-
-Sprint 8.7 does not require a full scheduling engine.
-
-### Transfer Rules
-
-The profile should support:
-
-* Primary owner transfer number
-* Backup transfer number
-* Business-hours behavior
-* After-hours behavior
-* Maximum transfer attempts
-* Voicemail or fallback behavior
-* Services or conditions that require transfer
-
-### Emergency And Escalation Rules
-
-The profile should support:
-
-* Emergency keywords or conditions
-* Services treated as urgent
-* Situations the AI must not handle
-* Immediate transfer conditions
-* Owner alert conditions
-* Emergency disclaimer language
-
-The platform must not represent itself as an emergency service unless the business has explicitly configured that behavior.
-
-### Notification Preferences
-
-The profile should support:
-
-* Email notifications
-* SMS notifications
-* In-app notifications
-* New-lead notifications
-* Missed-call notifications
-* Transfer-failure notifications
-* Urgent-lead notifications
-* Daily unresolved-lead summary preference
-
-## Business Profile Data Design
-
-The schema plan should use:
-
-* One primary business profile record
-* Existing business, service, and service-area records where appropriate
-* Child records for repeating structured information
-* JSON only where the information is provider-neutral but not yet stable enough to normalize
-
-Potential logical entities include:
+Deliverables:
 
 * `business_profiles`
-* `business_profile_hours`
-* `business_profile_hour_exceptions`
-* `business_profile_faqs`
-* `business_profile_pricing_guidance`
-* `business_transfer_rules`
-* `business_escalation_rules`
-* `business_notification_preferences`
+* Profile hours and hour exceptions
+* FAQs and pricing guidance
+* Appointment, transfer, and escalation rules
+* Notification preferences
+* One draft profile backfilled per existing business
+* Composite business/profile foreign-key enforcement
+* Staging validation record
 
-These names are planning guidance, not permission to duplicate existing equivalent tables.
+Migration 021 is the initial business-knowledge schema. It does not contain every future branding, trust, marketing, SEO, image, or media category.
 
-Before creating migrations, existing tables and columns must be reviewed.
+## Milestone 3 - Product Definition, Architecture, Pricing, And Roadmap Alignment
 
-## Profile State
+Status: Current documentation task
 
-The profile should support lifecycle states such as:
+Deliverables:
 
-* Draft
-* In review
-* Ready
-* Active
-* Incomplete
+* Updated 247SP definition and pricing cohorts
+* Shared Business Profile source-of-truth model
+* Business-facts versus channel-presentation model
+* Website-generation and component CMS architecture
+* Shared 247SP/EMD website infrastructure
+* EMD demo and demo-to-247SP lifecycle
+* Cancellation-to-EMD review model
+* Domain/site/customer-data ownership distinctions
+* Lead-routing and data-separation requirements
+* Revision, approval, and audit controls
+* Standardized website-to-LeadHub ingestion direction
+* Internal service-layer and MCP direction
+* Customer integration policy
+* Revised future-sprint sequence and readiness model
 
-A business must be able to save an incomplete profile without activating communication agents.
+This milestone changes documentation only. It does not implement PHP, migrations, database tables, billing changes, providers, communications, MCP, or production configuration.
 
-## Profile Completeness
+## Milestone 4 - Shared Business Profile Service Layer
 
-The application should be able to calculate whether required profile sections are complete.
+Status: Planned
 
-Minimum future agent readiness should include:
+Scope:
 
-* Business identity
-* Services
-* Service areas
-* Hours
-* Greeting
-* Transfer behavior
-* Emergency rules
-* Notification destination
+* Authorized profile reads and writes
+* Business-level tenant checks
+* Input validation and transactions
+* Audit hooks
+* Readiness calculation
+* Normalized DTOs or data structures
+* Reusable service methods for UI, jobs, internal APIs, and future MCP tools
 
-Profile completeness should be available to the 247SP launch-readiness system.
+No MCP gateway implementation is included.
 
----
+## Milestone 5 - Shared Business Profile Interface
 
-# Workstream 2 — Communications Architecture
+Status: Planned
 
-## CommunicationsManager
+Scope:
 
-`CommunicationsManager` is a planned application-level service responsible for coordinating:
+* Customer-facing profile sections
+* Draft saving
+* Readiness and missing-information indicators
+* Admin visibility
+* Progressive disclosure
+* Existing service and service-area reuse
+* No customer page builder
 
-* Communication channels
-* Provider accounts
-* Conversations
-* Inbound events
-* Outbound actions
-* Contact matching
-* Lead creation
-* Owner takeover
-* Usage events
-* Provider status synchronization
+## Milestone 6 - Website Generation, Site Lifecycle, And Component Audit
 
-LeadHub pages should call internal application services rather than communicating directly with Twilio or Retell.
+Status: Planned
 
-`CommunicationsManager` does not currently exist in the repository and should be treated as planned.
+Scope:
 
-## Provider Interfaces
+* Inspect existing website tables, rendering, and editor behavior
+* Identify reusable components
+* Review site ownership/control, customer/business associations, and EMD associations
+* Review domains, lead routing, demo support, site purpose, and lifecycle
+* Review revisions, archival, restoration, and conversion history
+* Review transfer eligibility and customer-data separation
+* Review both EMD-to-247SP and 247SP-to-EMD conversion
+* Produce an implementation-ready schema and migration plan
 
-The architecture should define provider-neutral contracts for:
+The complete CMS is not implemented during Sprint 8.7 unless separately approved.
 
-* `VoiceProviderInterface`
-* `MessagingProviderInterface`
-* `ChatProviderInterface`
-* `TelephonyProviderInterface`
+## Milestone 7 - Sprint Closeout And Future-Sprint Planning
 
-Possible future implementations include:
+Status: Planned
 
-* `RetellVoiceProvider`
-* `RetellChatProvider`
-* `TwilioTelephonyProvider`
-* `TwilioMessagingProvider`
+Scope:
 
-These implementations were not confirmed in the repository and should be treated as planned.
-
-Sprint 8.7 may establish interfaces, namespaces, documentation, and non-networking scaffolding. It should not require live provider provisioning.
-
-## Provider Responsibilities
-
-### Voice Provider
-
-Responsible for:
-
-* AI agent configuration
-* Voice-agent sessions
-* Transcripts
-* Summaries
-* Call disposition
-* Extracted lead information
-
-### Telephony Provider
-
-Responsible for:
-
-* Phone numbers
-* Call routing
-* Call transfers
-* Caller ID
-* Call status
-* Recordings
-* Browser or callback calling when future scopes require it
-
-### Messaging Provider
-
-Responsible for:
-
-* SMS and MMS delivery
-* Message status
-* Incoming message webhooks
-* Segment counts
-* Media attachments
-
-### Chat Provider
-
-Responsible for:
-
-* Website chat sessions
-* Chat responses
-* Visitor identity
-* Agent handoff
-* Conversation events
-
-A single provider may implement more than one interface.
-
-## Provider Accounts And Channels
-
-The data model should distinguish between provider accounts and communication channels.
-
-Provider account means the business's relationship with an external provider, such as:
-
-* Twilio subaccount
-* Retell workspace or agent ownership
-* Future provider account
-
-Provider-account properties may include:
-
-* Business
-* Provider
-* External account identifier
-* Status
-* Provisioning state
-* Last synchronization date
-* Error state
-* Non-secret metadata
-
-Provider API secrets must not be stored in plain text.
-
-Communication channel means a customer-facing method of communication, such as:
-
-* Business phone number
-* SMS-enabled number
-* Website chat widget
-* Email inbox
-* Website form
-* Future social messaging channel
-
-A channel may support multiple capabilities. For example, one phone number may support inbound voice, outbound voice, SMS, and MMS.
+* Confirm Business Profile service and interface status
+* Confirm website-generation audit status
+* Confirm documentation consistency
+* Produce executable Sprint 8.8 and Sprint 8.9 plans
+* Keep full CMS and communications implementation outside Sprint 8.7
 
 ---
 
-# Workstream 3 — Unified Conversation Model
+# Shared Business Profile Direction
 
-## Conversation Design
-
-A conversation represents an interaction thread between a business and one or more external participants.
-
-A conversation should be able to represent:
-
-* Phone calls
-* Text-message threads
-* Website chat sessions
-* Website form follow-up
-* Email inquiries
-* Future EMD leads
-
-A conversation may be associated with:
-
-* One business
-* Zero or one LeadHub contact initially
-* Zero or one LeadHub lead or opportunity initially
-* One primary communication channel
-* One or more participants
-* Many messages or events
-
-Central relationship:
+The Shared Business Profile is the central business-knowledge layer:
 
 ```text
-One contact
-  ↓
-Many conversations
-  ↓
-Many channels
-  ↓
-One unified timeline
+Shared Business Profile
+  |-- Website
+  |-- Voice agent (planned)
+  |-- SMS assistant (planned)
+  |-- Website chat (planned)
+  |-- LeadHub routing
+  |-- SEO and schema
+  |-- Notifications
+  `-- Future marketing automation
 ```
 
-## Contact And Lead Behavior
+Business facts are maintained once. Channel wording may vary while remaining grounded in approved facts. Website presentation records own page composition; provider integration records own provider identifiers; LeadHub/routing configuration owns lead routing.
 
-A new communication event must not automatically create a duplicate contact.
+Future source-of-truth reviews must cover branding, social, licenses, certifications, insurance, awards, guarantees, testimonials, review references, before-and-after media, target customers, conversion goals, differentiators, SEO cities/keywords, and image/media libraries. These must not all be appended to `business_profiles` by default.
 
-Contact matching may use:
+---
 
-* Normalized phone number
-* Normalized email address
-* Existing conversation participant
-* Provider-supplied customer identifier
-* Manual owner selection
+# Website Platform Direction
 
-Ambiguous matches should be reviewable rather than silently merged.
+The planned website system has three layers:
 
-A conversation may initially exist without a matched LeadHub contact.
+1. Authoritative structured business data.
+2. Repository-owned approved components and variants selected through structured page records.
+3. AI-assisted presentation constrained to approved components, facts, and platform services.
 
-## Conversation Status
+The MVP is a done-for-you structured CMS, not a customer drag-and-drop builder. Customers manage business facts; FDV manages presentation, revisions, approval, and publishing.
 
-Potential conversation states include:
+24/7SP and EMD Network share the planned site-brief, component, theme, analytics, SEO, LeadHub form, tracking, deployment, revision, validation, and image infrastructure. Product/site purpose controls lead routing; it does not create a separate website engine.
 
-* Open
-* Waiting for business
-* Waiting for customer
-* AI active
-* Owner active
-* Resolved
-* Closed
-* Spam
+See `docs/247sp-website-generation-architecture.md`.
 
-Conversation status is separate from lead status.
+---
 
-## Lead Status
+# LeadHub Ingestion Direction
 
-LeadHub should support or prepare for these opportunity statuses:
+Website submissions use a narrow, write-oriented inbound contract. Registered site identity resolves the authoritative business; submitted `business_id` is not trusted by itself.
 
-* New
-* Contacted
-* Appointment requested
-* Appointment scheduled
-* Estimate sent
-* Won
-* Lost
-* Pending
-* Spam
+LeadHub validates the site, matches or creates the contact, creates or updates the opportunity, records submission history, applies spam and routing rules, preserves attribution, prevents supported duplicates, and surfaces follow-up.
 
-Existing statuses must be reviewed before changing production values.
+The ingestion endpoint must provide rate limiting, replay protection, site/domain credential validation, no browser-exposed API secret, and an auditable correlation ID. It is not broad customer API access.
 
-A migration plan must preserve existing LeadHub records.
+LeadHub remains the system of record for every supported channel and the future unified timeline.
 
-## Conversation Participants
+---
 
-Participants may include:
+# Site Lifecycle And Conversion Direction
 
-* Customer
-* Business owner
-* Team member
-* AI agent
-* External provider
-* System automation
+Proposed site purposes are `business_owned`, `emd_lead_property`, `emd_demo`, `internal_demo`, and `internal_marketing`.
 
-Participants should be represented without requiring every external person to have a UBO user account.
-
-## Conversation Events
-
-The unified timeline should support events such as:
-
-* Form submitted
-* Call started
-* Call answered
-* Call missed
-* Call transferred
-* Transfer failed
-* Recording available
-* Transcript available
-* AI summary created
-* SMS received
-* SMS sent
-* MMS received
-* Website chat started
-* Website chat message received
-* Owner took over
-* AI paused
-* AI resumed
-* Appointment requested
-* Lead status changed
-* Internal note added
-* Task created
-
-The original provider payload should not be required for normal application display.
-
-A sanitized provider payload or metadata record may be retained for troubleshooting.
-
-## Direction And Authorship
-
-Messages and communication records should identify:
-
-* Inbound or outbound direction
-* Channel
-* Sender type
-* Recipient type
-* AI-generated status
-* Owner takeover status
-* Delivery status
-* Provider identifier
-* Provider timestamp
-* Application timestamp
-
-## Idempotency
-
-Provider-originated records should support a unique combination such as:
+Planned bidirectional lifecycle:
 
 ```text
-provider
-provider_account_id
-external_event_id
+EMD/internal demo
+  -> approved conversion to purchased 247SP site
+  -> active customer operation
+  -> customer cancellation
+  -> eligibility and transfer review
+  -> approved conversion to EMD property, suspension, archive, retention hold, or policy-based deletion
 ```
 
-Repeated webhook delivery must update or ignore the existing record rather than create duplicates.
+Site build, site purpose, lifecycle, ownership/control, customer relationship, business association, domain ownership, lead routing, CRM data, analytics ownership, and provider accounts are independent concepts.
+
+Every conversion requires eligibility review, explicit approval, validation, and audit history. Customer CRM data and private communications never transfer to an EMD property. Customer routing is removed before EMD routing is configured.
+
+FDV-owned and customer-owned domains are reviewed separately. A customer-owned domain is not retained or reassigned without authority and authorization, even if reusable site structure remains with the platform.
 
 ---
 
-# Workstream 4 — LeadHub Integration Foundation
+# Internal MCP And Customer Integration Direction
 
-## LeadHub Role
+MCP is planned for internal administrative use only and sits above stable UBO services. It is not a customer 247SP feature.
 
-LeadHub must remain the business-facing center of the lead-to-sale workflow.
+Generic database, shell, PHP, record-editing, and arbitrary-API tools are prohibited. Narrow tools use authentication, scopes, tenant checks, approval rules, idempotency, and audit records.
 
-Future LeadHub screens should answer:
+Customer integrations are narrow source-specific ingestion channels. Customers do not receive MCP, general API keys, direct database access, broad public reads, generic GraphQL, continuous database replication, or unrestricted bulk extraction. Customers retain normal access to their records, communications, reports, documents, and files.
 
-```text
-What leads came in, what happened to them, and who still needs a response?
-```
-
-Sprint 8.7 should prepare LeadHub for:
-
-* Unified conversation counts
-* Unread activity
-* Unresolved leads
-* Response-needed state
-* Channel identification
-* AI versus owner activity
-* Conversation timeline display
-
-## Unified Timeline
-
-A LeadHub contact timeline should eventually display:
-
-* Website forms
-* Phone calls
-* Call transfers
-* Recordings
-* Transcripts
-* AI summaries
-* SMS and MMS
-* Website chat
-* Owner calls
-* Owner messages
-* Internal notes
-* Tasks
-* Appointment activity
-* Status changes
-
-Sprint 8.7 should define the shared event format and integration approach. It does not need to implement every event type.
-
-## Human Takeover
-
-The architecture must treat owner takeover as a first-class capability.
-
-Future conversations should support:
-
-* AI active
-* Owner takeover requested
-* Owner active
-* AI paused
-* AI resumed
-* Conversation closed
-
-The owner must eventually be able to pause AI responses for a specific contact or conversation without disabling AI for the entire business.
-
-## Internal Notes
-
-Internal notes must never be sent to:
-
-* Customers
-* AI providers as customer-visible content
-* Public website chat
-* SMS recipients
-
-Existing LeadHub note privacy behavior must remain intact.
+See `docs/internal-mcp-and-integration-access-strategy.md`.
 
 ---
 
-# Workstream 5 — Internal API Planning
+# Approved 247SP Pricing
 
-## Planned Internal Endpoints
+| Customer cohort | Customer numbers | Setup fee | Monthly price |
+| --- | ---: | ---: | ---: |
+| Beta Users | 1-5 | $0 | $79/month |
+| Founding Users | 6-25 | $100 | $97/month |
+| Standard Users | 26+ | $250 | $147/month |
 
-The following are provider-neutral planning contracts. Sprint 8.7 does not need to expose all endpoints publicly.
+These cohorts price the same core product. They are not feature tiers.
 
-Potential endpoints:
+Included monthly usage:
 
-```text
-/api/voice/agent-config
-/api/voice/create-lead
-/api/voice/check-availability
-/api/voice/book-appointment
-/api/voice/transfer-rules
-/api/voice/post-call
+* 200 AI minutes
+* 500 outbound owner minutes
+* 500 SMS segments
+* 500 AI chat responses
 
-/api/messages/inbound
-/api/messages/send
+Usage above each allowance is overage usage. Unit rates must be defined in an approved pricing plan, order form, or billing policy before charging customers.
 
-/api/chat/create-lead
-/api/chat/message
-/api/chat/session-complete
+Open policy questions include grandfathering, price increases, reopened positions, the qualifying position event, failed/refunded/fraudulent accounts, returning customers, ownership changes, multi-business counting, taxes, allowance/rate differences, and setup-fee refunds/reactivation.
 
-/api/conversations/takeover
-/api/conversations/pause-ai
-/api/conversations/resume-ai
-```
-
-Each contract should document:
-
-* Authentication expectations
-* Business identification
-* Idempotency key
-* Request fields
-* Response fields
-* Error behavior
-* Audit behavior
-* LeadHub effects
-
-Provider webhooks must not be trusted solely because they contain a business identifier.
+Recommended but not approved: each independently activated business subscription counts when it becomes active, stores its assigned cohort, and does not change cohort merely because later customers cancel.
 
 ---
 
-# Security Requirements
+# Future Sprint Sequence
 
-Sprint 8.7 design must account for:
+No existing Sprint 8.8, 8.9, or 8.10 plan conflicts were found in the repository. The architectural sequence is:
 
-* Business-level authorization
-* Webhook signature verification
-* Provider credential protection
-* PII handling
-* Recording and transcript access control
-* Internal-note privacy
-* Audit history
-* Request replay protection
-* Rate limiting
-* Retention controls
+## Sprint 8.8 - Website Generation And Component CMS Foundation
 
-API tokens, auth tokens, and provider secrets must not be committed to the repository or stored in plain-text application tables.
+Expected scope includes site identity/purpose/lifecycle; customer, business, EMD, domain, and routing associations; pages and sections; component registry and variants; themes and briefs; demos and both conversion directions; data separation; conversion audit; revisions and approval; build/deployment jobs; archival/restoration; shared LeadHub forms; validation; initial AI-assisted assembly; and internal presentation-editor planning or initial implementation.
 
-Environment configuration should continue to use the project's established environment-secret approach.
+This is not a customer drag-and-drop builder.
 
----
+## Sprint 8.9 - Communications Core Foundation
 
-# Audit Requirements
+Expected scope includes `CommunicationsManager`, provider-neutral interfaces, provider accounts, communication channels, conversations, participants, messages/events, contact matching, owner takeover, AI pause/resume, usage events, LeadHub timeline adapter, and webhook idempotency.
 
-The system should preserve an audit trail for actions such as:
+## Sprint 8.10 - Telephony And AI Receptionist
 
-* Business Profile changes
-* Agent activation or deactivation
-* Transfer-rule changes
-* Emergency-rule changes
-* Notification changes
-* Owner takeover
-* AI pause or resume
-* Manual contact merge
-* Conversation reassignment
-* Lead-status changes
+Expected scope includes Twilio subaccounts and local phone numbers, Retell voice agents, inbound routing, transfers, recordings, transcripts, summaries, dispositions, LeadHub call history, usage metering, and a pilot.
 
-Audit records should identify:
+## Later Sprint - Messaging And Website Chat
 
-* Business
-* Acting user or system
-* Action
-* Target record
-* Timestamp
-* Relevant before-and-after metadata where appropriate
+Expected scope includes SMS/MMS, A2P registration, website chat, AI chat, owner takeover, unified inbox, usage, and overages.
 
 ---
 
-# UI Planning
+# Production Readiness Layers
 
-## 24/7 Sales Partner Business Profile
+Readiness is tracked independently for:
 
-Recommended sections:
+* Business Profile
+* 247SP customer site
+* EMD demo
+* Demo-to-customer conversion
+* Customer-to-EMD conversion
+* Communications
+* Commercial launch
 
-* Business Information
-* Services
-* Service Area
-* Hours
-* Frequently Asked Questions
-* Pricing Guidance
-* Appointment Rules
-* Call Transfers
-* Emergency and Escalation Rules
-* AI Tone and Personality
-* Notifications
-* Profile Readiness
-
-The interface should use progressive disclosure so a small business owner is not presented with one overwhelming form.
-
-## LeadHub
-
-Prepare navigation and interface planning for:
-
-* Leads
-* Contacts
-* Conversations
-* Inbox
-* Tasks
-* Unresolved opportunities
-
-Final navigation should avoid showing empty or nonfunctional production features until they are ready.
+Planned categories must not be marked complete until implementation and required staging validation are recorded. See `docs/production-readiness-review.md`.
 
 ---
 
-# Launch-Readiness Changes
+# Milestone 3 Out Of Scope
 
-The 247SP launch-readiness model should be expanded to prepare for:
-
-* Business Profile complete
-* Website content complete
-* Website approved
-* Domain ready
-* Professional email ready
-* Business phone number ready
-* AI receptionist configured
-* Transfer rules tested
-* Text messaging registered
-* Website chat active
-* LeadHub connected
-* Billing active
-* End-to-end communications test passed
-
-During Sprint 8.7, future items may appear as planned, unavailable, or not yet required.
-
-They must not falsely display as complete.
+* PHP or application-code changes
+* SQL migrations or database tables
+* Twilio, Retell, MCP, website-component, communications, or billing implementation
+* Provider provisioning or live API calls
+* Production or staging configuration changes
+* Automatic site conversion, domain transfer, routing change, or publication
+* Milestone 4 service-layer implementation
 
 ---
 
-# Out Of Scope
+# Milestone 3 Acceptance Criteria
 
-The following are explicitly outside Sprint 8.7:
-
-* Live Twilio provisioning
-* Live Retell provisioning
-* Purchasing Twilio phone numbers
-* Creating live Twilio subaccounts
-* Creating live Retell agents
-* Receiving production phone calls
-* Sending production SMS or MMS
-* A2P 10DLC registration
-* Browser-based calling
-* Mobile callback calling
-* Native mobile applications
-* Live website chat deployment
-* Full scheduling integration
-* Google Calendar booking
-* Overage invoice generation
-* Stripe usage-based billing
-* Automated phone-number portability
-* Automated domain or email provisioning changes
-* Full production unified inbox
-* Advanced AI quality scoring
-
-These belong in later implementation sprints.
+* Current product documents use the approved 247SP definition and cohort pricing.
+* The website is documented as a presentation layer of structured facts.
+* Migration 021 is accurately described as complete and staging validated.
+* Proposed CMS, conversion, communications, and MCP capabilities are not presented as existing.
+* LeadHub is the system of record and website ingestion is narrow and write-oriented.
+* Shared 247SP/EMD infrastructure and both approval-controlled conversion directions are documented.
+* Domain ownership, customer data, analytics, and routing are separated.
+* Sprint 8.7 milestones and future sprint sequence are consistent.
+* Documentation-only scope is preserved.
+* `git diff --check` and `git diff --cached --check` pass.
 
 ---
 
-# Existing Data Compatibility
+# Recommended Next Task
 
-Before adding tables or fields, implementation work must inspect:
-
-* Existing business records
-* Existing business service records
-* Existing service-area fields
-* Existing website content
-* Existing LeadHub contacts
-* Existing LeadHub leads
-* Existing notes
-* Existing tasks
-* Existing timeline events or activity logs
-* Existing billing and subscription records
-
-The sprint must avoid creating parallel sources of truth.
-
-Where existing data already represents a Business Profile field, the preferred order is:
-
-1. Reuse the existing record.
-2. Extend the existing record.
-3. Add a documented compatibility layer.
-4. Migrate to a new structure only when necessary.
-
-Existing customer and staging data must remain readable.
-
-Known existing data sources to review:
-
-* `businesses`
-* `categories`
-* `sub_services`
-* `business_sub_services`
-* `business_custom_services`
-* `247sp_onboarding`
-* `247sp_website_configurations`
-* `247sp_business_content`
-* `247sp_service_pages`
-* `247sp_website_content_overrides`
-* `contacts`
-* `notes`
-* `tasks`
-* `activity_logs`
-* `domain_requests`
-* `mailbox_requests`
-* `subscriptions`
-
----
-
-# Migration Requirements
-
-Any schema implementation resulting from this sprint must:
-
-* Use the next available migration number.
-* Work on a clean database.
-* Work on the current staging schema.
-* Preserve existing LeadHub and 247SP data.
-* Avoid oversized `utf8mb4` indexes.
-* Use indexed foreign keys where needed.
-* Use explicit business ownership.
-* Include idempotency constraints where provider events are stored.
-* Avoid provider-specific columns in core conversation tables.
-* Document manual repair steps when a migration cannot be fully reversible.
-
-Do not rerun or rewrite historical repair migrations.
-
-Before implementation, confirm the latest migration number because migration `020_repair_domain_dns_records.sql` already exists.
-
----
-
-# Recommended Implementation Sequence
-
-## Milestone 1 — Existing-Schema Review
-
-* Inspect current business, service, service-area, website, and LeadHub tables.
-* Document which records can be reused.
-* Identify conflicts and duplicate concepts.
-* Confirm migration numbering.
-
-## Milestone 2 — Shared Business Profile Schema
-
-* Add only the missing profile structures.
-* Backfill from existing business and onboarding data when safe.
-* Add business-level ownership and indexes.
-* Add profile lifecycle and completeness support.
-
-## Milestone 3 — Business Profile Service Layer
-
-* Add a central profile-management service.
-* Enforce business authorization.
-* Normalize profile data for website and future agent consumers.
-* Add audit hooks.
-
-## Milestone 4 — Business Profile Interface
-
-* Add customer-facing profile sections.
-* Add administrative visibility.
-* Support draft saving.
-* Display readiness and missing required fields.
-
-## Milestone 5 — Communications Core Schema
-
-* Add provider-neutral channels.
-* Add conversations.
-* Add participants.
-* Add messages or timeline events.
-* Add idempotency support.
-* Add optional LeadHub contact and lead associations.
-
-## Milestone 6 — Communications Interfaces
-
-* Add provider interface contracts.
-* Add `CommunicationsManager` scaffolding.
-* Do not make live provider API calls.
-* Add internal DTOs or normalized payload expectations where useful.
-
-## Milestone 7 — LeadHub Timeline Adapter
-
-* Define how normalized communication events appear in LeadHub.
-* Preserve existing notes and tasks.
-* Prepare for unresolved-conversation reporting.
-* Do not expose placeholder actions that do not work.
-
-## Milestone 8 — Documentation And Staging Validation
-
-* Update relevant architecture and database documentation.
-* Run migration validation.
-* Run PHP linting on staging.
-* Confirm existing website and LeadHub workflows still operate.
-* Confirm tenant isolation.
-
----
-
-# Testing Requirements
-
-## Database Testing
-
-* Migration succeeds on the current staging schema.
-* Migration succeeds on a clean schema using the documented migration sequence.
-* Foreign keys reference valid tables and compatible column types.
-* Duplicate provider events are rejected or safely reconciled.
-* Business-scoped indexes support normal queries.
-* Existing LeadHub records remain intact.
-
-## Business Profile Testing
-
-* A profile can be created for a business.
-* A draft profile can be saved while incomplete.
-* Required sections are identified correctly.
-* One business cannot access another business's profile.
-* Existing service and service-area data remain available.
-* Time-zone-aware hours are retained correctly.
-
-## Conversation Foundation Testing
-
-* A conversation can exist without a matched contact.
-* A conversation can be linked to a LeadHub contact.
-* One contact can have multiple conversations.
-* One conversation can contain multiple events.
-* Inbound and outbound direction are distinguishable.
-* AI and human authorship are distinguishable.
-* Duplicate external event identifiers do not create duplicate activity.
-* Internal notes remain private.
-
-## Regression Testing
-
-* Existing website editing still works.
-* Existing website forms still create LeadHub activity.
-* Existing contact and lead pages still load.
-* Notes still work.
-* Tasks still work.
-* Billing pages still load.
-* Domain pages still load.
-* Current onboarding data is not lost.
-
----
-
-# Acceptance Criteria
-
-Sprint 8.7 is complete when:
-
-* The Shared Business Profile architecture is implemented and documented.
-* Existing business, service, and service-area records have been reused where practical.
-* Businesses can save and review their profile information.
-* Profile completeness can be calculated.
-* Provider-neutral communications interfaces exist.
-* Core conversation records are business-scoped.
-* Conversations may be associated with LeadHub contacts and leads.
-* One contact may have multiple conversations.
-* Communication events support channel, direction, sender type, provider identity, and idempotency.
-* Existing LeadHub notes, tasks, forms, and timelines continue to work.
-* No live Twilio or Retell dependency is required.
-* Tenant isolation has been validated.
-* Documentation reflects the revised digital-front-office direction.
-* PHP files pass syntax validation on an environment with PHP available.
-* SQL migrations are validated against staging when implementation migrations exist.
-* `git diff --check` passes.
-* The work is reviewed and merged through the normal pull-request process.
-
----
-
-# Definition Of Done
-
-Sprint 8.7 is not complete merely because new tables exist.
-
-It is complete when the application has a stable, documented source of truth for business information and a provider-neutral communications foundation that can support this future flow:
-
-```text
-Prospect contacts business
-  ↓
-Provider sends normalized event
-  ↓
-24/7SP identifies the business
-  ↓
-LeadHub matches or creates the contact
-  ↓
-Conversation is created or updated
-  ↓
-Activity appears in the unified timeline
-  ↓
-AI or owner responds
-  ↓
-Follow-up remains visible until resolved
-```
-
-The implementation should make Sprint 8.8 telephony work easier, not force the application to be redesigned when Twilio and Retell are connected.
-
----
-
-# Expected Sprint 8.8 Scope
-
-Sprint 8.8 is expected to be:
-
-```text
-Sprint 8.8 — Telephony Foundation
-```
-
-Expected scope:
-
-* Twilio master-account configuration
-* One Twilio subaccount per customer
-* Local phone-number provisioning
-* Phone-number status and lifecycle
-* Retell voice-agent provisioning
-* Inbound-call routing
-* Owner transfer rules
-* Call recordings
-* Call transcripts
-* AI summaries
-* Call disposition
-* LeadHub call timeline
-* Initial AI receptionist pilot
+Sprint 8.7 Milestone 4 - Shared Business Profile Service Layer

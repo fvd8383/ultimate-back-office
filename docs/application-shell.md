@@ -113,7 +113,7 @@ Stripe Connect is not part of 24/7 Sales Partner customers paying UBO. Stripe Co
 
 WORKSPACE links launch either standalone product/module areas or Full OS feature areas, depending on the account navigation mode.
 
-The application shell should treat the Business Profile as the customer-facing setup root for 247SP front-office configuration. The Business Profile configures the website, AI Receptionist, SMS Assistant, Website Chat, LeadHub routing, transfer rules, and escalation rules. Channel-specific screens may appear inside 24/7 Sales Partner or LeadHub, but the shell should not imply that each provider is a separate customer product.
+The application shell should treat the Shared Business Profile as the customer-facing business-facts root for 247SP. Migration 021 provides the staging-validated initial schema; the profile service and interface remain planned. The profile configures the website and, when implemented, the AI Receptionist, SMS Assistant, Website Chat, LeadHub routing, transfer rules, and escalation rules. Channel-specific screens may appear inside 24/7 Sales Partner or LeadHub, but the shell must not imply that each provider is a separate customer product.
 
 ## Application Architecture Diagram
 
@@ -130,8 +130,8 @@ flowchart TD
   WebsiteChat["Website Chat"]
   Routing["LeadHub Routing"]
   Rules["Transfer and Escalation Rules"]
-  Comms["Internal Communications Services"]
-  Providers["Provider Adapters"]
+  Comms["Internal Communications Services (planned)"]
+  Providers["Provider Adapters (planned)"]
 
   Account --> Workspace
   Workspace --> BusinessProfile
@@ -153,6 +153,8 @@ flowchart TD
   Routing --> LeadHub
   Rules --> LeadHub
 ```
+
+The website is one presentation layer of Shared Business Profile facts. The planned component CMS, site lifecycle/conversion system, communications services, unified inbox, and provider adapters are not current navigation capabilities until implemented.
 
 ## Standalone Module Mode
 

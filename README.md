@@ -2,9 +2,11 @@
 
 Ultimate Back Office is a raw PHP/LAMP business operating platform for service businesses. It includes the Accounts area, persistent workspace shell, LeadHub, 24/7 Sales Partner, admin tools, and the supporting business, billing, domain, email, phone, texting, AI reception, AI chat, and website-management foundations.
 
-24/7 Sales Partner is the current launch product. It is a digital front-office platform for small service businesses, not just a website builder. It includes a done-for-you website, domain, professional email, local business phone number, AI receptionist, business texting, AI website chat, LeadHub CRM, and a unified conversation inbox.
+24/7 Sales Partner is the current launch product. It is a done-for-you lead-generation and digital-front-office platform powered by one structured Business Profile. It generates a custom website, captures forms, calls, texts, and chats, provides immediate AI-assisted responses, and keeps every opportunity organized in LeadHub.
 
 LeadHub is the central system of record for every 247SP communication channel.
+
+The current repository includes the generated-website, LeadHub, billing, domain, email-workflow, and initial Shared Business Profile foundations. The component CMS, unified inbox, communications provider layer, AI receptionist, business texting, AI website chat, site-conversion system, and internal MCP gateway remain planned. See `docs/247sp-product-spec.md`, `docs/247sp-website-generation-architecture.md`, and `docs/internal-mcp-and-integration-access-strategy.md`.
 
 ## Environment Configuration
 
@@ -469,10 +471,15 @@ Integrations settings cover Google Analytics, Google Search Console, Google Tag 
 
 Website integration values are stored in `website_integrations` so the same foundation can support future website-enabled products without product-specific table names.
 
-24/7 Sales Partner pricing:
+Approved 24/7 Sales Partner pricing cohorts:
 
-- Founding Customers: $249 setup and $99/month.
-- Standard: $249 setup and $129/month.
+| Customer cohort | Customer numbers | Setup fee | Monthly price |
+| --- | ---: | ---: | ---: |
+| Beta Users | 1-5 | $0 | $79/month |
+| Founding Users | 6-25 | $100 | $97/month |
+| Standard Users | 26+ | $250 | $147/month |
+
+These cohorts price the same core product and are not feature tiers. Commercial policy for grandfathering, qualifying customer position, reopened positions, taxes, reactivation, refunds, and cohort-specific overage rates remains open. The recommended, not yet approved, default is to assign and store the cohort when each independently activated business subscription becomes active.
 
 The monthly package includes the done-for-you website, domain, professional email, local business phone number, AI receptionist, business texting, AI website chat, LeadHub CRM, unified conversation inbox, basic SEO setup, and Google Analytics tracking. Basic SEO setup means customer-friendly site structure, service-page copy support, page titles, and launch-ready metadata foundations; it does not include Search Console API integration, SEO reporting dashboards, ranking trackers, or ongoing SEO service workflows.
 

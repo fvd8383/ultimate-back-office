@@ -2,477 +2,266 @@
 
 ## Review Date
 
-June 29, 2026
+August 2, 2026
+
+## Overall Status
+
+Not ready for the first paying 24/7 Sales Partner customer.
+
+24/7 Sales Partner is a done-for-you lead-generation and digital-front-office platform powered by one structured Business Profile. It generates a custom website, captures forms, calls, texts, and chats, provides immediate AI-assisted responses, and keeps every opportunity organized in LeadHub.
+
+The website-generation and LeadHub foundations exist. Migration 021 established the initial Shared Business Profile schema and was staging validated. The component CMS, portable site lifecycle, unified inbox, communications provider layer, AI receptionist, business texting, website chat, usage metering, and internal MCP gateway remain planned.
 
 ---
 
-# Executive Summary
+# Confirmed Platform Status
 
-Current platform status:
-
-* Authentication: Complete
-* Business Management: Complete
-* 247SP Onboarding: Complete
-* 247SP Website Generation: Complete
-* 247SP Website Branding: Complete
-* Billing Foundation: Complete
-* Domain Workflow Foundation: Complete
-* Email Workflow Foundation: Complete
-* Sprint 8.5 UX/Application Shell/Admin QA: Complete
-* Sprint 8.5 Documentation: Complete
-
-Current product positioning:
-
-24/7 Sales Partner is a digital front-office platform for small service businesses. It includes a done-for-you website, domain, professional email, local business phone number, AI receptionist, business texting, AI website chat, LeadHub CRM, and a unified conversation inbox.
-
-LeadHub is the central system of record for every 247SP communication channel.
-
-Overall Readiness:
-
-Not yet ready for first paying customer.
-
-Roadmap priority has narrowed to 247SP launch readiness. New module development is paused until 24/7 Sales Partner is ready for a first paying customer. EMD, SSP, TUHWD, and other future modules are deferred until after 247SP can collect payment, publish a customer site, capture and respond to leads, provision domain/email/phone/text/chat workflows, store every communication in LeadHub, and operate in production.
-
-Current readiness estimate based on 247SP only:
-
-Approximately 65-70%.
-
-Sprint 8.5 is complete. The remaining work is not Sprint 8.5 UX polish; it is the launch-readiness work listed in the roadmap below.
+| Area | Status |
+| --- | --- |
+| Authentication and sessions | Complete |
+| Business management and module activation | Complete |
+| 247SP onboarding | Complete |
+| Single-template website generation and private preview | Complete |
+| Website branding, content management, and admin editing foundation | Complete |
+| LeadHub contacts, notes, tasks, activity, and website form capture foundation | Complete; staging revalidation remains part of launch QA |
+| Stripe billing foundation and integration | Implemented; final customer-pricing/configuration and staging launch validation pending |
+| Domain workflow and provider abstraction | Implemented; end-to-end staging launch validation pending |
+| Email request/assignment foundation | Complete; automated provisioning pending |
+| Shared Business Profile schema | Complete and staging validated |
+| Structured Business Profile service/UI | Planned in Sprint 8.7 Milestones 4 and 5 |
+| Component CMS and portable site lifecycle | Planned for Sprint 8.8 |
+| Communications core and unified inbox | Planned for Sprint 8.9 and later |
+| Telephony and AI receptionist | Planned for Sprint 8.10 |
+| Internal MCP gateway | Proposed and deferred |
 
 ---
 
-# Revised Roadmap
+# Readiness Layers
 
-1. Sprint 8.5: UX/Application Shell/Admin QA - Complete
-2. Sprint 9: Stripe Payment Integration
-3. Sprint 10: 247SP Lead Capture -> LeadHub
-4. Sprint 11: Domain Automation
-5. Sprint 12: Email, Phone, Texting, And AI Channel Automation
-6. Sprint 13: Production Readiness / First Customer Pilot
-7. First Paying Customer
-8. Resume future modules: EMD, SSP, TUHWD
+## Business Profile Readiness
+
+Status: Schema complete and staging validated; service layer, interface, and operational completion checks planned.
+
+Required:
+
+* Identity
+* Services
+* Service areas
+* Hours
+* FAQs
+* Greeting
+* Transfer rules
+* Escalation rules
+* Notification preferences
+* Timezone
+
+Migration 021 can store the initial structured profile. It does not make a business ready automatically and does not include every future branding, trust, SEO, or media category.
+
+## 247SP Customer Site Readiness
+
+Status: Existing generated-site and preview foundation; complete component CMS, public lifecycle, and conversion controls planned.
+
+Required:
+
+* Business Profile complete
+* Customer identity and business facts verified
+* Site brief ready
+* Content approved
+* Components selected
+* Domain and SSL ready
+* Professional email ready
+* Lead routing assigned to customer
+* LeadHub form tested
+* Analytics configured
+* SEO metadata validated
+* Accessibility and mobile checks passed
+* Site approved
+* Billing cohort assigned
+* Subscription active
+* Publishing approval complete
+
+## EMD Demo Readiness
+
+Status: Planned; EMD demo lifecycle is not implemented.
+
+Required:
+
+* Demo purpose recorded
+* Unsupported claims removed
+* Approved media used
+* Demo routing configured
+* Site internally marked as demo
+* No customer CRM records attached
+* No unapproved customer assets used
+
+## Demo-To-Customer Readiness
+
+Status: Planned and approval-controlled.
+
+Required:
+
+* Customer account created
+* Business Profile verified
+* Demo facts replaced or approved
+* Customer branding installed
+* Domain decision complete
+* Lead routing moved to customer
+* Analytics and tracking reconfigured
+* Billing cohort assigned
+* Customer approval received
+* Conversion audit recorded
+
+## Customer-To-EMD Readiness
+
+Status: Planned and approval-controlled; cancellation does not trigger automatic conversion.
+
+Required:
+
+* Cancellation confirmed
+* Transfer eligibility reviewed
+* Domain rights confirmed
+* Customer access removed
+* Customer data separated
+* Private communications excluded
+* Branding and claims reviewed
+* Routing moved to EMD
+* Analytics and tracking reconfigured
+* EMD approval received
+* Transfer audit recorded
+
+## Communications Readiness
+
+Status: Planned.
+
+Required:
+
+* Local phone number
+* AI receptionist
+* Transfer rules tested
+* Text registration
+* Website chat
+* Provider webhooks
+* Usage tracking
+* End-to-end communications test
+
+Communications must use internal UBO services and provider-neutral interfaces. The future unified inbox must record supported channels in LeadHub.
+
+## Commercial Readiness
+
+Status: Pending approved policy completion, configuration, and staging validation.
+
+Required:
+
+* Subscription active
+* Payment method active
+* Pricing cohort assigned
+* Setup fee configured
+* Included usage configured
+* Overage rules and unit rates configured
+* Terms accepted
+* Support process ready
+
+Approved cohorts are Beta Users 1-5 at $0 setup and $79/month, Founding Users 6-25 at $100 setup and $97/month, and Standard Users 26+ at $250 setup and $147/month. They are pricing cohorts for the same product, not feature tiers.
 
 ---
 
-# 247SP Launch Blockers
+# Critical Launch Blockers
 
-## Payment Processing
+## Business Profile Service And Interface
 
-Severity: Critical
+Status: Planned
 
-Status: Implementation Added, Staging Validation Pending
+Implement authorized profile reads/writes, validation, readiness calculation, audit hooks, draft saving, missing-information indicators, and admin visibility without creating parallel business facts.
 
-Issue:
+## Website Generation And Public Lifecycle
 
-Stripe payment processing for setup fees and recurring subscriptions must be validated end to end on staging before first-customer use.
+Status: Existing private generation; planned component CMS and lifecycle
 
-Impact:
+Complete the site model, structured page/component definitions, revisions, approval, build/deployment state, public publishing, validation, archival/restoration, and controlled conversion audit.
 
-Cannot accept a first paying customer or validate revenue collection until Stripe Checkout, webhooks, subscription sync, failed-payment handling, and invoice/payment records pass staging validation.
+## Billing And Commercial Policy
 
-Recommended Action:
+Status: Billing implementation exists; approved cohort persistence and final commercial policy are pending
 
-Validate Stripe Checkout for 24/7 Sales Partner customer payments, apply the Stripe billing migration, configure the webhook endpoint, confirm subscription/payment synchronization, and confirm failed-payment handling. Do not add Stripe Connect for this milestone.
+Current billing records/configuration must be aligned to approved pricing before launch. Cohort cannot be inferred permanently from active-customer count. Overage unit rates, taxes, grandfathering, setup-fee/refund/reactivation rules, and qualifying position rules remain open.
 
----
+## Domain And Professional Email
 
-## 247SP Lead Capture -> LeadHub
+Status: Domain implementation requires launch validation; automated email provisioning remains pending
 
-Severity: Critical
+Validate Namecheap/DNS/SSL behavior on staging, preserve ownership distinctions, and complete email provisioning, customer instructions, and support procedures.
 
-Status: Not Started
+## LeadHub And Unified Conversations
 
-Issue:
+Status: Website capture foundation exists; unified conversation model and inbox planned
 
-Generated 247SP websites do not yet create LeadHub records from public website lead submissions.
+Validate the standardized website ingestion path and implement provider-neutral conversations, channel attribution, contact matching, assignment, unread/needs-response state, timeline behavior, and follow-up visibility in the planned communications sprint.
 
-Impact:
+## Phone, Text, Chat, And AI
 
-247SP cannot complete the core customer value loop of turning visitor inquiries into actionable leads and follow-up tasks.
+Status: Planned
 
-Recommended Action:
+Implement provider-neutral services before provider adapters. Validate local phone provisioning, voice, transfers, texting/A2P, website chat, owner takeover, webhook idempotency, and usage metering in their assigned future sprints.
 
-Implement public lead capture that creates LeadHub contacts, activity, and any required follow-up records with validation and spam controls.
-
----
-
-## Unified Conversation Inbox
-
-Severity: Critical
-
-Status: Not Started
-
-Issue:
-
-247SP now includes a unified conversation inbox, but the current platform does not yet consolidate website forms, AI chat, calls, texts, AI receptionist summaries, and supported email lead activity into one customer-facing inbox.
-
-Impact:
-
-Customers cannot reliably organize every conversation or follow up from one operating surface.
-
-Recommended Action:
-
-Define and implement the LeadHub conversation model, channel attribution, assignment workflow, unread/needs-response states, filtering, and activity timeline behavior.
-
----
-
-## Domain Publishing / Automation
-
-Severity: Critical
-
-Status: Implementation Added, Staging Validation Pending
-
-Issue:
-
-Domain request tracking and the Domain Services implementation exist, but Namecheap sandbox validation, DNS propagation validation, SSL workflow validation, and publish-readiness QA must pass on staging before first-customer use.
-
-Impact:
-
-A first customer cannot reliably receive a live website on a customer domain without manual operational risk.
-
-Recommended Action:
-
-Apply the domain services migration, configure Namecheap sandbox credentials and launch DNS targets, validate customer domain request/connect flows, validate admin availability/purchase/DNS/SSL workflows, and confirm 24/7 Sales Partner Launch Readiness marks Domain complete only after domain, DNS, and SSL readiness are satisfied.
-
----
-
-## Email, Phone, Texting, And AI Channel Automation
-
-Severity: Critical
-
-Status: Email Foundation Complete, Phone/Text/AI Channel Foundation Pending
-
-Issue:
-
-Email request tracking exists, but mailbox provisioning, setup confirmation, and customer login instructions are not automated. Local business phone number provisioning, business texting, AI receptionist, AI website chat, usage tracking, and channel setup workflows are not yet production-ready.
-
-Impact:
-
-The first customer cannot receive the expected 247SP front-office setup without manual handling.
-
-Recommended Action:
-
-Complete email provisioning automation, local phone provisioning, texting setup, AI receptionist setup, AI website chat setup, usage allowance tracking, admin/customer status visibility, login instructions, and support workflow QA.
-
----
-
-## Production Deployment Readiness
-
-Severity: Critical
+## Production Operations
 
 Status: Pending
 
-Issue:
-
-Production environment, database, backups, monitoring, deployment process, and rollback procedures are not fully reviewed.
-
-Impact:
-
-The platform is not ready to safely operate a paying customer in production.
-
-Recommended Action:
-
-Complete production environment review, deployment checklist, backup verification, monitoring, and rollback documentation.
+Complete production environment review, backups, monitoring, deployment and rollback procedures, legal documents, customer notifications, support procedures, and first-customer admin/customer QA.
 
 ---
 
-# High Priority Issues
+# Data And Ownership Controls
 
-## Terms Of Service
+Before any site conversion or cancellation workflow can be launch-ready:
 
-Severity: High
-
-Status: Missing
-
-Recommended Action:
-
-Create Terms of Service.
-
----
-
-## Privacy Policy
-
-Severity: High
-
-Status: Missing
-
-Recommended Action:
-
-Create Privacy Policy.
+* Site build, purpose, lifecycle, ownership/control, business/customer association, domain ownership, lead routing, CRM data, analytics ownership, and provider accounts must be separate.
+* Customer-owned domains cannot be retained or reassigned without authority and authorization.
+* Customer CRM records, leads, conversations, private communications, and personal information cannot move into an EMD property.
+* Customer routing must be removed before EMD routing is enabled.
+* Demo routing must move to the purchasing business during demo conversion.
+* Every conversion requires eligibility review, approval, validation, data-separation confirmation, and audit history.
 
 ---
 
-## Billing Policy
+# Roadmap
 
-Severity: High
+## Sprint 8.7 - Shared Business Profile And Website Platform Alignment
 
-Status: Missing
+* Milestone 1: Existing Schema and Architecture Review - Complete
+* Milestone 2: Shared Business Profile Schema - Complete and staging validated
+* Milestone 3: Product Definition, Architecture, Pricing, and Roadmap Alignment - Current documentation task
+* Milestone 4: Shared Business Profile Service Layer - Planned
+* Milestone 5: Shared Business Profile Interface - Planned
+* Milestone 6: Website Generation, Site Lifecycle, and Component Audit - Planned
+* Milestone 7: Sprint Closeout and Future-Sprint Planning - Planned
 
-Recommended Action:
+## Sprint 8.8 - Website Generation And Component CMS Foundation
 
-Create Billing Policy.
+Planned: site model and lifecycle, component registry, themes, revisions, approval, deployment, demos, both conversion directions, data separation, LeadHub forms, validation, and initial AI-assisted assembly. This is not a customer drag-and-drop builder.
 
----
+## Sprint 8.9 - Communications Core Foundation
 
-## Refund Policy
+Planned: `CommunicationsManager`, provider-neutral interfaces/accounts/channels, conversations, participants, messages/events, contact matching, owner takeover, usage events, LeadHub timeline adapter, and webhook idempotency.
 
-Severity: High
+## Sprint 8.10 - Telephony And AI Receptionist
 
-Status: Missing
+Planned: Twilio subaccounts/numbers, Retell voice agents, routing/transfers, recordings, transcripts, summaries, dispositions, LeadHub call history, usage metering, and pilot.
 
-Recommended Action:
+## Later Sprint - Messaging And Website Chat
 
-Create Refund Policy.
-
----
-
-# Medium Priority Issues
-
-## Customer Onboarding UX
-
-Severity: Medium
-
-Status: Complete for Sprint 8.5
-
-Completed:
-
-* Login now redirects directly to verification after requesting a code.
-* Staging OTP is pre-filled on the verification page when available.
-* Persistent Application Shell provides account, workspace, module, and admin navigation.
-* Accounts dashboard separates account navigation from business actions.
-* Account dashboard business cards are overview-focused and keep only Edit Business as the business-card action.
-* Business onboarding includes a welcome screen.
-* Business information fields are ordered for legal name, DBA, email, and phone.
-* Legal Structure = Other now captures a specified legal structure.
-* Service options are expanded with Other choices and a custom service field.
-* Customer module selection is limited to the active launch module: 24/7 Sales Partner.
-* Onboarding confirmation summarizes business info, services, selected launch modules, and module handoff guidance.
-* App pages provide a return path to Accounts through the persistent shell.
-* Lead Hub and 24/7 Sales Partner appear as workspace modules, not as shell replacements.
-* Admin Portal visibility is role-gated to internal admins.
-
-No remaining Sprint 8.5 UX work is tracked here. First-customer QA remains part of the launch-readiness critical path.
+Planned: SMS/MMS, A2P registration, website/AI chat, owner takeover, unified inbox, usage, and overages.
 
 ---
 
-## 247SP Website Manager And Admin Editor
+# Deferred Modules
 
-Severity: Medium
-
-Status: Complete for Sprint 8.5
-
-Completed:
-
-* Customer Website Manager supports branding, page content, existing active service content, CTA configuration, homepage stat configuration, pricing-list upload, and private preview regeneration.
-* Admin Website Editor supports DFY website editing without customer impersonation.
-* Admin Website Editor supports service page content, supporting copy, trust text, images, page hero images, service hierarchy, parent/child service pages, ordering, and deactivation.
-* Service pages now render under the Services dropdown instead of as top-level preview navigation items.
-* Parent/child service pages render as nested Services dropdown items.
-* View Pricing links to the uploaded pricing list when present and safely routes to Contact when no pricing list exists.
-
-No payment processing, public publishing, domain automation, email automation, scheduling engine, quote engine, application workflow, reservation workflow, ecommerce checkout, or AI generation was added.
-
----
-
-## Customer Notifications
-
-Severity: Medium
-
-Status: Not Implemented
-
-Missing:
-
-* Welcome Email
-* Domain Status Notifications
-* Email Status Notifications
-* Phone/Text/Chat Status Notifications
-* Lead Capture Notifications
-* Payment Failure Notifications
-
----
-
-## Billing And Module Access Status
-
-Severity: Medium
-
-Status: Clarified
-
-Notes:
-
-Billing subscription records and active module assignments are separate. Staging tools that remove module assignments do not cancel or deactivate subscriptions. Customer billing and admin billing views show subscription status and active module access separately, including a warning when a 24/7 Sales Partner subscription exists without active 24/7 Sales Partner module access.
-
----
-
-## Operational Procedures
-
-Severity: Medium
-
-Status: Incomplete
-
-Missing:
-
-* Customer Onboarding SOP
-* Customer Support SOP
-* Website Update SOP
-* Billing Support SOP
-* Domain Support SOP
-* Email Support SOP
-
----
-
-# Security Review
-
-## Authentication
-
-Status: Pass
-
-Notes:
-
-OTP authentication functioning.
-
----
-
-## Session Management
-
-Status: Pass
-
-Notes:
-
-Cross-subdomain session sharing functioning.
-
----
-
-## Role Permissions
-
-Status: Pass
-
-Notes:
-
-Internal and customer roles functioning.
-
----
-
-## File Uploads
-
-Status: Review Required
-
-Notes:
-
-Uploads currently stored in:
-
-public/app/uploads
-
-Review long-term production strategy.
-
----
-
-# Infrastructure Review
-
-## Staging
-
-Status: Pass
-
-Notes:
-
-Updated and snapshot created after Sprint 8.
-
----
-
-## Production
-
-Status: Pending
-
-Notes:
-
-Production environment not yet reviewed.
-
----
-
-# Revenue Readiness
-
-Current Status:
-
-Customer can:
-
-* Sign Up
-* Create Business
-* Activate 247SP
-* Complete 247SP Onboarding
-* Generate Website Preview
-* Customize Website
-* Request Domain
-* Request Email
-* View Billing Status
-* Navigate Customer Dashboard
-* Capture public website leads into LeadHub when the current lead-submit path is active
-
-Customer cannot yet:
-
-* Use Stripe payment in production before staging validation is complete
-* Publish a customer domain through the launch workflow
-* Receive automated business email provisioning
-* Receive automated local business phone number provisioning
-* Use production-ready business texting
-* Use production-ready AI receptionist handling
-* Use production-ready AI website chat
-* Manage all channels through a unified conversation inbox
-* Be supported in a fully reviewed production environment
-
-Primary Blockers:
-
-* Payment Processing
-* 247SP Lead Capture -> LeadHub staging validation
-* Unified Conversation Inbox
-* Domain Publishing / Automation staging validation
-* Email, Phone, Texting, And AI Channel Automation
-* Production Deployment Readiness
-
----
-
-# Future Modules Deferred
-
-The following modules are intentionally deferred until after 247SP is launch-ready and the first paying customer path is validated:
-
-* EMD
-* SSP
-* TUHWD
-* Other future modules
-
-No new module implementation should be prioritized ahead of the 247SP launch blockers above.
-
----
-
-# Recommended Next Roadmap
-
-1. Sprint 9: Stripe Payment Integration
-2. Sprint 10: 247SP Lead Capture -> LeadHub
-3. Sprint 11: Domain Automation
-4. Sprint 12: Email, Phone, Texting, And AI Channel Automation
-5. Sprint 13: Production Readiness / First Customer Pilot
-6. First Paying Customer
-7. Resume Future Modules: EMD, SSP, TUHWD
+Full customer use of EMD, SSP, TUHWD, KYN, Full OS, and Enterprise remains deferred until separately approved. Planning shared EMD website infrastructure does not activate EMD for regular customers.
 
 ---
 
 # Final Assessment
 
-Current Readiness Estimate:
+The platform has solid website, LeadHub, billing, domain, email-workflow, and Shared Business Profile foundations, but the approved 247SP product is broader than the implemented runtime. Readiness must be measured by the complete digital-front-office workflow, not by website-preview completion alone.
 
-65-70% based on 247SP first-customer readiness only.
-
-Primary Remaining Blockers:
-
-* Payment Processing
-* 247SP Lead Capture -> LeadHub
-* Unified Conversation Inbox
-* Domain Publishing / Automation
-* Email, Phone, Texting, And AI Channel Automation
-* Production Deployment Readiness
-
-Secondary Blockers:
-
-* Legal Documentation
-* Customer Notifications
-* Operational Procedures
-* Admin QA and customer QA
-* First-customer staging validation
+The next implementation task is Sprint 8.7 Milestone 4 - Shared Business Profile Service Layer.

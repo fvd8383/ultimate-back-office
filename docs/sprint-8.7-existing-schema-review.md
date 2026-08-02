@@ -1,5 +1,9 @@
 # Sprint 8.7 Existing Schema Review
 
+## Status
+
+Historical Milestone 1 review - Complete. Its Milestone 2 recommendations were implemented by migration `021_shared_business_profile.sql`, which was subsequently staging validated. Statements below that describe the pre-021 schema or recommend Milestone 2 are retained as the audit record and are superseded by the implemented migration and `docs/sprint-8.7-migration-021-validation.md`.
+
 # 1. Executive Summary
 
 The repository already has strong Sprint 8.7 building blocks: authenticated users, business ownership through `business_users`, core business identity on `businesses`, selected service categories through `categories`, `sub_services`, `business_sub_services`, custom service names through `business_custom_services`, 247SP onboarding/content tables, website generation/override tables, domain workflow tables, email provisioning tables, LeadHub contacts/notes/tasks/activity logs, local billing/subscription tables, and Stripe webhook idempotency through `stripe_webhook_events`.

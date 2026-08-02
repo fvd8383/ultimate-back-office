@@ -351,6 +351,8 @@ Twilio Messaging -> MessagingProviderInterface
 
 Use test/sandbox provider credentials for staging where the provider supports them. Production credentials should not be configured until staging validates provider setup, webhook verification, LeadHub routing, transfer rules, escalation rules, and usage tracking.
 
+These communications services, interfaces, adapters, and validation steps are planned; their presence in this deployment plan does not claim implementation or authorize provider configuration in Sprint 8.7 Milestone 3.
+
 Verify the domain schema after migration:
 
 ```sql
@@ -638,6 +640,37 @@ Do not assume Codex can run migrations.
 Do not edit previously-run migrations unless specifically approved.
 
 Create a new migration for each sprint that changes database structure.
+
+Migration `021_shared_business_profile.sql` is complete and staging validated. Do not rewrite migration 021 or historical repair migrations 019 and 020. Any future website/CMS, billing-cohort, communications, or MCP persistence must use a later reviewed migration; no such migration is part of Sprint 8.7 Milestone 3.
+
+---
+
+# Planned Website Deployment Lifecycle
+
+The current repository supports generated records and private previews. The future shared 247SP/EMD website platform should use an approval-controlled deployment lifecycle:
+
+```text
+Business data
+  -> Site brief
+  -> Draft revision
+  -> Automated validation
+  -> Internal review and approval
+  -> Build job
+  -> Deployment
+  -> Publication audit
+```
+
+Publishing, restoration, site-purpose conversion, domain reassignment, lead-routing changes, and customer-data separation must be explicit, auditable operations. An AI agent may prepare a draft but may not perform those high-risk actions silently.
+
+Production deployment configuration for this lifecycle remains deferred until the component CMS and site lifecycle are implemented and staging validated.
+
+---
+
+# Planned Internal MCP Operations
+
+The future MCP gateway is private and administrative only. It sits above internal UBO services and does not receive generic database, shell, PHP, or arbitrary-API tools. Development and production identities are separate, high-risk actions require explicit approval, and every action is scoped, tenant-checked, and audited.
+
+No MCP gateway or MCP production configuration exists in this milestone. See `docs/internal-mcp-and-integration-access-strategy.md`.
 
 ---
 

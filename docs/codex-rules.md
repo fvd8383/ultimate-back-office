@@ -199,17 +199,22 @@ Future consolidated reporting
 
 # 7. Pricing Rules
 
-Current pricing assumptions:
+Approved current 247SP pricing and existing assumptions for other products:
 
 ```text
-247SP:
-Founding Customers:
-$249 setup
-$99/month
+247SP pricing cohorts for the same core product:
 
-Standard:
-$249 setup
-$129/month
+Beta Users (customer positions 1-5):
+$0 setup
+$79/month
+
+Founding Users (customer positions 6-25):
+$100 setup
+$97/month
+
+Standard Users (customer positions 26+):
+$250 setup
+$147/month
 
 includes done-for-you website, domain, professional email, local business phone number, AI receptionist, business texting, AI website chat, LeadHub CRM, unified conversation inbox, basic SEO setup, and Google Analytics tracking
 
@@ -218,9 +223,16 @@ included monthly usage:
 500 outbound owner minutes
 500 SMS segments
 500 AI chat responses
+included allowances do not roll over between billing months
 
 overages:
 AI receptionist minutes, outbound owner minutes, SMS segments, and AI chat responses above included allowances are billed according to the active pricing plan, order form, or billing policy
+
+Open 247SP commercial policy:
+grandfathering, future increases, reopened positions, qualifying event, failed/refunded/fraudulent accounts, returning customers, ownership changes, multi-business counting, taxes, cohort-specific allowances/rates, and setup-fee refunds/reactivation are unresolved
+
+Recommended but not approved:
+each independently activated business subscription counts as one customer position; assign and store the cohort when the subscription becomes active; later cancellations do not change assigned cohorts
 
 EMD:
 pay per lead

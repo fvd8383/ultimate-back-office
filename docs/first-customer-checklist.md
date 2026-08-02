@@ -10,14 +10,14 @@ New module development is paused until 247SP is launch-ready. EMD, SSP, TUHWD, a
 
 # Roadmap Priority
 
-1. Sprint 8.5: UX/Application Shell/Admin QA - Complete
-2. Sprint 9: Stripe Payment Integration
-3. Sprint 10: 247SP Lead Capture -> LeadHub
-4. Sprint 11: Domain Automation
-5. Sprint 12: Email, Phone, Texting, And AI Channel Automation
-6. Sprint 13: Production Readiness / First Customer Pilot
+1. Sprint 8.7: Shared Business Profile and Website Platform Alignment
+2. Sprint 8.8: Website Generation and Component CMS Foundation
+3. Sprint 8.9: Communications Core Foundation
+4. Sprint 8.10: Telephony and AI Receptionist
+5. Later Sprint: Messaging and Website Chat
+6. Production Readiness / First Customer Pilot
 7. First Paying Customer
-8. Resume future modules: EMD, SSP, TUHWD
+8. Resume separately approved future modules
 
 ---
 
@@ -49,6 +49,12 @@ New module development is paused until 247SP is launch-ready. EMD, SSP, TUHWD, a
 * [x] Admin Portal
 * [x] Billing Foundation
 * [x] Sprint 8.5 UX/Application Shell/Admin QA
+* [x] Sprint 8.7 Milestone 1 Existing Schema and Architecture Review
+* [x] Sprint 8.7 Milestone 2 Shared Business Profile Schema and staging validation
+* [ ] Sprint 8.7 Milestone 3 Product, Architecture, Pricing, and Roadmap Alignment
+* [ ] Sprint 8.7 Milestone 4 Shared Business Profile Service Layer
+* [ ] Sprint 8.7 Milestone 5 Shared Business Profile Interface
+* [ ] Sprint 8.7 Milestone 6 Website Generation, Site Lifecycle, and Component Audit
 * [ ] First-customer Admin QA
 * [ ] First-customer Customer QA
 
@@ -222,16 +228,15 @@ Future module work remains paused until the first paying 247SP customer path is 
 
 # Current Status
 
-Progress: Approximately 65-70% for a first paying 247SP customer.
+Progress should be measured against the complete digital-front-office workflow, not website-preview completion alone. A current percentage is not asserted while the Shared Business Profile, component CMS, communications core, and launch policies are being sequenced.
 
-Sprint 8.5 UX/Application Shell/Admin QA is complete. The platform now has persistent account/workspace/admin navigation, customer-safe 247SP Website Manager controls, admin DFY Website Editor controls, CTA configuration, homepage stat configuration, service hierarchy, parent/child service pages, Services dropdown navigation, and pricing-list upload.
+Sprint 8.7 Milestones 1 and 2 are complete, and migration 021 is staging validated. The platform has persistent navigation, website generation/editing foundations, LeadHub website capture, billing/domain/email foundations, and the initial Shared Business Profile schema. The component CMS, unified inbox, communications services, AI receptionist, business texting, website chat, usage metering, and site-conversion workflows remain planned.
 
 Major Remaining Milestones:
 
-1. Stripe Payment Integration
-2. 247SP Lead Capture -> LeadHub
-3. Domain Publishing / Automation
-4. Email, Phone, Texting, And AI Channel Provisioning / Automation
-5. Production Deployment Readiness
-6. Legal Documents
-7. Admin and Customer QA
+1. Complete Sprint 8.7 service, interface, audit, and closeout milestones
+2. Sprint 8.8 website generation/component CMS and public lifecycle
+3. Sprint 8.9 communications core and LeadHub timeline
+4. Sprint 8.10 telephony and AI receptionist
+5. Later messaging, website chat, unified inbox, usage, and overages
+6. Production deployment, legal/policy, support, and first-customer QA
