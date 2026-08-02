@@ -10,7 +10,7 @@ Not ready for the first paying 24/7 Sales Partner customer.
 
 24/7 Sales Partner is a done-for-you lead-generation and digital-front-office platform powered by one structured Business Profile. It generates a custom website, captures forms, calls, texts, and chats, provides immediate AI-assisted responses, and keeps every opportunity organized in LeadHub.
 
-The website-generation and LeadHub foundations exist. Migration 021 established the initial Shared Business Profile schema and was staging validated. The component CMS, portable site lifecycle, unified inbox, communications provider layer, AI receptionist, business texting, website chat, usage metering, and internal MCP gateway remain planned.
+The website-generation and LeadHub foundations exist. Migration 021 established the initial Shared Business Profile schema and was staging validated, and Sprint 8.7 Milestone 4 added its authorized application service. The customer-facing profile interface, component CMS, portable site lifecycle, unified inbox, communications provider layer, AI receptionist, business texting, website chat, usage metering, and internal MCP gateway remain planned.
 
 ---
 
@@ -28,7 +28,8 @@ The website-generation and LeadHub foundations exist. Migration 021 established 
 | Domain workflow and provider abstraction | Implemented; end-to-end staging launch validation pending |
 | Email request/assignment foundation | Complete; automated provisioning pending |
 | Shared Business Profile schema | Complete and staging validated |
-| Structured Business Profile service/UI | Planned in Sprint 8.7 Milestones 4 and 5 |
+| Structured Business Profile service | Implemented in Sprint 8.7 Milestone 4; staging runtime validation pending |
+| Structured Business Profile UI | Planned in Sprint 8.7 Milestone 5 |
 | Component CMS and portable site lifecycle | Planned for Sprint 8.8 |
 | Communications core and unified inbox | Planned for Sprint 8.9 and later |
 | Telephony and AI receptionist | Planned for Sprint 8.10 |
@@ -40,7 +41,7 @@ The website-generation and LeadHub foundations exist. Migration 021 established 
 
 ## Business Profile Readiness
 
-Status: Schema complete and staging validated; service layer, interface, and operational completion checks planned.
+Status: Schema complete and staging validated; service layer implemented; interface and service runtime validation pending.
 
 Required:
 
@@ -169,7 +170,7 @@ Approved cohorts are Beta Users 1-5 at $0 setup and $79/month, Founding Users 6-
 
 ## Business Profile Service And Interface
 
-Status: Planned
+Status: Service implemented; customer interface and staging validation pending
 
 Implement authorized profile reads/writes, validation, readiness calculation, audit hooks, draft saving, missing-information indicators, and admin visibility without creating parallel business facts.
 
@@ -230,9 +231,9 @@ Before any site conversion or cancellation workflow can be launch-ready:
 
 * Milestone 1: Existing Schema and Architecture Review - Complete
 * Milestone 2: Shared Business Profile Schema - Complete and staging validated
-* Milestone 3: Product Definition, Architecture, Pricing, and Roadmap Alignment - Current documentation task
-* Milestone 4: Shared Business Profile Service Layer - Planned
-* Milestone 5: Shared Business Profile Interface - Planned
+* Milestone 3: Product Definition, Architecture, Pricing, and Roadmap Alignment - Complete
+* Milestone 4: Shared Business Profile Service Layer - Complete; staging runtime validation pending
+* Milestone 5: Shared Business Profile Interface - Next
 * Milestone 6: Website Generation, Site Lifecycle, and Component Audit - Planned
 * Milestone 7: Sprint Closeout and Future-Sprint Planning - Planned
 
@@ -264,4 +265,4 @@ Full customer use of EMD, SSP, TUHWD, KYN, Full OS, and Enterprise remains defer
 
 The platform has solid website, LeadHub, billing, domain, email-workflow, and Shared Business Profile foundations, but the approved 247SP product is broader than the implemented runtime. Readiness must be measured by the complete digital-front-office workflow, not by website-preview completion alone.
 
-The next implementation task is Sprint 8.7 Milestone 4 - Shared Business Profile Service Layer.
+The next implementation task is Sprint 8.7 Milestone 5 - Shared Business Profile Interface.

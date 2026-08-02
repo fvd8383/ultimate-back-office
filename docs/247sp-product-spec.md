@@ -35,8 +35,11 @@ The repository currently includes:
 * Domain request, registrar abstraction, DNS planning, SSL status, and domain-event foundations
 * Professional email request and assignment foundations
 * Shared Business Profile schema from migration 021
+* Authorized Shared Business Profile service layer with validation, transactions, lifecycle rules, readiness calculation, and audit summaries
 
 Migration 021 is complete and staging validated. It created the initial provider-neutral Shared Business Profile root and child records for hours, FAQs, pricing guidance, appointment rules, transfer rules, escalation rules, and notification preferences.
+
+Sprint 8.7 Milestone 4 is implemented in `private/classes/SharedBusinessProfile.php`. The service is the reusable business-rule boundary for profile consumers; the customer-facing profile interface remains planned for Milestone 5. See `docs/shared-business-profile-service-layer.md`.
 
 ## Planned Capabilities
 

@@ -2,7 +2,7 @@
 
 ## Status
 
-In progress. Milestones 1 and 2 are complete; Milestone 2 is staging validated; Milestone 3 is the current documentation task.
+In progress. Milestones 1 through 4 are complete; Milestone 2 is staging validated; Milestone 5 is the next implementation task.
 
 ## Product
 
@@ -10,7 +10,7 @@ In progress. Milestones 1 and 2 are complete; Milestone 2 is staging validated; 
 
 ## Objective
 
-Align 247SP product, pricing, website-generation, EMD lifecycle, internal integration, and future communications architecture around one structured Shared Business Profile before application service-layer work begins.
+Align 247SP product, pricing, website-generation, EMD lifecycle, internal integration, and future communications architecture around one structured Shared Business Profile, then establish its reusable application service and customer-facing management workflow.
 
 24/7 Sales Partner is a done-for-you lead-generation and digital-front-office platform powered by one structured Business Profile. It generates a custom website, captures forms, calls, texts, and chats, provides immediate AI-assisted responses, and keeps every opportunity organized in LeadHub.
 
@@ -37,7 +37,9 @@ Milestone 2 added migration `021_shared_business_profile.sql`. Migration 021 cre
 
 Migration 021 must not be rewritten. Historical migrations 019 and 020 must not be rewritten or rerun to support later Sprint 8.7 work.
 
-The component CMS, site revision system, portable site conversion system, `CommunicationsManager`, provider interfaces/adapters, unified conversation inbox, and private MCP gateway do not currently exist.
+The Shared Business Profile application service is implemented in `private/classes/SharedBusinessProfile.php` and documented in `docs/shared-business-profile-service-layer.md`.
+
+The customer-facing Shared Business Profile interface, component CMS, site revision system, portable site conversion system, `CommunicationsManager`, provider interfaces/adapters, unified conversation inbox, and private MCP gateway do not currently exist.
 
 ---
 
@@ -73,7 +75,7 @@ Migration 021 is the initial business-knowledge schema. It does not contain ever
 
 ## Milestone 3 - Product Definition, Architecture, Pricing, And Roadmap Alignment
 
-Status: Current documentation task
+Status: Complete
 
 Deliverables:
 
@@ -96,7 +98,7 @@ This milestone changes documentation only. It does not implement PHP, migrations
 
 ## Milestone 4 - Shared Business Profile Service Layer
 
-Status: Planned
+Status: Complete
 
 Scope:
 
@@ -110,9 +112,16 @@ Scope:
 
 No MCP gateway implementation is included.
 
+Implementation notes:
+
+* Every public method performs explicit business-scoped authorization using active membership or the existing internal administrator role.
+* Mutations use transactions, profile-row locking, child ownership checks, live readiness calculation, lifecycle demotion, and safe `activity_logs` audit summaries.
+* Migration 021 remains unchanged and no new migration is required.
+* Runtime and tenant-isolation validation remains required on staging.
+
 ## Milestone 5 - Shared Business Profile Interface
 
-Status: Planned
+Status: Next
 
 Scope:
 
@@ -334,4 +343,4 @@ Planned categories must not be marked complete until implementation and required
 
 # Recommended Next Task
 
-Sprint 8.7 Milestone 4 - Shared Business Profile Service Layer
+Sprint 8.7 Milestone 5 - Shared Business Profile Interface

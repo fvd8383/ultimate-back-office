@@ -633,6 +633,14 @@ Rules:
 * Appointment, transfer, and escalation rules may reference either a global `sub_services` row or a `business_custom_services` row, or neither for profile-wide rules. Application validation must reject rows that reference both service types and must confirm custom services belong to the same business.
 * Notification destinations are nullable so drafts can be saved. Application readiness validation must treat enabled email or SMS notifications without a destination as incomplete.
 
+Sprint 8.7 Milestone 4 application service:
+
+* `private/classes/SharedBusinessProfile.php` is the implemented application boundary for migration 021 records.
+* Every public method authorizes the acting user against the target business or the existing internal Admin/Super Admin role.
+* Profile and child writes use prepared statements, transactions, a profile-row lock, ownership validation, readiness recalculation, lifecycle demotion, and `activity_logs` audit summaries.
+* Readiness is calculated from current `businesses`, selected/custom service records, `247sp_website_configurations`, and migration 021 records. `readiness_snapshot_json` is refreshed after mutations but is not an authoritative completion source.
+* No schema change was required for Milestone 4. See `docs/shared-business-profile-service-layer.md`.
+
 ---
 
 # 6. Product Access and Billing Tables

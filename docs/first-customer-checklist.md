@@ -51,8 +51,8 @@ New module development is paused until 247SP is launch-ready. EMD, SSP, TUHWD, a
 * [x] Sprint 8.5 UX/Application Shell/Admin QA
 * [x] Sprint 8.7 Milestone 1 Existing Schema and Architecture Review
 * [x] Sprint 8.7 Milestone 2 Shared Business Profile Schema and staging validation
-* [ ] Sprint 8.7 Milestone 3 Product, Architecture, Pricing, and Roadmap Alignment
-* [ ] Sprint 8.7 Milestone 4 Shared Business Profile Service Layer
+* [x] Sprint 8.7 Milestone 3 Product, Architecture, Pricing, and Roadmap Alignment
+* [x] Sprint 8.7 Milestone 4 Shared Business Profile Service Layer
 * [ ] Sprint 8.7 Milestone 5 Shared Business Profile Interface
 * [ ] Sprint 8.7 Milestone 6 Website Generation, Site Lifecycle, and Component Audit
 * [ ] First-customer Admin QA
@@ -230,7 +230,7 @@ Future module work remains paused until the first paying 247SP customer path is 
 
 Progress should be measured against the complete digital-front-office workflow, not website-preview completion alone. A current percentage is not asserted while the Shared Business Profile, component CMS, communications core, and launch policies are being sequenced.
 
-Sprint 8.7 Milestones 1 and 2 are complete, and migration 021 is staging validated. The platform has persistent navigation, website generation/editing foundations, LeadHub website capture, billing/domain/email foundations, and the initial Shared Business Profile schema. The component CMS, unified inbox, communications services, AI receptionist, business texting, website chat, usage metering, and site-conversion workflows remain planned.
+Sprint 8.7 Milestones 1 through 4 are complete, and migration 021 is staging validated. The platform has persistent navigation, website generation/editing foundations, LeadHub website capture, billing/domain/email foundations, the Shared Business Profile schema, and its reusable application service. The profile interface, component CMS, unified inbox, communications services, AI receptionist, business texting, website chat, usage metering, and site-conversion workflows remain planned.
 
 Major Remaining Milestones:
 

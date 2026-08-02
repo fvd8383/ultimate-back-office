@@ -68,6 +68,8 @@ Subscriptions represent the products and services connected to an account or bus
 
 The Shared Business Profile is the central business-knowledge layer for a business. Migration 021 established the initial schema and was staging validated. 247SP and future communications features should read authoritative facts from the profile and existing business/service records instead of creating disconnected setup records for each channel.
 
+The reusable Shared Business Profile application service is implemented in `private/classes/SharedBusinessProfile.php`. It owns business authorization, tenant isolation, validation, transactions, lifecycle rules, live readiness calculation, normalized output, child ownership, and audit summaries. The customer-facing profile interface remains planned.
+
 One Business Profile configures:
 
 * Website
@@ -291,7 +293,7 @@ Future 247SP sprints will include:
 
 * Component-based website CMS, revisions, approval, and deployment lifecycle
 * Shared 247SP/EMD website infrastructure and controlled conversion workflows
-* Business Profile service layer and customer interface
+* Customer-facing Business Profile interface
 * Email provisioning
 * Local business phone number provisioning
 * AI receptionist
