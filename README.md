@@ -232,6 +232,8 @@ mysql -h DB_HOST -P DB_PORT -u DB_USER -p DB_NAME < database/migrations/021_shar
 
 Migration 021 creates the provider-neutral Shared Business Profile root and child tables for hours, FAQs, pricing guidance, appointment rules, transfer rules, escalation rules, and notification preferences. It backfills one draft profile per business from existing `businesses` and 247SP business content without modifying historical migrations. Existing service-area mode and radius fields remain authoritative until a future migration adds genuinely repeating geographic records.
 
+Sprint 8.7 Milestone 4 adds `private/classes/SharedBusinessProfile.php` as the authorized application boundary for those records. It provides normalized reads, allowlisted updates, transactional child replacement, ownership validation, controlled lifecycle transitions, live readiness calculation, and safe `activity_logs` audit summaries. No customer-facing profile route or database migration is part of Milestone 4; see `docs/shared-business-profile-service-layer.md`.
+
 ## Testing OTP Login In Staging
 
 1. Insert an active test user into the `users` table.
