@@ -222,6 +222,14 @@ mysql -h DB_HOST -P DB_PORT -u DB_USER -p DB_NAME < database/migrations/018_247s
 
 The domain services migrations extend `domain_requests` and `domain_assignments` with registrar, DNS, SSL, next-action, error, and response-tracking fields. They also add `domain_dns_records` for managed DNS plans and `domain_events` for domain workflow history. Migration 020 repairs the oversized DNS record unique key by using a generated `record_hash` column and `uq_domain_dns_record_hash`.
 
+After migrations 018 through 020 are in the expected state, run the Sprint 8.7 Shared Business Profile schema migration:
+
+```bash
+mysql -h DB_HOST -P DB_PORT -u DB_USER -p DB_NAME < database/migrations/021_shared_business_profile.sql
+```
+
+Migration 021 creates the provider-neutral Shared Business Profile root and child tables for hours, FAQs, pricing guidance, appointment rules, transfer rules, escalation rules, and notification preferences. It backfills one draft profile per business from existing `businesses` and 247SP business content without modifying historical migrations. Existing service-area mode and radius fields remain authoritative until a future migration adds genuinely repeating geographic records.
+
 ## Testing OTP Login In Staging
 
 1. Insert an active test user into the `users` table.
