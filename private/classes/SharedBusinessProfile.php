@@ -443,6 +443,11 @@ final class SharedBusinessProfile
         });
     }
 
+    public static function allowedLifecycleTransitions(string $status): array
+    {
+        return self::LIFECYCLE_TRANSITIONS[strtolower(trim($status))] ?? [];
+    }
+
     private static function authorizedBusiness(int $businessId, int $actingUserId): array
     {
         if ($businessId <= 0) {

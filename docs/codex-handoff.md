@@ -10,8 +10,15 @@ reconciliation passed. The final report is
 `/home/codex-validation/ubo-sbp-validation/MILESTONE-4-REGRESSION-RERUN-3.md`,
 SHA-256 `8ea329ecc1f1515eaafe28cf5284d6e6f6a97bc61ec010b106e4a67620f849b4`.
 
-Sprint 8.7 Milestone 5 is unblocked and ready to begin. This handoff does not claim
-that Milestone 5 implementation has started.
+Sprint 8.7 Milestone 5 is implemented on branch
+`codex/sprint-8-7-milestone-5` and ready for review. The branch adds the complete
+customer profile workspace, reusable CSRF protection, live dashboard readiness,
+read-only admin visibility with lifecycle controls, focused standalone tests, and no
+migration. It has not been merged, deployed, or staging validated.
+
+After review and approved merge/deployment, use
+`docs/sprint-8.7-milestone-5-staging-validation.md`. Do not claim Milestone 5 is
+complete until that separate validation closes as PASS.
 
 Use the execution model in `docs/codex-rules.md` and `docs/deployment-plan.md`:
 local branch/test/PR work first, then review and merge, approved staging deployment,

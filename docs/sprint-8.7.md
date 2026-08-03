@@ -2,7 +2,7 @@
 
 ## Status
 
-In progress. Milestones 1 through 4 are complete; Milestones 2 and 4 are staging validated. Milestone 4 closed as PASS. Milestone 5 is unblocked and ready to begin, but its implementation has not started.
+In progress. Milestones 1 through 4 are complete; Milestones 2 and 4 are staging validated. Milestone 4 closed as PASS. Milestone 5 is implemented on branch `codex/sprint-8-7-milestone-5` and ready for review, but it is not merged, deployed, or staging validated.
 
 ## Product
 
@@ -39,7 +39,7 @@ Migration 021 must not be rewritten. Historical migrations 019 and 020 must not 
 
 The Shared Business Profile application service is implemented in `private/classes/SharedBusinessProfile.php`, staging validated as PASS on deployed commit `d11bd0e7d14b9d9dd432f3ce244a9b2bbebfafb7`, and documented in `docs/shared-business-profile-service-layer.md`.
 
-The customer-facing Shared Business Profile interface, component CMS, site revision system, portable site conversion system, `CommunicationsManager`, provider interfaces/adapters, unified conversation inbox, and private MCP gateway do not currently exist.
+The Milestone 5 branch contains the customer-facing Shared Business Profile interface and admin visibility. The component CMS, site revision system, portable site conversion system, `CommunicationsManager`, provider interfaces/adapters, unified conversation inbox, and private MCP gateway do not currently exist.
 
 ---
 
@@ -124,7 +124,7 @@ Implementation notes:
 
 ## Milestone 5 - Shared Business Profile Interface
 
-Status: Unblocked and ready to begin; implementation not started
+Status: Implemented on `codex/sprint-8-7-milestone-5`; ready for review; not merged, deployed, or staging validated
 
 Scope:
 
@@ -135,6 +135,18 @@ Scope:
 * Progressive disclosure
 * Existing service and service-area reuse
 * No customer page builder
+
+Implementation notes:
+
+* Customer route: `public/app/247sp/business-profile.php`
+* All migration-021 sections use section-specific POST actions, post/redirect/get, reusable session-backed CSRF, and `SharedBusinessProfile` mutations.
+* Identity, services, and service area are read-only summaries linked to their existing authoritative editors.
+* The 247SP dashboard uses live `SharedBusinessProfile` readiness instead of the legacy contact-field completion calculation.
+* Customers may submit draft/incomplete profiles for review; they cannot directly mark ready or active.
+* `public/app/admin/business.php` provides read-only profile/readiness summaries and service-enforced lifecycle transitions, including admin-only activation.
+* Collection replacement requires submitted rows or explicit removal/empty confirmation; absent or malformed collections do not replace stored rows.
+* No migration or schema change is required.
+* Staging validation remains required after review, merge, and approved deployment.
 
 ## Milestone 6 - Website Generation, Site Lifecycle, And Component Audit
 
@@ -346,4 +358,4 @@ Planned categories must not be marked complete until implementation and required
 
 # Recommended Next Task
 
-Sprint 8.7 Milestone 5 - Shared Business Profile Interface (unblocked and ready to begin)
+Review and merge Sprint 8.7 Milestone 5, then perform the approved staging deployment and Remote SSH validation in `docs/sprint-8.7-milestone-5-staging-validation.md`.

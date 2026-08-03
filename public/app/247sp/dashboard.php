@@ -2,7 +2,9 @@
 
 require_once __DIR__ . '/../../../private/classes/Auth.php';
 require_once __DIR__ . '/../../../private/classes/BillingFoundation.php';
+require_once __DIR__ . '/../../../private/classes/Csrf.php';
 require_once __DIR__ . '/../../../private/classes/DomainAutomation.php';
+require_once __DIR__ . '/../../../private/classes/SharedBusinessProfile.php';
 require_once __DIR__ . '/../../../private/classes/TwentyFourSevenSalesPartner.php';
 require_once __DIR__ . '/../../../private/classes/SiteGenerator.php';
 
@@ -19,6 +21,7 @@ $business = null;
 $summary = [];
 $website = null;
 $billing = null;
+$profileReadiness = null;
 $websiteApproval = ['approved' => false, 'status' => 'not_reviewed', 'created_at' => null];
 $loadError = '';
 $actionError = '';
@@ -45,8 +48,10 @@ try {
         $accessDenied = !TwentyFourSevenSalesPartner::businessHasAccess($businessId);
 
         if (!$accessDenied && $_SERVER['REQUEST_METHOD'] === 'POST') {
+            Csrf::requireValid($_POST['csrf_token'] ?? null, '247sp-dashboard');
             if (isset($_POST['request_changes'])) {
                 TwentyFourSevenSalesPartner::requestWebsiteChanges($businessId, (int) $user['id'], (string) ($_POST['change_request'] ?? ''));
+                Csrf::rotate('247sp-dashboard');
                 header('Location: dashboard.php?business_id=' . $businessId . '&changes_requested=1');
                 exit;
             }
@@ -58,6 +63,7 @@ try {
                 }
 
                 TwentyFourSevenSalesPartner::approveWebsiteLaunch($businessId, (int) $user['id']);
+                Csrf::rotate('247sp-dashboard');
                 header('Location: dashboard.php?business_id=' . $businessId . '&approved=1');
                 exit;
             }
@@ -68,23 +74,29 @@ try {
             $website = SiteGenerator::websiteForBusiness($businessId);
             $billing = BillingFoundation::subscriptionForBusiness($businessId);
             $websiteApproval = TwentyFourSevenSalesPartner::websiteLaunchApproval($businessId);
+            $profileReadiness = SharedBusinessProfile::calculateReadiness($businessId, (int) $user['id']);
 
             if ($website !== null) {
                 $summary['website_status'] = (string) $website['status'];
             }
         }
     }
-} catch (InvalidArgumentException $exception) {
+} catch (CsrfException | InvalidArgumentException $exception) {
     $actionError = $exception->getMessage();
 
     if ($business !== null && !$accessDenied) {
-        $summary = TwentyFourSevenSalesPartner::dashboardSummary((int) $business['id']);
-        $website = SiteGenerator::websiteForBusiness((int) $business['id']);
-        $billing = BillingFoundation::subscriptionForBusiness((int) $business['id']);
-        $websiteApproval = TwentyFourSevenSalesPartner::websiteLaunchApproval((int) $business['id']);
+        try {
+            $summary = TwentyFourSevenSalesPartner::dashboardSummary((int) $business['id']);
+            $website = SiteGenerator::websiteForBusiness((int) $business['id']);
+            $billing = BillingFoundation::subscriptionForBusiness((int) $business['id']);
+            $websiteApproval = TwentyFourSevenSalesPartner::websiteLaunchApproval((int) $business['id']);
+            $profileReadiness = SharedBusinessProfile::calculateReadiness((int) $business['id'], (int) $user['id']);
 
-        if ($website !== null) {
-            $summary['website_status'] = (string) $website['status'];
+            if ($website !== null) {
+                $summary['website_status'] = (string) $website['status'];
+            }
+        } catch (Throwable $reloadException) {
+            $loadError = '24/7 Sales Partner could not be reloaded after the request.';
         }
     }
 } catch (Throwable $exception) {
@@ -121,31 +133,16 @@ function sp247_status_label(string $status): string
     return $labels[$status] ?? ucwords(str_replace('_', ' ', $status));
 }
 
-function sp247_business_profile_complete(?array $business): bool
-{
-    if ($business === null) {
-        return false;
-    }
-
-    foreach (['business_name', 'email', 'phone', 'address_line_1', 'city', 'state', 'postal_code'] as $field) {
-        if (trim((string) ($business[$field] ?? '')) === '') {
-            return false;
-        }
-    }
-
-    return true;
-}
-
 function sp247_subscription_paid(?array $billing): bool
 {
     return $billing !== null && (string) ($billing['status'] ?? '') === 'active';
 }
 
 function sp247_build_launch_readiness(
-    ?array $business,
     array $summary,
     ?array $website,
     ?array $billing,
+    ?array $profileReadiness,
     array $websiteApproval,
     string $accountsBaseUrl,
     int $businessIdForLinks
@@ -158,18 +155,21 @@ function sp247_build_launch_readiness(
     $domainReady = !empty($summary['domain_launch_ready']);
     $emailReady = !in_array((string) ($summary['email_status'] ?? 'not_selected'), ['', 'not_selected'], true);
     $paymentComplete = sp247_subscription_paid($billing);
+    $profileComplete = !empty($profileReadiness['is_complete']);
     $approvalDate = (string) ($websiteApproval['created_at'] ?? '');
     $generatedDate = (string) ($website['generated_at'] ?? '');
     $websiteApproved = !empty($websiteApproval['approved'])
         && ($generatedDate === '' || $approvalDate === '' || $approvalDate >= $generatedDate);
-    $readyToLaunch = $setupComplete && $previewReady && $domainReady && $emailReady && $websiteApproved && $paymentComplete;
+    $readyToLaunch = $profileComplete && $setupComplete && $previewReady && $domainReady && $emailReady && $websiteApproved && $paymentComplete;
 
     $items = [
         [
             'label' => 'Business Profile',
-            'completed' => sp247_business_profile_complete($business),
-            'detail' => sp247_business_profile_complete($business) ? 'Your business contact and service area details are saved.' : 'Add the core business details used for your website.',
-            'action' => ['label' => 'Update profile', 'href' => $accountsBaseUrl . '/business.php?business_id=' . $businessId],
+            'completed' => $profileComplete,
+            'detail' => $profileComplete
+                ? 'Your Shared Business Profile passes its current readiness checks.'
+                : count($profileReadiness['incomplete_sections'] ?? []) . ' profile sections still need attention.',
+            'action' => ['label' => 'Update profile', 'href' => 'business-profile.php?business_id=' . $businessId],
         ],
         [
             'label' => 'Website Content',
@@ -243,12 +243,13 @@ function sp247_build_launch_readiness(
 $businessIdForLinks = $business ? (int) $business['id'] : 0;
 $sp247NavItems = [
     ['label' => 'Dashboard', 'href' => 'dashboard.php' . ($businessIdForLinks > 0 ? '?business_id=' . urlencode((string) $businessIdForLinks) : ''), 'current' => true],
+    ['label' => 'Business Profile', 'href' => 'business-profile.php' . ($businessIdForLinks > 0 ? '?business_id=' . urlencode((string) $businessIdForLinks) : '')],
     ['label' => 'Onboarding', 'href' => $businessIdForLinks > 0 ? 'onboarding.php?business_id=' . urlencode((string) $businessIdForLinks) : 'onboarding.php'],
     ['label' => 'Review', 'href' => $businessIdForLinks > 0 ? 'review.php?business_id=' . urlencode((string) $businessIdForLinks) : 'review.php'],
     ['label' => 'Preview', 'href' => $businessIdForLinks > 0 ? 'site-preview.php?business_id=' . urlencode((string) $businessIdForLinks) : 'site-preview.php'],
 ];
 if ($businessIdForLinks > 0 && !$accessDenied) {
-    array_splice($sp247NavItems, 4, 0, [[
+    array_splice($sp247NavItems, 5, 0, [[
         'label' => 'Website Manager',
         'href' => 'website-manager.php?business_id=' . urlencode((string) $businessIdForLinks),
     ]]);
@@ -321,9 +322,10 @@ require __DIR__ . '/../../../private/views/account-navigation.php';
             </section>
 
             <?php
-                $launchReadiness = sp247_build_launch_readiness($business, $summary, $website, $billing, $websiteApproval, $accountsBaseUrl, $businessIdForLinks);
+                $launchReadiness = sp247_build_launch_readiness($summary, $website, $billing, $profileReadiness, $websiteApproval, $accountsBaseUrl, $businessIdForLinks);
             ?>
             <form id="launch-readiness-action-form" method="post" action="dashboard.php">
+                <?= Csrf::input('247sp-dashboard') ?>
                 <input type="hidden" name="business_id" value="<?= e($businessIdForLinks) ?>">
             </form>
             <?= ui_launch_readiness(
@@ -370,6 +372,7 @@ require __DIR__ . '/../../../private/views/account-navigation.php';
                         <?= ui_button('Website Manager', 'website-manager.php?business_id=' . urlencode((string) $businessIdForLinks), 'secondary') ?>
                     </div>
                     <form method="post" action="dashboard.php" class="form-stack">
+                        <?= Csrf::input('247sp-dashboard') ?>
                         <input type="hidden" name="business_id" value="<?= e($businessIdForLinks) ?>">
                         <label>Request Changes
                             <textarea name="change_request" rows="4" maxlength="2000" placeholder="Tell us what you would like changed on the website preview."></textarea>
