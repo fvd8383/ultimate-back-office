@@ -2,6 +2,16 @@
 
 declare(strict_types=1);
 
+error_reporting(E_ALL);
+
+set_error_handler(static function (int $severity, string $message, string $file, int $line): bool {
+    if (!(error_reporting() & $severity)) {
+        return false;
+    }
+
+    throw new ErrorException($message, 0, $severity, $file, $line);
+});
+
 final class DashboardSummaryTestStatement extends PDOStatement
 {
     public ?array $parameters = null;
@@ -54,6 +64,13 @@ final class DashboardSummaryTestConnection extends PDO
 
     public function fetchOne(string $query, array $parameters): mixed
     {
+        if (str_contains($query, 'SELECT er.primary_mailbox_name')) {
+            return [
+                'primary_mailbox_name' => 'hello',
+                'domain_name' => 'example.test',
+            ];
+        }
+
         if (str_contains($query, 'FROM `247sp_onboarding`')) {
             return [
                 'id' => 11,
@@ -124,10 +141,6 @@ final class DashboardSummaryTestConnection extends PDO
                 'registrar' => 'namecheap',
                 'next_action' => 'Your domain is ready for launch.',
             ];
-        }
-
-        if (str_contains($query, 'SELECT er.primary_mailbox_name')) {
-            return ['primary_mailbox_name' => 'hello', 'domain_name' => 'example.test'];
         }
 
         if (str_contains($query, 'FROM mailbox_requests') && str_contains($query, 'requested_email = :requested_email')) {
@@ -211,8 +224,25 @@ foreach ($connection->preparedSql as $sql) {
 }
 $normalizedDnsSql = preg_replace('/\s+/', ' ', trim($dnsUpsertSql));
 $normalizedDomainSql = preg_replace('/\s+/', ' ', trim($currentDomainSql));
+$expectedDnsUpsertParameters = [
+    'business_id',
+    'domain_request_id',
+    'domain_assignment_id',
+    'domain_name',
+    'record_type',
+    'host',
+    'value',
+    'priority',
+    'ttl',
+    'provider',
+    'status',
+];
 
 assertDashboardSummaryTest($dnsUpsertSql !== '', 'dashboardSummary must sync planned DNS records through the domain DNS upsert query.');
+assertDashboardSummaryTest(
+    str_contains($normalizedDnsSql, 'INSERT INTO domain_dns_records'),
+    'The DNS upsert must target domain_dns_records.'
+);
 assertDashboardSummaryTest(
     str_contains($normalizedDnsSql, "status = IF(status = 'verified', status, VALUES(status))"),
     'Verified DNS records must be preserved with an ANSI-safe single-quoted status literal.'
@@ -222,8 +252,17 @@ assertDashboardSummaryTest(
     'Double-quoted DNS status values are treated as identifiers when ANSI_QUOTES is enabled.'
 );
 assertDashboardSummaryTest(
-    str_contains($normalizedDnsSql, 'VALUES (:business_id, :domain_request_id, :domain_assignment_id, :domain_name, :record_type, :host, :value, :priority, :ttl, :provider, :status, NOW(), NOW())'),
-    'The DNS upsert must keep submitted record values parameterized.'
+    preg_match(
+        '/\)\s+VALUES\s*\(\s*:business_id\s*,\s*:domain_request_id\s*,\s*:domain_assignment_id\s*,\s*:domain_name\s*,\s*:record_type\s*,\s*:host\s*,\s*:value\s*,\s*:priority\s*,\s*:ttl\s*,\s*:provider\s*,\s*:status\s*,\s*NOW\(\)\s*,\s*NOW\(\)\s*\)/i',
+        $dnsUpsertSql
+    ) === 1,
+    'The DNS upsert VALUES clause must keep every submitted value as an ordered named placeholder.'
+);
+assertDashboardSummaryTest(
+    !str_contains($dnsUpsertSql, 'example.test')
+        && !str_contains($dnsUpsertSql, 'namecheap')
+        && !str_contains($dnsUpsertSql, 'planned'),
+    'The DNS upsert SQL must not interpolate runtime submitted values.'
 );
 
 $dnsUpsertExecution = null;
@@ -235,19 +274,7 @@ foreach ($connection->executed as $execution) {
 }
 assertDashboardSummaryTest(
     $dnsUpsertExecution !== null
-        && array_keys($dnsUpsertExecution['params']) === [
-            'business_id',
-            'domain_request_id',
-            'domain_assignment_id',
-            'domain_name',
-            'record_type',
-            'host',
-            'value',
-            'priority',
-            'ttl',
-            'provider',
-            'status',
-        ],
+        && array_keys($dnsUpsertExecution['params']) === $expectedDnsUpsertParameters,
     'The DNS upsert must execute with the expected parameter keys.'
 );
 assertDashboardSummaryTest(
