@@ -202,4 +202,18 @@ Deferred items remain outside Sprint 8.5 and should be handled by future sprints
 
 ## Current Roadmap
 
-Next sprint: Sprint 8.6.
+Current implementation task: Sprint 8.7 Milestone 5 - Shared Business Profile
+Interface. It is unblocked and ready to begin; implementation has not started.
+
+## Sprint 8.7 Milestone 4 Closeout
+
+Sprint 8.7 Milestone 4 closed as PASS after complete staging runtime validation on
+deployed commit `d11bd0e7d14b9d9dd432f3ce244a9b2bbebfafb7`. The service, tenant
+isolation, readiness, lifecycle, audit, rollback, cleanup, regression smoke, and
+repository/database reconciliation checks passed.
+
+The final report is
+`/home/codex-validation/ubo-sbp-validation/MILESTONE-4-REGRESSION-RERUN-3.md`,
+SHA-256 `8ea329ecc1f1515eaafe28cf5284d6e6f6a97bc61ec010b106e4a67620f849b4`.
+Earlier blocked reports remain retained audit evidence for the Domains query defects,
+the log-permission blocker, and each required validation stop.

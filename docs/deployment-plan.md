@@ -100,6 +100,33 @@ Examples:
 
 ---
 
+# Standard Codex Execution Model
+
+Local Codex CLI is responsible for repository analysis, scoped branches, code
+implementation, available automated tests, commits, pushes, and pull-request
+preparation. It must not merge without approval.
+
+Codex Remote SSH on staging is responsible for deployed-commit verification, staging
+database validation, application smoke tests, staging log review, approved cleanup
+and reconciliation, and evidence-backed PASS, FAIL, or BLOCKED reports.
+
+```text
+Local Codex implementation
+  -> branch and tests
+  -> push and pull request
+  -> review and merge
+  -> staging deployment
+  -> Remote SSH validation
+  -> PASS, FAIL, or BLOCKED report
+```
+
+Production access/deployment/database changes, migrations, `sudo`, service restarts,
+permission changes, lifecycle transitions, suspensions, temporary triggers,
+deliberate rollback failures, destructive cleanup, and direct SQL restoration
+exceptions require explicit approval.
+
+---
+
 # Staging Deployment Commands
 
 Run on staging server:
@@ -635,13 +662,17 @@ database/migrations
 
 Migrations are run manually on staging.
 
-Do not assume Codex can run migrations.
+Do not assume local Codex or a staging Remote SSH task is authorized to run
+migrations. Migration execution requires explicit approval.
 
 Do not edit previously-run migrations unless specifically approved.
 
 Create a new migration for each sprint that changes database structure.
 
 Migration `021_shared_business_profile.sql` is complete and staging validated. Do not rewrite migration 021 or historical repair migrations 019 and 020. Any future website/CMS, billing-cohort, communications, or MCP persistence must use a later reviewed migration; no such migration is part of Sprint 8.7 Milestone 3.
+
+Sprint 8.7 Milestone 4 also passed staging runtime validation on deployed commit
+`d11bd0e7d14b9d9dd432f3ce244a9b2bbebfafb7` without a migration or schema change.
 
 ---
 

@@ -1010,31 +1010,66 @@ Hardcode production credentials
 Build future modules early
 Make assumptions that contradict docs
 ```
-# Codex Environment Constraints
+# Codex Execution Model
 
-The Codex environment does not have access to the staging server.
+Codex work is separated into local implementation and staging validation. Access in
+one context does not authorize actions in the other.
 
-The Codex environment does not have:
+## Local Codex CLI
 
-* PHP CLI
-* MySQL CLI
-* Apache
-* Browser automation
-* DigitalOcean access
+Use the local repository for:
 
-Do not spend effort attempting:
+* Repository analysis.
+* Feature and documentation branches.
+* Code implementation.
+* Automated tests available locally.
+* Commits and pushes.
+* Pull-request preparation.
 
-* php -l validation
-* mysql migration execution
-* browser verification
-* deployment verification
+Local Codex must not merge without approval.
 
-Instead:
+## Codex Remote SSH On Staging
 
-* Perform static code review.
-* Run git diff --check before commits.
-* Verify file paths logically.
-* Note when runtime validation must occur on staging.
+Use an explicitly authorized staging Remote SSH session for:
+
+* Deployed-commit and clean-worktree verification.
+* Staging database validation.
+* Application and browser smoke tests.
+* Staging Apache/PHP log review.
+* Approved cleanup and reconciliation.
+* Evidence-backed PASS, FAIL, or BLOCKED reports.
+
+Remote SSH validation does not authorize production access or deployment.
+
+## Default Development Flow
+
+```text
+Local Codex implementation
+  -> branch and tests
+  -> push and pull request
+  -> review and merge
+  -> staging deployment
+  -> Remote SSH validation
+  -> PASS, FAIL, or BLOCKED report
+```
+
+The following actions always require explicit approval:
+
+* Production access, deployment, or database changes.
+* Migrations.
+* `sudo`.
+* Service restarts.
+* Permission changes.
+* Lifecycle transitions.
+* Business or user suspensions.
+* Temporary trigger creation.
+* Deliberate rollback failures.
+* Destructive cleanup.
+* Direct SQL restoration exceptions.
+
+When a required runtime is unavailable locally, perform static review and available
+tests, run `git diff --check`, and hand the runtime checks to an authorized staging
+Remote SSH validation task.
 
 ---
 
@@ -1067,23 +1102,26 @@ Always verify new routes align with the existing document root structure before 
 
 # Staging Validation Responsibility
 
-Runtime validation occurs on staging after deployment.
+Runtime validation occurs on staging after review, merge, and approved deployment.
 
-Codex should:
+Local Codex should:
 
 * Build features.
 * Verify file references.
 * Verify includes.
 * Verify route structure.
+* Run available automated tests.
 
-Human validation on staging will verify:
+Authorized Codex Remote SSH validation or an approved operator verifies:
 
-* Authentication
-* Sessions
-* Database migrations
-* Rendering
-* Navigation
-* Permissions
+* Authentication and sessions.
+* Applied database state and explicitly approved migrations.
+* Rendering and navigation.
+* Permissions and tenant isolation.
+* Staging logs.
+* Cleanup and reconciliation.
+
+Do not claim runtime verification unless it was actually performed and recorded.
 
 ---
 

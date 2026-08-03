@@ -2,7 +2,13 @@
 
 ## Status
 
-Implemented in Sprint 8.7 Milestone 4 by `private/classes/SharedBusinessProfile.php`.
+Implemented and staging validated as PASS in Sprint 8.7 Milestone 4 by
+`private/classes/SharedBusinessProfile.php`.
+
+The final validated staging commit is
+`d11bd0e7d14b9d9dd432f3ce244a9b2bbebfafb7`. The final report is
+`/home/codex-validation/ubo-sbp-validation/MILESTONE-4-REGRESSION-RERUN-3.md`,
+SHA-256 `8ea329ecc1f1515eaafe28cf5284d6e6f6a97bc61ec010b106e4a67620f849b4`.
 
 This milestone adds an internal application service only. It does not add a customer or admin profile interface, a public endpoint, an MCP gateway, communications tables, provider integrations, scheduling, or website presentation management.
 
@@ -202,6 +208,22 @@ Pricing guidance is optional and reported as a warning when absent. Appointment 
 
 `readiness_snapshot_json` is refreshed after mutations for diagnostics and future operational visibility, but it is never treated as authoritative. Reads and lifecycle gates always recalculate readiness from current data.
 
+## Observed Staging Contract
+
+The completed staging validation established these service behaviors:
+
+* Partial weekly-hour collections are accepted by the write API; readiness identifies missing days.
+* Duplicate FAQ `sort_order` values are accepted.
+* An all-inactive FAQ collection is accepted; readiness requires at least one active FAQ.
+* Pricing guidance is optional for readiness and emits a warning when absent.
+* Appointment rules become required when appointment requests are enabled.
+* Breaking a required readiness condition while `active` automatically demotes the profile.
+* `profile_completed_at` is initialized on the first transition to `ready` and is not later cleared by the API.
+* `activated_at` is initialized on the first transition to `active` and is not later cleared by the API.
+* A direct `active` target while readiness is incomplete cannot be constructed through the API because breaking readiness first automatically demotes `ready` or `active` profiles.
+* The `in_review`-to-`ready` readiness gate was directly verified.
+* Failed transactional mutations create no false success activity record.
+
 ## Transactions And Audit
 
 Every mutation:
@@ -218,9 +240,10 @@ Any failure rolls back the entire mutation. Audit metadata stores the action, bu
 
 ## Staging Validation
 
-Runtime validation remains required on staging because the local Codex environment has no PHP CLI or MySQL runtime.
+Runtime validation completed as PASS on staging. The coverage below is retained as
+the validated operator checklist.
 
-Authorization:
+Validated authorization coverage:
 
 1. Load and update a profile as an active member of the same business.
 2. Attempt both operations with another business ID and confirm `unauthorized`.
@@ -228,7 +251,7 @@ Authorization:
 4. Confirm internal Admin/Super Admin access and confirm a business-scoped Admin role does not grant it.
 5. Submit a child ID from another profile and confirm `cross_business_reference` with no changes.
 
-Profile and collections:
+Validated profile and collection coverage:
 
 1. Load an existing migration-021 draft profile and confirm no duplicate profile row is created.
 2. Save every allowlisted profile field; submit an unknown field and confirm field-specific rejection.
@@ -241,7 +264,7 @@ Profile and collections:
 9. Save transfer/escalation rules and validate phone, fallback, urgency, and emergency-enable rules.
 10. Save notification preferences; confirm enabled channels with missing destinations save but fail readiness and duplicate types fail atomically.
 
-Lifecycle and transactions:
+Validated lifecycle and transaction coverage:
 
 1. Confirm an incomplete draft remains draft after saving.
 2. Confirm `ready` and `active` fail while readiness is incomplete.
@@ -249,13 +272,18 @@ Lifecycle and transactions:
 4. Remove a required value and confirm ready/active demotes to incomplete.
 5. Force a child insert failure during a replacement and confirm the old collection, lifecycle, readiness snapshot, and audit state all roll back.
 
-Regression:
+Validated regression coverage:
 
 1. Load 247SP onboarding, review, preview, and Website Manager.
 2. Load the Admin Website Editor.
 3. Submit an existing website form and confirm LeadHub contact/task/activity creation.
 4. Load LeadHub contacts, leads, notes, and tasks.
 5. Load domain, email, billing, and subscription pages.
+
+The complete rerun passed 20 customer/application page checks and 10 internal-admin
+page checks. The authenticated Domains page produced no PDOException, warning, fatal
+error, or browser-console entry, and the bounded Apache/PHP error-log delta was zero.
+Cleanup and repository/database reconciliation passed.
 
 ## Explicit Exclusions
 
