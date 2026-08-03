@@ -39,7 +39,12 @@ The repository currently includes:
 
 Migration 021 is complete and staging validated. It created the initial provider-neutral Shared Business Profile root and child records for hours, FAQs, pricing guidance, appointment rules, transfer rules, escalation rules, and notification preferences.
 
-Sprint 8.7 Milestone 4 is implemented in `private/classes/SharedBusinessProfile.php`. The service is the reusable business-rule boundary for profile consumers; the customer-facing profile interface remains planned for Milestone 5. See `docs/shared-business-profile-service-layer.md`.
+Sprint 8.7 Milestone 4 is implemented in `private/classes/SharedBusinessProfile.php`
+and staging validated as PASS on deployed commit
+`d11bd0e7d14b9d9dd432f3ce244a9b2bbebfafb7`. The service is the reusable
+business-rule boundary for profile consumers. The customer-facing profile interface
+remains planned for Milestone 5, which is unblocked and ready to begin but has not
+started. See `docs/shared-business-profile-service-layer.md`.
 
 ## Planned Capabilities
 

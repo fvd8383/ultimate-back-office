@@ -2,7 +2,7 @@
 
 ## Review Date
 
-August 2, 2026
+August 3, 2026
 
 ## Overall Status
 
@@ -28,8 +28,8 @@ The website-generation and LeadHub foundations exist. Migration 021 established 
 | Domain workflow and provider abstraction | Implemented; end-to-end staging launch validation pending |
 | Email request/assignment foundation | Complete; automated provisioning pending |
 | Shared Business Profile schema | Complete and staging validated |
-| Structured Business Profile service | Implemented in Sprint 8.7 Milestone 4; staging runtime validation pending |
-| Structured Business Profile UI | Planned in Sprint 8.7 Milestone 5 |
+| Structured Business Profile service | Complete and staging validated as PASS in Sprint 8.7 Milestone 4 |
+| Structured Business Profile UI | Sprint 8.7 Milestone 5 is unblocked and ready to begin; implementation not started |
 | Component CMS and portable site lifecycle | Planned for Sprint 8.8 |
 | Communications core and unified inbox | Planned for Sprint 8.9 and later |
 | Telephony and AI receptionist | Planned for Sprint 8.10 |
@@ -41,7 +41,7 @@ The website-generation and LeadHub foundations exist. Migration 021 established 
 
 ## Business Profile Readiness
 
-Status: Schema complete and staging validated; service layer implemented; interface and service runtime validation pending.
+Status: Schema and service layer complete and staging validated; customer interface pending.
 
 Required:
 
@@ -170,9 +170,9 @@ Approved cohorts are Beta Users 1-5 at $0 setup and $79/month, Founding Users 6-
 
 ## Business Profile Service And Interface
 
-Status: Service implemented; customer interface and staging validation pending
+Status: Service complete and staging validated; customer interface pending
 
-Implement authorized profile reads/writes, validation, readiness calculation, audit hooks, draft saving, missing-information indicators, and admin visibility without creating parallel business facts.
+Implement the customer/admin interface for the validated service, including draft saving, missing-information indicators, and admin visibility without creating parallel business facts.
 
 ## Website Generation And Public Lifecycle
 
@@ -232,8 +232,8 @@ Before any site conversion or cancellation workflow can be launch-ready:
 * Milestone 1: Existing Schema and Architecture Review - Complete
 * Milestone 2: Shared Business Profile Schema - Complete and staging validated
 * Milestone 3: Product Definition, Architecture, Pricing, and Roadmap Alignment - Complete
-* Milestone 4: Shared Business Profile Service Layer - Complete; staging runtime validation pending
-* Milestone 5: Shared Business Profile Interface - Next
+* Milestone 4: Shared Business Profile Service Layer - Complete and staging validated; PASS
+* Milestone 5: Shared Business Profile Interface - Unblocked and ready to begin; implementation not started
 * Milestone 6: Website Generation, Site Lifecycle, and Component Audit - Planned
 * Milestone 7: Sprint Closeout and Future-Sprint Planning - Planned
 
@@ -265,4 +265,4 @@ Full customer use of EMD, SSP, TUHWD, KYN, Full OS, and Enterprise remains defer
 
 The platform has solid website, LeadHub, billing, domain, email-workflow, and Shared Business Profile foundations, but the approved 247SP product is broader than the implemented runtime. Readiness must be measured by the complete digital-front-office workflow, not by website-preview completion alone.
 
-The next implementation task is Sprint 8.7 Milestone 5 - Shared Business Profile Interface.
+The next implementation task is Sprint 8.7 Milestone 5 - Shared Business Profile Interface. Milestone 5 is unblocked, but this status does not claim implementation has started.

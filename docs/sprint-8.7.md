@@ -2,7 +2,7 @@
 
 ## Status
 
-In progress. Milestones 1 through 4 are complete; Milestone 2 is staging validated; Milestone 5 is the next implementation task.
+In progress. Milestones 1 through 4 are complete; Milestones 2 and 4 are staging validated. Milestone 4 closed as PASS. Milestone 5 is unblocked and ready to begin, but its implementation has not started.
 
 ## Product
 
@@ -37,7 +37,7 @@ Milestone 2 added migration `021_shared_business_profile.sql`. Migration 021 cre
 
 Migration 021 must not be rewritten. Historical migrations 019 and 020 must not be rewritten or rerun to support later Sprint 8.7 work.
 
-The Shared Business Profile application service is implemented in `private/classes/SharedBusinessProfile.php` and documented in `docs/shared-business-profile-service-layer.md`.
+The Shared Business Profile application service is implemented in `private/classes/SharedBusinessProfile.php`, staging validated as PASS on deployed commit `d11bd0e7d14b9d9dd432f3ce244a9b2bbebfafb7`, and documented in `docs/shared-business-profile-service-layer.md`.
 
 The customer-facing Shared Business Profile interface, component CMS, site revision system, portable site conversion system, `CommunicationsManager`, provider interfaces/adapters, unified conversation inbox, and private MCP gateway do not currently exist.
 
@@ -98,7 +98,7 @@ This milestone changes documentation only. It does not implement PHP, migrations
 
 ## Milestone 4 - Shared Business Profile Service Layer
 
-Status: Complete
+Status: Complete and staging validated - PASS
 
 Scope:
 
@@ -117,11 +117,14 @@ Implementation notes:
 * Every public method performs explicit business-scoped authorization using active membership or the existing internal administrator role.
 * Mutations use transactions, profile-row locking, child ownership checks, live readiness calculation, lifecycle demotion, and safe `activity_logs` audit summaries.
 * Migration 021 remains unchanged and no new migration is required.
-* Runtime and tenant-isolation validation remains required on staging.
+* Runtime, tenant-isolation, readiness, lifecycle, rollback, cleanup, and complete regression-smoke validation passed on staging.
+* The final validation record is `/home/codex-validation/ubo-sbp-validation/MILESTONE-4-REGRESSION-RERUN-3.md`, SHA-256 `8ea329ecc1f1515eaafe28cf5284d6e6f6a97bc61ec010b106e4a67620f849b4`.
+* PR #85 corrected ANSI-unsafe double-quoted SQL literals in the Domains DNS-record query. PR #86 replaced ascending `FIELD(...)` ordering with explicit `CASE` ranking and deterministic secondary ordering. Neither fix required a migration or schema change.
+* Earlier blocked reports remain retained audit evidence for the Domains PDOException, both query corrections, the temporary log-permission blocker, and each required stop point.
 
 ## Milestone 5 - Shared Business Profile Interface
 
-Status: Next
+Status: Unblocked and ready to begin; implementation not started
 
 Scope:
 
@@ -343,4 +346,4 @@ Planned categories must not be marked complete until implementation and required
 
 # Recommended Next Task
 
-Sprint 8.7 Milestone 5 - Shared Business Profile Interface
+Sprint 8.7 Milestone 5 - Shared Business Profile Interface (unblocked and ready to begin)

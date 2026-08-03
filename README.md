@@ -234,6 +234,12 @@ Migration 021 creates the provider-neutral Shared Business Profile root and chil
 
 Sprint 8.7 Milestone 4 adds `private/classes/SharedBusinessProfile.php` as the authorized application boundary for those records. It provides normalized reads, allowlisted updates, transactional child replacement, ownership validation, controlled lifecycle transitions, live readiness calculation, and safe `activity_logs` audit summaries. No customer-facing profile route or database migration is part of Milestone 4; see `docs/shared-business-profile-service-layer.md`.
 
+Milestone 4 staging runtime validation closed as PASS on deployed commit
+`d11bd0e7d14b9d9dd432f3ce244a9b2bbebfafb7`. The final report is
+`/home/codex-validation/ubo-sbp-validation/MILESTONE-4-REGRESSION-RERUN-3.md`,
+SHA-256 `8ea329ecc1f1515eaafe28cf5284d6e6f6a97bc61ec010b106e4a67620f849b4`.
+Milestone 5 is unblocked and ready to begin; implementation has not started.
+
 ## Testing OTP Login In Staging
 
 1. Insert an active test user into the `users` table.

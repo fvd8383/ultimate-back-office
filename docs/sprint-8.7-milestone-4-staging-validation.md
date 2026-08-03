@@ -1,10 +1,10 @@
 # Sprint 8.7 Milestone 4 Staging Runtime Validation
 
-This is an operator-run plan for the merged `SharedBusinessProfile` service in
-`private/classes/SharedBusinessProfile.php`. Run it only against staging, using
-designated synthetic test records. It does not record a validation result, does not
-authorize production access, and does not unblock Milestone 5 until every required
-result is completed and committed to this document or a follow-up validation record.
+This document began as the operator-run plan for the merged `SharedBusinessProfile`
+service in `private/classes/SharedBusinessProfile.php`. Run its procedures only
+against staging, using designated synthetic test records. Section 23 now records the
+completed PASS result and its external evidence reference. This document does not
+authorize production access.
 
 The service has no HTTP route and no session-derived business context. Every public
 method requires an explicit business ID and acting-user ID, then performs its own
@@ -1507,5 +1507,104 @@ raw SQL errors.
 - Operator sign-off:
 ```
 
-At publication time this file is a plan only. No staging command, browser test, MySQL
-runtime test, or result in this template has been represented as completed.
+The template and conditional blocker language above are retained as the original test
+plan. The completed result follows and does not rewrite the earlier stop conditions.
+
+## 23. Final staging runtime validation result
+
+Final result: **PASS**
+
+- Deployed commit: `d11bd0e7d14b9d9dd432f3ce244a9b2bbebfafb7`
+- Environment: `APP_ENV=staging`
+- Database: `ubo_staging`
+- Staging worktree: clean and matching `origin/main`
+- Migration difference: none
+- Repository-wide PHP lint: PASS for 84 PHP files
+- Focused DomainManager regression test: PASS
+- Live DNS ordering fixture: PASS
+- Authenticated Domains page: PASS
+- Apache/PHP error-log delta: zero
+- Customer/application page checks: 20 of 20 PASS
+- Admin page checks: 10 of 10 PASS
+- Final report: `/home/codex-validation/ubo-sbp-validation/MILESTONE-4-REGRESSION-RERUN-3.md`
+- Final report SHA-256: `8ea329ecc1f1515eaafe28cf5284d6e6f6a97bc61ec010b106e4a67620f849b4`
+- Milestone 5 remains blocked: NO
+- Milestone 5 status: unblocked and ready to begin; implementation not started
+
+### Completed service coverage
+
+Validation completed environment/deployment checks, class loading and signatures,
+schema presence, customer and internal-admin authorization, tenant isolation,
+inactive user/membership rejection, suspended-business behavior, profile updates,
+weekly hours, hour exceptions, FAQs, pricing guidance, appointment rules, transfer
+rules, escalation rules, notification preferences, readiness, lifecycle transitions,
+lifecycle timestamps, automatic demotion, sanitized activity logging, transaction
+atomicity, trigger-based rollback, exact staging cleanup/reconciliation, and the full
+regression smoke suite.
+
+The approved website-form smoke created exactly one contact, one note, one task, and
+one activity. No unrelated database change was found.
+
+### Observed service contract
+
+- Partial weekly-hour collections are accepted by the write API; readiness identifies
+  missing days.
+- Duplicate FAQ `sort_order` values are accepted.
+- An FAQ collection containing only inactive rows is accepted; readiness requires at
+  least one active FAQ.
+- Pricing guidance is optional for readiness and produces a warning when absent.
+- Appointment rules become required when appointment requests are enabled.
+- Breaking a required readiness condition while active automatically demotes the
+  profile.
+- `profile_completed_at` is initialized on the first transition to `ready` and is not
+  later cleared by the API.
+- `activated_at` is initialized on the first transition to `active` and is not later
+  cleared by the API.
+- A direct active-target/readiness-incomplete case cannot be constructed through the
+  API because breaking readiness first automatically demotes a `ready` or `active`
+  profile.
+- The `in_review`-to-`ready` readiness gate was directly verified.
+- Failed transactional mutations did not create false success activity records.
+
+### Domains regression history
+
+PR #85, fix commit `cffc220`, corrected the original authenticated Domains
+PDOException. MySQL `ANSI_QUOTES` treated double-quoted values inside `FIELD(...)` as
+identifiers; the query now uses ANSI-safe single-quoted string literals. No migration
+or schema change was required.
+
+PR #86, fix commit `e2b3b9e769ee8e0037754c22e00d3a9e3b58f3fb` and
+merge/deployed commit `d11bd0e7d14b9d9dd432f3ce244a9b2bbebfafb7`, corrected
+the remaining ordering defect. Ascending `FIELD(...)` assigns unlisted statuses rank
+zero, so the query now uses explicit `CASE` ranking for `pending`, `planned`,
+`synced`, and `verified`, with all remaining statuses afterward. Ties are ordered by
+`status`, `record_type`, `host`, and `id`. No migration or schema change was required.
+
+### Cleanup and restoration
+
+Businesses 6, 7, and 8 matched their private cleanup baselines. All eight Shared
+Business Profile child tables were empty after cleanup. The two synthetic custom
+services, temporary validation triggers, and Shared Business Profile sentinels were
+removed. Repository and database reconciliation passed.
+
+Validation used three staging-only restoration exceptions:
+
+- A transactional restoration of Business A `lifecycle_status`,
+  `profile_completed_at`, `activated_at`, and `updated_at`.
+- A later transactional restoration of Business A `updated_at` only.
+- Direct deletion of custom service 1 for Business 6 and custom service 2 for
+  Business 7.
+
+These narrowly scoped staging fixture restorations do not establish a production
+procedure.
+
+### Retained blocked-run evidence
+
+The original blocked report and two supplemental blocked reports remain unchanged at
+their recorded checksums. They are retained audit evidence for the original Domains
+PDOException, the ANSI_QUOTES correction, the `FIELD(...)` ranking correction, the
+temporary log-permission blocker, and the reason each run stopped before continuing:
+
+- `7fb7e5f218606969c9d75114ff5086fda68bf0bca00faae0aa4477c3f0892e76`
+- `d67aee783451097e5e34b55fb15d3d0d82e11b6c09b4ba23f56148fa3f2064a2`
+- `064ffaaec75c67d0792682810a65932af41f75646354006fe655c0cbff7deaea`

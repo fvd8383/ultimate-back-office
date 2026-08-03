@@ -640,6 +640,9 @@ Sprint 8.7 Milestone 4 application service:
 * Profile and child writes use prepared statements, transactions, a profile-row lock, ownership validation, readiness recalculation, lifecycle demotion, and `activity_logs` audit summaries.
 * Readiness is calculated from current `businesses`, selected/custom service records, `247sp_website_configurations`, and migration 021 records. `readiness_snapshot_json` is refreshed after mutations but is not an authoritative completion source.
 * No schema change was required for Milestone 4. See `docs/shared-business-profile-service-layer.md`.
+* Milestone 4 staging runtime validation passed on deployed commit
+  `d11bd0e7d14b9d9dd432f3ce244a9b2bbebfafb7`. Repository/database reconciliation
+  passed, and Milestone 5 is unblocked without changing migration 021.
 
 ---
 
