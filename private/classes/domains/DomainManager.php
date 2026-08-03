@@ -207,7 +207,14 @@ final class DomainManager
             'SELECT *
              FROM domain_dns_records
              WHERE domain_request_id = :request_id
-             ORDER BY FIELD(status, \'pending\', \'planned\', \'synced\', \'verified\'), record_type ASC, host ASC, id ASC'
+             ORDER BY CASE status
+                 WHEN \'pending\' THEN 1
+                 WHEN \'planned\' THEN 2
+                 WHEN \'synced\' THEN 3
+                 WHEN \'verified\' THEN 4
+                 ELSE 5
+             END ASC,
+             status ASC, record_type ASC, host ASC, id ASC'
         );
         $statement->execute(['request_id' => $requestId]);
 
