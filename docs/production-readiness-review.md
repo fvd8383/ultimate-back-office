@@ -10,7 +10,7 @@ Not ready for the first paying 24/7 Sales Partner customer.
 
 24/7 Sales Partner is a done-for-you lead-generation and digital-front-office platform powered by one structured Business Profile. It generates a custom website, captures forms, calls, texts, and chats, provides immediate AI-assisted responses, and keeps every opportunity organized in LeadHub.
 
-The website-generation and LeadHub foundations exist. Migration 021 established the initial Shared Business Profile schema and was staging validated, and Sprint 8.7 Milestone 4 added its authorized application service. The customer-facing profile interface, component CMS, portable site lifecycle, unified inbox, communications provider layer, AI receptionist, business texting, website chat, usage metering, and internal MCP gateway remain planned.
+The website-generation and LeadHub foundations exist. Migration 021 established the initial Shared Business Profile schema and was staging validated, and Sprint 8.7 Milestone 4 added its authorized application service. The Milestone 5 review branch adds the customer-facing profile interface and admin visibility, but merge, deployment, and staging validation remain pending. The component CMS, portable site lifecycle, unified inbox, communications provider layer, AI receptionist, business texting, website chat, usage metering, and internal MCP gateway remain planned.
 
 ---
 
@@ -29,7 +29,7 @@ The website-generation and LeadHub foundations exist. Migration 021 established 
 | Email request/assignment foundation | Complete; automated provisioning pending |
 | Shared Business Profile schema | Complete and staging validated |
 | Structured Business Profile service | Complete and staging validated as PASS in Sprint 8.7 Milestone 4 |
-| Structured Business Profile UI | Sprint 8.7 Milestone 5 is unblocked and ready to begin; implementation not started |
+| Structured Business Profile UI | Implemented on Milestone 5 review branch; merge, deployment, and staging validation pending |
 | Component CMS and portable site lifecycle | Planned for Sprint 8.8 |
 | Communications core and unified inbox | Planned for Sprint 8.9 and later |
 | Telephony and AI receptionist | Planned for Sprint 8.10 |
@@ -170,9 +170,9 @@ Approved cohorts are Beta Users 1-5 at $0 setup and $79/month, Founding Users 6-
 
 ## Business Profile Service And Interface
 
-Status: Service complete and staging validated; customer interface pending
+Status: Service complete and staging validated; interface implemented on review branch; merge/deployment/staging validation pending
 
-Implement the customer/admin interface for the validated service, including draft saving, missing-information indicators, and admin visibility without creating parallel business facts.
+Review and staging validate the customer/admin interface for the validated service, including draft saving, missing-information indicators, admin visibility, CSRF, tenant isolation, and preservation of authoritative business/service/service-area sources.
 
 ## Website Generation And Public Lifecycle
 
@@ -233,7 +233,7 @@ Before any site conversion or cancellation workflow can be launch-ready:
 * Milestone 2: Shared Business Profile Schema - Complete and staging validated
 * Milestone 3: Product Definition, Architecture, Pricing, and Roadmap Alignment - Complete
 * Milestone 4: Shared Business Profile Service Layer - Complete and staging validated; PASS
-* Milestone 5: Shared Business Profile Interface - Unblocked and ready to begin; implementation not started
+* Milestone 5: Shared Business Profile Interface - Implemented on review branch; merge, deployment, and staging validation pending
 * Milestone 6: Website Generation, Site Lifecycle, and Component Audit - Planned
 * Milestone 7: Sprint Closeout and Future-Sprint Planning - Planned
 
@@ -265,4 +265,4 @@ Full customer use of EMD, SSP, TUHWD, KYN, Full OS, and Enterprise remains defer
 
 The platform has solid website, LeadHub, billing, domain, email-workflow, and Shared Business Profile foundations, but the approved 247SP product is broader than the implemented runtime. Readiness must be measured by the complete digital-front-office workflow, not by website-preview completion alone.
 
-The next implementation task is Sprint 8.7 Milestone 5 - Shared Business Profile Interface. Milestone 5 is unblocked, but this status does not claim implementation has started.
+The next task is review, approved merge/deployment, and separate staging validation of Sprint 8.7 Milestone 5. The branch status does not claim the milestone is complete or passed.

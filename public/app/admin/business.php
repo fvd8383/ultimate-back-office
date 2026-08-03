@@ -2,6 +2,8 @@
 
 require_once __DIR__ . '/_common.php';
 require_once __DIR__ . '/../../../private/classes/BillingFoundation.php';
+require_once __DIR__ . '/../../../private/classes/Csrf.php';
+require_once __DIR__ . '/../../../private/classes/SharedBusinessProfileUi.php';
 
 $context = admin_bootstrap();
 if (!$context['is_admin']) {
@@ -10,39 +12,55 @@ if (!$context['is_admin']) {
 }
 
 $businessId = (int) ($_POST['business_id'] ?? $_GET['business_id'] ?? 0);
-$notice = '';
+$notice = isset($_GET['profile_updated']) ? 'Shared Business Profile lifecycle updated.' : '';
 $error = '';
 
 try {
     if ($_SERVER['REQUEST_METHOD'] === 'POST' && $businessId > 0) {
-        $action = (string) ($_POST['action'] ?? '');
+        Csrf::requireValid($_POST['csrf_token'] ?? null, 'admin-business');
+        if (isset($_POST['profile_action'])) {
+            $profileAction = SharedBusinessProfileUi::action($_POST, true);
+            $profilePayload = SharedBusinessProfileUi::payload($profileAction, $_POST);
+            SharedBusinessProfileUi::dispatch(
+                $profileAction,
+                $businessId,
+                (int) $context['user']['id'],
+                $profilePayload
+            );
+            Csrf::rotate('admin-business');
+            header('Location: business.php?business_id=' . urlencode((string) $businessId) . '&profile_updated=1');
+            exit;
+        } else {
+            $action = (string) ($_POST['action'] ?? '');
 
-        if ($action === 'enable_module' || $action === 'disable_module') {
-            AdminPortal::setModuleStatus(
-                $businessId,
-                (int) $context['user']['id'],
-                (string) ($_POST['module_key'] ?? ''),
-                $action === 'enable_module'
-            );
-            $notice = $action === 'enable_module' ? 'Module enabled.' : 'Module disabled.';
-        } elseif ($action === 'set_flags') {
-            AdminPortal::setBusinessFlags($businessId, (int) $context['user']['id'], [
-                'is_suspended' => isset($_POST['is_suspended']),
-                'is_test_account' => isset($_POST['is_test_account']),
-            ]);
-            $notice = 'Business controls updated.';
-        } elseif ($action === 'add_note') {
-            $userId = (int) ($_POST['user_id'] ?? 0);
-            AdminPortal::addNote(
-                $businessId,
-                $userId > 0 ? $userId : null,
-                (int) $context['user']['id'],
-                (string) ($_POST['note'] ?? '')
-            );
-            $notice = 'Admin note added.';
+            if ($action === 'enable_module' || $action === 'disable_module') {
+                AdminPortal::setModuleStatus(
+                    $businessId,
+                    (int) $context['user']['id'],
+                    (string) ($_POST['module_key'] ?? ''),
+                    $action === 'enable_module'
+                );
+                $notice = $action === 'enable_module' ? 'Module enabled.' : 'Module disabled.';
+            } elseif ($action === 'set_flags') {
+                AdminPortal::setBusinessFlags($businessId, (int) $context['user']['id'], [
+                    'is_suspended' => isset($_POST['is_suspended']),
+                    'is_test_account' => isset($_POST['is_test_account']),
+                ]);
+                $notice = 'Business controls updated.';
+            } elseif ($action === 'add_note') {
+                $userId = (int) ($_POST['user_id'] ?? 0);
+                AdminPortal::addNote(
+                    $businessId,
+                    $userId > 0 ? $userId : null,
+                    (int) $context['user']['id'],
+                    (string) ($_POST['note'] ?? '')
+                );
+                $notice = 'Admin note added.';
+            }
+            Csrf::rotate('admin-business');
         }
     }
-} catch (InvalidArgumentException $exception) {
+} catch (CsrfException | InvalidArgumentException | SharedBusinessProfileException $exception) {
     $error = $exception->getMessage();
 } catch (Throwable $exception) {
     $error = 'Business action could not be completed.';
@@ -55,6 +73,8 @@ $allModules = [];
 $notes = [];
 $billingSubscription = null;
 $recentWebsiteLeads = [];
+$sharedProfile = null;
+$sharedProfileError = '';
 
 try {
     $business = $businessId > 0 ? AdminPortal::business($businessId) : null;
@@ -64,6 +84,11 @@ try {
         $notes = AdminPortal::notesForBusiness($businessId);
         $billingSubscription = BillingFoundation::subscriptionForBusiness($businessId);
         $recentWebsiteLeads = AdminPortal::recent247spWebsiteLeadsForBusiness($businessId, 5);
+        try {
+            $sharedProfile = SharedBusinessProfile::getProfileForBusiness($businessId, (int) $context['user']['id']);
+        } catch (SharedBusinessProfileException $exception) {
+            $sharedProfileError = $exception->getMessage();
+        }
     }
 } catch (Throwable $exception) {
     $loadError = 'Business detail could not be loaded.';
@@ -121,11 +146,81 @@ admin_begin('Business Detail', 'businesses', $context);
     </section>
 
     <section class="business-switcher">
+        <h2>Shared Business Profile</h2>
+        <?php if ($sharedProfileError !== ''): ?>
+            <?= ui_alert($sharedProfileError, 'error') ?>
+        <?php elseif ($sharedProfile === null): ?>
+            <p class="muted">No Shared Business Profile is available for this business.</p>
+        <?php else: ?>
+            <?php
+                $sharedFacts = $sharedProfile['shared_business_facts'];
+                $sharedReadiness = $sharedProfile['readiness'];
+                $sharedLifecycle = $sharedProfile['lifecycle'];
+                $allowedTransitions = SharedBusinessProfileUi::allowedTransitions((string) $sharedLifecycle['status']);
+                $serviceNames = array_column(array_merge(
+                    $sharedProfile['services']['selected_sub_services'],
+                    $sharedProfile['services']['custom_services']
+                ), 'name');
+            ?>
+            <div class="button-row">
+                <?= ui_badge(SharedBusinessProfileUi::statusLabel((string) $sharedLifecycle['status']), $sharedReadiness['is_complete'] ? 'status' : 'role') ?>
+                <?= ui_badge($sharedReadiness['is_complete'] ? 'Readiness complete' : count($sharedReadiness['incomplete_sections']) . ' incomplete sections', $sharedReadiness['is_complete'] ? 'status' : 'role') ?>
+            </div>
+            <div class="summary-list">
+                <div><dt>Public display name</dt><dd><?= e($sharedFacts['public_display_name'] ?: $sharedFacts['business_name']) ?></dd></div>
+                <div><dt>Timezone</dt><dd><?= e($sharedFacts['timezone'] ?: 'Not set') ?></dd></div>
+                <div><dt>Greeting</dt><dd><?= e($sharedFacts['primary_greeting'] ?: 'Not set') ?></dd></div>
+                <div><dt>Services</dt><dd><?= e(implode(', ', $serviceNames) ?: 'Not set') ?></dd></div>
+                <div><dt>Service area</dt><dd><?= e(SharedBusinessProfileUi::statusLabel((string) $sharedProfile['service_area']['mode'])) ?></dd></div>
+                <div><dt>Weekly-hour rows</dt><dd><?= e(count($sharedProfile['hours'])) ?></dd></div>
+                <div><dt>Hour exceptions</dt><dd><?= e(count($sharedProfile['exceptions'])) ?></dd></div>
+                <div><dt>FAQs</dt><dd><?= e(count($sharedProfile['faqs'])) ?></dd></div>
+                <div><dt>Pricing guidance</dt><dd><?= e(count($sharedProfile['pricing_guidance'])) ?></dd></div>
+                <div><dt>Appointment rules</dt><dd><?= e(count($sharedProfile['appointment_rules'])) ?></dd></div>
+                <div><dt>Transfer rules</dt><dd><?= e(count($sharedProfile['transfer_rules'])) ?></dd></div>
+                <div><dt>Escalation rules</dt><dd><?= e(count($sharedProfile['escalation_rules'])) ?></dd></div>
+                <div><dt>Notification preferences</dt><dd><?= e(count($sharedProfile['notification_preferences'])) ?></dd></div>
+                <div><dt>First completed</dt><dd><?= e($sharedLifecycle['profile_completed_at'] ?: 'Not completed') ?></dd></div>
+                <div><dt>First activated</dt><dd><?= e($sharedLifecycle['activated_at'] ?: 'Not activated') ?></dd></div>
+            </div>
+            <?php if (count($sharedReadiness['missing_fields']) > 0): ?>
+                <h3>Missing requirements</h3>
+                <div class="summary-list">
+                    <?php foreach ($sharedReadiness['missing_fields'] as $section => $missing): ?>
+                        <div><dt><?= e(SharedBusinessProfileUi::statusLabel((string) $section)) ?></dt><dd><?= e(implode(', ', $missing)) ?></dd></div>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
+            <?php foreach ($sharedReadiness['warnings'] as $warning): ?>
+                <?= ui_alert($warning, 'warning') ?>
+            <?php endforeach; ?>
+            <?php if (count($allowedTransitions) > 0): ?>
+                <form method="post" action="business.php" class="form-stack">
+                    <?= Csrf::input('admin-business') ?>
+                    <input type="hidden" name="business_id" value="<?= e($businessId) ?>">
+                    <input type="hidden" name="profile_action" value="transition_lifecycle">
+                    <label>Lifecycle action
+                        <select name="target_status" required>
+                            <option value="">Choose permitted transition</option>
+                            <?php foreach ($allowedTransitions as $targetStatus): ?>
+                                <option value="<?= e($targetStatus) ?>"><?= e(SharedBusinessProfileUi::statusLabel($targetStatus)) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </label>
+                    <?= ui_button('Update lifecycle') ?>
+                    <span class="form-help">Readiness gates and internal-admin activation rules remain enforced by SharedBusinessProfile.</span>
+                </form>
+            <?php endif; ?>
+        <?php endif; ?>
+    </section>
+
+    <section class="business-switcher">
         <h2>Modules</h2>
         <div class="admin-module-grid">
             <?php foreach ($allModules as $module): ?>
                 <?php $isActive = in_array($module['module_key'], $activeModuleKeys, true); ?>
                 <form method="post" action="business.php" class="module-option admin-module-option">
+                    <?= Csrf::input('admin-business') ?>
                     <input type="hidden" name="business_id" value="<?= e($businessId) ?>">
                     <input type="hidden" name="module_key" value="<?= e($module['module_key']) ?>">
                     <input type="hidden" name="action" value="<?= $isActive ? 'disable_module' : 'enable_module' ?>">
@@ -142,6 +237,7 @@ admin_begin('Business Detail', 'businesses', $context);
     <section class="business-switcher">
         <h2>Actions</h2>
         <form method="post" action="business.php" class="admin-actions-form">
+            <?= Csrf::input('admin-business') ?>
             <input type="hidden" name="business_id" value="<?= e($businessId) ?>">
             <input type="hidden" name="action" value="set_flags">
             <label class="checkbox-line">
@@ -177,6 +273,7 @@ admin_begin('Business Detail', 'businesses', $context);
     <section class="business-switcher">
         <h2>Admin Notes</h2>
         <form method="post" action="business.php" class="form-stack">
+            <?= Csrf::input('admin-business') ?>
             <input type="hidden" name="business_id" value="<?= e($businessId) ?>">
             <input type="hidden" name="user_id" value="<?= e($business['owner_user_id']) ?>">
             <input type="hidden" name="action" value="add_note">

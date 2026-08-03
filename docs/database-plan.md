@@ -642,7 +642,8 @@ Sprint 8.7 Milestone 4 application service:
 * No schema change was required for Milestone 4. See `docs/shared-business-profile-service-layer.md`.
 * Milestone 4 staging runtime validation passed on deployed commit
   `d11bd0e7d14b9d9dd432f3ce244a9b2bbebfafb7`. Repository/database reconciliation
-  passed, and Milestone 5 is unblocked without changing migration 021.
+  passed. Milestone 5 is implemented on its review branch without changing migration 021;
+  merge, deployment, and staging validation remain pending.
 
 ---
 

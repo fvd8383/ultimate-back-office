@@ -202,8 +202,9 @@ Deferred items remain outside Sprint 8.5 and should be handled by future sprints
 
 ## Current Roadmap
 
-Current implementation task: Sprint 8.7 Milestone 5 - Shared Business Profile
-Interface. It is unblocked and ready to begin; implementation has not started.
+Current review task: Sprint 8.7 Milestone 5 - Shared Business Profile Interface.
+Implementation is on branch `codex/sprint-8-7-milestone-5`; merge, approved staging
+deployment, and separate staging validation remain pending.
 
 ## Sprint 8.7 Milestone 4 Closeout
 

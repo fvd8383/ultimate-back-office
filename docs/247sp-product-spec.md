@@ -43,8 +43,9 @@ Sprint 8.7 Milestone 4 is implemented in `private/classes/SharedBusinessProfile.
 and staging validated as PASS on deployed commit
 `d11bd0e7d14b9d9dd432f3ce244a9b2bbebfafb7`. The service is the reusable
 business-rule boundary for profile consumers. The customer-facing profile interface
-remains planned for Milestone 5, which is unblocked and ready to begin but has not
-started. See `docs/shared-business-profile-service-layer.md`.
+is implemented on branch `codex/sprint-8-7-milestone-5` with live readiness,
+section draft saving, existing-fact reuse, and admin visibility. It is not merged,
+deployed, or staging validated. See `docs/shared-business-profile-service-layer.md`.
 
 ## Planned Capabilities
 

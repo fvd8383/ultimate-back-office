@@ -238,7 +238,8 @@ Milestone 4 staging runtime validation closed as PASS on deployed commit
 `d11bd0e7d14b9d9dd432f3ce244a9b2bbebfafb7`. The final report is
 `/home/codex-validation/ubo-sbp-validation/MILESTONE-4-REGRESSION-RERUN-3.md`,
 SHA-256 `8ea329ecc1f1515eaafe28cf5284d6e6f6a97bc61ec010b106e4a67620f849b4`.
-Milestone 5 is unblocked and ready to begin; implementation has not started.
+Milestone 5 is implemented on branch `codex/sprint-8-7-milestone-5` and ready for
+review. It is not merged, deployed, or staging validated.
 
 ## Testing OTP Login In Staging
 
@@ -293,6 +294,21 @@ Business slugs are generated automatically from the business name and stored in 
 Use `public/accounts/business.php` to edit a linked business profile after creation. Editable fields include business name, legal name, date business started, phone, email, address, physical location, legal structure, category, and services.
 
 Authenticated users can only create, edit, and complete onboarding for businesses linked to their account through `business_users`.
+
+### Shared Business Profile Workspace
+
+The Sprint 8.7 Milestone 5 customer workspace lives at
+`public/app/247sp/business-profile.php`. It uses `SharedBusinessProfile` for all
+migration-021 reads, writes, readiness calculation, lifecycle effects, and activity
+logging. Customers can save section drafts, view live missing-information indicators,
+and submit draft/incomplete profiles for review. Core identity and services remain
+editable only through `public/accounts/business.php`; service area remains editable
+through the existing 247SP onboarding step.
+
+Internal Admin and Super Admin users receive read-only Shared Business Profile
+visibility and permitted lifecycle controls on `public/app/admin/business.php`.
+Profile activation remains admin-only and service readiness gates remain authoritative.
+No migration is required for Milestone 5.
 
 ## Category and Service Structure
 

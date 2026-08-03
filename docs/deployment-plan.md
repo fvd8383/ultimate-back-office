@@ -753,6 +753,20 @@ For Communications Layer changes, also validate on staging:
 * Transfer rules and escalation rules create customer-safe LeadHub activity, tasks, or notifications.
 * Usage tracking records AI minutes, outbound owner minutes, SMS segments, and AI chat responses.
 
+For Sprint 8.7 Milestone 5 Shared Business Profile Interface changes, no migration is
+required. After approved merge and deployment, follow
+`docs/sprint-8.7-milestone-5-staging-validation.md` and validate:
+
+* Customer profile GET and every section-specific POST use the deployed `SharedBusinessProfile` service.
+* CSRF rejection is generic and creates no mutation or success activity record.
+* Wrong-tenant, inactive-user, inactive-membership, and suspended-business access is denied.
+* Internal Admin/Super Admin visibility works without impersonation, and business-scoped Admin does not gain access.
+* Draft/incomplete customers may submit for review but cannot mark ready or active.
+* Admin lifecycle transitions retain readiness gates and admin-only activation.
+* Partial hours, duplicate FAQ sort orders, inactive-only FAQs, optional pricing warnings, conditional appointment rules, automatic demotion, preserved lifecycle timestamps, and failed-transaction audit behavior remain unchanged.
+* The 247SP dashboard Business Profile item matches live service readiness.
+* No collection is erased by a missing or malformed request payload.
+
 Logs:
 
 ```bash

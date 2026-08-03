@@ -230,11 +230,11 @@ Future module work remains paused until the first paying 247SP customer path is 
 
 Progress should be measured against the complete digital-front-office workflow, not website-preview completion alone. A current percentage is not asserted while the Shared Business Profile, component CMS, communications core, and launch policies are being sequenced.
 
-Sprint 8.7 Milestones 1 through 4 are complete; Milestones 2 and 4 are staging validated. Milestone 4 closed as PASS on deployed commit `d11bd0e7d14b9d9dd432f3ce244a9b2bbebfafb7`; cleanup and repository/database reconciliation passed. Milestone 5 is unblocked and ready to begin, but implementation has not started. The platform has persistent navigation, website generation/editing foundations, LeadHub website capture, billing/domain/email foundations, the Shared Business Profile schema, and its reusable application service. The profile interface, component CMS, unified inbox, communications services, AI receptionist, business texting, website chat, usage metering, and site-conversion workflows remain planned.
+Sprint 8.7 Milestones 1 through 4 are complete; Milestones 2 and 4 are staging validated. Milestone 4 closed as PASS on deployed commit `d11bd0e7d14b9d9dd432f3ce244a9b2bbebfafb7`; cleanup and repository/database reconciliation passed. Milestone 5 is implemented on its review branch but is not merged, deployed, or staging validated. The platform has persistent navigation, website generation/editing foundations, LeadHub website capture, billing/domain/email foundations, the Shared Business Profile schema and service, and the pending-review profile interface. The component CMS, unified inbox, communications services, AI receptionist, business texting, website chat, usage metering, and site-conversion workflows remain planned.
 
 Major Remaining Milestones:
 
-1. Complete the unblocked Sprint 8.7 Milestone 5 interface, Milestone 6 audit, and sprint closeout
+1. Review, merge, deploy, and staging validate Sprint 8.7 Milestone 5; then complete the Milestone 6 audit and sprint closeout
 2. Sprint 8.8 website generation/component CMS and public lifecycle
 3. Sprint 8.9 communications core and LeadHub timeline
 4. Sprint 8.10 telephony and AI receptionist

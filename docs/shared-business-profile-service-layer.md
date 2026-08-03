@@ -288,3 +288,17 @@ Cleanup and repository/database reconciliation passed.
 ## Explicit Exclusions
 
 No database migration, UI route, public API, MCP tool, component CMS, website-generation change, communications table, Twilio/Retell integration, notification delivery, scheduling engine, billing change, domain change, email change, or production deployment is included.
+
+## Milestone 5 Consumers
+
+Branch `codex/sprint-8-7-milestone-5` adds the first UI consumers without changing
+this service contract:
+
+* `public/app/247sp/business-profile.php` provides customer section reads/writes and customer submission for review.
+* `public/app/247sp/dashboard.php` uses live service readiness for its Business Profile checklist item.
+* `public/app/admin/business.php` provides read-only profile visibility and permitted admin lifecycle transitions.
+
+Routes provide authentication and reusable session-backed CSRF protection, but every
+read and mutation still relies on this service for authorization, tenant isolation,
+validation, transactions, readiness, lifecycle effects, and sanitized activity logs.
+Milestone 5 requires no migration and preserves all observed Milestone 4 contracts.
