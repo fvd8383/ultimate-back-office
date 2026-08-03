@@ -802,7 +802,7 @@ final class DomainManager
                 priority = VALUES(priority),
                 ttl = VALUES(ttl),
                 provider = VALUES(provider),
-                status = IF(status = "verified", status, VALUES(status)),
+                status = IF(status = 'verified', status, VALUES(status)),
                 updated_at = NOW()'
         );
         $statement->execute([
