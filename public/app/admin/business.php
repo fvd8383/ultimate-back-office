@@ -164,8 +164,8 @@ admin_begin('Business Detail', 'businesses', $context);
             ?>
             <div class="button-row">
                 <?= ui_badge(SharedBusinessProfileUi::statusLabel((string) $sharedLifecycle['status']), $sharedReadiness['is_complete'] ? 'status' : 'role') ?>
-                <?= ui_badge($sharedReadiness['is_complete'] ? 'Readiness complete' : count($sharedReadiness['incomplete_sections']) . ' incomplete sections', $sharedReadiness['is_complete'] ? 'status' : 'role') ?>
             </div>
+            <?= SharedBusinessProfileUi::adminReadinessSummary($sharedReadiness) ?>
             <div class="summary-list">
                 <div><dt>Public display name</dt><dd><?= e($sharedFacts['public_display_name'] ?: $sharedFacts['business_name']) ?></dd></div>
                 <div><dt>Timezone</dt><dd><?= e($sharedFacts['timezone'] ?: 'Not set') ?></dd></div>
@@ -183,17 +183,6 @@ admin_begin('Business Detail', 'businesses', $context);
                 <div><dt>First completed</dt><dd><?= e($sharedLifecycle['profile_completed_at'] ?: 'Not completed') ?></dd></div>
                 <div><dt>First activated</dt><dd><?= e($sharedLifecycle['activated_at'] ?: 'Not activated') ?></dd></div>
             </div>
-            <?php if (count($sharedReadiness['missing_fields']) > 0): ?>
-                <h3>Missing requirements</h3>
-                <div class="summary-list">
-                    <?php foreach ($sharedReadiness['missing_fields'] as $section => $missing): ?>
-                        <div><dt><?= e(SharedBusinessProfileUi::statusLabel((string) $section)) ?></dt><dd><?= e(implode(', ', $missing)) ?></dd></div>
-                    <?php endforeach; ?>
-                </div>
-            <?php endif; ?>
-            <?php foreach ($sharedReadiness['warnings'] as $warning): ?>
-                <?= ui_alert($warning, 'warning') ?>
-            <?php endforeach; ?>
             <?php if (count($allowedTransitions) > 0): ?>
                 <form method="post" action="business.php" class="form-stack">
                     <?= Csrf::input('admin-business') ?>
