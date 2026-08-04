@@ -166,6 +166,56 @@ final class SharedBusinessProfileUi
         return ucwords(str_replace('_', ' ', $value));
     }
 
+    public static function adminReadinessSummary(array $readiness): string
+    {
+        $isComplete = ($readiness['is_complete'] ?? false) === true;
+        $incompleteSections = is_array($readiness['incomplete_sections'] ?? null)
+            ? $readiness['incomplete_sections']
+            : [];
+        $missingFields = is_array($readiness['missing_fields'] ?? null)
+            ? $readiness['missing_fields']
+            : [];
+        $warnings = is_array($readiness['warnings'] ?? null)
+            ? $readiness['warnings']
+            : [];
+        $state = $isComplete ? 'complete' : 'incomplete';
+        $stateLabel = $isComplete ? 'Complete' : 'Incomplete';
+        $incompleteCount = count($incompleteSections);
+        $summary = $isComplete ? 'All required profile sections are complete.' : sprintf(
+            '%d required profile %s %s attention.',
+            $incompleteCount,
+            $incompleteCount === 1 ? 'section' : 'sections',
+            $incompleteCount === 1 ? 'needs' : 'need'
+        );
+
+        $html = '<section class="profile-readiness" data-profile-readiness="' . $state
+            . '" aria-labelledby="admin-profile-readiness-heading">';
+        $html .= '<h3 id="admin-profile-readiness-heading">Profile readiness</h3>';
+        $html .= '<p class="muted"><strong>' . $stateLabel . '</strong> &mdash; '
+            . self::escape($summary) . '</p>';
+
+        if (count($missingFields) > 0) {
+            $html .= '<h4>Missing requirements</h4><div class="summary-list">';
+            foreach ($missingFields as $section => $missing) {
+                $missing = is_array($missing) ? $missing : [];
+                $labels = array_map([self::class, 'statusLabel'], $missing);
+                $html .= '<div><dt>' . self::escape(self::statusLabel((string) $section)) . '</dt><dd>'
+                    . self::escape(implode(', ', $labels)) . '</dd></div>';
+            }
+            $html .= '</div>';
+        }
+
+        if (count($warnings) > 0) {
+            $html .= '<h4>Warnings</h4>';
+            foreach ($warnings as $warning) {
+                $html .= '<div class="ubo-alert ubo-alert--warning" role="status">'
+                    . self::escape((string) $warning) . '</div>';
+            }
+        }
+
+        return $html . '</section>';
+    }
+
     private static function collectionPayload(string $action, array $post): array
     {
         if (!array_key_exists('rows', $post) || !is_array($post['rows'])) {

@@ -172,6 +172,54 @@ assertProfileUi(
     'Customer-provided output must be escaped.'
 );
 
+$completeAdminReadiness = SharedBusinessProfileUi::adminReadinessSummary([
+    'is_complete' => true,
+    'completed_sections' => ['business_identity', 'hours'],
+    'incomplete_sections' => [],
+    'missing_fields' => [],
+    'warnings' => ['Optional warning <script>alert("warning")</script>'],
+]);
+assertProfileUi(
+    str_contains($completeAdminReadiness, '<h3 id="admin-profile-readiness-heading">Profile readiness</h3>'),
+    'The admin readiness summary must render the stable visible Profile readiness label.'
+);
+assertProfileUi(
+    str_contains($completeAdminReadiness, 'data-profile-readiness="complete"')
+        && str_contains($completeAdminReadiness, '<strong>Complete</strong>'),
+    'A complete service readiness DTO must render the complete admin state.'
+);
+assertProfileUi(
+    str_contains($completeAdminReadiness, '<h4>Warnings</h4>')
+        && str_contains($completeAdminReadiness, '&lt;script&gt;alert(&quot;warning&quot;)&lt;/script&gt;')
+        && !str_contains($completeAdminReadiness, '<script>alert("warning")</script>')
+        && !str_contains($completeAdminReadiness, 'Missing requirements'),
+    'Warnings must render independently from missing requirements and escape their content.'
+);
+
+$incompleteAdminReadiness = SharedBusinessProfileUi::adminReadinessSummary([
+    'is_complete' => false,
+    'completed_sections' => ['business_identity'],
+    'incomplete_sections' => ['hours', 'faqs'],
+    'missing_fields' => [
+        'hours' => ['hours.6'],
+        '<unsafe-section>' => ['faqs.active'],
+    ],
+    'warnings' => [],
+]);
+assertProfileUi(
+    str_contains($incompleteAdminReadiness, 'data-profile-readiness="incomplete"')
+        && str_contains($incompleteAdminReadiness, '<strong>Incomplete</strong>')
+        && str_contains($incompleteAdminReadiness, '2 required profile sections need attention.'),
+    'An incomplete service readiness DTO must render its state and section count.'
+);
+assertProfileUi(
+    str_contains($incompleteAdminReadiness, '<h4>Missing requirements</h4>')
+        && str_contains($incompleteAdminReadiness, 'Hours.6')
+        && str_contains($incompleteAdminReadiness, '&lt;unsafe-section&gt;')
+        && !str_contains($incompleteAdminReadiness, '<unsafe-section>'),
+    'Incomplete readiness must render and escape the service-provided missing requirements.'
+);
+
 $dashboard = file_get_contents(__DIR__ . '/../public/app/247sp/dashboard.php');
 assertProfileUi(is_string($dashboard), 'The dashboard source must be readable.');
 assertProfileUi(str_contains($dashboard, 'SharedBusinessProfile::calculateReadiness'), 'Dashboard completion must use live SharedBusinessProfile readiness.');
@@ -197,7 +245,19 @@ $adminRoute = file_get_contents(__DIR__ . '/../public/app/admin/business.php');
 assertProfileUi(is_string($adminRoute), 'The admin business route source must be readable.');
 assertProfileUi(str_contains($adminRoute, "if (!\$context['is_admin'])"), 'The admin route must reject non-admin sessions.');
 assertProfileUi(str_contains($adminRoute, 'SharedBusinessProfileUi::action($_POST, true)'), 'Admin lifecycle mutations must use the admin-only action allowlist.');
+assertProfileUi(str_contains($adminRoute, "\$sharedReadiness = \$sharedProfile['readiness']"), 'Admin readiness must come from the SharedBusinessProfile DTO.');
+assertProfileUi(str_contains($adminRoute, 'SharedBusinessProfileUi::adminReadinessSummary($sharedReadiness)'), 'The admin route must render the tested Profile readiness contract.');
+assertProfileUi(
+    !preg_match('/Database::connection\(\)|->(?:prepare|query|exec)\s*\(/', $adminRoute),
+    'The admin route must not contain direct profile SQL.'
+);
 assertProfileUi(!str_contains(strtolower($adminRoute), 'impersonat'), 'The admin profile view must not add an impersonation path.');
+foreach (['save_shared_facts', 'save_hours', 'save_faqs', 'save_transfer_rules'] as $customerEditAction) {
+    assertProfileUi(
+        !str_contains($adminRoute, 'value="' . $customerEditAction . '"'),
+        'The read-only admin profile view must not add customer editing forms.'
+    );
+}
 assertPostFormsHaveCsrf($adminRoute, 'Admin business route');
 
 echo "Shared Business Profile UI test passed.\n";
