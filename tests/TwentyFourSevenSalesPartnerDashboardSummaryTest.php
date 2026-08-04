@@ -214,12 +214,28 @@ $summary = TwentyFourSevenSalesPartner::dashboardSummary(42);
 
 $dnsUpsertSql = '';
 $currentDomainSql = '';
+$currentDomainMatches = [];
 foreach ($connection->preparedSql as $sql) {
     if (str_contains($sql, 'INSERT INTO domain_dns_records')) {
         $dnsUpsertSql = $sql;
     }
-    if (str_contains($sql, 'FROM domain_requests dr')) {
-        $currentDomainSql = $sql;
+    if (
+        str_contains($sql, 'SELECT dr.*')
+        && str_contains($sql, 'da.domain_name AS assigned_domain')
+        && str_contains($sql, 'da.status AS assignment_status')
+        && str_contains($sql, 'da.ssl_status AS assignment_ssl_status')
+        && str_contains($sql, 'wd.publish_status')
+        && str_contains($sql, 'FROM domain_requests dr')
+        && str_contains($sql, 'LEFT JOIN domain_assignments da ON da.business_id = dr.business_id')
+        && str_contains($sql, 'LEFT JOIN website_domains wd ON wd.business_id = dr.business_id')
+        && str_contains($sql, 'WHERE dr.business_id = :business_id')
+        && str_contains($sql, 'ORDER BY dr.created_at DESC, dr.id DESC')
+        && str_contains($sql, 'LIMIT 1')
+    ) {
+        $currentDomainMatches[] = $sql;
+        if ($currentDomainSql === '') {
+            $currentDomainSql = $sql;
+        }
     }
 }
 $normalizedDnsSql = preg_replace('/\s+/', ' ', trim($dnsUpsertSql));
@@ -282,6 +298,10 @@ assertDashboardSummaryTest(
     'The replacement DNS row status should remain a bound value.'
 );
 
+assertDashboardSummaryTest(
+    count($currentDomainMatches) === 1,
+    'Exactly one prepared query must match the dashboard domain lookup signature.'
+);
 assertDashboardSummaryTest(
     str_contains($normalizedDomainSql, 'SELECT dr.*')
         && str_contains($normalizedDomainSql, 'da.domain_name AS assigned_domain')
