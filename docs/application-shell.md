@@ -113,7 +113,14 @@ Stripe Connect is not part of 24/7 Sales Partner customers paying UBO. Stripe Co
 
 WORKSPACE links launch either standalone product/module areas or Full OS feature areas, depending on the account navigation mode.
 
-The application shell treats the Shared Business Profile as the customer-facing business-facts root for 247SP. Migration 021 provides the staging-validated initial schema, `SharedBusinessProfile` provides the reusable application service, and the Milestone 5 review branch adds `public/app/247sp/business-profile.php`. The profile configures the website and, when implemented, the AI Receptionist, SMS Assistant, Website Chat, LeadHub routing, transfer rules, and escalation rules. Channel-specific screens may appear inside 24/7 Sales Partner or LeadHub, but the shell must not imply that each provider is a separate customer product. Milestone 5 is not complete until merge, approved staging deployment, and separate validation pass.
+The application shell treats the Shared Business Profile as the customer-facing
+business-facts root for 247SP. Migration 021 provides the staging-validated initial
+schema, `SharedBusinessProfile` provides the reusable application service, and the
+Milestone 5 PASS includes `public/app/247sp/business-profile.php` plus admin visibility.
+The profile configures the website and, when implemented, the AI Receptionist, SMS
+Assistant, Website Chat, LeadHub routing, transfer rules, and escalation rules.
+Channel-specific screens may appear inside 24/7 Sales Partner or LeadHub, but the shell
+must not imply that each provider is a separate customer product.
 
 ## Application Architecture Diagram
 

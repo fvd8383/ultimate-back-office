@@ -43,9 +43,11 @@ Sprint 8.7 Milestone 4 is implemented in `private/classes/SharedBusinessProfile.
 and staging validated as PASS on deployed commit
 `d11bd0e7d14b9d9dd432f3ce244a9b2bbebfafb7`. The service is the reusable
 business-rule boundary for profile consumers. The customer-facing profile interface
-is implemented on branch `codex/sprint-8-7-milestone-5` with live readiness,
-section draft saving, existing-fact reuse, and admin visibility. It is not merged,
-deployed, or staging validated. See `docs/shared-business-profile-service-layer.md`.
+and admin visibility completed Sprint 8.7 Milestone 5 with a PASS. The
+validated/deployed state is commit `ea81194e7d853782f927fdf58ed65eecd6473a7f`;
+this is the final deployed `main` state after Milestone 5 fixes, not a commit
+attributable to Milestone 5 alone. See `docs/shared-business-profile-service-layer.md`
+and `docs/sprint-8.7-milestone-5-staging-validation.md`.
 
 ## Planned Capabilities
 
@@ -78,7 +80,7 @@ Every 247SP customer cohort receives the same core product:
 * LeadHub CRM
 * Unified conversation inbox
 * Basic SEO setup
-* Google Analytics tracking
+* Optional customer-connected Google Analytics
 
 Pricing cohorts are not feature tiers.
 
@@ -158,13 +160,16 @@ The primary customer typically has 1-10 employees, limited CRM or digital-market
 
 # Approved Pricing
 
-| Customer cohort | Customer numbers | Setup fee | Monthly price |
-| --- | ---: | ---: | ---: |
-| Beta Users | 1-5 | $0 | $79/month |
-| Founding Users | 6-25 | $100 | $97/month |
-| Standard Users | 26+ | $250 | $147/month |
+| Pricing cohort | Customer positions | Setup fee | Introductory period | Recurring price |
+| --- | ---: | ---: | --- | ---: |
+| Alpha | 1-5 | $0 | First 6 months free | $79/month afterward |
+| Beta | 6-10 | $0 | None | $97/month |
+| Founding | 11-25 | $100 one-time | None | $147/month |
+| Standard | 26+ | $250 one-time | None | $197/month |
 
-Labels are `Beta User`, `Founding User`, and `Standard User`. These cohorts price the same core product; they do not grant different feature sets.
+These cohorts price the same core product; they do not grant different feature sets.
+Assigned cohort and commercial terms remain locked to the business subscription when
+later cohorts launch or other customers cancel.
 
 ## Included Monthly Usage
 
@@ -190,36 +195,33 @@ The applicable unit rates must be defined in the approved pricing plan, order fo
 
 Additional mailboxes, aliases, or advanced email features may be billed separately only when an approved pricing policy defines them.
 
-## Open Commercial-Policy Questions
+## Customer position and commercial-term policy
 
-The following are unresolved:
+Each completed/qualified 247SP business subscription consumes one permanent sequence
+position. Multiple subscribed businesses under one owner may consume multiple positions.
+Assignment is atomic at the approved billable subscription activation/signup event,
+not anonymous account creation. Cancellations do not reopen positions. The later billing
+implementation must finalize the exact qualifying event and failure/refund/reactivation
+policy before production acceptance.
 
-* Whether cohort pricing is permanently grandfathered or may increase
-* Whether canceled Beta or Founding positions reopen
-* Whether position is based on signup, payment, activation, or launch
-* Whether failed, refunded, or fraudulent accounts count
-* Whether returning customers retain their prior cohort
-* Whether ownership changes preserve cohort
-* Whether multiple businesses under one owner count separately
-* Whether taxes are included
-* Whether usage allowances or overage rates differ by cohort
-* Whether setup fees are refundable or apply again after reactivation
-
-Recommended default, not approved policy:
-
-* Each independently activated business subscription counts as one customer position.
-* Cohort is assigned when the subscription becomes active.
-* The assigned cohort is stored and does not change merely because later customers cancel.
+The subscription stores its assigned cohort, sequence number, locked setup and monthly
+fees, assignment/signup dates, introductory start/expiration, recurring billing start,
+and applicable Stripe price references/version. Existing subscriptions are never
+repriced merely because public pricing or active-customer counts change.
 
 ---
 
 # Billing Direction
 
-Billing must eventually distinguish product, pricing cohort, customer sequence or qualifying event, setup fee, monthly recurring price, included usage, overage rates, discounts, promotional periods, subscription status, original activation date, reactivation status, and Stripe price ID.
+Billing must distinguish the one `247sp` product from pricing-cohort configuration and
+locked subscription commercial terms. Approved cohort identifiers are `alpha`, `beta`,
+`founding`, and `standard`; they are not implemented in the current runtime.
 
-Proposed internal cohort identifiers are `beta`, `founding`, and `standard`. They are not implemented.
-
-Cohort must not be permanently inferred from the current count of active customers. Once assigned, the subscription or billing record should preserve its cohort and applicable pricing reference. This document does not authorize a billing migration or change current Stripe configuration.
+The current implementation still uses one legacy plan, mutable plan fees, one
+`STRIPE_247SP_PRICE_ID`, and an optional setup-price ID. It has no durable cohort,
+sequence, locked-price snapshot, free-month configuration, introductory expiration, or
+dedicated recurring-billing start. A separate additive implementation is
+first-customer critical and does not authorize changes in this documentation milestone.
 
 ---
 
@@ -265,7 +267,17 @@ The current generated website includes Home, a Services dropdown, About, and Con
 
 Current CTA behaviors are `call_now`, `contact_form`, and `view_pricing`. Labels that imply scheduling, quoting, applications, or reservations still route to an implemented behavior and do not create a scheduling, quote, application, reservation, checkout, or ecommerce engine.
 
-The current Admin Website Editor organizes controls around Branding, Pages, Services, Calls to Action, SEO, Integrations, and Advanced. Google Analytics is the only stored website integration currently rendered into generated output; other stored integration references do not imply implemented scripts or APIs.
+The current Admin Website Editor organizes controls around Branding, Pages, Services,
+Calls to Action, SEO, Integrations, and Advanced. Google Analytics is the only stored
+website integration currently rendered by the authenticated preview; other stored
+integration references do not imply implemented scripts or APIs, and the preview is
+not evidence of a public publishing adapter.
+
+The approved future language is **optional customer-connected Google Analytics**. It is
+customer-owned traffic/visitor analytics, disconnectable, and not required for UBO SEO
+reporting. Future internal SEO/ranking intelligence uses a platform-owned DataForSEO
+provider boundary. DataForSEO is planned, not implemented, and its credentials/data
+must not be represented as customer Google Analytics.
 
 The MVP CMS direction is structured and done-for-you. Customers manage shared business facts; FDV manages page composition, component variants, section order, typography, imagery, visual hierarchy, revisions, and publishing. It is not a customer drag-and-drop builder.
 
@@ -285,6 +297,6 @@ The customer dashboard should report website, domain, professional email, busine
 * Every supported 247SP lead and communication must be stored in or connected to LeadHub.
 * Professional email and a local business phone number are included in the approved product.
 * Customers may use an FDV-purchased domain or connect a customer-owned domain.
-* Basic SEO setup and Google Analytics tracking are included.
+* Basic SEO setup is included; Google Analytics is an optional customer-connected integration.
 * Usage and overages follow the approved allowances and the active pricing/order/billing policy.
 * Proposed communications, CMS, MCP, EMD conversion, and billing-cohort identifiers do not become implemented merely because they are documented.

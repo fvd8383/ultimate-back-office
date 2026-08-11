@@ -202,9 +202,14 @@ Deferred items remain outside Sprint 8.5 and should be handled by future sprints
 
 ## Current Roadmap
 
-Current review task: Sprint 8.7 Milestone 5 - Shared Business Profile Interface.
-Implementation is on branch `codex/sprint-8-7-milestone-5`; merge, approved staging
-deployment, and separate staging validation remain pending.
+Current review task: Sprint 8.7 Milestone 6 - Website Platform Architecture and
+Migration Audit. This is a documentation-only audit; the generic CMS, publisher,
+cohort billing, DataForSEO, and migrations remain future work.
+
+Sprint 8.7 Milestone 5 is COMPLETE / PASS. The final validated/deployed `main` state
+after its fixes is `ea81194e7d853782f927fdf58ed65eecd6473a7f`; final successful
+validation SHA-256:
+`687a1444664f9d7167dfb316510f09094e922c2b83166874849db44fb10382a6`.
 
 ## Sprint 8.7 Milestone 4 Closeout
 

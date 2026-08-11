@@ -2,7 +2,11 @@
 
 ## Status
 
-In progress. Milestones 1 through 4 are complete; Milestones 2 and 4 are staging validated. Milestone 4 closed as PASS. Milestone 5 is implemented on branch `codex/sprint-8-7-milestone-5` and ready for review, but it is not merged, deployed, or staging validated.
+In progress. Milestones 1 through 5 are complete; Milestones 2, 4, and 5 are staging
+validated. Milestone 5 closed as COMPLETE / PASS on the final deployed `main` state
+`ea81194e7d853782f927fdf58ed65eecd6473a7f` after its follow-up fixes. Milestone 6
+is the documentation-only website-platform architecture audit; Milestone 7 owns
+Sprint 8.7 closeout.
 
 ## Product
 
@@ -39,7 +43,11 @@ Migration 021 must not be rewritten. Historical migrations 019 and 020 must not 
 
 The Shared Business Profile application service is implemented in `private/classes/SharedBusinessProfile.php`, staging validated as PASS on deployed commit `d11bd0e7d14b9d9dd432f3ce244a9b2bbebfafb7`, and documented in `docs/shared-business-profile-service-layer.md`.
 
-The Milestone 5 branch contains the customer-facing Shared Business Profile interface and admin visibility. The component CMS, site revision system, portable site conversion system, `CommunicationsManager`, provider interfaces/adapters, unified conversation inbox, and private MCP gateway do not currently exist.
+The Milestone 5 customer-facing Shared Business Profile interface and admin visibility
+are deployed and staging validated. The component CMS, site revision/deployment system,
+portable site conversion system, DataForSEO integration, cohort-aware billing,
+`CommunicationsManager`, provider interfaces/adapters, unified conversation inbox, and
+private MCP gateway do not currently exist.
 
 ---
 
@@ -124,7 +132,7 @@ Implementation notes:
 
 ## Milestone 5 - Shared Business Profile Interface
 
-Status: Implemented on `codex/sprint-8-7-milestone-5`; ready for review; not merged, deployed, or staging validated
+Status: COMPLETE / PASS
 
 Scope:
 
@@ -146,11 +154,12 @@ Implementation notes:
 * `public/app/admin/business.php` provides read-only profile/readiness summaries and service-enforced lifecycle transitions, including admin-only activation.
 * Collection replacement requires submitted rows or explicit removal/empty confirmation; absent or malformed collections do not replace stored rows.
 * No migration or schema change is required.
-* Staging validation remains required after review, merge, and approved deployment.
+* The final validated/deployed state is commit `ea81194e7d853782f927fdf58ed65eecd6473a7f`, the final `main` state after Milestone 5 implementation and fixes.
+* Final successful validation SHA-256: `687a1444664f9d7167dfb316510f09094e922c2b83166874849db44fb10382a6`.
 
 ## Milestone 6 - Website Generation, Site Lifecycle, And Component Audit
 
-Status: Planned
+Status: Documentation architecture audit in progress on its review branch
 
 Scope:
 
@@ -162,8 +171,12 @@ Scope:
 * Review transfer eligibility and customer-data separation
 * Review both EMD-to-247SP and 247SP-to-EMD conversion
 * Produce an implementation-ready schema and migration plan
+* Define optional customer-owned Google Analytics versus planned platform-owned DataForSEO
+* Replace stale pricing with Alpha/Beta/Founding/Standard cohort architecture and document the first-customer-critical billing gap
 
-The complete CMS is not implemented during Sprint 8.7 unless separately approved.
+The primary artifact is `docs/sprint-8.7-milestone-6-website-platform-audit.md`. The
+complete CMS, publisher, cohort billing, and DataForSEO integration are not implemented
+during Sprint 8.7.
 
 ## Milestone 7 - Sprint Closeout And Future-Sprint Planning
 
@@ -175,6 +188,8 @@ Scope:
 * Confirm website-generation audit status
 * Confirm documentation consistency
 * Produce executable Sprint 8.8 and Sprint 8.9 plans
+* Schedule the first-customer-critical pricing-cohort implementation
+* Define the initial Sprint 8.8 migration, staged PRs, and staging validation
 * Keep full CMS and communications implementation outside Sprint 8.7
 
 ---
@@ -231,7 +246,9 @@ LeadHub remains the system of record for every supported channel and the future 
 
 # Site Lifecycle And Conversion Direction
 
-Proposed site purposes are `business_owned`, `emd_lead_property`, `emd_demo`, `internal_demo`, and `internal_marketing`.
+Approved future site purposes are `247sp`, `emd`, and `internal_demo`. Purpose is
+separate from lifecycle and business association; an EMD site does not require a
+fabricated business.
 
 Planned bidirectional lifecycle:
 
@@ -240,8 +257,8 @@ EMD/internal demo
   -> approved conversion to purchased 247SP site
   -> active customer operation
   -> customer cancellation
-  -> eligibility and transfer review
-  -> approved conversion to EMD property, suspension, archive, retention hold, or policy-based deletion
+  -> eligibility, rights, and conversion review
+  -> approved conversion to EMD property, suspension, archive, or retention hold
 ```
 
 Site build, site purpose, lifecycle, ownership/control, customer relationship, business association, domain ownership, lead routing, CRM data, analytics ownership, and provider accounts are independent concepts.
@@ -266,11 +283,12 @@ See `docs/internal-mcp-and-integration-access-strategy.md`.
 
 # Approved 247SP Pricing
 
-| Customer cohort | Customer numbers | Setup fee | Monthly price |
-| --- | ---: | ---: | ---: |
-| Beta Users | 1-5 | $0 | $79/month |
-| Founding Users | 6-25 | $100 | $97/month |
-| Standard Users | 26+ | $250 | $147/month |
+| Pricing cohort | Customer positions | Setup fee | Introductory period | Recurring price |
+| --- | ---: | ---: | --- | ---: |
+| Alpha | 1-5 | $0 | First 6 months free | $79/month afterward |
+| Beta | 6-10 | $0 | None | $97/month |
+| Founding | 11-25 | $100 one-time | None | $147/month |
+| Standard | 26+ | $250 one-time | None | $197/month |
 
 These cohorts price the same core product. They are not feature tiers.
 
@@ -283,9 +301,17 @@ Included monthly usage:
 
 Usage above each allowance is overage usage. Unit rates must be defined in an approved pricing plan, order form, or billing policy before charging customers.
 
-Open policy questions include grandfathering, price increases, reopened positions, the qualifying position event, failed/refunded/fraudulent accounts, returning customers, ownership changes, multi-business counting, taxes, allowance/rate differences, and setup-fee refunds/reactivation.
+One completed/qualified 247SP business subscription consumes one permanent customer
+position, so multiple subscribed businesses under one owner may consume multiple
+positions. Cancellations do not reopen positions. Assignment must be atomic at the
+approved billable subscription activation/signup event, not anonymous account creation;
+Milestone 7 must finalize the exact qualifying event and failure/refund/reactivation
+handling for implementation.
 
-Recommended but not approved: each independently activated business subscription counts when it becomes active, stores its assigned cohort, and does not change cohort merely because later customers cancel.
+The future subscription stores its sequence, assigned cohort, locked fees, assignment
+and signup dates, introductory start/expiration, recurring billing start, and applicable
+Stripe references/version. The current billing runtime does not implement this model or
+Alpha's free period; the focused implementation is first-customer critical.
 
 ---
 
@@ -295,7 +321,11 @@ No existing Sprint 8.8, 8.9, or 8.10 plan conflicts were found in the repository
 
 ## Sprint 8.8 - Website Generation And Component CMS Foundation
 
-Expected scope includes site identity/purpose/lifecycle; customer, business, EMD, domain, and routing associations; pages and sections; component registry and variants; themes and briefs; demos and both conversion directions; data separation; conversion audit; revisions and approval; build/deployment jobs; archival/restoration; shared LeadHub forms; validation; initial AI-assisted assembly; and internal presentation-editor planning or initial implementation.
+Use the staged M1-M8 sequence in
+`docs/sprint-8.7-milestone-6-website-platform-audit.md`: schema/backfill; SiteManager and
+revision/approval services; component composition; admin workflow; customer review;
+build/deploy/restore; registered-site routing and EMD compatibility; then full staging
+validation.
 
 This is not a customer drag-and-drop builder.
 
@@ -358,4 +388,7 @@ Planned categories must not be marked complete until implementation and required
 
 # Recommended Next Task
 
-Review and merge Sprint 8.7 Milestone 5, then perform the approved staging deployment and Remote SSH validation in `docs/sprint-8.7-milestone-5-staging-validation.md`.
+Review Milestone 6 as a documentation-only architecture PR. Milestone 7 must then
+reconcile Sprint 8.7 status, approve the architecture, produce executable Sprint 8.8
+and 8.9 plans, schedule the first-customer-critical cohort-pricing stream, and close
+the sprint only after consistency checks pass.

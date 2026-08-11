@@ -53,8 +53,8 @@ New module development is paused until 247SP is launch-ready. EMD, SSP, TUHWD, a
 * [x] Sprint 8.7 Milestone 2 Shared Business Profile Schema and staging validation
 * [x] Sprint 8.7 Milestone 3 Product, Architecture, Pricing, and Roadmap Alignment
 * [x] Sprint 8.7 Milestone 4 Shared Business Profile Service Layer and staging validation
-* [ ] Sprint 8.7 Milestone 5 Shared Business Profile Interface
-* [ ] Sprint 8.7 Milestone 6 Website Generation, Site Lifecycle, and Component Audit
+* [x] Sprint 8.7 Milestone 5 Shared Business Profile Interface and staging validation (PASS)
+* [ ] Sprint 8.7 Milestone 6 Website Platform Architecture and Migration Audit (documentation review pending)
 * [ ] First-customer Admin QA
 * [ ] First-customer Customer QA
 
@@ -63,6 +63,11 @@ New module development is paused until 247SP is launch-ready. EMD, SSP, TUHWD, a
 # Billing & Payments
 
 * [ ] Stripe Payment Integration
+* [ ] FIRST-CUSTOMER CRITICAL: Atomic 247SP customer sequence assignment
+* [ ] FIRST-CUSTOMER CRITICAL: Alpha/Beta/Founding/Standard cohort configuration
+* [ ] FIRST-CUSTOMER CRITICAL: Locked subscription setup/monthly/Stripe terms
+* [ ] FIRST-CUSTOMER CRITICAL: Alpha six-month free period and automatic $79/month transition
+* [ ] FIRST-CUSTOMER CRITICAL: Cohort-aware Stripe recurring/setup prices
 * [ ] Setup Fee Collection
 * [ ] Monthly Subscription Collection
 * [ ] Trial-to-Paid Workflow
@@ -74,6 +79,8 @@ New module development is paused until 247SP is launch-ready. EMD, SSP, TUHWD, a
 # 247SP Lead Capture And Conversations
 
 * [ ] Public Website Contact Form
+* [ ] FIRST-CUSTOMER CRITICAL: Registered Host/domain to site and active routing resolution
+* [ ] Permitted-domain validation, rate limiting, spam controls, replay/duplicate handling, and correlation IDs
 * [ ] Lead Capture Creates LeadHub Contact
 * [ ] Lead Capture Creates LeadHub Activity
 * [ ] AI Website Chat Creates LeadHub Contact Or Activity
@@ -90,10 +97,13 @@ New module development is paused until 247SP is launch-ready. EMD, SSP, TUHWD, a
 
 * [ ] Domain Automation
 * [ ] DNS Configuration
-* [ ] Website Publishing
+* [ ] FIRST-CUSTOMER CRITICAL: Generic site/component/revision/approval implementation
+* [ ] FIRST-CUSTOMER CRITICAL: Versioned website build/deployment/restore pipeline
+* [ ] Website Publishing through approved production deployment
 * [ ] Domain Ownership Workflow
 * [ ] Publish Workflow Management
 * [ ] Publish Confirmation
+* [ ] Domain/SSL state reconciled separately from successful deployment state
 
 ---
 
@@ -230,13 +240,23 @@ Future module work remains paused until the first paying 247SP customer path is 
 
 Progress should be measured against the complete digital-front-office workflow, not website-preview completion alone. A current percentage is not asserted while the Shared Business Profile, component CMS, communications core, and launch policies are being sequenced.
 
-Sprint 8.7 Milestones 1 through 4 are complete; Milestones 2 and 4 are staging validated. Milestone 4 closed as PASS on deployed commit `d11bd0e7d14b9d9dd432f3ce244a9b2bbebfafb7`; cleanup and repository/database reconciliation passed. Milestone 5 is implemented on its review branch but is not merged, deployed, or staging validated. The platform has persistent navigation, website generation/editing foundations, LeadHub website capture, billing/domain/email foundations, the Shared Business Profile schema and service, and the pending-review profile interface. The component CMS, unified inbox, communications services, AI receptionist, business texting, website chat, usage metering, and site-conversion workflows remain planned.
+Sprint 8.7 Milestones 1 through 5 are complete. Milestone 5 closed as COMPLETE / PASS
+on final validated/deployed `main` state
+`ea81194e7d853782f927fdf58ed65eecd6473a7f` after its fixes; the final successful
+validation SHA-256 is
+`687a1444664f9d7167dfb316510f09094e922c2b83166874849db44fb10382a6`.
+The platform has persistent navigation, legacy website generation/editing, LeadHub
+website capture, billing/domain/email foundations, and the Shared Business Profile.
+The generic CMS, publisher/restore lifecycle, registered-site ingestion, cohort-aware
+billing, DataForSEO, unified inbox, communications services, AI receptionist, texting,
+chat, usage metering, and conversion workflows remain planned.
 
 Major Remaining Milestones:
 
-1. Review, merge, deploy, and staging validate Sprint 8.7 Milestone 5; then complete the Milestone 6 audit and sprint closeout
-2. Sprint 8.8 website generation/component CMS and public lifecycle
-3. Sprint 8.9 communications core and LeadHub timeline
-4. Sprint 8.10 telephony and AI receptionist
-5. Later messaging, website chat, unified inbox, usage, and overages
-6. Production deployment, legal/policy, support, and first-customer QA
+1. Review Milestone 6 documentation and complete Milestone 7 Sprint 8.7 closeout/planning
+2. Implement and validate first-customer-critical pricing cohorts, Alpha billing, sequence assignment, locked terms, and Stripe mapping
+3. Sprint 8.8 staged website platform/component/revision/publishing/routing implementation and validation
+4. Sprint 8.9 communications core and LeadHub timeline
+5. Sprint 8.10 telephony and AI receptionist
+6. Later messaging, website chat, unified inbox, usage, and overages
+7. Production provider setup, professional email path, legal/policy, support, and first-customer QA

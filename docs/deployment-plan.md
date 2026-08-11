@@ -753,9 +753,11 @@ For Communications Layer changes, also validate on staging:
 * Transfer rules and escalation rules create customer-safe LeadHub activity, tasks, or notifications.
 * Usage tracking records AI minutes, outbound owner minutes, SMS segments, and AI chat responses.
 
-For Sprint 8.7 Milestone 5 Shared Business Profile Interface changes, no migration is
-required. After approved merge and deployment, follow
-`docs/sprint-8.7-milestone-5-staging-validation.md` and validate:
+Sprint 8.7 Milestone 5 required no migration and closed as COMPLETE / PASS on final
+validated/deployed `main` state `ea81194e7d853782f927fdf58ed65eecd6473a7f` after
+its fixes. The following checks and
+`docs/sprint-8.7-milestone-5-staging-validation.md` are retained as historical
+validation requirements:
 
 * Customer profile GET and every section-specific POST use the deployed `SharedBusinessProfile` service.
 * CSRF rejection is generic and creates no mutation or success activity record.
@@ -766,6 +768,17 @@ required. After approved merge and deployment, follow
 * Partial hours, duplicate FAQ sort orders, inactive-only FAQs, optional pricing warnings, conditional appointment rules, automatic demotion, preserved lifecycle timestamps, and failed-transaction audit behavior remain unchanged.
 * The 247SP dashboard Business Profile item matches live service readiness.
 * No collection is erased by a missing or malformed request payload.
+
+For the future Sprint 8.8 website platform, deployment must use a provider-neutral
+`SitePublisher` boundary. The first planned adapter targets the existing FDV
+DigitalOcean/Apache environment. Staging and production deployments require versioned
+builds/releases, durable idempotent job and deployment state, explicit production
+approval, retry/reconciliation, health checks, previous-release retention, restoration,
+correlation IDs, and safe errors. DomainManager `live` or `published` state is not proof
+that a public deployment succeeded. External file/provider/Apache operations must not
+run inside long database transactions. See
+`docs/sprint-8.7-milestone-6-website-platform-audit.md`; none of this publisher runtime
+is implemented by Milestone 6.
 
 Logs:
 

@@ -204,19 +204,24 @@ Approved current 247SP pricing and existing assumptions for other products:
 ```text
 247SP pricing cohorts for the same core product:
 
-Beta Users (customer positions 1-5):
+Alpha (customer positions 1-5):
 $0 setup
-$79/month
+first 6 months free
+$79/month afterward
 
-Founding Users (customer positions 6-25):
-$100 setup
+Beta (customer positions 6-10):
+$0 setup
 $97/month
 
-Standard Users (customer positions 26+):
-$250 setup
+Founding (customer positions 11-25):
+$100 one-time setup
 $147/month
 
-includes done-for-you website, domain, professional email, local business phone number, AI receptionist, business texting, AI website chat, LeadHub CRM, unified conversation inbox, basic SEO setup, and Google Analytics tracking
+Standard (customer positions 26+):
+$250 one-time setup
+$197/month
+
+includes done-for-you website, domain, professional email, local business phone number, AI receptionist, business texting, AI website chat, LeadHub CRM, unified conversation inbox, and basic SEO setup; Google Analytics is an optional customer-connected integration
 
 included monthly usage:
 200 AI minutes

@@ -10,15 +10,18 @@ reconciliation passed. The final report is
 `/home/codex-validation/ubo-sbp-validation/MILESTONE-4-REGRESSION-RERUN-3.md`,
 SHA-256 `8ea329ecc1f1515eaafe28cf5284d6e6f6a97bc61ec010b106e4a67620f849b4`.
 
-Sprint 8.7 Milestone 5 is implemented on branch
-`codex/sprint-8-7-milestone-5` and ready for review. The branch adds the complete
-customer profile workspace, reusable CSRF protection, live dashboard readiness,
-read-only admin visibility with lifecycle controls, focused standalone tests, and no
-migration. It has not been merged, deployed, or staging validated.
+Sprint 8.7 Milestone 5 is COMPLETE / PASS. The validated/deployed commit is
+`ea81194e7d853782f927fdf58ed65eecd6473a7f`, the final deployed `main` state after
+the Milestone 5 implementation and required fixes. The final successful validation
+artifact SHA-256 is
+`687a1444664f9d7167dfb316510f09094e922c2b83166874849db44fb10382a6`.
 
-After review and approved merge/deployment, use
-`docs/sprint-8.7-milestone-5-staging-validation.md`. Do not claim Milestone 5 is
-complete until that separate validation closes as PASS.
+The current review task is the documentation-only Sprint 8.7 Milestone 6 website
+platform architecture audit in
+`docs/sprint-8.7-milestone-6-website-platform-audit.md`. It defines future Sprint 8.8
+schema/services/PRs and first-customer-critical cohort pricing without implementing the
+CMS, publisher, billing changes, DataForSEO, or a migration. Milestone 7 owns sprint
+closeout and executable Sprint 8.8/8.9 planning.
 
 Use the execution model in `docs/codex-rules.md` and `docs/deployment-plan.md`:
 local branch/test/PR work first, then review and merge, approved staging deployment,

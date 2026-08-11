@@ -2,9 +2,20 @@
 
 ## Status
 
-Pending review, merge, and approved staging deployment. This document does not
-authorize deployment, database access, migrations, lifecycle changes, destructive
-tests, or production access.
+COMPLETE / PASS. The validated and deployed commit is
+`ea81194e7d853782f927fdf58ed65eecd6473a7f`. This is the final deployed `main` state
+after the Milestone 5 implementation, required fixes, and successful validation; it is
+not a claim that the commit came from Milestone 5 alone.
+
+Final successful validation artifact SHA-256:
+
+```text
+687a1444664f9d7167dfb316510f09094e922c2b83166874849db44fb10382a6
+```
+
+The preconditions and procedures below are retained as historical validation evidence
+and do not authorize a new deployment, database access, migration, destructive test, or
+production access.
 
 ## Deployment Preconditions
 

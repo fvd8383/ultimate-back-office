@@ -2,7 +2,7 @@
 
 ## Review Date
 
-August 3, 2026
+August 11, 2026
 
 ## Overall Status
 
@@ -10,7 +10,13 @@ Not ready for the first paying 24/7 Sales Partner customer.
 
 24/7 Sales Partner is a done-for-you lead-generation and digital-front-office platform powered by one structured Business Profile. It generates a custom website, captures forms, calls, texts, and chats, provides immediate AI-assisted responses, and keeps every opportunity organized in LeadHub.
 
-The website-generation and LeadHub foundations exist. Migration 021 established the initial Shared Business Profile schema and was staging validated, and Sprint 8.7 Milestone 4 added its authorized application service. The Milestone 5 review branch adds the customer-facing profile interface and admin visibility, but merge, deployment, and staging validation remain pending. The component CMS, portable site lifecycle, unified inbox, communications provider layer, AI receptionist, business texting, website chat, usage metering, and internal MCP gateway remain planned.
+The website-generation and LeadHub foundations exist. Migration 021 established the
+initial Shared Business Profile schema, Milestone 4 added its validated service, and
+Milestone 5's customer/admin interface completed staging validation as PASS. The
+component CMS, portable site lifecycle/publisher, registered-site ingestion,
+cohort-aware billing, DataForSEO, unified inbox, communications provider layer, AI
+receptionist, business texting, website chat, usage metering, and internal MCP gateway
+remain planned.
 
 ---
 
@@ -24,12 +30,12 @@ The website-generation and LeadHub foundations exist. Migration 021 established 
 | Single-template website generation and private preview | Complete |
 | Website branding, content management, and admin editing foundation | Complete |
 | LeadHub contacts, notes, tasks, activity, and website form capture foundation | Complete; staging revalidation remains part of launch QA |
-| Stripe billing foundation and integration | Implemented; final customer-pricing/configuration and staging launch validation pending |
+| Stripe billing foundation and integration | Legacy foundation implemented; cohort pricing, Alpha free period, locked terms, and launch validation are first-customer critical |
 | Domain workflow and provider abstraction | Implemented; end-to-end staging launch validation pending |
 | Email request/assignment foundation | Complete; automated provisioning pending |
 | Shared Business Profile schema | Complete and staging validated |
 | Structured Business Profile service | Complete and staging validated as PASS in Sprint 8.7 Milestone 4 |
-| Structured Business Profile UI | Implemented on Milestone 5 review branch; merge, deployment, and staging validation pending |
+| Structured Business Profile UI | Complete and staging validated as PASS in Sprint 8.7 Milestone 5 |
 | Component CMS and portable site lifecycle | Planned for Sprint 8.8 |
 | Communications core and unified inbox | Planned for Sprint 8.9 and later |
 | Telephony and AI receptionist | Planned for Sprint 8.10 |
@@ -41,7 +47,7 @@ The website-generation and LeadHub foundations exist. Migration 021 established 
 
 ## Business Profile Readiness
 
-Status: Schema and service layer complete and staging validated; customer interface pending.
+Status: Schema, service layer, and customer/admin interface complete and staging validated.
 
 Required:
 
@@ -162,7 +168,10 @@ Required:
 * Terms accepted
 * Support process ready
 
-Approved cohorts are Beta Users 1-5 at $0 setup and $79/month, Founding Users 6-25 at $100 setup and $97/month, and Standard Users 26+ at $250 setup and $147/month. They are pricing cohorts for the same product, not feature tiers.
+Approved cohorts are Alpha positions 1-5 at $0 setup, six months free, then $79/month;
+Beta positions 6-10 at $0 setup and $97/month; Founding positions 11-25 at $100 setup
+and $147/month; and Standard positions 26+ at $250 setup and $197/month. They price
+one product and are not feature tiers. The runtime does not yet implement this model.
 
 ---
 
@@ -170,21 +179,26 @@ Approved cohorts are Beta Users 1-5 at $0 setup and $79/month, Founding Users 6-
 
 ## Business Profile Service And Interface
 
-Status: Service complete and staging validated; interface implemented on review branch; merge/deployment/staging validation pending
+Status: Complete and staging validated as PASS through Milestone 5
 
-Review and staging validate the customer/admin interface for the validated service, including draft saving, missing-information indicators, admin visibility, CSRF, tenant isolation, and preservation of authoritative business/service/service-area sources.
+Preserve its service authorization, CSRF, tenant isolation, readiness, and authoritative
+business/service/service-area boundaries as the website platform begins consuming it.
 
 ## Website Generation And Public Lifecycle
 
-Status: Existing private generation; planned component CMS and lifecycle
+Status: Existing private legacy generation; Milestone 6 architecture defined; runtime planned for Sprint 8.8
 
 Complete the site model, structured page/component definitions, revisions, approval, build/deployment state, public publishing, validation, archival/restoration, and controlled conversion audit.
 
 ## Billing And Commercial Policy
 
-Status: Billing implementation exists; approved cohort persistence and final commercial policy are pending
+Status: Legacy billing foundation exists; approved cohort implementation is first-customer critical
 
-Current billing records/configuration must be aligned to approved pricing before launch. Cohort cannot be inferred permanently from active-customer count. Overage unit rates, taxes, grandfathering, setup-fee/refund/reactivation rules, and qualifying position rules remain open.
+Implement atomic never-reused customer sequence assignment, durable cohort
+configuration, locked subscription terms, Alpha's stored six-month introductory dates
+and automatic `$79/month` transition, cohort-aware Stripe prices/setup charges, and
+customer/admin visibility. Existing subscriptions cannot derive cohort from active
+count or be repriced when cohorts/public pricing change.
 
 ## Domain And Professional Email
 
@@ -196,7 +210,10 @@ Validate Namecheap/DNS/SSL behavior on staging, preserve ownership distinctions,
 
 Status: Website capture foundation exists; unified conversation model and inbox planned
 
-Validate the standardized website ingestion path and implement provider-neutral conversations, channel attribution, contact matching, assignment, unread/needs-response state, timeline behavior, and follow-up visibility in the planned communications sprint.
+Implement and validate Host/domain-resolved registered-site ingestion, active routing,
+rate limiting, spam/replay controls, and correlation before public launch. Provider-neutral
+conversations, channel attribution, unread/needs-response state, and unified timeline
+remain in the planned communications stream.
 
 ## Phone, Text, Chat, And AI
 
@@ -233,13 +250,16 @@ Before any site conversion or cancellation workflow can be launch-ready:
 * Milestone 2: Shared Business Profile Schema - Complete and staging validated
 * Milestone 3: Product Definition, Architecture, Pricing, and Roadmap Alignment - Complete
 * Milestone 4: Shared Business Profile Service Layer - Complete and staging validated; PASS
-* Milestone 5: Shared Business Profile Interface - Implemented on review branch; merge, deployment, and staging validation pending
-* Milestone 6: Website Generation, Site Lifecycle, and Component Audit - Planned
+* Milestone 5: Shared Business Profile Interface - Complete and staging validated; PASS
+* Milestone 6: Website Platform Architecture and Migration Audit - Documentation architecture defined on review branch
 * Milestone 7: Sprint Closeout and Future-Sprint Planning - Planned
 
 ## Sprint 8.8 - Website Generation And Component CMS Foundation
 
-Planned: site model and lifecycle, component registry, themes, revisions, approval, deployment, demos, both conversion directions, data separation, LeadHub forms, validation, and initial AI-assisted assembly. This is not a customer drag-and-drop builder.
+Planned in staged PRs: generic schema/backfill; SiteManager and revisions/approvals;
+component composition; admin workflow; customer review/approval; build/deploy/restore;
+registered-site routing and EMD compatibility; then full staging validation. This is
+not a customer drag-and-drop builder.
 
 ## Sprint 8.9 - Communications Core Foundation
 
@@ -265,4 +285,7 @@ Full customer use of EMD, SSP, TUHWD, KYN, Full OS, and Enterprise remains defer
 
 The platform has solid website, LeadHub, billing, domain, email-workflow, and Shared Business Profile foundations, but the approved 247SP product is broader than the implemented runtime. Readiness must be measured by the complete digital-front-office workflow, not by website-preview completion alone.
 
-The next task is review, approved merge/deployment, and separate staging validation of Sprint 8.7 Milestone 5. The branch status does not claim the milestone is complete or passed.
+The next task is review of the documentation-only Milestone 6 architecture, followed
+by Milestone 7 closeout planning. Milestone 7 must schedule the first-customer-critical
+cohort-pricing implementation and produce executable Sprint 8.8/8.9 plans without
+claiming the CMS, publisher, DataForSEO, or new billing runtime already exists.
