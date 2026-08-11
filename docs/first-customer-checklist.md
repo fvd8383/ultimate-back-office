@@ -63,7 +63,7 @@ New module development is paused until 247SP is launch-ready. EMD, SSP, TUHWD, a
 # Billing & Payments
 
 * [ ] Stripe Payment Integration
-* [ ] FIRST-CUSTOMER CRITICAL: Atomic 247SP customer sequence assignment
+* [ ] FIRST-CUSTOMER CRITICAL: Atomic customer-sequence/cohort assignment on completed 247SP business signup
 * [ ] FIRST-CUSTOMER CRITICAL: Alpha/Beta/Founding/Standard cohort configuration
 * [ ] FIRST-CUSTOMER CRITICAL: Locked subscription setup/monthly/Stripe terms
 * [ ] FIRST-CUSTOMER CRITICAL: Alpha six-month free period and automatic $79/month transition

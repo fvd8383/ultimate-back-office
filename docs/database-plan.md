@@ -735,11 +735,14 @@ then $79/month; Beta positions 6-10 at $0 setup and $97/month; Founding position
 $197/month. These are cohorts for one core product, not feature tiers.
 
 Future billing must separate product, durable cohort configuration, atomic never-reused
-customer sequence assignment, and locked subscription commercial terms. One qualified
-business subscription consumes one position; multiple subscribed businesses under one
-owner may consume multiple positions; cancellations do not reopen positions. Assignment
-occurs at the approved billable subscription activation/signup event, whose exact event
-contract Milestone 7 must finalize.
+customer sequence assignment, and locked subscription commercial terms. One completed
+247SP business signup consumes one permanent position. Assignment occurs atomically as
+part of successful completion of that signup, including creation/confirmation of the
+local 247SP subscription and the sequence/cohort/term snapshot. A failed transaction
+consumes no position; an idempotent retry returns the existing assignment. Multiple
+businesses under one owner consume one position per independently completed signup, and
+cancellations do not reopen positions. Anonymous registration, launch, payment,
+webhooks, later billing states, and active counts do not determine cohort.
 
 Approved identifiers `alpha`, `beta`, `founding`, and `standard` are not implemented.
 Subscriptions must snapshot cohort, sequence, setup/monthly fees, assignment/signup

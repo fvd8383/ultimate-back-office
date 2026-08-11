@@ -194,11 +194,14 @@ Complete the site model, structured page/component definitions, revisions, appro
 
 Status: Legacy billing foundation exists; approved cohort implementation is first-customer critical
 
-Implement atomic never-reused customer sequence assignment, durable cohort
-configuration, locked subscription terms, Alpha's stored six-month introductory dates
-and automatic `$79/month` transition, cohort-aware Stripe prices/setup charges, and
-customer/admin visibility. Existing subscriptions cannot derive cohort from active
-count or be repriced when cohorts/public pricing change.
+Implement atomic never-reused customer sequence/cohort assignment as part of successful
+completion of each 247SP business signup, durable cohort configuration, locked
+subscription terms, Alpha's stored six-month introductory dates and automatic
+`$79/month` transition, cohort-aware Stripe prices/setup charges, and customer/admin
+visibility. Failed signup transactions consume no position; idempotent retry returns the
+existing assignment; cancellations do not reopen positions. Anonymous registration,
+launch, payment/webhook events, later billing states, and active counts do not determine
+cohort.
 
 ## Domain And Professional Email
 

@@ -23,6 +23,12 @@ schema/services/PRs and first-customer-critical cohort pricing without implement
 CMS, publisher, billing changes, DataForSEO, or a migration. Milestone 7 owns sprint
 closeout and executable Sprint 8.8/8.9 planning.
 
+The pricing implementation plan must preserve the approved assignment event: successful
+completion of each 247SP business signup atomically allocates its permanent sequence,
+cohort, and locked terms. Milestone 7 may specify the responsible route/service and
+Stripe/idempotency mechanics, but must not reopen that event or allow cancellations to
+reopen consumed positions.
+
 Use the execution model in `docs/codex-rules.md` and `docs/deployment-plan.md`:
 local branch/test/PR work first, then review and merge, approved staging deployment,
 and evidence-backed Remote SSH validation.

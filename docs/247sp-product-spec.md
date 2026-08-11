@@ -197,12 +197,16 @@ Additional mailboxes, aliases, or advanced email features may be billed separate
 
 ## Customer position and commercial-term policy
 
-Each completed/qualified 247SP business subscription consumes one permanent sequence
-position. Multiple subscribed businesses under one owner may consume multiple positions.
-Assignment is atomic at the approved billable subscription activation/signup event,
-not anonymous account creation. Cancellations do not reopen positions. The later billing
-implementation must finalize the exact qualifying event and failure/refund/reactivation
-policy before production acceptance.
+One completed 247SP business signup consumes one permanent sequence position. Cohort
+assignment occurs atomically as part of successful completion of that business signup.
+Anonymous account creation, website launch, first invoice payment, Stripe webhook
+receipt, later billing-state changes, and active-customer counts do not determine the
+cohort. Multiple businesses under one owner consume one position for each independently
+completed 247SP business signup. Cancellations do not reopen positions.
+
+The implementation may still define detailed refund, fraud, ownership-change,
+reactivation, tax, overage, setup-fee, and unusual administrative-exception policy.
+Those policies do not reopen the approved initial assignment event.
 
 The subscription stores its assigned cohort, sequence number, locked setup and monthly
 fees, assignment/signup dates, introductory start/expiration, recurring billing start,

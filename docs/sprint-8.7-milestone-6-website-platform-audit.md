@@ -515,7 +515,7 @@ Controllers authenticate, parse allowlisted input, enforce CSRF, call one servic
 - Services start/own transactions and re-check tenant/role authorization inside the transaction.
 - Create revision plus all pages/sections/theme/snapshot and audit event atomically.
 - Transition lifecycle/approval and update invalidated approvals/current pointers atomically under site/revision locks.
-- Allocate a 247SP customer sequence, determine cohort, snapshot terms, and link subscription atomically in the billing stream.
+- As part of successful completion of a 247SP business signup, establish/link its local subscription, allocate its customer sequence, determine its cohort, and snapshot terms atomically in the billing stream.
 - Switch primary domain or active routing with row locks and one transaction; never permit two active primaries/targets.
 - Write success audit/activity only in the successful mutation transaction. Rollback produces no success activity.
 - File/provider/network/deployment operations never run inside long DB transactions. Persist intent, commit, execute externally, then reconcile result in a short transaction.
@@ -640,28 +640,46 @@ a way that changes already assigned subscriptions.
 
 ## 45. Pricing assignment model
 
-One completed/qualified 247SP **business subscription** consumes one permanent customer position; a multi-business owner may consume multiple positions. Cancellations never reopen positions, and separate environment databases keep staging/test allocations out of production.
+One completed 247SP business signup consumes one permanent customer sequence position.
+Cohort assignment occurs atomically as part of successful completion of that business
+signup. Anonymous account creation, website launch, first invoice payment, Stripe
+webhook receipt, later billing-state changes, and current active-customer counts do not
+determine the cohort.
 
-The exact qualifying event for the future billing implementation is the approved billable subscription activation/signup event—not anonymous account creation. Milestone 7 must finalize the event name and its relationship to payment-method/Checkout state before implementation.
+At implementation level, completed signup means successful transactional
+creation/confirmation of the local 247SP business subscription together with
+sequence/cohort/commercial-term assignment. If that transaction does not commit, no
+sequence is consumed. A multi-business owner consumes one position for each
+independently completed 247SP business signup. Cancellations never reopen positions,
+and separate environment databases keep staging/test signups out of production
+positions.
 
 Conceptual transaction:
 
 ```text
-lock product sequence counter
-  -> verify qualifying business subscription and idempotency
+begin transaction
+  -> verify this 247SP business signup has not already received a sequence
+  -> lock product sequence counter
   -> allocate next never-reused customer_sequence_number
-  -> select effective cohort containing that number
-  -> snapshot setup/monthly/free-month terms and Stripe price versions
-  -> store assignment and actual billing dates
+  -> select cohort containing that sequence
+  -> establish/link the local 247SP business subscription
+  -> snapshot locked setup fee, recurring price, introductory terms, and applicable Stripe price references/version
+  -> store cohort assignment and billing dates
   -> commit
 ```
 
-Use a product-scoped sequence counter/allocation record and a unique `(product_id, customer_sequence_number)`. The subscription stores assigned cohort, sequence, locked setup/monthly amounts and currency, assignment/signup dates, introductory start/expiration, recurring billing start, and applicable Stripe references/version. Repeated activation events return the existing assignment.
+Use a product-scoped sequence counter/allocation record and a unique `(product_id, customer_sequence_number)`. The subscription stores assigned cohort, sequence, locked setup/monthly amounts and currency, assignment/signup dates, introductory start/expiration, recurring billing start, and applicable Stripe references/version. Repeated completed-signup requests return the existing assignment.
+
+Retry/idempotency for the same completed business signup returns the existing assignment
+rather than consuming another sequence. Later refund, fraud, ownership-change,
+reactivation, tax, overage, setup-fee, and unusual manual-exception policies may be
+defined separately; they do not make the initial assignment event unresolved or reopen
+a consumed position without a separately approved policy change.
 
 Recommended future storage is `product_customer_sequence_counters` (`product_key` PK,
 `next_sequence_number`, `lock_version`, timestamps), an immutable
-`product_customer_sequence_allocations` row unique by product/sequence and qualifying
-subscription/event idempotency key, and additive subscription columns or a one-to-one
+`product_customer_sequence_allocations` row unique by product/sequence and completed
+business-signup idempotency key, and additive subscription columns or a one-to-one
 `subscription_commercial_terms` row. The snapshot row FKs the subscription and assigned
 cohort with `ON DELETE RESTRICT`, uses `DECIMAL(10,2)` amounts and `CHAR(3)` currency,
 stores all actual dates/Stripe references above, and is never recalculated from the
@@ -670,7 +688,11 @@ separate payment items and never enter MRR.
 
 ## 46. Alpha six-month-free billing contract
 
-For positions 1–5: assign Alpha atomically, charge `$0` setup, retain a payment method, start a six-month free introductory period, and automatically begin `$79/month` recurring billing at expiration. Store `introductory_period_start`, `introductory_period_expires_at`, and `recurring_billing_starts_at` as actual dates when assigned. Reads do not repeatedly infer “six months from signup.”
+For positions 1–5 the approved flow is: completed business signup, Alpha cohort
+assignment, `$0` setup, six-month free introductory period, then automatic `$79/month`
+recurring billing after the stored expiration. Store `introductory_period_start`,
+`introductory_period_expires_at`, and `recurring_billing_starts_at` as actual dates when
+assigned. Reads do not repeatedly infer “six months from signup.”
 
 Exact Stripe trial/schedule/Checkout mechanics belong to the future billing implementation. It must validate month-boundary/time-zone behavior, payment-method retention, webhook idempotency, expiration transition, failed payment, cancellation, and reconciliation before the first production customer.
 
@@ -703,6 +725,12 @@ Existing foundations must not be marked complete for these future capabilities.
 ## 49. Milestone 7 handoff requirements
 
 Milestone 7 owns Sprint 8.7 closeout. It must reconcile Sprint status; record Milestone 6 architecture approval; produce executable Sprint 8.8 and Sprint 8.9 communications-core plans; confirm the initial Sprint 8.8 migration/split and staged PR sequence; define Sprint 8.8 staging validation; schedule the focused first-customer-critical cohort-pricing implementation; reconcile first-customer blockers; update handoff/readiness/closeout documents; and close Sprint 8.7 only after consistency checks pass.
+
+Milestone 7 may define the exact route/service responsible for completed signup, Stripe
+Checkout/payment-method mechanics, retry/idempotency mechanics, and detailed
+refund/reactivation/admin-exception policies. It must not reopen the approved rule that
+successful completion of the 247SP business signup is the sequence/cohort assignment
+event.
 
 Milestone 7 does not implement the CMS, cohort billing, DataForSEO, or communications runtime.
 

@@ -516,13 +516,15 @@ Approved 24/7 Sales Partner pricing cohorts:
 | Founding | 11-25 | $100 one-time | None | $147/month |
 | Standard | 26+ | $250 one-time | None | $197/month |
 
-These cohorts price the same core product and are not feature tiers. One qualified
-business subscription consumes one permanent sequence position; cancellations do not
-reopen positions. Assignment must be atomic at the approved billable subscription
-activation/signup event, and the subscription must retain the assigned cohort, sequence,
-locked fees, introductory dates, recurring billing start, and applicable Stripe price
-references. The current runtime does not yet implement those records or Alpha's free
-period; that work is first-customer critical.
+These cohorts price the same core product and are not feature tiers. One completed 247SP
+business signup consumes one permanent sequence position. Cohort assignment occurs
+atomically as part of successful completion of that business signup; a failed transaction
+consumes no position, and an idempotent retry returns the existing assignment.
+Cancellations do not reopen positions. Anonymous account creation, website launch,
+payment/webhook events, later billing-state changes, and active-customer counts do not
+determine cohort. The current runtime does not yet implement the required sequence,
+locked terms, dates, Stripe references, or Alpha free period; that work is
+first-customer critical.
 
 The monthly package includes the done-for-you website, domain, professional email,
 local business phone number, AI receptionist, business texting, AI website chat,

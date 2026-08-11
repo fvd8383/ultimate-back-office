@@ -301,12 +301,16 @@ Included monthly usage:
 
 Usage above each allowance is overage usage. Unit rates must be defined in an approved pricing plan, order form, or billing policy before charging customers.
 
-One completed/qualified 247SP business subscription consumes one permanent customer
-position, so multiple subscribed businesses under one owner may consume multiple
-positions. Cancellations do not reopen positions. Assignment must be atomic at the
-approved billable subscription activation/signup event, not anonymous account creation;
-Milestone 7 must finalize the exact qualifying event and failure/refund/reactivation
-handling for implementation.
+One completed 247SP business signup consumes one permanent customer sequence position.
+Cohort assignment occurs atomically as part of successful completion of that business
+signup. Anonymous account creation, website launch, first invoice payment, Stripe
+webhook receipt, later billing-state changes, and active-customer counts do not determine
+the cohort. Multiple businesses under one owner consume one position for each
+independently completed signup, and cancellations do not reopen positions.
+
+Milestone 7 may define the responsible route/service, Stripe mechanics, idempotent
+retry, and detailed refund/reactivation/admin-exception policy. It must not reopen the
+approved completed-business-signup assignment event.
 
 The future subscription stores its sequence, assigned cohort, locked fees, assignment
 and signup dates, introductory start/expiration, recurring billing start, and applicable
