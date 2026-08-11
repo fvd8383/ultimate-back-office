@@ -64,6 +64,13 @@ The following approved product capabilities are not yet complete unless a later 
 * Usage metering and overage billing
 * EMD demo and bidirectional site-conversion workflows
 
+Execution is sequenced through the immediate first-customer pricing gate in
+`docs/247sp-pricing-cohort-implementation-plan.md`, Sprint 8.8 website work in
+`docs/sprint-8.8.md`, and Sprint 8.9 communications/professional-email work in
+`docs/sprint-8.9.md`. Vendasta professional-email provisioning is first-customer
+critical; Twilio foundation is planned for Sprint 8.9 and Retell voice runtime remains
+planned for Sprint 8.10.
+
 ---
 
 # Included Product

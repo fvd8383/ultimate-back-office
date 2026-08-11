@@ -326,7 +326,7 @@ Backfill is rerunnable and idempotent by unique legacy mapping. It never deletes
 
 ## 33. Sprint 8.8 proposed schema
 
-All entities in this section are **proposed/future**. Names are implementation-ready recommendations, not existing tables. The provisional website migration name is `022_website_platform_foundation.sql`; Milestone 7 must confirm the name and exact split. Billing uses a separate additive migration.
+All entities in this section are **proposed/future**. Names are implementation-ready recommendations, not existing tables. Milestone 7 locked the initial website migration as `023_website_platform_foundation.sql`, after the planned first-customer pricing migration `022_247sp_pricing_cohorts.sql`. Migration 023 contains the dependency-safe M1 core; later operational website tables use additive migrations in implementation order.
 
 Unless a table overrides the convention, `id` and foreign-key IDs below are `BIGINT
 UNSIGNED`; state/key/type fields are bounded `VARCHAR`; booleans are `TINYINT(1)`;
@@ -545,18 +545,19 @@ Public submission additionally requires permitted-domain validation, rate limiti
 
 ## 40. Migration sequencing
 
-Planned Sprint 8.8 sequencing:
+Planned Sprint 8.8 sequencing, as locked by Milestone 7:
 
-1. Confirm schema names and MySQL compatibility in Milestone 7.
-2. Add component metadata, sites, associations, pages/revisions/composition, approvals/assets, jobs/deployments, domains/routing, mappings/events in dependency-safe additive order.
-3. Seed only repository-backed component/variant keys.
-4. Run idempotent legacy eligibility and mapping backfill.
-5. Import baseline revisions without changing legacy data.
-6. Validate and expose read-only generic comparisons.
-7. Move service consumers in staged PRs; use bounded compatibility adapters.
-8. Declare generic authority only after staging reconciliation; later retire legacy writes.
+1. Complete and staging-validate the dedicated pricing implementation and planned `022_247sp_pricing_cohorts.sql` before Sprint 8.8 M1.
+2. Use `023_website_platform_foundation.sql` for the dependency-safe M1 core: component metadata needed for import, sites, associations, pages/revisions/composition, approvals/assets, legacy mappings/import state, and site events.
+3. Add build/deployment and domain/routing/conversion structures through later focused additive migrations when their implementation milestones begin.
+4. Seed only repository-backed component/variant keys.
+5. Run idempotent legacy eligibility and mapping backfill.
+6. Import baseline revisions without changing legacy data.
+7. Validate and expose read-only generic comparisons.
+8. Move service consumers in staged PRs; use bounded compatibility adapters.
+9. Declare generic authority only after staging reconciliation; later retire legacy writes.
 
-`022_website_platform_foundation.sql` is provisional. Cohort pricing is unrelated and should use a separate future additive billing migration/PR. Historical migrations remain immutable.
+The earlier provisional `022_website_platform_foundation.sql` name is superseded. Planned migration 022 belongs to pricing and planned migration 023 begins the website platform. Historical migrations remain immutable.
 
 ## 41. Repair and rollback strategy
 
@@ -696,7 +697,7 @@ assigned. Reads do not repeatedly infer “six months from signup.”
 
 Exact Stripe trial/schedule/Checkout mechanics belong to the future billing implementation. It must validate month-boundary/time-zone behavior, payment-method retention, webhook idempotency, expiration transition, failed payment, cancellation, and reconciliation before the first production customer.
 
-Beta starts `$97/month` at activation with no setup fee. Founding charges `$100` one-time plus `$147/month`. Standard charges `$250` one-time plus `$197/month`.
+Beta starts `$97/month` at completed business signup with no setup fee. Founding charges `$100` one-time plus `$147/month`. Standard charges `$250` one-time plus `$197/month`.
 
 ## 47. Current billing implementation gap
 
@@ -724,7 +725,7 @@ Existing foundations must not be marked complete for these future capabilities.
 
 ## 49. Milestone 7 handoff requirements
 
-Milestone 7 owns Sprint 8.7 closeout. It must reconcile Sprint status; record Milestone 6 architecture approval; produce executable Sprint 8.8 and Sprint 8.9 communications-core plans; confirm the initial Sprint 8.8 migration/split and staged PR sequence; define Sprint 8.8 staging validation; schedule the focused first-customer-critical cohort-pricing implementation; reconcile first-customer blockers; update handoff/readiness/closeout documents; and close Sprint 8.7 only after consistency checks pass.
+Milestone 7 owns Sprint 8.7 closeout. Its closeout records this architecture as approved, creates executable Sprint 8.8 and Sprint 8.9 plans, locks migration sequencing, places the focused first-customer pricing implementation before Sprint 8.8 M1, reconciles blockers/readiness/handoff documents, and closes Sprint 8.7 when the closeout PR merges after consistency checks pass.
 
 Milestone 7 may define the exact route/service responsible for completed signup, Stripe
 Checkout/payment-method mechanics, retry/idempotency mechanics, and detailed
@@ -732,7 +733,7 @@ refund/reactivation/admin-exception policies. It must not reopen the approved ru
 successful completion of the 247SP business signup is the sequence/cohort assignment
 event.
 
-Milestone 7 does not implement the CMS, cohort billing, DataForSEO, or communications runtime.
+Milestone 7 does not implement the CMS, cohort billing, DataForSEO, or communications runtime. See `docs/sprint-8.7-milestone-7-closeout.md`, `docs/247sp-pricing-cohort-implementation-plan.md`, `docs/sprint-8.8.md`, and `docs/sprint-8.9.md`.
 
 ## 50. Milestone 6 acceptance criteria
 

@@ -669,7 +669,7 @@ Do not edit previously-run migrations unless specifically approved.
 
 Create a new migration for each sprint that changes database structure.
 
-Migration `021_shared_business_profile.sql` is complete and staging validated. Do not rewrite migration 021 or historical repair migrations 019 and 020. Any future website/CMS, billing-cohort, communications, or MCP persistence must use a later reviewed migration; no such migration is part of Sprint 8.7 Milestone 3.
+Migration `021_shared_business_profile.sql` is complete and staging validated. Do not rewrite migration 021 or historical repair migrations 019 and 020. The next planned migration is `022_247sp_pricing_cohorts.sql` for the post-Sprint-8.7 first-customer pricing gate. The planned initial Sprint 8.8 migration is `023_website_platform_foundation.sql`. Neither is created by Sprint 8.7 Milestone 7; later additive migrations use the next available numbers in implementation order.
 
 Sprint 8.7 Milestone 4 also passed staging runtime validation on deployed commit
 `d11bd0e7d14b9d9dd432f3ce244a9b2bbebfafb7` without a migration or schema change.
@@ -730,6 +730,13 @@ For Stripe billing changes, also validate on staging:
 * Admin Billing shows Stripe customer ID, Stripe subscription ID, payment method status, and latest payment/invoice status.
 * Module access remains unchanged by failed payment handling.
 
+For the planned first-customer pricing P1/P2 gate, additionally validate migration 022,
+atomic never-reused sequence allocation, range boundaries, concurrency/idempotency,
+rollback without consumption, locked terms, Alpha's stored six-month dates and payment
+method, cohort-aware test Price selection, setup-fee idempotency, customer/admin terms,
+webhook reconciliation, cleanup, and schema/provider reconciliation. Use Stripe test
+mode only. See `docs/247sp-pricing-cohort-implementation-plan.md`.
+
 For Domain Services changes, also validate on staging:
 
 * `private/config/env.php` contains Namecheap sandbox values and domain target DNS values, with no real secrets committed.
@@ -740,16 +747,15 @@ For Domain Services changes, also validate on staging:
 * 24/7 Sales Partner Launch Readiness marks Domain complete only after domain, DNS, and SSL readiness are satisfied.
 * SSL status tracking does not claim certificate automation unless staging infrastructure has completed that step.
 
-For Communications Layer changes, also validate on staging:
+For planned communications changes, validate only the providers and capabilities owned
+by the current milestone:
 
-* `private/config/env.php` contains Retell and Twilio test credentials, with no real secrets committed.
+* Sprint 8.9 uses approved Vendasta and Twilio test credentials, with no real secrets committed; Retell credentials are not required until Sprint 8.10.
 * Business Profile setup can represent Website, AI Receptionist, SMS Assistant, Website Chat, LeadHub routing, transfer rules, and escalation rules.
 * Provider calls are made only through internal UBO services or the future `CommunicationsManager`.
-* Retell Voice events normalize through `VoiceProviderInterface`.
-* Retell Chat events normalize through `ChatProviderInterface`.
-* Twilio Voice events normalize through `TelephonyProviderInterface`.
-* Twilio Messaging events normalize through `MessagingProviderInterface`.
-* Inbound calls, texts, and chat events create or connect to LeadHub records.
+* Sprint 8.9 validates Vendasta professional-email provisioning/reconciliation and the shared Twilio account/webhook event contract.
+* Retell Voice and expanded Twilio telephony normalization are validated in Sprint 8.10 when those adapters are implemented.
+* SMS/MMS and website-chat event flows are validated in their later approved implementation milestone.
 * Transfer rules and escalation rules create customer-safe LeadHub activity, tasks, or notifications.
 * Usage tracking records AI minutes, outbound owner minutes, SMS segments, and AI chat responses.
 
@@ -779,6 +785,15 @@ that a public deployment succeeded. External file/provider/Apache operations mus
 run inside long database transactions. See
 `docs/sprint-8.7-milestone-6-website-platform-audit.md`; none of this publisher runtime
 is implemented by Milestone 6.
+
+Provider timing is milestone-specific: Stripe test configuration is required for the
+immediate post-Sprint-8.7 pricing gate; Namecheap/domain test credentials may be needed
+for Sprint 8.8 end-to-end publishing validation; optional customer Google Analytics is
+not a CMS blocker and planned DataForSEO is not required for the website foundation;
+Vendasta and Twilio test credentials are required in Sprint 8.9; Retell and expanded
+Twilio telephony configuration are required in Sprint 8.10; Google Calendar waits for
+an explicitly implemented scheduling/calendar-sync milestone. Milestone 7 itself uses
+no provider credentials.
 
 Logs:
 

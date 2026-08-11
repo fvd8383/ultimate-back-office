@@ -244,11 +244,19 @@ the Milestone 5 implementation, follow-up fixes, and successful validation. The 
 successful validation artifact SHA-256 is
 `687a1444664f9d7167dfb316510f09094e922c2b83166874849db44fb10382a6`.
 
-Sprint 8.7 Milestone 6 is the documentation-only website-platform audit in
-`docs/sprint-8.7-milestone-6-website-platform-audit.md`. It defines the future generic
+Sprint 8.7 Milestone 6 is COMPLETE and was merged at
+`fa9228eefbbba94523781599e74ca04e0dbadb22`. Its documentation-only website-platform
+audit in `docs/sprint-8.7-milestone-6-website-platform-audit.md` defines the future generic
 247SP/EMD site, revision, component, approval, routing, publishing, analytics, and
 cohort-pricing architecture. It does not implement the CMS, publisher, billing changes,
 DataForSEO, or a migration.
+
+Sprint 8.7 closes when the Milestone 7 closeout PR merges. The next planned gate is the
+two-PR 247SP pricing implementation and staging validation in
+`docs/247sp-pricing-cohort-implementation-plan.md`, using planned migration
+`022_247sp_pricing_cohorts.sql`. Sprint 8.8 follows with planned migration
+`023_website_platform_foundation.sql`; see `docs/sprint-8.8.md`. The planned
+communications core is in `docs/sprint-8.9.md`.
 
 ## Testing OTP Login In Staging
 

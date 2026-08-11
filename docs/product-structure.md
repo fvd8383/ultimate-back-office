@@ -68,7 +68,7 @@ Subscriptions represent the products and services connected to an account or bus
 
 The Shared Business Profile is the central business-knowledge layer for a business. Migration 021 established the initial schema and was staging validated. 247SP and future communications features should read authoritative facts from the profile and existing business/service records instead of creating disconnected setup records for each channel.
 
-The reusable Shared Business Profile application service is implemented in `private/classes/SharedBusinessProfile.php`. It owns business authorization, tenant isolation, validation, transactions, lifecycle rules, live readiness calculation, normalized output, child ownership, and audit summaries. Branch `codex/sprint-8-7-milestone-5` adds the customer-facing profile interface and read-only admin visibility; merge, deployment, and staging validation remain pending.
+The reusable Shared Business Profile application service is implemented in `private/classes/SharedBusinessProfile.php`. It owns business authorization, tenant isolation, validation, transactions, lifecycle rules, live readiness calculation, normalized output, child ownership, and audit summaries. The Milestone 5 customer-facing profile interface and read-only admin visibility are merged, deployed, and staging validated as COMPLETE / PASS on final deployed main state `ea81194e7d853782f927fdf58ed65eecd6473a7f`.
 
 One Business Profile configures:
 
