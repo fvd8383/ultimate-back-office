@@ -10,14 +10,15 @@ New module development is paused until 247SP is launch-ready. EMD, SSP, TUHWD, a
 
 # Roadmap Priority
 
-1. Sprint 8.7: Shared Business Profile and Website Platform Alignment
-2. Sprint 8.8: Website Generation and Component CMS Foundation
-3. Sprint 8.9: Communications Core Foundation
-4. Sprint 8.10: Telephony and AI Receptionist
-5. Later Sprint: Messaging and Website Chat
-6. Production Readiness / First Customer Pilot
-7. First Paying Customer
-8. Resume separately approved future modules
+1. Sprint 8.7: Shared Business Profile and Website Platform Alignment (closes when Milestone 7 PR merges)
+2. 247SP First-Customer Pricing Implementation and staging gate
+3. Sprint 8.8: Website Platform and Component CMS
+4. Sprint 8.9: Communications Core Foundation
+5. Sprint 8.10: Telephony and AI Receptionist
+6. Later Sprint: Messaging and Website Chat
+7. Production Readiness / First Customer Pilot
+8. First Paying Customer
+9. Resume separately approved future modules
 
 ---
 
@@ -54,7 +55,8 @@ New module development is paused until 247SP is launch-ready. EMD, SSP, TUHWD, a
 * [x] Sprint 8.7 Milestone 3 Product, Architecture, Pricing, and Roadmap Alignment
 * [x] Sprint 8.7 Milestone 4 Shared Business Profile Service Layer and staging validation
 * [x] Sprint 8.7 Milestone 5 Shared Business Profile Interface and staging validation (PASS)
-* [ ] Sprint 8.7 Milestone 6 Website Platform Architecture and Migration Audit (documentation review pending)
+* [x] Sprint 8.7 Milestone 6 Website Platform Architecture and Migration Audit (merged at `fa9228eefbbba94523781599e74ca04e0dbadb22`)
+* [ ] Sprint 8.7 Milestone 7 closeout (complete when its documentation PR merges)
 * [ ] First-customer Admin QA
 * [ ] First-customer Customer QA
 
@@ -63,6 +65,7 @@ New module development is paused until 247SP is launch-ready. EMD, SSP, TUHWD, a
 # Billing & Payments
 
 * [ ] Stripe Payment Integration
+* [ ] FIRST-CUSTOMER CRITICAL: Planned migration `022_247sp_pricing_cohorts.sql`
 * [ ] FIRST-CUSTOMER CRITICAL: Atomic customer-sequence/cohort assignment on completed 247SP business signup
 * [ ] FIRST-CUSTOMER CRITICAL: Alpha/Beta/Founding/Standard cohort configuration
 * [ ] FIRST-CUSTOMER CRITICAL: Locked subscription setup/monthly/Stripe terms
@@ -109,7 +112,7 @@ New module development is paused until 247SP is launch-ready. EMD, SSP, TUHWD, a
 
 # Email, Phone, Texting, And AI Channel Automation
 
-* [ ] Business Email Provisioning
+* [ ] FIRST-CUSTOMER CRITICAL: Vendasta professional-email provisioning and reconciliation
 * [ ] Email Login Instructions
 * [ ] Email Setup Confirmation
 * [ ] Email Support Process
@@ -207,11 +210,12 @@ New module development is paused until 247SP is launch-ready. EMD, SSP, TUHWD, a
 
 A first paying 247SP customer can:
 
-1. Sign up
-2. Create a business
-3. Activate 247SP
-4. Pay the setup fee through Stripe
-5. Start a monthly Stripe subscription
+1. Register an account and create a business
+2. Successfully complete that business's 247SP signup
+3. Receive one permanent sequence/cohort assignment and locked commercial terms
+4. Provide a Stripe payment method through the approved cohort-aware flow
+5. Receive the assigned cohort's setup and recurring treatment, including `$0` setup
+   and six months free before automatic `$79/month` billing for Alpha
 6. Complete 247SP onboarding
 7. Publish a website on a customer domain
 8. Submit a public website lead that creates LeadHub records
@@ -240,7 +244,9 @@ Future module work remains paused until the first paying 247SP customer path is 
 
 Progress should be measured against the complete digital-front-office workflow, not website-preview completion alone. A current percentage is not asserted while the Shared Business Profile, component CMS, communications core, and launch policies are being sequenced.
 
-Sprint 8.7 Milestones 1 through 5 are complete. Milestone 5 closed as COMPLETE / PASS
+Sprint 8.7 Milestones 1 through 6 are complete. Milestone 6 was merged at
+`fa9228eefbbba94523781599e74ca04e0dbadb22`. Milestone 7 closes Sprint 8.7 when its
+documentation-only closeout PR merges. Milestone 5 closed as COMPLETE / PASS
 on final validated/deployed `main` state
 `ea81194e7d853782f927fdf58ed65eecd6473a7f` after its fixes; the final successful
 validation SHA-256 is
@@ -253,10 +259,10 @@ chat, usage metering, and conversion workflows remain planned.
 
 Major Remaining Milestones:
 
-1. Review Milestone 6 documentation and complete Milestone 7 Sprint 8.7 closeout/planning
-2. Implement and validate first-customer-critical pricing cohorts, Alpha billing, sequence assignment, locked terms, and Stripe mapping
-3. Sprint 8.8 staged website platform/component/revision/publishing/routing implementation and validation
-4. Sprint 8.9 communications core and LeadHub timeline
+1. Merge the Milestone 7 closeout PR
+2. Implement and validate first-customer-critical pricing P1/P2, planned migration 022, Alpha billing, sequence assignment, locked terms, and cohort-aware Stripe
+3. Sprint 8.8 staged website platform/component/revision/publishing/routing implementation beginning with planned migration 023 and full validation
+4. Sprint 8.9 communications core, Vendasta professional email, Twilio foundation, and LeadHub timeline
 5. Sprint 8.10 telephony and AI receptionist
-6. Later messaging, website chat, unified inbox, usage, and overages
-7. Production provider setup, professional email path, legal/policy, support, and first-customer QA
+6. Later messaging, website chat, unified inbox, usage, and overages required by the sold product
+7. Production provider setup/end-to-end QA, legal/policy, support, first-customer admin/customer QA, and production deployment gate

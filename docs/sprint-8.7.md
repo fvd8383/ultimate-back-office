@@ -2,11 +2,12 @@
 
 ## Status
 
-In progress. Milestones 1 through 5 are complete; Milestones 2, 4, and 5 are staging
-validated. Milestone 5 closed as COMPLETE / PASS on the final deployed `main` state
+COMPLETE EFFECTIVE WHEN THE MILESTONE 7 CLOSEOUT PR IS MERGED TO MAIN. Milestones 1
+through 6 are complete; Milestones 2, 4, and 5 are staging validated. Milestone 5
+closed as COMPLETE / PASS on final deployed `main` state
 `ea81194e7d853782f927fdf58ed65eecd6473a7f` after its follow-up fixes. Milestone 6
-is the documentation-only website-platform architecture audit; Milestone 7 owns
-Sprint 8.7 closeout.
+is complete and merged at `fa9228eefbbba94523781599e74ca04e0dbadb22`. Milestone 7
+is this documentation-only closeout and is complete when its PR merges.
 
 ## Product
 
@@ -159,7 +160,7 @@ Implementation notes:
 
 ## Milestone 6 - Website Generation, Site Lifecycle, And Component Audit
 
-Status: Documentation architecture audit in progress on its review branch
+Status: COMPLETE — merged at `fa9228eefbbba94523781599e74ca04e0dbadb22`
 
 Scope:
 
@@ -180,7 +181,7 @@ during Sprint 8.7.
 
 ## Milestone 7 - Sprint Closeout And Future-Sprint Planning
 
-Status: Planned
+Status: COMPLETE effective when the Milestone 7 closeout PR merges
 
 Scope:
 
@@ -189,7 +190,8 @@ Scope:
 * Confirm documentation consistency
 * Produce executable Sprint 8.8 and Sprint 8.9 plans
 * Schedule the first-customer-critical pricing-cohort implementation
-* Define the initial Sprint 8.8 migration, staged PRs, and staging validation
+* Lock planned pricing migration `022_247sp_pricing_cohorts.sql` and initial Sprint 8.8 migration `023_website_platform_foundation.sql`
+* Define Sprint 8.8 staged PRs and staging validation
 * Keep full CMS and communications implementation outside Sprint 8.7
 
 ---
@@ -323,10 +325,16 @@ Alpha's free period; the focused implementation is first-customer critical.
 
 No existing Sprint 8.8, 8.9, or 8.10 plan conflicts were found in the repository. The architectural sequence is:
 
-## Sprint 8.8 - Website Generation And Component CMS Foundation
+## Pre-Sprint 8.8 Gate - 247SP First-Customer Pricing Implementation
 
-Use the staged M1-M8 sequence in
-`docs/sprint-8.7-milestone-6-website-platform-audit.md`: schema/backfill; SiteManager and
+Immediately after Sprint 8.7 closes, implement pricing P1, pricing P2, and the dedicated
+staging validation in `docs/247sp-pricing-cohort-implementation-plan.md`. Planned
+migration 022 belongs to pricing. This gate must pass before Sprint 8.8 M1.
+
+## Sprint 8.8 - Website Platform And Component CMS
+
+Use the executable staged M1-M8 sequence in `docs/sprint-8.8.md`: planned migration
+023 and schema/backfill; SiteManager and
 revision/approval services; component composition; admin workflow; customer review;
 build/deploy/restore; registered-site routing and EMD compatibility; then full staging
 validation.
@@ -335,7 +343,11 @@ This is not a customer drag-and-drop builder.
 
 ## Sprint 8.9 - Communications Core Foundation
 
-Expected scope includes `CommunicationsManager`, provider-neutral interfaces, provider accounts, communication channels, conversations, participants, messages/events, contact matching, owner takeover, AI pause/resume, usage events, LeadHub timeline adapter, and webhook idempotency.
+The executable plan is `docs/sprint-8.9.md`. Vendasta professional-email provisioning
+is first-customer critical. Planned scope also includes `CommunicationsManager`,
+provider-neutral records/services, the shared Twilio account/webhook foundation,
+conversations, participants, events, contact matching, owner takeover, AI pause/resume,
+usage events, LeadHub timeline adapter, and webhook idempotency.
 
 ## Sprint 8.10 - Telephony And AI Receptionist
 
@@ -392,7 +404,7 @@ Planned categories must not be marked complete until implementation and required
 
 # Recommended Next Task
 
-Review Milestone 6 as a documentation-only architecture PR. Milestone 7 must then
-reconcile Sprint 8.7 status, approve the architecture, produce executable Sprint 8.8
-and 8.9 plans, schedule the first-customer-critical cohort-pricing stream, and close
-the sprint only after consistency checks pass.
+Merge the Milestone 7 documentation-only closeout after review. The next executable
+work is the first-customer-critical pricing P1/P2 implementation and staging gate in
+`docs/247sp-pricing-cohort-implementation-plan.md`. Sprint 8.8 M1 begins only after
+that gate passes.

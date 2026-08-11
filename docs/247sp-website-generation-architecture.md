@@ -10,6 +10,11 @@ where this earlier architecture used proposed purpose/lifecycle values or left l
 transition, analytics, approval, pricing, and migration decisions open. It remains a
 documentation design; no generic CMS or publisher is currently implemented.
 
+Milestone 7 locked the executable Sprint 8.8 sequence in `docs/sprint-8.8.md` and the
+initial planned website migration as `023_website_platform_foundation.sql`, after the
+planned first-customer pricing migration 022 and staging gate. Migration 023 and the
+website runtime remain planned, not implemented.
+
 ---
 
 # Purpose

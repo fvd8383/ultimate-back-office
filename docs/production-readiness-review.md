@@ -32,7 +32,7 @@ remain planned.
 | LeadHub contacts, notes, tasks, activity, and website form capture foundation | Complete; staging revalidation remains part of launch QA |
 | Stripe billing foundation and integration | Legacy foundation implemented; cohort pricing, Alpha free period, locked terms, and launch validation are first-customer critical |
 | Domain workflow and provider abstraction | Implemented; end-to-end staging launch validation pending |
-| Email request/assignment foundation | Complete; automated provisioning pending |
+| Email request/assignment foundation | Complete; Vendasta professional-email provisioning is planned and first-customer critical |
 | Shared Business Profile schema | Complete and staging validated |
 | Structured Business Profile service | Complete and staging validated as PASS in Sprint 8.7 Milestone 4 |
 | Structured Business Profile UI | Complete and staging validated as PASS in Sprint 8.7 Milestone 5 |
@@ -205,7 +205,7 @@ cohort.
 
 ## Domain And Professional Email
 
-Status: Domain implementation requires launch validation; automated email provisioning remains pending
+Status: Domain implementation requires launch validation; planned Vendasta professional-email provisioning remains first-customer critical
 
 Validate Namecheap/DNS/SSL behavior on staging, preserve ownership distinctions, and complete email provisioning, customer instructions, and support procedures.
 
@@ -254,19 +254,29 @@ Before any site conversion or cancellation workflow can be launch-ready:
 * Milestone 3: Product Definition, Architecture, Pricing, and Roadmap Alignment - Complete
 * Milestone 4: Shared Business Profile Service Layer - Complete and staging validated; PASS
 * Milestone 5: Shared Business Profile Interface - Complete and staging validated; PASS
-* Milestone 6: Website Platform Architecture and Migration Audit - Documentation architecture defined on review branch
-* Milestone 7: Sprint Closeout and Future-Sprint Planning - Planned
+* Milestone 6: Website Platform Architecture and Migration Audit - Complete; merged at `fa9228eefbbba94523781599e74ca04e0dbadb22`
+* Milestone 7: Sprint Closeout and Future-Sprint Planning - Complete effective when its PR merges
 
-## Sprint 8.8 - Website Generation And Component CMS Foundation
+## First-Customer Pricing Gate
 
-Planned in staged PRs: generic schema/backfill; SiteManager and revisions/approvals;
+Immediately after Sprint 8.7 closes, implement pricing P1/P2 and the dedicated staging
+gate in `docs/247sp-pricing-cohort-implementation-plan.md`. Planned migration
+`022_247sp_pricing_cohorts.sql` precedes Sprint 8.8 and must pass before its M1.
+
+## Sprint 8.8 - Website Platform And Component CMS
+
+Planned in `docs/sprint-8.8.md`: migration `023_website_platform_foundation.sql` and
+generic schema/backfill; SiteManager and revisions/approvals;
 component composition; admin workflow; customer review/approval; build/deploy/restore;
 registered-site routing and EMD compatibility; then full staging validation. This is
 not a customer drag-and-drop builder.
 
 ## Sprint 8.9 - Communications Core Foundation
 
-Planned: `CommunicationsManager`, provider-neutral interfaces/accounts/channels, conversations, participants, messages/events, contact matching, owner takeover, usage events, LeadHub timeline adapter, and webhook idempotency.
+Planned in `docs/sprint-8.9.md`: first-customer-critical Vendasta professional email,
+`CommunicationsManager`, provider-neutral records/services, Twilio account/webhook
+foundation, conversations, participants, events, contact matching, owner takeover,
+usage events, LeadHub timeline adapter, and webhook idempotency.
 
 ## Sprint 8.10 - Telephony And AI Receptionist
 
@@ -288,7 +298,8 @@ Full customer use of EMD, SSP, TUHWD, KYN, Full OS, and Enterprise remains defer
 
 The platform has solid website, LeadHub, billing, domain, email-workflow, and Shared Business Profile foundations, but the approved 247SP product is broader than the implemented runtime. Readiness must be measured by the complete digital-front-office workflow, not by website-preview completion alone.
 
-The next task is review of the documentation-only Milestone 6 architecture, followed
-by Milestone 7 closeout planning. Milestone 7 must schedule the first-customer-critical
-cohort-pricing implementation and produce executable Sprint 8.8/8.9 plans without
-claiming the CMS, publisher, DataForSEO, or new billing runtime already exists.
+The current task is the documentation-only Milestone 7 closeout. After it merges, the
+next executable gate is the first-customer-critical pricing implementation and staging
+PASS, followed by Sprint 8.8. None of the CMS, publisher, DataForSEO, Vendasta,
+communications, Twilio/Retell, or cohort-aware billing runtime is complete merely
+because its plan exists.

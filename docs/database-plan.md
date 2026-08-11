@@ -748,8 +748,10 @@ Approved identifiers `alpha`, `beta`, `founding`, and `standard` are not impleme
 Subscriptions must snapshot cohort, sequence, setup/monthly fees, assignment/signup
 dates, introductory start/expiration, recurring billing start, and applicable Stripe
 price references/version. The current one-plan/one-recurring-price implementation has
-none of those records. A separate additive migration and focused implementation are
-first-customer critical; historical pricing migrations remain unchanged.
+none of those records. A separate additive migration, planned as
+`022_247sp_pricing_cohorts.sql`, and focused implementation are first-customer critical
+immediately after Sprint 8.7 closeout; historical pricing migrations remain unchanged.
+See `docs/247sp-pricing-cohort-implementation-plan.md`.
 
 ---
 
@@ -2091,9 +2093,10 @@ domain, subscription, approval, routing, and conversion state remain separate.
 The transition is additive: create generic tables, backfill one site and baseline
 imported revision for each eligible legacy website, preserve legacy rows for temporary
 compatibility, transition consumers in stages, then retire legacy writes only after
-validation. The provisional website migration is `022_website_platform_foundation.sql`;
-Milestone 7 must confirm its exact name and split. Historical migrations are never
-edited.
+validation. Milestone 7 locked `023_website_platform_foundation.sql` as the planned
+dependency-safe Sprint 8.8 M1 core because planned migration 022 belongs to pricing.
+Build/deployment and domain/routing/conversion structures may use later focused
+additive migrations in implementation order. Historical migrations are never edited.
 
 Component implementation remains repository-owned; database records never contain
 executable PHP or JavaScript. 247SP and EMD share the public ingestion contract, while
@@ -2221,7 +2224,7 @@ completed
 cancelled
 ```
 
-Future support:
+Planned first-customer-critical support in Sprint 8.9 M1:
 
 ```text
 Vendasta integration
@@ -2229,6 +2232,9 @@ Google Workspace provisioning
 Automated mailbox creation
 Automated DNS records
 ```
+
+The executable provider-neutral provisioning, idempotency, reconciliation, security,
+and staging-validation plan is `docs/sprint-8.9.md`. This remains unimplemented.
 
 ---
 

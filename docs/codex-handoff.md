@@ -16,18 +16,26 @@ the Milestone 5 implementation and required fixes. The final successful validati
 artifact SHA-256 is
 `687a1444664f9d7167dfb316510f09094e922c2b83166874849db44fb10382a6`.
 
-The current review task is the documentation-only Sprint 8.7 Milestone 6 website
-platform architecture audit in
-`docs/sprint-8.7-milestone-6-website-platform-audit.md`. It defines future Sprint 8.8
-schema/services/PRs and first-customer-critical cohort pricing without implementing the
-CMS, publisher, billing changes, DataForSEO, or a migration. Milestone 7 owns sprint
-closeout and executable Sprint 8.8/8.9 planning.
+Sprint 8.7 Milestone 6 is COMPLETE and its documentation-only website-platform
+architecture audit was merged at `fa9228eefbbba94523781599e74ca04e0dbadb22`. The
+current review task is Milestone 7 closeout. Sprint 8.7 becomes complete when that
+closeout PR merges; no pricing, CMS, publisher, communications, provider, or migration
+runtime is implemented by the closeout.
 
-The pricing implementation plan must preserve the approved assignment event: successful
-completion of each 247SP business signup atomically allocates its permanent sequence,
-cohort, and locked terms. Milestone 7 may specify the responsible route/service and
-Stripe/idempotency mechanics, but must not reopen that event or allow cancellations to
-reopen consumed positions.
+The immediate post-closeout gate is the two-PR first-customer pricing implementation
+and staging validation in `docs/247sp-pricing-cohort-implementation-plan.md`. Planned
+migration `022_247sp_pricing_cohorts.sql` precedes planned Sprint 8.8 migration
+`023_website_platform_foundation.sql`. The pricing implementation must preserve the
+approved assignment event: successful completion of each 247SP business signup
+atomically allocates its permanent sequence, cohort, and locked terms. Route/service
+and Stripe/idempotency mechanics may be refined, but the event cannot be reopened and
+cancellations cannot reopen consumed positions.
+
+The executable future plans are `docs/sprint-8.8.md` for the Website Platform And
+Component CMS and `docs/sprint-8.9.md` for the Communications Core Foundation.
+Vendasta professional email is first-customer critical in Sprint 8.9 M1; Twilio's
+shared provider/webhook foundation is Sprint 8.9; Retell voice runtime remains Sprint
+8.10.
 
 Use the execution model in `docs/codex-rules.md` and `docs/deployment-plan.md`:
 local branch/test/PR work first, then review and merge, approved staging deployment,
