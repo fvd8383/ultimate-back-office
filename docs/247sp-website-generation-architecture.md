@@ -4,6 +4,12 @@
 
 Planned architecture. The current repository has 247SP onboarding, one starter template, generated page records, private previews, customer-safe website management, an internal website editor, domain workflows, and website lead capture. It does not yet have the component CMS, portable site lifecycle, bidirectional conversion workflows, or revision and approval system described here.
 
+Sprint 8.7 Milestone 6 completed the implementation-ready repository audit in
+`docs/sprint-8.7-milestone-6-website-platform-audit.md`. That audit is authoritative
+where this earlier architecture used proposed purpose/lifecycle values or left legacy
+transition, analytics, approval, pricing, and migration decisions open. It remains a
+documentation design; no generic CMS or publisher is currently implemented.
+
 ---
 
 # Purpose
@@ -278,15 +284,10 @@ EMD Network site
   -> Lead assigned by service, geography, buyer, and routing rules
 ```
 
-Proposed site-purpose values:
-
-* `business_owned`
-* `emd_lead_property`
-* `emd_demo`
-* `internal_demo`
-* `internal_marketing`
-
-These values are proposed, not implemented.
+Approved future site-purpose values are `247sp`, `emd`, and `internal_demo`. Purpose is
+separate from lifecycle, customer/business association, domain, routing, analytics,
+and conversion state. An EMD site does not require and must not fabricate a business.
+These values are approved architecture but are not implemented.
 
 ---
 
@@ -324,9 +325,11 @@ EMD or internal demo
   -> eligible site reviewed for EMD conversion
 ```
 
-Proposed lifecycle values include `draft`, `demo`, `pending_customer`, `pending_approval`, `active`, `suspended`, `cancellation_pending`, `transfer_review`, `conversion_pending`, and `archived`.
-
-These values are proposed. Subscription status and site lifecycle must not use the same field. A canceled subscription may have a grace period; a demo may exist without a subscription; an EMD property may be active without a 247SP subscription; and conversion may require approval before activation.
+Approved future lifecycle values are `draft`, `demo`, `pending_customer`,
+`pending_internal_review`, `approved`, `active`, `suspended`,
+`cancellation_pending`, `conversion_pending`, and `archived`. Domain-transfer review is
+separate and is not a general site status. Subscription, revision, build, deployment,
+domain, approval, routing, and conversion state remain separate.
 
 ## EMD Demo To 247SP
 
@@ -393,6 +396,30 @@ Business data
 
 Future publishing should support preview, validation, approval, publication, previous-version restoration, actor and agent identity, correlation IDs, build status, deployment status, and audit history.
 
+The approved future revision lifecycle is `draft`, `validation_failed`,
+`ready_for_review`, `changes_requested`, `customer_approved`, `internally_approved`,
+`published`, `superseded`, and `restored`. Regeneration creates a new revision and
+never deletes/recreates the published revision as the normal model. Revision-specific
+approval history belongs in future `site_approvals`, not in activity logs or only on a
+revision row. Initial launch and material customer-visible changes require explicit
+customer approval; a later material revision supersedes the prior customer approval
+for launch eligibility.
+
+Future publication uses a provider-neutral `SitePublisher` with versioned builds,
+staging/production deployments, explicit production approval, retries, safe errors,
+and restore. The first planned adapter targets the existing FDV DigitalOcean/Apache
+environment. Current DomainManager live/published state is not deployment proof.
+
+## Analytics And SEO Ownership
+
+Google Analytics is an optional customer-connected, customer-owned traffic/visitor
+analytics integration. It is disconnectable, is not required for UBO SEO reporting,
+and does not transfer to an EMD property by default. Future platform-owned SEO/ranking
+intelligence uses DataForSEO behind a server-side provider boundary. DataForSEO is
+planned, not implemented; its credentials must never be customer-owned, embedded in
+generated sites, or exposed to browsers. Google Analytics data and DataForSEO
+observations are distinct concepts.
+
 Audit planning includes site creation source, original/current product, purpose changes, routing changes, customer/business/domain association changes, both conversion directions, data-separation confirmation, content-removal confirmation, approval, publication, suspension, archival, and restoration.
 
 AI agents may prepare a revision or conversion draft but may not silently transfer a customer site, change lead routing, publish an EMD property, convert a demo, reassign a domain, remove customer access, or repurpose customer content. Those actions require explicit internal approval and an audit record.
@@ -401,11 +428,11 @@ Proposed conversion audit data includes original and new purpose, original and n
 
 ---
 
-# Open Architecture Questions
+# Remaining policy inputs
 
-* Which existing generated-website records evolve into the proposed `sites` model versus remain compatibility records?
-* Which trust, media, branding, and SEO concepts already have an authoritative record and which require child tables?
-* What contract and retention terms permit FDV to reuse site structure, content, media, or an FDV-owned domain after cancellation?
-* Which analytics properties are customer-owned, FDV-owned, or recreated during conversion?
-* What grace, retention, archive, deletion, and restoration periods apply to each lifecycle state?
-* Which validation gates are automated and which always require human approval?
+Milestone 6 resolved the schema direction, hybrid compatibility/backfill, approval,
+analytics ownership, EMD identity, and staged Sprint 8.8 sequence. Later policy work
+still must define exact contractual retention periods, rights evidence sufficient for
+reuse, and detailed automated-versus-human validation gates. The initial implementation
+supports suspend/archive and explicit rights review; it does not auto-delete or
+auto-convert canceled customer sites.

@@ -204,19 +204,24 @@ Approved current 247SP pricing and existing assumptions for other products:
 ```text
 247SP pricing cohorts for the same core product:
 
-Beta Users (customer positions 1-5):
+Alpha (customer positions 1-5):
 $0 setup
-$79/month
+first 6 months free
+$79/month afterward
 
-Founding Users (customer positions 6-25):
-$100 setup
+Beta (customer positions 6-10):
+$0 setup
 $97/month
 
-Standard Users (customer positions 26+):
-$250 setup
+Founding (customer positions 11-25):
+$100 one-time setup
 $147/month
 
-includes done-for-you website, domain, professional email, local business phone number, AI receptionist, business texting, AI website chat, LeadHub CRM, unified conversation inbox, basic SEO setup, and Google Analytics tracking
+Standard (customer positions 26+):
+$250 one-time setup
+$197/month
+
+includes done-for-you website, domain, professional email, local business phone number, AI receptionist, business texting, AI website chat, LeadHub CRM, unified conversation inbox, and basic SEO setup; Google Analytics is an optional customer-connected integration
 
 included monthly usage:
 200 AI minutes
@@ -228,11 +233,11 @@ included allowances do not roll over between billing months
 overages:
 AI receptionist minutes, outbound owner minutes, SMS segments, and AI chat responses above included allowances are billed according to the active pricing plan, order form, or billing policy
 
-Open 247SP commercial policy:
-grandfathering, future increases, reopened positions, qualifying event, failed/refunded/fraudulent accounts, returning customers, ownership changes, multi-business counting, taxes, cohort-specific allowances/rates, and setup-fee refunds/reactivation are unresolved
+Approved 247SP customer-position rule:
+one completed 247SP business signup consumes one permanent customer sequence position; assign the sequence, cohort, and locked commercial terms atomically as part of successful completion of that signup; failed signup transactions consume no position; retry returns the existing assignment; cancellations do not reopen positions; one owner consumes one position for each independently completed business signup; anonymous registration, launch, payment/webhook events, later billing states, and active counts do not determine cohort
 
-Recommended but not approved:
-each independently activated business subscription counts as one customer position; assign and store the cohort when the subscription becomes active; later cancellations do not change assigned cohorts
+Open later commercial policy:
+refunds, fraud, ownership changes, reactivation, setup-fee treatment on reactivation, taxes, cohort-specific allowances/rates, and unusual manual administrative exceptions remain to be defined without reopening the approved initial assignment event
 
 EMD:
 pay per lead

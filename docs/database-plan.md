@@ -642,8 +642,9 @@ Sprint 8.7 Milestone 4 application service:
 * No schema change was required for Milestone 4. See `docs/shared-business-profile-service-layer.md`.
 * Milestone 4 staging runtime validation passed on deployed commit
   `d11bd0e7d14b9d9dd432f3ce244a9b2bbebfafb7`. Repository/database reconciliation
-  passed. Milestone 5 is implemented on its review branch without changing migration 021;
-  merge, deployment, and staging validation remain pending.
+  passed. Milestone 5 later completed and staging validated without changing migration
+  021. Its final validated/deployed `main` state is
+  `ea81194e7d853782f927fdf58ed65eecd6473a7f` after follow-up fixes.
 
 ---
 
@@ -728,13 +729,27 @@ created_at
 updated_at
 ```
 
-Approved 247SP pricing cohorts are Beta Users 1-5 at $0 setup and $79/month, Founding Users 6-25 at $100 setup and $97/month, and Standard Users 26+ at $250 setup and $147/month. These are cohorts for one core product, not feature tiers.
+Approved 247SP pricing cohorts are Alpha positions 1-5 at $0 setup, six months free,
+then $79/month; Beta positions 6-10 at $0 setup and $97/month; Founding positions
+11-25 at $100 setup and $147/month; and Standard positions 26+ at $250 setup and
+$197/month. These are cohorts for one core product, not feature tiers.
 
-Future billing planning must distinguish product, pricing cohort, customer sequence or qualifying event, setup fee, monthly recurring price, included usage, overage rates, discounts, promotional periods, subscription status, original activation date, reactivation status, and Stripe price ID.
+Future billing must separate product, durable cohort configuration, atomic never-reused
+customer sequence assignment, and locked subscription commercial terms. One completed
+247SP business signup consumes one permanent position. Assignment occurs atomically as
+part of successful completion of that signup, including creation/confirmation of the
+local 247SP subscription and the sequence/cohort/term snapshot. A failed transaction
+consumes no position; an idempotent retry returns the existing assignment. Multiple
+businesses under one owner consume one position per independently completed signup, and
+cancellations do not reopen positions. Anonymous registration, launch, payment,
+webhooks, later billing states, and active counts do not determine cohort.
 
-Proposed internal cohort identifiers are `beta`, `founding`, and `standard`. They are not implemented. Cohort must not be permanently inferred from the current active-customer count; once assigned, the subscription or related billing record should preserve its cohort and pricing reference.
-
-No billing migration is authorized by this planning document. Grandfathering, future increases, reopened positions, qualifying events, failed/refunded/fraudulent account counting, returning customers, ownership changes, multi-business counting, taxes, cohort-specific allowances/overages, and setup-fee refunds/reactivation remain open policy questions.
+Approved identifiers `alpha`, `beta`, `founding`, and `standard` are not implemented.
+Subscriptions must snapshot cohort, sequence, setup/monthly fees, assignment/signup
+dates, introductory start/expiration, recurring billing start, and applicable Stripe
+price references/version. The current one-plan/one-recurring-price implementation has
+none of those records. A separate additive migration and focused implementation are
+first-customer critical; historical pricing migrations remain unchanged.
 
 ---
 
@@ -2060,57 +2075,31 @@ Transfer fee:
 
 Existing 247SP website storage uses `247sp_templates`, `247sp_template_assignments`, `247sp_generated_websites`, `247sp_generated_pages`, branding/image/content override tables, and `website_integrations`. These records support the current single-template generation, private preview, and editing foundations.
 
-The shared component CMS and portable 247SP/EMD site lifecycle are planned and not implemented. Proposed conceptual entities, subject to repository and schema review, are:
+The shared component CMS and portable 247SP/EMD site lifecycle are planned and not
+implemented. Sprint 8.7 Milestone 6 completed the implementation-ready schema design in
+`docs/sprint-8.7-milestone-6-website-platform-audit.md`. That document supersedes the
+earlier conceptual field list in this plan.
 
-```text
-sites
-site_pages
-site_page_sections
-site_themes
-site_revisions
-site_generation_briefs
-site_build_jobs
-site_deployments
-component_definitions
-component_variants
-site_assets
-site_conversion_events or equivalent audit records
-```
+The future model uses durable `sites` identity with purpose values `247sp`, `emd`, and
+`internal_demo`; separate business, domain, routing, and analytics associations; stable
+logical pages; immutable revision pages/sections/themes; repository-owned component
+implementations with database metadata; revision-specific approvals; assets and rights;
+durable build/deployment/restore history; conversion events; compatibility mappings;
+and generic site audit events. Site purpose, lifecycle, revision, build, deployment,
+domain, subscription, approval, routing, and conversion state remain separate.
 
-Proposed `sites` fields may include:
+The transition is additive: create generic tables, backfill one site and baseline
+imported revision for each eligible legacy website, preserve legacy rows for temporary
+compatibility, transition consumers in stages, then retire legacy writes only after
+validation. The provisional website migration is `022_website_platform_foundation.sql`;
+Milestone 7 must confirm its exact name and split. Historical migrations are never
+edited.
 
-Suggested fields:
-
-```text
-id
-business_id nullable
-emd_property_id nullable
-domain_assignment_id nullable
-website_name
-lifecycle_status
-site_purpose
-routing_mode
-current_draft_revision_id nullable
-published_revision_id nullable
-status
-published_at nullable
-created_at
-updated_at
-```
-
-Rules:
-
-* The current 247SP product gives one business one primary customer site; the shared platform may also manage EMD and internal/demo properties without treating them as additional customer sites.
-* A site may have at most one active primary domain association at a time, subject to detailed schema review.
-* Multiple pages are allowed.
-* Website records are one lead-source component inside the broader 247SP front-office product.
-* Proposed site-purpose values are `business_owned`, `emd_lead_property`, `emd_demo`, `internal_demo`, and `internal_marketing`.
-* Site purpose, lifecycle, ownership/control, customer relationship, business association, domain ownership, routing mode, CRM data, analytics ownership, and provider accounts are separate concepts.
-* Component implementation remains repository-owned; database records select components and variants and must not store arbitrary executable code.
-* 247SP sites route leads directly to the customer business; EMD properties route leads through the EMD routing engine.
-* Demo-to-247SP and canceled-247SP-to-EMD conversion are planned, eligibility-gated, approval-controlled, validated, and audited.
-* Customer CRM records, leads, conversations, and private communications must not transfer into an EMD property.
-* Customer-owned domains must not be retained or reassigned without contractual authority and customer authorization.
+Component implementation remains repository-owned; database records never contain
+executable PHP or JavaScript. 247SP and EMD share the public ingestion contract, while
+server-side routing resolves respectively to the customer business or EMD target.
+Customer CRM/private data and customer-owned domains/assets/analytics do not transfer
+without explicit rights and data-separation approval.
 
 Current 247SP onboarding also stores service-area settings on `247sp_website_configurations`:
 
@@ -2126,7 +2115,9 @@ Repository-owned website behavior includes component templates, shared CSS/JavaS
 
 Database-owned configuration includes site identity/purpose, page definitions, component/variant selection, section order, content references, theme, draft/published revisions, build/deployment status, associations, routing mode, and conversion history.
 
-See `docs/247sp-website-generation-architecture.md` for the planned lifecycle and ownership model.
+See `docs/247sp-website-generation-architecture.md` for the product architecture and
+`docs/sprint-8.7-milestone-6-website-platform-audit.md` for the authoritative Sprint 8.8
+schema, service, migration, security, and validation blueprint.
 
 ---
 

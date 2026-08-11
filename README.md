@@ -238,8 +238,17 @@ Milestone 4 staging runtime validation closed as PASS on deployed commit
 `d11bd0e7d14b9d9dd432f3ce244a9b2bbebfafb7`. The final report is
 `/home/codex-validation/ubo-sbp-validation/MILESTONE-4-REGRESSION-RERUN-3.md`,
 SHA-256 `8ea329ecc1f1515eaafe28cf5284d6e6f6a97bc61ec010b106e4a67620f849b4`.
-Milestone 5 is implemented on branch `codex/sprint-8-7-milestone-5` and ready for
-review. It is not merged, deployed, or staging validated.
+Sprint 8.7 Milestone 5 is COMPLETE / PASS. The validated and deployed commit is
+`ea81194e7d853782f927fdf58ed65eecd6473a7f`, the final deployed `main` state after
+the Milestone 5 implementation, follow-up fixes, and successful validation. The final
+successful validation artifact SHA-256 is
+`687a1444664f9d7167dfb316510f09094e922c2b83166874849db44fb10382a6`.
+
+Sprint 8.7 Milestone 6 is the documentation-only website-platform audit in
+`docs/sprint-8.7-milestone-6-website-platform-audit.md`. It defines the future generic
+247SP/EMD site, revision, component, approval, routing, publishing, analytics, and
+cohort-pricing architecture. It does not implement the CMS, publisher, billing changes,
+DataForSEO, or a migration.
 
 ## Testing OTP Login In Staging
 
@@ -491,21 +500,40 @@ The Admin Website Editor is organized around the permanent website settings sect
 
 SEO settings cover titles, meta descriptions, sitemap, robots, and canonical URL foundations. Current basic SEO setup covers launch-ready content and metadata foundations; sitemap, robots, canonical management, ranking reports, and analytics dashboards are outside this implementation.
 
-Integrations settings cover Google Analytics, Google Search Console, Google Tag Manager, Microsoft Clarity, Meta Pixel, and Google Business Profile. Google Analytics is the only integration rendered into 247SP website output today. The other values are stored for admin reference and are not injected into generated sites.
+Integrations settings cover Google Analytics, Google Search Console, Google Tag Manager,
+Microsoft Clarity, Meta Pixel, and Google Business Profile. Google Analytics is the only
+integration rendered by the authenticated 247SP preview today. The other values are
+stored for admin reference, and no public publishing adapter is currently implemented.
 
 Website integration values are stored in `website_integrations` so the same foundation can support future website-enabled products without product-specific table names.
 
 Approved 24/7 Sales Partner pricing cohorts:
 
-| Customer cohort | Customer numbers | Setup fee | Monthly price |
-| --- | ---: | ---: | ---: |
-| Beta Users | 1-5 | $0 | $79/month |
-| Founding Users | 6-25 | $100 | $97/month |
-| Standard Users | 26+ | $250 | $147/month |
+| Pricing cohort | Customer positions | Setup fee | Introductory period | Recurring price |
+| --- | ---: | ---: | --- | ---: |
+| Alpha | 1-5 | $0 | First 6 months free | $79/month afterward |
+| Beta | 6-10 | $0 | None | $97/month |
+| Founding | 11-25 | $100 one-time | None | $147/month |
+| Standard | 26+ | $250 one-time | None | $197/month |
 
-These cohorts price the same core product and are not feature tiers. Commercial policy for grandfathering, qualifying customer position, reopened positions, taxes, reactivation, refunds, and cohort-specific overage rates remains open. The recommended, not yet approved, default is to assign and store the cohort when each independently activated business subscription becomes active.
+These cohorts price the same core product and are not feature tiers. One completed 247SP
+business signup consumes one permanent sequence position. Cohort assignment occurs
+atomically as part of successful completion of that business signup; a failed transaction
+consumes no position, and an idempotent retry returns the existing assignment.
+Cancellations do not reopen positions. Anonymous account creation, website launch,
+payment/webhook events, later billing-state changes, and active-customer counts do not
+determine cohort. The current runtime does not yet implement the required sequence,
+locked terms, dates, Stripe references, or Alpha free period; that work is
+first-customer critical.
 
-The monthly package includes the done-for-you website, domain, professional email, local business phone number, AI receptionist, business texting, AI website chat, LeadHub CRM, unified conversation inbox, basic SEO setup, and Google Analytics tracking. Basic SEO setup means customer-friendly site structure, service-page copy support, page titles, and launch-ready metadata foundations; it does not include Search Console API integration, SEO reporting dashboards, ranking trackers, or ongoing SEO service workflows.
+The monthly package includes the done-for-you website, domain, professional email,
+local business phone number, AI receptionist, business texting, AI website chat,
+LeadHub CRM, unified conversation inbox, and basic SEO setup. Google Analytics is an
+optional customer-connected integration, not an automatically provided FDV property.
+Basic SEO setup means customer-friendly site structure, service-page copy support,
+page titles, and launch-ready metadata foundations. Future internal SEO/ranking
+intelligence will use a platform-owned DataForSEO integration; it is planned and is not
+currently implemented.
 
 Included monthly usage allowances:
 
@@ -516,7 +544,11 @@ Included monthly usage allowances:
 
 Usage above the included allowances is billed as overage usage. Overage categories are AI receptionist minutes, outbound owner calling minutes, SMS segments, and AI website chat responses above the included monthly allowances. Overage rates must be published in the active pricing plan, order form, or billing policy before launch.
 
-Google Analytics tracking is stored per business website through the admin website editor. When a valid Measurement ID such as `G-XXXXXXXXXX` exists, the 247SP preview and generated/published site rendering include the GA script in the page head. When no Measurement ID exists, the script is omitted. This foundation covers pageview tracking; Search Console API access, Tag Manager rendering, Meta Pixel rendering, Clarity rendering, ranking reports, analytics dashboards, and custom conversion events are outside this scope.
+The current legacy editor can store a Google Analytics measurement ID per business,
+and the authenticated preview renders the GA script when that value is valid. When no
+ID exists, the script is omitted. The approved future model is optional,
+customer-authorized and customer-owned Google Analytics with disconnect/reassignment
+handling. It is separate from planned DataForSEO SEO/ranking observations.
 
 247SP CTA controls support customer-facing primary labels such as Call Now, Request Service, Book Appointment, Instant Quote, Get Estimate, Request Inspection, Apply Now, and Reserve Spot. Secondary labels support Free Estimate, Contact Us, View Pricing, and Learn More.
 

@@ -291,8 +291,8 @@ No database migration, UI route, public API, MCP tool, component CMS, website-ge
 
 ## Milestone 5 Consumers
 
-Branch `codex/sprint-8-7-milestone-5` adds the first UI consumers without changing
-this service contract:
+Sprint 8.7 Milestone 5 added and staging validated the first UI consumers without
+changing this service contract:
 
 * `public/app/247sp/business-profile.php` provides customer section reads/writes and customer submission for review.
 * `public/app/247sp/dashboard.php` uses live service readiness for its Business Profile checklist item.
