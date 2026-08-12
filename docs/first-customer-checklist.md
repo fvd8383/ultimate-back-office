@@ -56,7 +56,7 @@ New module development is paused until 247SP is launch-ready. EMD, SSP, TUHWD, a
 * [x] Sprint 8.7 Milestone 4 Shared Business Profile Service Layer and staging validation
 * [x] Sprint 8.7 Milestone 5 Shared Business Profile Interface and staging validation (PASS)
 * [x] Sprint 8.7 Milestone 6 Website Platform Architecture and Migration Audit (merged at `fa9228eefbbba94523781599e74ca04e0dbadb22`)
-* [ ] Sprint 8.7 Milestone 7 closeout (complete when its documentation PR merges)
+* [x] Sprint 8.7 Milestone 7 closeout
 * [ ] First-customer Admin QA
 * [ ] First-customer Customer QA
 
@@ -65,10 +65,11 @@ New module development is paused until 247SP is launch-ready. EMD, SSP, TUHWD, a
 # Billing & Payments
 
 * [ ] Stripe Payment Integration
-* [ ] FIRST-CUSTOMER CRITICAL: Planned migration `022_247sp_pricing_cohorts.sql`
-* [ ] FIRST-CUSTOMER CRITICAL: Atomic customer-sequence/cohort assignment on completed 247SP business signup
-* [ ] FIRST-CUSTOMER CRITICAL: Alpha/Beta/Founding/Standard cohort configuration
-* [ ] FIRST-CUSTOMER CRITICAL: Locked subscription setup/monthly/Stripe terms
+* [x] Pricing P1 foundation: migration `022_247sp_pricing_cohorts.sql` authored and locally validated; staging application remains pending
+* [x] Pricing P1 foundation: atomic never-reused customer sequence/cohort service with idempotency and rollback
+* [x] Pricing P1 foundation: Alpha/Beta/Founding/Standard durable cohort configuration
+* [x] Pricing P1 foundation: locked subscription setup/monthly/nullable Stripe-reference snapshot
+* [ ] FIRST-CUSTOMER CRITICAL: Integrate Pricing P1 at completed 247SP business signup
 * [ ] FIRST-CUSTOMER CRITICAL: Alpha six-month free period and automatic $79/month transition
 * [ ] FIRST-CUSTOMER CRITICAL: Cohort-aware Stripe recurring/setup prices
 * [ ] Setup Fee Collection
@@ -244,23 +245,26 @@ Future module work remains paused until the first paying 247SP customer path is 
 
 Progress should be measured against the complete digital-front-office workflow, not website-preview completion alone. A current percentage is not asserted while the Shared Business Profile, component CMS, communications core, and launch policies are being sequenced.
 
-Sprint 8.7 Milestones 1 through 6 are complete. Milestone 6 was merged at
-`fa9228eefbbba94523781599e74ca04e0dbadb22`. Milestone 7 closes Sprint 8.7 when its
-documentation-only closeout PR merges. Milestone 5 closed as COMPLETE / PASS
+Sprint 8.7 is complete. Milestone 6 was merged at
+`fa9228eefbbba94523781599e74ca04e0dbadb22`, and the Milestone 7 documentation-only
+closeout is merged. Milestone 5 closed as COMPLETE / PASS
 on final validated/deployed `main` state
 `ea81194e7d853782f927fdf58ed65eecd6473a7f` after its fixes; the final successful
 validation SHA-256 is
 `687a1444664f9d7167dfb316510f09094e922c2b83166874849db44fb10382a6`.
 The platform has persistent navigation, legacy website generation/editing, LeadHub
 website capture, billing/domain/email foundations, and the Shared Business Profile.
-The generic CMS, publisher/restore lifecycle, registered-site ingestion, cohort-aware
-billing, DataForSEO, unified inbox, communications services, AI receptionist, texting,
-chat, usage metering, and conversion workflows remain planned.
+Pricing P1 now provides the local schema/service/test foundation for durable cohorts,
+never-reused sequence allocation, locked terms, and Alpha dates. The migration is not
+yet applied to staging, and completed-signup/Stripe/UI integration remains Pricing P2.
+The generic CMS, publisher/restore lifecycle, registered-site ingestion, complete
+cohort-aware billing, DataForSEO, unified inbox, communications services, AI
+receptionist, texting, chat, usage metering, and conversion workflows remain planned.
 
 Major Remaining Milestones:
 
-1. Merge the Milestone 7 closeout PR
-2. Implement and validate first-customer-critical pricing P1/P2, planned migration 022, Alpha billing, sequence assignment, locked terms, and cohort-aware Stripe
+1. Review and merge Pricing P1, then apply/validate migration 022 only through the approved staging workflow
+2. Implement and validate Pricing P2: completed-signup integration, Alpha billing, setup charges, cohort-aware Stripe, reconciliation, and pricing presentation
 3. Sprint 8.8 staged website platform/component/revision/publishing/routing implementation beginning with planned migration 023 and full validation
 4. Sprint 8.9 communications core, Vendasta professional email, Twilio foundation, and LeadHub timeline
 5. Sprint 8.10 telephony and AI receptionist

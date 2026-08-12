@@ -30,7 +30,7 @@ remain planned.
 | Single-template website generation and private preview | Complete |
 | Website branding, content management, and admin editing foundation | Complete |
 | LeadHub contacts, notes, tasks, activity, and website form capture foundation | Complete; staging revalidation remains part of launch QA |
-| Stripe billing foundation and integration | Legacy foundation implemented; cohort pricing, Alpha free period, locked terms, and launch validation are first-customer critical |
+| Stripe billing foundation and integration | Legacy integration plus local Pricing P1 cohort/sequence/locked-term foundation; P2 Stripe behavior and launch validation remain first-customer critical |
 | Domain workflow and provider abstraction | Implemented; end-to-end staging launch validation pending |
 | Email request/assignment foundation | Complete; Vendasta professional-email provisioning is planned and first-customer critical |
 | Shared Business Profile schema | Complete and staging validated |
@@ -192,16 +192,20 @@ Complete the site model, structured page/component definitions, revisions, appro
 
 ## Billing And Commercial Policy
 
-Status: Legacy billing foundation exists; approved cohort implementation is first-customer critical
+Status: Pricing P1 foundation implemented locally; Pricing P2 and staging validation remain first-customer critical
 
-Implement atomic never-reused customer sequence/cohort assignment as part of successful
-completion of each 247SP business signup, durable cohort configuration, locked
-subscription terms, Alpha's stored six-month introductory dates and automatic
-`$79/month` transition, cohort-aware Stripe prices/setup charges, and customer/admin
-visibility. Failed signup transactions consume no position; idempotent retry returns the
-existing assignment; cancellations do not reopen positions. Anonymous registration,
-launch, payment/webhook events, later billing states, and active counts do not determine
-cohort.
+Pricing P1 implements durable cohort configuration, the lockable product counter,
+immutable allocation evidence, locked subscription terms, Alpha's stored
+calendar-month-clamped dates, authorized/idempotent transaction behavior, and bounded
+success activity. It is not integrated into the completed-signup route and migration
+022 has not been applied to staging.
+
+Pricing P2 must integrate the service at successful signup, implement Alpha's automatic
+`$79/month` Stripe transition and payment-method collection, select cohort-aware Stripe
+prices, execute setup charges, reconcile webhooks, and add customer/admin visibility.
+Failed signup transactions consume no position; idempotent retry returns the existing
+assignment; cancellations do not reopen positions. Anonymous registration, launch,
+payment/webhook events, later billing states, and active counts do not determine cohort.
 
 ## Domain And Professional Email
 
@@ -259,9 +263,10 @@ Before any site conversion or cancellation workflow can be launch-ready:
 
 ## First-Customer Pricing Gate
 
-Immediately after Sprint 8.7 closes, implement pricing P1/P2 and the dedicated staging
-gate in `docs/247sp-pricing-cohort-implementation-plan.md`. Planned migration
-`022_247sp_pricing_cohorts.sql` precedes Sprint 8.8 and must pass before its M1.
+Pricing P1 is implemented locally for review. Pricing P2 and the dedicated staging gate
+in `docs/247sp-pricing-cohort-implementation-plan.md` remain next. Migration
+`022_247sp_pricing_cohorts.sql` precedes Sprint 8.8 and must be applied and validated
+through the approved workflow before Sprint 8.8 M1.
 
 ## Sprint 8.8 - Website Platform And Component CMS
 
@@ -298,8 +303,7 @@ Full customer use of EMD, SSP, TUHWD, KYN, Full OS, and Enterprise remains defer
 
 The platform has solid website, LeadHub, billing, domain, email-workflow, and Shared Business Profile foundations, but the approved 247SP product is broader than the implemented runtime. Readiness must be measured by the complete digital-front-office workflow, not by website-preview completion alone.
 
-The current task is the documentation-only Milestone 7 closeout. After it merges, the
-next executable gate is the first-customer-critical pricing implementation and staging
-PASS, followed by Sprint 8.8. None of the CMS, publisher, DataForSEO, Vendasta,
-communications, Twilio/Retell, or cohort-aware billing runtime is complete merely
-because its plan exists.
+Pricing P1 is the implemented local foundation under review. Pricing P2 and a dedicated
+staging PASS remain required before Sprint 8.8. None of the CMS, publisher, DataForSEO,
+Vendasta, communications, Twilio/Retell, or customer-facing cohort-aware billing
+runtime is complete merely because its plan or P1 foundation exists.
