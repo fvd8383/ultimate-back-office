@@ -2,9 +2,11 @@
 
 ## Status And Gate
 
-This document is an executable plan for the **planned** 247SP first-customer pricing
-implementation. It does not claim that cohort-aware billing exists and it does not
-authorize provider or database changes by itself.
+Pricing P1 is implemented in migration `022_247sp_pricing_cohorts.sql`,
+`PricingCohortManager`, and the focused standalone tests. The migration has not been
+applied to staging or production. Pricing P2 and the dedicated staging gate remain
+planned and blocking, so this document does not claim that cohort-aware billing is
+available to customers.
 
 The implementation is the first gate after Sprint 8.7 closes and before Sprint 8.8 M1:
 
@@ -17,7 +19,7 @@ Sprint 8.7 closeout merged
 ```
 
 No production 247SP business signup may be accepted until this gate passes. The
-planned additive migration is `022_247sp_pricing_cohorts.sql`. Historical migrations,
+P1 additive migration is `022_247sp_pricing_cohorts.sql`. Historical migrations,
 including their legacy prices, remain immutable.
 
 ## Fixed Product And Assignment Contract
@@ -52,10 +54,19 @@ out of production.
 
 P1 adds migration `022_247sp_pricing_cohorts.sql`, seed/configuration records for the
 four approved cohorts, the authorized `PricingCohortManager` service, and standalone
-schema/service tests. It does not call Stripe, alter Checkout, or present the new
-terms in customer/admin routes.
+schema/service tests. It reuses the one `plans` row identified by `product_key =
+'247sp'` as stable product identity. It does not call Stripe, alter Checkout, integrate
+the completed-signup route, or present the new terms in customer/admin routes.
 
-### Planned additive schema
+Implemented P1 tables are `pricing_cohorts`,
+`product_customer_sequence_counters`,
+`product_customer_sequence_allocations`, and `subscription_commercial_terms`.
+Allocation and activity writes occur inside the same transaction as the guarded
+counter advance. Alpha expiration uses a UTC calendar-month calculation that clamps
+invalid target-month days; non-Alpha snapshots leave introductory dates null and set
+recurring billing start to the completed-signup timestamp.
+
+### Implemented additive schema
 
 Use existing product/plan identity where it can represent one stable 247SP product
 without confusing product entitlement with price. If a durable product record is
@@ -65,7 +76,7 @@ missing, add the smallest product identity needed by the following tables.
 
 Responsibility: versioned commercial configuration for a sequence range.
 
-Planned fields:
+Implemented fields:
 
 - `id BIGINT UNSIGNED` primary key;
 - `product_id` or stable `product_key`, required and foreign-keyed where applicable;
@@ -100,7 +111,7 @@ No secret is stored in these rows.
 
 Responsibility: lockable, product-scoped source of the next never-reused position.
 
-Planned fields are product identity as the primary/unique key,
+Implemented fields are product identity as the primary key,
 `next_sequence_number BIGINT UNSIGNED NOT NULL`, optional `lock_version`, and
 timestamps. Allocation uses a transaction and `SELECT ... FOR UPDATE` (or the
 repository-supported equivalent). The counter only advances in the transaction that
@@ -111,7 +122,7 @@ stores the allocation and snapshot.
 Responsibility: immutable evidence that one completed business signup consumed one
 product sequence.
 
-Planned fields include `id`, product, business, subscription, assigned cohort,
+Implemented fields include `id`, product, business, subscription, assigned cohort,
 `customer_sequence_number`, a stable completed-signup idempotency key,
 `assigned_at`, actor/system and correlation identifiers, and timestamps.
 
@@ -124,7 +135,7 @@ not row reuse or renumbering.
 
 Responsibility: immutable one-to-one commercial snapshot used for billing and display.
 
-Planned fields include:
+Implemented fields include:
 
 - `subscription_id` unique and foreign-keyed;
 - allocation/cohort and `customer_sequence_number`;
@@ -140,7 +151,7 @@ The snapshot is never recomputed from current cohort configuration. Customer/adm
 views and Stripe orchestration consume it. One-time setup fees remain separate from
 recurring revenue.
 
-### Planned service transaction
+### Implemented service transaction
 
 `PricingCohortManager` owns authorization, tenant checks, range selection, allocation,
 date calculation, and the transaction:
@@ -158,8 +169,8 @@ begin transaction
   -> calculate and store Alpha dates once
   -> store immutable allocation and commercial snapshot
   -> advance the counter
+  -> store bounded success activity/audit
   -> commit
-  -> emit bounded success activity/audit
 ```
 
 Failure rolls back the subscription mutation, allocation, snapshot, and counter
@@ -201,8 +212,10 @@ Standalone tests must cover:
 - customer/tenant/admin authorization and cross-business rejection;
 - no direct pricing SQL in route controllers.
 
-P1 exits only after migration checks, schema reconciliation, tests, and rollback/repair
-review pass locally and in the approved staging workflow.
+P1 local implementation exits after migration checks, standalone tests, repository
+lint, and rollback review pass. Genuine parallel-session allocation behavior and the
+applied migration remain mandatory dedicated staging validations after review and
+merge; P1 does not authorize staging access by itself.
 
 ## Pricing P2 — Billing, Stripe, Customer, And Admin Integration
 
@@ -299,5 +312,6 @@ event or consumed Alpha/Beta/Founding positions.
 The pricing gate is complete only when both implementation PRs are merged, migration
 022 is applied and reconciled on staging under explicit approval, all required tests
 and browser/provider checks pass, cleanup/reconciliation passes, documentation reflects
-implemented behavior, and the validation report/checksum are retained. Until then this
-entire plan remains **planned / first-customer critical**.
+implemented behavior, and the validation report/checksum are retained. Until then the
+overall pricing gate remains **incomplete / first-customer critical** despite the
+implemented P1 foundation.

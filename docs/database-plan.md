@@ -744,14 +744,29 @@ businesses under one owner consume one position per independently completed sign
 cancellations do not reopen positions. Anonymous registration, launch, payment,
 webhooks, later billing states, and active counts do not determine cohort.
 
-Approved identifiers `alpha`, `beta`, `founding`, and `standard` are not implemented.
-Subscriptions must snapshot cohort, sequence, setup/monthly fees, assignment/signup
-dates, introductory start/expiration, recurring billing start, and applicable Stripe
-price references/version. The current one-plan/one-recurring-price implementation has
-none of those records. A separate additive migration, planned as
-`022_247sp_pricing_cohorts.sql`, and focused implementation are first-customer critical
-immediately after Sprint 8.7 closeout; historical pricing migrations remain unchanged.
-See `docs/247sp-pricing-cohort-implementation-plan.md`.
+Pricing P1 implements approved identifiers `alpha`, `beta`, `founding`, and `standard`
+in additive migration `022_247sp_pricing_cohorts.sql`. The existing `plans.id` for
+`product_key = '247sp'` is the stable product identity; no parallel product or four
+feature-plan records are introduced. `pricing_cohorts` stores versioned configuration,
+`product_customer_sequence_counters` is the lockable next-position source,
+`product_customer_sequence_allocations` preserves consumed signup evidence, and
+`subscription_commercial_terms` stores the one-to-one locked snapshot.
+
+`PricingCohortManager` is the P1 mutation boundary. It authorizes the business,
+subscription, product, user/system actor, and module relationship; locks the local
+subscription and product counter; validates effective range configuration; writes the
+allocation, snapshot, guarded counter advance, and bounded activity atomically; and
+returns stored terms on retry. Alpha stores its UTC start, calendar-month-clamped
+six-month expiration, and identical recurring start. Non-Alpha introductory dates are
+null and recurring billing starts at signup completion. Stripe references are nullable
+configuration/snapshot fields in P1.
+
+P1 does not change the legacy `plans` prices consumed by existing billing screens or
+Stripe code. Completed-signup route integration, cohort-aware Checkout, Alpha payment
+method/free-period behavior, setup-charge execution, webhook/reconciliation changes,
+and pricing UI are Pricing P2. Applied migration and genuine parallel-session locking
+remain part of the dedicated staging gate. Historical pricing migrations remain
+unchanged. See `docs/247sp-pricing-cohort-implementation-plan.md`.
 
 ---
 
@@ -2094,7 +2109,7 @@ The transition is additive: create generic tables, backfill one site and baselin
 imported revision for each eligible legacy website, preserve legacy rows for temporary
 compatibility, transition consumers in stages, then retire legacy writes only after
 validation. Milestone 7 locked `023_website_platform_foundation.sql` as the planned
-dependency-safe Sprint 8.8 M1 core because planned migration 022 belongs to pricing.
+dependency-safe Sprint 8.8 M1 core because migration 022 implements Pricing P1.
 Build/deployment and domain/routing/conversion structures may use later focused
 additive migrations in implementation order. Historical migrations are never edited.
 
