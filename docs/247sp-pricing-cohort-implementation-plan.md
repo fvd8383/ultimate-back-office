@@ -2,11 +2,13 @@
 
 ## Status And Gate
 
-Pricing P1 is implemented in migration `022_247sp_pricing_cohorts.sql`,
-`PricingCohortManager`, and the focused standalone tests. The migration has not been
-applied to staging or production. Pricing P2 and the dedicated staging gate remain
-planned and blocking, so this document does not claim that cohort-aware billing is
-available to customers.
+Pricing P1 is complete and staging validated PASS at
+`e71f7bed62e54cc5851e2bb365c136e6b5f6321d`; validation evidence SHA-256 is
+`6d20e5fc601a18a494dbf2eac15d4f903ceac24e5860d99429737518f335d67c`.
+Pricing P2 is implemented locally for review, with no new migration, but has not been
+merged, deployed, or staging validated. The dedicated Stripe test-mode staging gate
+remains blocking, so this document does not claim that cohort-aware billing is
+available to customers or production-ready.
 
 The implementation is the first gate after Sprint 8.7 closes and before Sprint 8.8 M1:
 
@@ -219,19 +221,23 @@ merge; P1 does not authorize staging access by itself.
 
 ## Pricing P2 — Billing, Stripe, Customer, And Admin Integration
 
-### Scope and services
+### Implemented local scope and services
 
 P2 integrates the P1 contract through `BillingFoundation`, `StripeBilling`, and the
 service that owns successful completion of the 247SP business signup. It updates
 Checkout/subscription orchestration, webhook/reconciliation behavior, customer billing
 views, and admin billing views without hard-coded prices in routes or templates.
 
-The responsible signup route/service and Stripe workflow are implementation details;
-they must call the P1 transaction exactly once at the completed-business-signup
-boundary. Stripe latency or webhook delivery must not become the cohort-selection
-event.
+`BusinessFoundation::completeOnboarding()` owns the encompassing local transaction.
+It locks and validates the authenticated business, active membership, active 247SP
+module, and single local subscription; calls `PricingCohortManager` with the trusted
+`247sp_completed_signup` system actor and a server-derived business/subscription
+idempotency identity; marks onboarding complete; writes bounded activities; and then
+commits. `PricingCohortManager` participates without committing or rolling back a
+caller-owned transaction while preserving its transaction-owning P1 public behavior.
+Stripe orchestration begins only after that local commit.
 
-### Planned Stripe behavior
+### Implemented Stripe behavior
 
 - Select recurring/setup test Price references from the locked snapshot, not one
   global `STRIPE_247SP_PRICE_ID`.
@@ -247,12 +253,40 @@ event.
   subscription, and never reselect a cohort from provider data.
 - Reconcile safe provider failures without losing the local assignment.
 
-The P2 design must specify how successful signup can commit without an unrecoverable
-split-brain provider operation. External Stripe calls do not run inside a long database
-transaction. Use durable local intent/state and idempotent provider commands where a
-provider step follows local assignment.
+Checkout is POST-only with the reusable CSRF helper. Alpha passes the exact stored UTC
+`trial_end`, sets `payment_method_collection=always`, and uses no setup line. Beta uses
+one recurring line and no trial/setup line. Founding and Standard each use exactly one
+recurring and one one-time setup Price; Stripe places the one-time line on the initial
+invoice only. No amount or legacy global Price ID is selected in a route/template.
 
-### Planned presentation
+Provider customer and Checkout creates use deterministic server-side Stripe
+idempotency keys derived from subscription/allocation/configuration/operation context.
+Persisted customers are reused. Persisted open Checkout Sessions are retrieved and
+reused; a missing local write is recovered by replaying the same provider operation,
+and an expired stored session uses a deterministic replacement identity. Webhook rows
+are atomically claimed: processed events return harmlessly, processing events cannot
+run concurrently, and failed events can be reclaimed. Invoice writes use their unique
+Stripe invoice identity. Checkout/invoice/subscription handlers preserve Alpha payment
+method state, avoid zero-dollar trial invoices becoming recurring-active, and guard
+against stale or late status regression. Locked pricing is never selected from provider
+metadata.
+
+### Provider Price configuration
+
+`STRIPE_MODE` is explicit and must be `test` outside production and `live` in
+production. Separate `STRIPE_TEST_247SP_*` and `STRIPE_LIVE_247SP_*` keys provide six
+logical Price references: Alpha recurring, Beta recurring, Founding recurring/setup,
+and Standard recurring/setup. Alpha and Beta do not require setup Price IDs.
+`scripts/configure-247sp-stripe-prices.php` is CLI-only, reads the catalog for the
+configured mode, populates only NULL current cohort references, is idempotent when
+values match, and refuses replacements or consumed-version mutations. It never changes
+locked snapshots, cohort amounts, ranges, or versions and never calls Stripe.
+
+After merge, an authorized staging operator must configure TEST catalog values in the
+uncommitted staging environment file, run the CLI utility once, and verify the resulting
+TEST Price objects during the dedicated gate. No IDs are configured by this local work.
+
+### Implemented presentation
 
 Admin billing displays customer sequence, cohort, locked setup fee, locked monthly
 amount, intro state/expiration, recurring billing start, local/Stripe subscription
@@ -261,11 +295,13 @@ locked terms and status. Customers cannot edit cohorts, sequence, or snapshots.
 
 ### P2 tests and exit criteria
 
-Tests cover completed-signup orchestration, all four commercial contracts, Stripe
+Local tests cover completed-signup orchestration, all four commercial contracts, Stripe
 reference selection, Alpha payment-method retention and expiration transition,
 one-time setup idempotency, webhook replay/order/failure, reconciliation, customer and
 admin authorization, safe missing configuration, and the absence of hard-coded UI
-prices. P2 does not exit until test-mode behavior is ready for the dedicated gate.
+prices. Local implementation does not satisfy the gate: actual MySQL concurrency,
+Stripe TEST Checkout/payment methods/invoices/trial transition, signed delivery and
+reordering, browser UI, and log review remain staging-only.
 
 ## Dedicated Pricing Staging Validation Gate
 

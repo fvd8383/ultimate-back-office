@@ -2,6 +2,8 @@
 
 require_once __DIR__ . '/../../private/classes/Auth.php';
 require_once __DIR__ . '/../../private/classes/BusinessFoundation.php';
+require_once __DIR__ . '/../../private/classes/Csrf.php';
+require_once __DIR__ . '/../../private/classes/StripeBilling.php';
 
 Session::requireAuth('login.php');
 
@@ -44,6 +46,7 @@ $hasEnterpriseAccess = false;
 $fullOsIncludedModules = [];
 $accountPlan = 'standard';
 $packageType = 'modular';
+$csrfScope = 'business-onboarding';
 
 try {
     $hasEnterpriseAccess = false;
@@ -92,28 +95,15 @@ foreach ($legalStructures as $structure) {
     $legalStructureNames[(int) $structure['id']] = (string) $structure['name'];
 }
 
-function business_onboarding_debug_enabled(): bool
+function report_business_onboarding_exception(Throwable $exception): void
 {
-    try {
-        return (bool) Database::config('APP_DEBUG', false);
-    } catch (Throwable $exception) {
-        return false;
-    }
-}
-
-function report_business_onboarding_exception(Throwable $exception, array &$errors): void
-{
-    if (!business_onboarding_debug_enabled()) {
-        return;
-    }
-
-    error_log('Business onboarding exception: ' . (string) $exception);
-
-    $errors[] = 'Debug exception: ' . $exception->getMessage();
+    error_log('[BusinessOnboarding] request failed: ' . get_class($exception));
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && count($errors) === 0) {
     try {
+        Csrf::requireValid($_POST['csrf_token'] ?? null, $csrfScope);
+
         if ($step === 'business_info') {
             $required = [
                 'legal_name' => 'Legal Business Name',
@@ -215,14 +205,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && count($errors) === 0) {
             }
 
             if (count($errors) === 0) {
-                BusinessFoundation::completeOnboarding($businessId, (int) $user['id']);
-                header('Location: dashboard.php');
+                $completion = BusinessFoundation::completeOnboarding($businessId, (int) $user['id']);
+
+                if (($completion['product_key'] ?? null) === '247sp') {
+                    $completedBusiness = BusinessFoundation::businessForUser($businessId, (int) $user['id']);
+                    $completedSubscription = BillingFoundation::subscriptionForBusiness($businessId, '247sp');
+                    if ($completedBusiness === null || $completedSubscription === null) {
+                        throw new RuntimeException('Completed signup billing context could not be loaded.');
+                    }
+
+                    try {
+                        $session = StripeBilling::createCheckoutSession($user, $completedBusiness, $completedSubscription);
+                        if (!empty($session['ubo_already_complete'])) {
+                            header('Location: billing.php?checkout=success&business_id=' . urlencode((string) $businessId), true, 303);
+                            exit;
+                        }
+                        header('Location: ' . StripeBilling::checkoutSessionRedirectUrl($session), true, 303);
+                        exit;
+                    } catch (Throwable $providerException) {
+                        error_log('[BusinessOnboarding] post-commit payment setup failed: ' . get_class($providerException));
+                        header('Location: checkout.php?payment=unavailable&business_id=' . urlencode((string) $businessId), true, 303);
+                        exit;
+                    }
+                }
+
+                header('Location: dashboard.php', true, 303);
                 exit;
             }
         }
+    } catch (CsrfException $exception) {
+        $errors[] = $exception->getMessage();
     } catch (Throwable $exception) {
         $errors[] = 'Business onboarding could not be saved. Check the database setup and try again.';
-        report_business_onboarding_exception($exception, $errors);
+        report_business_onboarding_exception($exception);
     }
 }
 
@@ -337,6 +352,7 @@ account_shell_begin('businesses');
     </section>
 <?php elseif ($step === 'business_info'): ?>
     <form method="post" action="business-create.php" class="dashboard-card form-stack">
+        <?= Csrf::input($csrfScope) ?>
         <input type="hidden" name="step" value="business_info">
         <?php if ($businessId > 0): ?>
             <input type="hidden" name="business_id" value="<?= e($businessId) ?>">
@@ -401,6 +417,7 @@ account_shell_begin('businesses');
     </form>
 <?php elseif ($step === 'services'): ?>
     <form method="post" action="business-create.php" class="dashboard-card form-stack">
+        <?= Csrf::input($csrfScope) ?>
         <input type="hidden" name="step" value="services">
         <input type="hidden" name="business_id" value="<?= e($businessId) ?>">
 
@@ -445,6 +462,7 @@ account_shell_begin('businesses');
     </form>
 <?php elseif ($step === 'modules'): ?>
     <form method="post" action="business-create.php" class="dashboard-card form-stack">
+        <?= Csrf::input($csrfScope) ?>
         <input type="hidden" name="step" value="modules">
         <input type="hidden" name="business_id" value="<?= e($businessId) ?>">
 
@@ -499,6 +517,7 @@ account_shell_begin('businesses');
             </div>
 
             <form method="post" action="business-create.php" class="button-row">
+                <?= Csrf::input($csrfScope) ?>
                 <input type="hidden" name="step" value="confirmation">
                 <input type="hidden" name="business_id" value="<?= e($businessId) ?>">
                 <?= ui_button('Back', 'business-create.php?step=modules&business_id=' . urlencode((string) $businessId), 'secondary') ?>

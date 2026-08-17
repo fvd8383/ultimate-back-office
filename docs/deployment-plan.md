@@ -603,11 +603,43 @@ Stripe billing configuration for 24/7 Sales Partner customer payments also lives
 STRIPE_SECRET_KEY
 STRIPE_PUBLISHABLE_KEY
 STRIPE_WEBHOOK_SECRET
-STRIPE_247SP_PRICE_ID
-STRIPE_247SP_SETUP_FEE_PRICE_ID
+STRIPE_MODE
+STRIPE_TEST_247SP_ALPHA_RECURRING_PRICE_ID
+STRIPE_TEST_247SP_BETA_RECURRING_PRICE_ID
+STRIPE_TEST_247SP_FOUNDING_RECURRING_PRICE_ID
+STRIPE_TEST_247SP_FOUNDING_SETUP_PRICE_ID
+STRIPE_TEST_247SP_STANDARD_RECURRING_PRICE_ID
+STRIPE_TEST_247SP_STANDARD_SETUP_PRICE_ID
+STRIPE_LIVE_247SP_ALPHA_RECURRING_PRICE_ID
+STRIPE_LIVE_247SP_BETA_RECURRING_PRICE_ID
+STRIPE_LIVE_247SP_FOUNDING_RECURRING_PRICE_ID
+STRIPE_LIVE_247SP_FOUNDING_SETUP_PRICE_ID
+STRIPE_LIVE_247SP_STANDARD_RECURRING_PRICE_ID
+STRIPE_LIVE_247SP_STANDARD_SETUP_PRICE_ID
 STRIPE_SUCCESS_URL
 STRIPE_CANCEL_URL
 ```
+
+Use `STRIPE_MODE=test` for local/test/staging and `STRIPE_MODE=live` only with
+`APP_ENV=production`. The secret-key prefix must match the mode. The legacy
+`STRIPE_247SP_PRICE_ID` and `STRIPE_247SP_SETUP_FEE_PRICE_ID` settings may remain for
+historical compatibility, but cohort-aware Checkout never reads them and never falls
+back to them.
+
+After Pricing P2 merges, an authorized staging operator configures the six
+`STRIPE_TEST_247SP_*` values in the uncommitted staging environment file and runs:
+
+```bash
+php scripts/configure-247sp-stripe-prices.php
+```
+
+The utility is database-only and does not call Stripe. It populates only NULL Price
+references on the current active cohort version, reports cohort keys but not provider
+values, is idempotent for matching values, and refuses any different populated value.
+If the version has allocations, a different value requires a reviewed new pricing
+configuration version. Afterward, the dedicated staging gate must verify the referenced
+Prices belong to the TEST account and have the expected recurring/one-time behavior.
+Do not put actual provider IDs in Git.
 
 These values are for customers paying Ultimate Back Office for 24/7 Sales Partner. Do not configure Stripe Connect here; Stripe Connect is reserved for future customer payment-processing products such as Super Simple Payments.
 
@@ -669,7 +701,13 @@ Do not edit previously-run migrations unless specifically approved.
 
 Create a new migration for each sprint that changes database structure.
 
-Migration `021_shared_business_profile.sql` is complete and staging validated. Do not rewrite migration 021 or historical repair migrations 019 and 020. The next planned migration is `022_247sp_pricing_cohorts.sql` for the post-Sprint-8.7 first-customer pricing gate. The planned initial Sprint 8.8 migration is `023_website_platform_foundation.sql`. Neither is created by Sprint 8.7 Milestone 7; later additive migrations use the next available numbers in implementation order.
+Migration `021_shared_business_profile.sql` is complete and staging validated. Do not
+rewrite migration 021 or historical repair migrations 019 and 020. Migration
+`022_247sp_pricing_cohorts.sql` is complete and staging validated PASS. Pricing P2 uses
+its existing durable tables and requires no new migration. The planned initial Sprint
+8.8 migration remains reserved as `023_website_platform_foundation.sql`; P2 must not
+create or repurpose it. Later additive migrations use the next available numbers in
+implementation order.
 
 Sprint 8.7 Milestone 4 also passed staging runtime validation on deployed commit
 `d11bd0e7d14b9d9dd432f3ce244a9b2bbebfafb7` without a migration or schema change.

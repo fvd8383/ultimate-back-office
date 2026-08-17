@@ -64,19 +64,19 @@ New module development is paused until 247SP is launch-ready. EMD, SSP, TUHWD, a
 
 # Billing & Payments
 
-* [ ] Stripe Payment Integration
-* [x] Pricing P1 foundation: migration `022_247sp_pricing_cohorts.sql` authored and locally validated; staging application remains pending
+* [x] LOCAL IMPLEMENTATION: Stripe Payment Integration; dedicated TEST staging gate pending
+* [x] Pricing P1 foundation: migration `022_247sp_pricing_cohorts.sql` staging validated PASS at `e71f7bed62e54cc5851e2bb365c136e6b5f6321d`
 * [x] Pricing P1 foundation: atomic never-reused customer sequence/cohort service with idempotency and rollback
 * [x] Pricing P1 foundation: Alpha/Beta/Founding/Standard durable cohort configuration
 * [x] Pricing P1 foundation: locked subscription setup/monthly/nullable Stripe-reference snapshot
-* [ ] FIRST-CUSTOMER CRITICAL: Integrate Pricing P1 at completed 247SP business signup
-* [ ] FIRST-CUSTOMER CRITICAL: Alpha six-month free period and automatic $79/month transition
-* [ ] FIRST-CUSTOMER CRITICAL: Cohort-aware Stripe recurring/setup prices
-* [ ] Setup Fee Collection
-* [ ] Monthly Subscription Collection
-* [ ] Trial-to-Paid Workflow
-* [ ] Billing Failure Workflow
-* [ ] Subscription Cancellation Workflow
+* [x] LOCAL IMPLEMENTATION: Integrate Pricing P1 atomically at completed 247SP business signup; staging gate pending
+* [x] LOCAL IMPLEMENTATION: Alpha exact stored six-month period and automatic recurring transition; Stripe TEST validation pending
+* [x] LOCAL IMPLEMENTATION: Cohort-aware locked Stripe recurring/setup prices; TEST catalog configuration and staging validation pending
+* [x] LOCAL IMPLEMENTATION: Setup Fee Collection; Stripe TEST validation pending
+* [x] LOCAL IMPLEMENTATION: Monthly Subscription Collection; Stripe TEST validation pending
+* [x] LOCAL IMPLEMENTATION: Trial-to-Paid Workflow; Stripe TEST validation pending
+* [x] LOCAL IMPLEMENTATION: Billing Failure Workflow; Stripe TEST validation pending
+* [x] LOCAL IMPLEMENTATION: Subscription Cancellation Workflow; Stripe TEST validation pending
 
 ---
 
@@ -254,17 +254,21 @@ validation SHA-256 is
 `687a1444664f9d7167dfb316510f09094e922c2b83166874849db44fb10382a6`.
 The platform has persistent navigation, legacy website generation/editing, LeadHub
 website capture, billing/domain/email foundations, and the Shared Business Profile.
-Pricing P1 now provides the local schema/service/test foundation for durable cohorts,
-never-reused sequence allocation, locked terms, and Alpha dates. The migration is not
-yet applied to staging, and completed-signup/Stripe/UI integration remains Pricing P2.
+Pricing P1 provides the staging-validated schema/service/test foundation for durable
+cohorts, never-reused sequence allocation, locked terms, and Alpha dates. Pricing P2 is
+implemented locally for review with no new migration: completed-signup atomicity,
+locked billing reads, POST/CSRF Checkout, all four cohort payloads, provider
+idempotency/recovery, webhook replay/order guards, and customer/admin presentation.
+P2 is not yet merged or staging validated, and the dedicated Stripe TEST gate remains
+first-customer blocking.
 The generic CMS, publisher/restore lifecycle, registered-site ingestion, complete
 cohort-aware billing, DataForSEO, unified inbox, communications services, AI
 receptionist, texting, chat, usage metering, and conversion workflows remain planned.
 
 Major Remaining Milestones:
 
-1. Review and merge Pricing P1, then apply/validate migration 022 only through the approved staging workflow
-2. Implement and validate Pricing P2: completed-signup integration, Alpha billing, setup charges, cohort-aware Stripe, reconciliation, and pricing presentation
+1. Review and merge Pricing P2, configure the staging TEST Price catalog, and run the dedicated pricing staging gate
+2. Validate P2 completed-signup integration, Alpha billing, setup charges, cohort-aware Stripe, reconciliation, and pricing presentation on staging
 3. Sprint 8.8 staged website platform/component/revision/publishing/routing implementation beginning with planned migration 023 and full validation
 4. Sprint 8.9 communications core, Vendasta professional email, Twilio foundation, and LeadHub timeline
 5. Sprint 8.10 telephony and AI receptionist

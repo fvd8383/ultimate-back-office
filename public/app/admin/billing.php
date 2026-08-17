@@ -2,6 +2,7 @@
 
 require_once __DIR__ . '/_common.php';
 require_once __DIR__ . '/../../../private/classes/BillingFoundation.php';
+require_once __DIR__ . '/../../../private/classes/Csrf.php';
 
 $context = admin_bootstrap();
 if (!$context['is_admin']) {
@@ -11,9 +12,11 @@ if (!$context['is_admin']) {
 
 $notice = '';
 $error = '';
+$csrfScope = 'admin-billing';
 
 try {
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        Csrf::requireValid($_POST['csrf_token'] ?? null, $csrfScope);
         BillingFoundation::setSubscriptionStatus(
             (int) ($_POST['subscription_id'] ?? 0),
             (int) $context['user']['id'],
@@ -21,6 +24,8 @@ try {
         );
         $notice = 'Subscription status updated.';
     }
+} catch (CsrfException $exception) {
+    $error = $exception->getMessage();
 } catch (InvalidArgumentException $exception) {
     $error = $exception->getMessage();
 } catch (Throwable $exception) {
@@ -76,7 +81,7 @@ admin_begin('Billing', 'billing', $context);
     <section class="business-switcher">
         <div class="admin-table admin-table--billing">
             <div class="admin-table__head">
-                <span>Business</span><span>Plan</span><span>Status</span><span>Module Access</span><span>Fees</span><span>Stripe</span><span>Latest Payment</span><span>Controls</span>
+                <span>Business</span><span>Pricing</span><span>Status</span><span>Module Access</span><span>Terms</span><span>Stripe</span><span>Latest Payment</span><span>Controls</span>
             </div>
             <?php foreach ($subscriptions as $subscription): ?>
                 <?php
@@ -85,7 +90,16 @@ admin_begin('Billing', 'billing', $context);
                 ?>
                 <div class="admin-table__row">
                     <span><a href="business.php?business_id=<?= e($subscription['business_id']) ?>"><?= e($subscription['business_name']) ?></a></span>
-                    <span><?= e($subscription['plan_name']) ?></span>
+                    <span>
+                        <strong><?= e($subscription['plan_name']) ?></strong><br>
+                        <?php if ((int) ($subscription['commercial_terms_id'] ?? 0) > 0): ?>
+                            <small class="admin-table__cell-note">Sequence: <?= e($subscription['customer_sequence_number']) ?></small><br>
+                            <small class="admin-table__cell-note">Cohort: <?= e($subscription['cohort_display_name']) ?></small><br>
+                            <small class="admin-table__cell-note">Version: <?= e($subscription['configuration_version']) ?></small>
+                        <?php else: ?>
+                            <small class="admin-table__cell-note">Pricing pending completed signup</small>
+                        <?php endif; ?>
+                    </span>
                     <span><?= ui_badge(AdminPortal::statusLabel($subscription['status']), $subscription['status'] === 'past_due' ? 'role' : 'status') ?></span>
                     <span>
                         <?= ui_badge(billing_module_access_label($subscription['module_access_active']), $moduleAccessActive ? 'status' : 'role') ?>
@@ -94,14 +108,28 @@ admin_begin('Billing', 'billing', $context);
                         <?php endif; ?>
                     </span>
                     <span>
-                        <strong>Setup:</strong> <?= e(billing_money($subscription['setup_fee'])) ?><br>
-                        <strong>Monthly:</strong> <?= e(billing_money($subscription['monthly_fee'])) ?><br>
-                        <small class="admin-table__cell-note">Starts: <?= e($subscription['started_at'] ?: 'Not started') ?></small>
+                        <?php if ((int) ($subscription['commercial_terms_id'] ?? 0) > 0): ?>
+                            <strong>Setup:</strong> <?= e(billing_money($subscription['setup_fee'])) ?><br>
+                            <strong>Monthly:</strong> <?= e(billing_money($subscription['monthly_fee'])) ?> <?= e($subscription['currency']) ?><br>
+                            <small class="admin-table__cell-note">Intro months: <?= e($subscription['free_introductory_months']) ?></small><br>
+                            <small class="admin-table__cell-note">Intro start: <?= e($subscription['introductory_period_starts_at'] ?: 'None') ?></small><br>
+                            <small class="admin-table__cell-note">Intro expires: <?= e($subscription['introductory_period_expires_at'] ?: 'None') ?></small><br>
+                            <small class="admin-table__cell-note">Recurring starts: <?= e($subscription['recurring_billing_starts_at']) ?></small><br>
+                            <small class="admin-table__cell-note">Assigned: <?= e($subscription['pricing_assigned_at']) ?></small><br>
+                            <small class="admin-table__cell-note">Signup completed: <?= e($subscription['business_signup_completed_at']) ?></small>
+                        <?php else: ?>
+                            <small class="admin-table__cell-note">No locked terms</small>
+                        <?php endif; ?>
                     </span>
                     <span>
                         <small class="admin-table__cell-note">Customer: <?= e($subscription['stripe_customer_id'] ?: 'Not recorded') ?></small><br>
                         <small class="admin-table__cell-note">Subscription: <?= e($subscription['stripe_subscription_id'] ?: 'Not recorded') ?></small><br>
-                        <small class="admin-table__cell-note">Payment: <?= e($subscription['payment_method_status'] ?: 'Not recorded') ?></small>
+                        <small class="admin-table__cell-note">Checkout: <?= e($subscription['stripe_checkout_session_id'] ?: 'Not recorded') ?></small><br>
+                        <small class="admin-table__cell-note">Payment: <?= e($subscription['payment_method_status'] ?: 'Not recorded') ?></small><br>
+                        <?php if ((int) ($subscription['commercial_terms_id'] ?? 0) > 0): ?>
+                            <small class="admin-table__cell-note">Recurring Price: <?= e($subscription['locked_stripe_recurring_price_ref'] ?: 'Not recorded') ?></small><br>
+                            <small class="admin-table__cell-note">Setup Price: <?= e($subscription['locked_stripe_setup_price_ref'] ?: 'None') ?></small>
+                        <?php endif; ?>
                     </span>
                     <span>
                         <small class="admin-table__cell-note">Status: <?= e($subscription['latest_payment_status'] ?: 'No payment yet') ?></small><br>
@@ -110,6 +138,7 @@ admin_begin('Billing', 'billing', $context);
                     </span>
                     <span>
                         <form method="post" action="billing.php" class="billing-status-form">
+                            <?= Csrf::input($csrfScope) ?>
                             <input type="hidden" name="subscription_id" value="<?= e($subscription['id']) ?>">
                             <select name="status" aria-label="Subscription status for <?= e($subscription['business_name']) ?>">
                                 <?php foreach (BillingFoundation::STATUSES as $status): ?>

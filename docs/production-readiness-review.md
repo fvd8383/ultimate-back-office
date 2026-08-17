@@ -30,7 +30,7 @@ remain planned.
 | Single-template website generation and private preview | Complete |
 | Website branding, content management, and admin editing foundation | Complete |
 | LeadHub contacts, notes, tasks, activity, and website form capture foundation | Complete; staging revalidation remains part of launch QA |
-| Stripe billing foundation and integration | Legacy integration plus local Pricing P1 cohort/sequence/locked-term foundation; P2 Stripe behavior and launch validation remain first-customer critical |
+| Stripe billing foundation and integration | Pricing P1 staging PASS; P2 completed-signup/locked billing/Checkout/webhook/UI integration implemented locally but not yet staging validated |
 | Domain workflow and provider abstraction | Implemented; end-to-end staging launch validation pending |
 | Email request/assignment foundation | Complete; Vendasta professional-email provisioning is planned and first-customer critical |
 | Shared Business Profile schema | Complete and staging validated |
@@ -171,7 +171,8 @@ Required:
 Approved cohorts are Alpha positions 1-5 at $0 setup, six months free, then $79/month;
 Beta positions 6-10 at $0 setup and $97/month; Founding positions 11-25 at $100 setup
 and $147/month; and Standard positions 26+ at $250 setup and $197/month. They price
-one product and are not feature tiers. The runtime does not yet implement this model.
+one product and are not feature tiers. P2 implements the model locally, but it is not
+customer-ready until the dedicated Stripe TEST staging gate passes.
 
 ---
 
@@ -192,17 +193,20 @@ Complete the site model, structured page/component definitions, revisions, appro
 
 ## Billing And Commercial Policy
 
-Status: Pricing P1 foundation implemented locally; Pricing P2 and staging validation remain first-customer critical
+Status: Pricing P1 staging PASS; Pricing P2 implemented locally; dedicated staging validation remains first-customer critical
 
 Pricing P1 implements durable cohort configuration, the lockable product counter,
 immutable allocation evidence, locked subscription terms, Alpha's stored
 calendar-month-clamped dates, authorized/idempotent transaction behavior, and bounded
-success activity. It is not integrated into the completed-signup route and migration
-022 has not been applied to staging.
+success activity. Migration 022 has been applied and validated on staging; P2 now
+integrates that boundary into completed signup locally.
 
-Pricing P2 must integrate the service at successful signup, implement Alpha's automatic
-`$79/month` Stripe transition and payment-method collection, select cohort-aware Stripe
-prices, execute setup charges, reconcile webhooks, and add customer/admin visibility.
+Pricing P2 now integrates the service at successful signup, implements Alpha's exact
+stored trial end and payment-method collection, selects locked cohort-aware Stripe
+Prices, includes one-time setup lines, reconciles webhook retry/order, and adds
+customer/admin visibility. It required no new migration. Actual Stripe TEST Checkout,
+invoice/trial transition, signed webhook delivery/reordering, browser, MySQL concurrency,
+and log validation remain pending in the dedicated staging gate.
 Failed signup transactions consume no position; idempotent retry returns the existing
 assignment; cancellations do not reopen positions. Anonymous registration, launch,
 payment/webhook events, later billing states, and active counts do not determine cohort.
@@ -263,7 +267,8 @@ Before any site conversion or cancellation workflow can be launch-ready:
 
 ## First-Customer Pricing Gate
 
-Pricing P1 is implemented locally for review. Pricing P2 and the dedicated staging gate
+Pricing P1 is staging validated PASS. Pricing P2 is implemented locally for review,
+and the dedicated staging gate
 in `docs/247sp-pricing-cohort-implementation-plan.md` remain next. Migration
 `022_247sp_pricing_cohorts.sql` precedes Sprint 8.8 and must be applied and validated
 through the approved workflow before Sprint 8.8 M1.
@@ -303,7 +308,7 @@ Full customer use of EMD, SSP, TUHWD, KYN, Full OS, and Enterprise remains defer
 
 The platform has solid website, LeadHub, billing, domain, email-workflow, and Shared Business Profile foundations, but the approved 247SP product is broader than the implemented runtime. Readiness must be measured by the complete digital-front-office workflow, not by website-preview completion alone.
 
-Pricing P1 is the implemented local foundation under review. Pricing P2 and a dedicated
-staging PASS remain required before Sprint 8.8. None of the CMS, publisher, DataForSEO,
+Pricing P1 is the validated foundation. Pricing P2 and a dedicated staging PASS remain
+required before Sprint 8.8. None of the CMS, publisher, DataForSEO,
 Vendasta, communications, Twilio/Retell, or customer-facing cohort-aware billing
 runtime is complete merely because its plan or P1 foundation exists.
