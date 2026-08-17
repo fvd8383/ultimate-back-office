@@ -127,8 +127,8 @@ stripeP2Assert(str_contains($billingSource, "if (\$status !== 'failed')"), 'Only
 stripeP2Assert(str_contains($billingSource, 'ON DUPLICATE KEY UPDATE'), 'Invoice recording must be replay-idempotent.');
 stripeP2Assert(str_contains($billingSource, "status = \\'paid\\' AND VALUES(status) = \\'failed\\'"), 'A late failure must not regress a paid invoice.');
 stripeP2Assert(str_contains($stripeSource, 'statusWithoutCheckoutRegression'), 'Late Checkout completion must use a non-regression guard.');
-stripeP2Assert(str_contains($stripeSource, '$isFreeIntroInvoice'), 'Alpha zero-dollar invoices must use introductory-period handling.');
-stripeP2Assert(str_contains($stripeSource, '$stalePeriod'), 'Stale subscription periods must not regress current provider state.');
+stripeP2Assert(str_contains($stripeSource, 'reconcileCurrentSubscription'), 'Invoice and subscription events must reconcile current provider state.');
+stripeP2Assert(str_contains($stripeSource, "apiRequest('GET', '/subscriptions/'"), 'Webhook lifecycle reconciliation must retrieve the current Stripe subscription.');
 stripeP2Assert(!str_contains($checkoutSource, 'createCheckoutSession($user, $business, $subscription);\n        header'), 'Checkout GET must not directly create a provider session.');
 stripeP2Assert(str_contains($checkoutSource, "\$isPost") && str_contains($checkoutSource, 'Csrf::requireValid'), 'Checkout mutation must be POST-only with CSRF.');
 

@@ -17,6 +17,8 @@ $csrfScope = '247sp-checkout';
 
 if ((string) ($_GET['payment'] ?? '') === 'unavailable') {
     $error = 'Your signup and locked pricing are complete, but payment setup is temporarily unavailable. Please try again.';
+} elseif ((string) ($_GET['payment'] ?? '') === 'reconciliation') {
+    $error = 'Your signup and locked pricing are safe, but payment setup needs support reconciliation before another provider object can be created.';
 }
 
 try {
@@ -68,6 +70,9 @@ try {
     $error = $exception->getMessage();
 } catch (InvalidArgumentException $exception) {
     $error = $exception->getMessage();
+} catch (StripeReconciliationException $exception) {
+    error_log('[Checkout] provider reconciliation required: ' . get_class($exception));
+    $error = 'Your signup and locked pricing are safe, but payment setup needs support reconciliation before another provider object can be created.';
 } catch (Throwable $exception) {
     error_log('[Checkout] payment setup failed: ' . get_class($exception));
     $error = 'Payment setup is temporarily unavailable. Your signup and locked pricing are safe; please try again.';

@@ -224,7 +224,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && count($errors) === 0) {
                         exit;
                     } catch (Throwable $providerException) {
                         error_log('[BusinessOnboarding] post-commit payment setup failed: ' . get_class($providerException));
-                        header('Location: checkout.php?payment=unavailable&business_id=' . urlencode((string) $businessId), true, 303);
+                        $paymentState = $providerException instanceof StripeReconciliationException
+                            ? 'reconciliation'
+                            : 'unavailable';
+                        header('Location: checkout.php?payment=' . $paymentState . '&business_id=' . urlencode((string) $businessId), true, 303);
                         exit;
                     }
                 }

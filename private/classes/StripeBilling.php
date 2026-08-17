@@ -5,11 +5,32 @@ declare(strict_types=1);
 require_once __DIR__ . '/BillingFoundation.php';
 require_once __DIR__ . '/Database.php';
 
+final class StripeProviderException extends RuntimeException
+{
+    public function __construct(string $message, private ?int $providerStatusCode = null)
+    {
+        parent::__construct($message);
+    }
+
+    public function providerStatusCode(): ?int
+    {
+        return $this->providerStatusCode;
+    }
+}
+
+final class StripeReconciliationException extends RuntimeException
+{
+}
+
 final class StripeBilling
 {
     private const API_BASE = 'https://api.stripe.com/v1';
     private const WEBHOOK_TOLERANCE_SECONDS = 300;
     private const OPERATION_NAMESPACE = 'ubo-247sp-p2-v1';
+    // Stay below Stripe API v1's documented 24-hour idempotent replay window.
+    private const PROVIDER_IDEMPOTENCY_REPLAY_WINDOW_SECONDS = 72000;
+    private const MAX_RECONCILIATION_PAGES = 10;
+    private static $providerTransport = null;
 
     public static function checkoutConfigurationIssues(?array $subscription = null): array
     {
@@ -76,35 +97,106 @@ final class StripeBilling
         }
 
         $stripeCustomerId = trim((string) ($subscription['stripe_customer_id'] ?? ''));
+        if ($stripeCustomerId !== '' && !self::validCustomerReference($stripeCustomerId)) {
+            throw new StripeReconciliationException('Payment setup requires provider reconciliation support.');
+        }
         if ($stripeCustomerId === '') {
-            $customer = self::createStripeCustomer($user, $business, $subscription);
-            $stripeCustomerId = trim((string) ($customer['id'] ?? ''));
-            if ($stripeCustomerId === '') {
-                throw new RuntimeException('Payment setup is temporarily unavailable.');
+            $matchingCustomers = self::matchingStripeCustomers($subscription);
+            if (count($matchingCustomers) > 1) {
+                throw new StripeReconciliationException('Payment setup requires provider reconciliation support.');
+            }
+            if (count($matchingCustomers) === 1) {
+                $stripeCustomerId = (string) $matchingCustomers[0]['id'];
+            } else {
+                self::assertProviderCreateReplayIsSafe($subscription);
+                $customer = self::createStripeCustomer($user, $business, $subscription);
+                $stripeCustomerId = trim((string) ($customer['id'] ?? ''));
+                if (!self::validCustomerReference($stripeCustomerId)
+                    || (string) ($customer['object'] ?? '') !== 'customer'
+                ) {
+                    throw new RuntimeException('Payment setup is temporarily unavailable.');
+                }
+                self::assertProviderObjectMatchesLockedMapping($customer, $subscription);
             }
             BillingFoundation::updateSubscriptionBillingState($subscriptionId, [
                 'stripe_customer_id' => $stripeCustomerId,
-                'payment_method_status' => 'pending',
             ]);
         }
 
         $existingSessionId = trim((string) ($subscription['stripe_checkout_session_id'] ?? ''));
+        if ($existingSessionId !== '' && !self::validCheckoutSessionReference($existingSessionId)) {
+            throw new StripeReconciliationException('Payment setup requires provider reconciliation support.');
+        }
         $attemptIdentity = '';
+        $knownExpiredSession = null;
         if ($existingSessionId !== '') {
             $existingSession = self::apiRequest('GET', '/checkout/sessions/' . rawurlencode($existingSessionId));
-            $existingStatus = (string) ($existingSession['status'] ?? '');
-            $existingUrl = trim((string) ($existingSession['url'] ?? ''));
-
-            if ($existingStatus === 'open' && $existingUrl !== '') {
-                $existingSession['ubo_reused'] = true;
-                return $existingSession;
+            if ((string) ($existingSession['id'] ?? '') !== $existingSessionId
+                || (string) ($existingSession['object'] ?? '') !== 'checkout.session'
+            ) {
+                throw new StripeReconciliationException('Payment setup requires provider reconciliation support.');
             }
-            if ($existingStatus === 'complete') {
-                self::handleCheckoutSessionCompleted($existingSession);
-                $existingSession['ubo_already_complete'] = true;
-                return $existingSession;
+            self::assertProviderObjectMatchesLockedMapping($existingSession, $subscription);
+            $recovered = self::reconcileCheckoutSessionCandidate(
+                $existingSession,
+                $subscription,
+                $stripeCustomerId,
+                false
+            );
+            if ($recovered !== null) {
+                return $recovered;
             }
             $attemptIdentity = $existingSessionId;
+            $knownExpiredSession = $existingSession;
+        }
+
+        if ($existingSessionId === '' || $knownExpiredSession !== null) {
+            $matchingSessions = self::matchingCheckoutSessions($stripeCustomerId, $subscription);
+            if ($knownExpiredSession !== null) {
+                $knownId = (string) $knownExpiredSession['id'];
+                $knownAlreadyListed = count(array_filter(
+                    $matchingSessions,
+                    static fn (array $candidate): bool => (string) ($candidate['id'] ?? '') === $knownId
+                )) > 0;
+                if (!$knownAlreadyListed) {
+                    $matchingSessions[] = $knownExpiredSession;
+                }
+            }
+            $actionable = array_values(array_filter(
+                $matchingSessions,
+                static fn (array $session): bool => in_array((string) ($session['status'] ?? ''), ['open', 'complete'], true)
+            ));
+            if (count($actionable) > 1) {
+                throw new StripeReconciliationException('Payment setup requires provider reconciliation support.');
+            }
+            if (count($actionable) === 1) {
+                $recovered = self::reconcileCheckoutSessionCandidate(
+                    $actionable[0],
+                    $subscription,
+                    $stripeCustomerId,
+                    true
+                );
+                if ($recovered !== null) {
+                    return $recovered;
+                }
+            }
+
+            $expired = array_values(array_filter(
+                $matchingSessions,
+                static fn (array $session): bool => (string) ($session['status'] ?? '') === 'expired'
+            ));
+            if (count($expired) > 0) {
+                usort($expired, static fn (array $left, array $right): int => [
+                    (int) ($right['created'] ?? 0),
+                    (string) ($right['id'] ?? ''),
+                ] <=> [
+                    (int) ($left['created'] ?? 0),
+                    (string) ($left['id'] ?? ''),
+                ]);
+                $attemptIdentity = (string) $expired[0]['id'];
+            } elseif ($attemptIdentity === '') {
+                self::assertProviderCreateReplayIsSafe($subscription);
+            }
         }
 
         $session = self::apiRequest(
@@ -114,15 +206,25 @@ final class StripeBilling
             self::providerOperationIdentity($subscription, 'checkout_session', $attemptIdentity)
         );
         $checkoutSessionId = trim((string) ($session['id'] ?? ''));
-        if ($checkoutSessionId === '' || trim((string) ($session['url'] ?? '')) === '') {
+        if (!self::validCheckoutSessionReference($checkoutSessionId)
+            || (string) ($session['object'] ?? '') !== 'checkout.session'
+            || trim((string) ($session['url'] ?? '')) === ''
+            || (string) ($session['customer'] ?? '') !== $stripeCustomerId
+        ) {
             throw new RuntimeException('Payment setup is temporarily unavailable.');
         }
+        self::assertProviderObjectMatchesLockedMapping($session, $subscription);
 
         BillingFoundation::updateSubscriptionBillingState($subscriptionId, [
             'stripe_customer_id' => $stripeCustomerId,
             'stripe_checkout_session_id' => $checkoutSessionId,
-            'payment_method_status' => 'pending',
-            'status' => 'pending_payment',
+            'payment_method_status' => self::paymentMethodStatusWithoutCheckoutRegression(
+                (string) ($subscription['payment_method_status'] ?? '')
+            ),
+            'status' => self::statusWithoutCheckoutRegression(
+                (string) ($subscription['status'] ?? ''),
+                'pending_payment'
+            ),
         ]);
 
         return $session;
@@ -268,7 +370,7 @@ final class StripeBilling
                 case 'customer.subscription.created':
                 case 'customer.subscription.updated':
                 case 'customer.subscription.deleted':
-                    self::handleSubscriptionEvent($object);
+                    self::handleSubscriptionEvent($object, $eventType);
                     break;
                 case 'invoice.payment_succeeded':
                     self::handleInvoiceEvent($object, true, $eventId);
@@ -309,40 +411,32 @@ final class StripeBilling
         ]);
     }
 
-    private static function handleSubscriptionEvent(array $stripeSubscription): void
+    private static function handleSubscriptionEvent(array $deliveredSubscription, string $eventType): void
     {
-        $subscription = self::subscriptionFromMetadataOrReferences($stripeSubscription);
+        $subscription = self::subscriptionFromMetadataOrReferences($deliveredSubscription);
         if ($subscription === null) {
             throw new RuntimeException('Local subscription was not found for Stripe subscription event.');
         }
-
-        $incomingPeriodEnd = self::dateTimeFromTimestamp($stripeSubscription['current_period_end'] ?? null);
-        $storedPeriodEnd = self::stringOrNull($subscription['current_period_end'] ?? null);
-        $stalePeriod = $incomingPeriodEnd !== null && $storedPeriodEnd !== null && $incomingPeriodEnd < $storedPeriodEnd;
-        $localStatus = self::localStatusForStripeSubscription((string) ($stripeSubscription['status'] ?? ''));
-        $fields = [
-            'stripe_customer_id' => self::newOrExistingReference($stripeSubscription['customer'] ?? null, $subscription['stripe_customer_id'] ?? null),
-            'stripe_subscription_id' => self::newOrExistingReference($stripeSubscription['id'] ?? null, $subscription['stripe_subscription_id'] ?? null),
-        ];
-
-        if (!$stalePeriod) {
-            if ((string) ($subscription['status'] ?? '') === 'active' && $localStatus === 'trial') {
-                $localStatus = 'active';
-            }
-            $fields += [
-                'status' => $localStatus,
-                'stripe_latest_invoice_id' => self::newOrExistingReference($stripeSubscription['latest_invoice'] ?? null, $subscription['stripe_latest_invoice_id'] ?? null),
-                'payment_method_status' => self::paymentMethodStatusForProvider(
-                    $localStatus,
-                    $stripeSubscription,
-                    (string) ($subscription['payment_method_status'] ?? '')
-                ),
-                'current_period_start' => self::dateTimeFromTimestamp($stripeSubscription['current_period_start'] ?? null),
-                'current_period_end' => $incomingPeriodEnd,
-                'cancel_at_period_end' => !empty($stripeSubscription['cancel_at_period_end']) ? 1 : 0,
-            ];
+        $stripeSubscriptionId = self::stripeSubscriptionIdFromObject($deliveredSubscription);
+        if ($stripeSubscriptionId === null) {
+            throw new RuntimeException('Stripe subscription event is missing its subscription identifier.');
         }
-        BillingFoundation::updateSubscriptionBillingState((int) $subscription['id'], $fields);
+
+        try {
+            $currentSubscription = self::retrieveCurrentStripeSubscription($stripeSubscriptionId);
+        } catch (StripeProviderException $exception) {
+            if ($eventType !== 'customer.subscription.deleted' || $exception->providerStatusCode() !== 404) {
+                throw $exception;
+            }
+            $currentSubscription = $deliveredSubscription;
+            $currentSubscription['status'] = 'canceled';
+        }
+
+        self::reconcileCurrentSubscription(
+            $subscription,
+            $currentSubscription,
+            $eventType === 'customer.subscription.deleted'
+        );
     }
 
     private static function handleInvoiceEvent(array $invoice, bool $paid, string $eventId): void
@@ -357,7 +451,7 @@ final class StripeBilling
         if ($stripeInvoiceId === null) {
             throw new RuntimeException('Stripe invoice event is missing its invoice identifier.');
         }
-        $effectivePaymentStatus = BillingFoundation::recordStripePayment((int) $subscription['id'], [
+        BillingFoundation::recordStripePayment((int) $subscription['id'], [
             'payment_type' => 'stripe_invoice',
             'amount' => ((float) $amountMinor / 100),
             'status' => $paid ? 'paid' : 'failed',
@@ -368,22 +462,68 @@ final class StripeBilling
             'invoice_url' => self::stringOrNull($invoice['hosted_invoice_url'] ?? null),
         ]);
 
-        $isFreeIntroInvoice = $paid && $amountMinor === 0 && self::introductoryPeriodIsCurrent($subscription);
-        $effectivelyPaid = $effectivePaymentStatus === 'paid';
-        $candidateStatus = $isFreeIntroInvoice ? 'trial' : ($effectivelyPaid ? 'active' : 'past_due');
+        $stripeSubscriptionId = self::stripeSubscriptionIdFromObject($invoice);
+        if ($stripeSubscriptionId !== null) {
+            $currentSubscription = self::retrieveCurrentStripeSubscription($stripeSubscriptionId);
+            self::reconcileCurrentSubscription($subscription, $currentSubscription);
+        }
+    }
+
+    private static function retrieveCurrentStripeSubscription(string $stripeSubscriptionId): array
+    {
+        if (preg_match('/^sub_[A-Za-z0-9]+$/', $stripeSubscriptionId) !== 1) {
+            throw new RuntimeException('Stripe subscription reference is invalid.');
+        }
+        $current = self::apiRequest('GET', '/subscriptions/' . rawurlencode($stripeSubscriptionId));
+        if ((string) ($current['id'] ?? '') !== $stripeSubscriptionId
+            || (string) ($current['object'] ?? '') !== 'subscription'
+        ) {
+            throw new StripeProviderException('Payment setup is temporarily unavailable.');
+        }
+        return $current;
+    }
+
+    private static function reconcileCurrentSubscription(
+        array $subscription,
+        array $currentProviderSubscription,
+        bool $forceCancelled = false
+    ): void {
+        self::assertWebhookSubscriptionContext($subscription);
+        self::assertProviderObjectMatchesLockedMapping($currentProviderSubscription, $subscription);
+        $stripeSubscriptionId = self::stripeSubscriptionIdFromObject($currentProviderSubscription);
+        if ($stripeSubscriptionId === null) {
+            throw new RuntimeException('Stripe subscription reference is invalid.');
+        }
+        $existingStripeSubscriptionId = self::stringOrNull($subscription['stripe_subscription_id'] ?? null);
+        if ($existingStripeSubscriptionId !== null && $existingStripeSubscriptionId !== $stripeSubscriptionId) {
+            throw new RuntimeException('Provider subscription does not match the local subscription reference.');
+        }
+
+        $localStatus = $forceCancelled
+            ? 'cancelled'
+            : self::localStatusForStripeSubscription((string) ($currentProviderSubscription['status'] ?? ''));
         if ((string) ($subscription['status'] ?? '') === 'cancelled') {
-            $candidateStatus = 'cancelled';
+            $localStatus = 'cancelled';
         }
         BillingFoundation::updateSubscriptionBillingState((int) $subscription['id'], [
-            'status' => $candidateStatus,
-            'stripe_customer_id' => self::newOrExistingReference($invoice['customer'] ?? null, $subscription['stripe_customer_id'] ?? null),
-            'stripe_subscription_id' => self::newOrExistingReference(self::stripeSubscriptionIdFromObject($invoice), $subscription['stripe_subscription_id'] ?? null),
-            'stripe_latest_invoice_id' => self::newOrExistingReference($stripeInvoiceId, $subscription['stripe_latest_invoice_id'] ?? null),
-            'payment_method_status' => (string) ($subscription['status'] ?? '') === 'cancelled'
-                ? 'cancelled'
-                : ($isFreeIntroInvoice
-                    ? self::preserveCompletePaymentMethod((string) ($subscription['payment_method_status'] ?? ''))
-                    : ($effectivelyPaid ? 'complete' : 'failed')),
+            'status' => $localStatus,
+            'stripe_customer_id' => self::newOrExistingReference(
+                $currentProviderSubscription['customer'] ?? null,
+                $subscription['stripe_customer_id'] ?? null
+            ),
+            'stripe_subscription_id' => $stripeSubscriptionId,
+            'stripe_latest_invoice_id' => self::newOrExistingReference(
+                $currentProviderSubscription['latest_invoice'] ?? null,
+                $subscription['stripe_latest_invoice_id'] ?? null
+            ),
+            'payment_method_status' => self::paymentMethodStatusForProvider(
+                $localStatus,
+                $currentProviderSubscription,
+                (string) ($subscription['payment_method_status'] ?? '')
+            ),
+            'current_period_start' => self::dateTimeFromTimestamp($currentProviderSubscription['current_period_start'] ?? null),
+            'current_period_end' => self::dateTimeFromTimestamp($currentProviderSubscription['current_period_end'] ?? null),
+            'cancel_at_period_end' => !empty($currentProviderSubscription['cancel_at_period_end']) ? 1 : 0,
         ]);
     }
 
@@ -395,20 +535,7 @@ final class StripeBilling
             $subscription = BillingFoundation::adminSubscription($subscriptionId);
             if ($subscription !== null) {
                 self::assertWebhookSubscriptionContext($subscription);
-                if (isset($metadata['business_id']) && (int) $metadata['business_id'] !== (int) $subscription['business_id']) {
-                    throw new RuntimeException('Stripe metadata does not match the local subscription.');
-                }
-                if (isset($metadata['product_key']) && (string) $metadata['product_key'] !== '247sp') {
-                    throw new RuntimeException('Stripe metadata does not match the local product.');
-                }
-                if (isset($metadata['allocation_id']) && (int) $metadata['allocation_id'] !== (int) $subscription['allocation_id']) {
-                    throw new RuntimeException('Stripe metadata does not match the local allocation.');
-                }
-                if (isset($metadata['configuration_version'])
-                    && (int) $metadata['configuration_version'] !== (int) $subscription['configuration_version']
-                ) {
-                    throw new RuntimeException('Stripe metadata does not match the local pricing version.');
-                }
+                self::assertProviderObjectMatchesLockedMapping($object, $subscription);
                 return $subscription;
             }
         }
@@ -442,10 +569,178 @@ final class StripeBilling
     private static function assertWebhookSubscriptionContext(array $subscription): void
     {
         if ((string) ($subscription['product_key'] ?? '') !== '247sp'
+            || (int) ($subscription['id'] ?? $subscription['subscription_id'] ?? 0) <= 0
+            || (int) ($subscription['business_id'] ?? 0) <= 0
             || (int) ($subscription['commercial_terms_id'] ?? 0) <= 0
             || (int) ($subscription['allocation_id'] ?? 0) <= 0
+            || (int) ($subscription['configuration_version'] ?? 0) <= 0
         ) {
             throw new RuntimeException('Stripe webhook subscription context is invalid.');
+        }
+    }
+
+    private static function matchingStripeCustomers(array $subscription): array
+    {
+        $queryParts = [];
+        foreach (self::expectedMappingMetadata($subscription) as $key => $value) {
+            $queryParts[] = "metadata['{$key}']:'{$value}'";
+        }
+
+        $matches = [];
+        $page = null;
+        for ($pageNumber = 0; $pageNumber < self::MAX_RECONCILIATION_PAGES; $pageNumber++) {
+            $params = ['query' => implode(' AND ', $queryParts), 'limit' => 100];
+            if ($page !== null) {
+                $params['page'] = $page;
+            }
+            $result = self::apiRequest('GET', '/customers/search', $params);
+            foreach (is_array($result['data'] ?? null) ? $result['data'] : [] as $customer) {
+                if (!is_array($customer)
+                    || !empty($customer['deleted'])
+                    || (string) ($customer['object'] ?? '') !== 'customer'
+                    || !self::validCustomerReference((string) ($customer['id'] ?? ''))
+                    || !self::providerObjectMatchesLockedMapping($customer, $subscription)
+                ) {
+                    continue;
+                }
+                $matches[(string) $customer['id']] = $customer;
+                if (count($matches) > 1) {
+                    return array_values($matches);
+                }
+            }
+            if (empty($result['has_more'])) {
+                return array_values($matches);
+            }
+            $page = self::stringOrNull($result['next_page'] ?? null);
+            if ($page === null) {
+                throw new StripeReconciliationException('Payment setup requires provider reconciliation support.');
+            }
+        }
+        throw new StripeReconciliationException('Payment setup requires provider reconciliation support.');
+    }
+
+    private static function matchingCheckoutSessions(string $stripeCustomerId, array $subscription): array
+    {
+        $matches = [];
+        $startingAfter = null;
+        for ($pageNumber = 0; $pageNumber < self::MAX_RECONCILIATION_PAGES; $pageNumber++) {
+            $params = ['customer' => $stripeCustomerId, 'limit' => 100];
+            if ($startingAfter !== null) {
+                $params['starting_after'] = $startingAfter;
+            }
+            $result = self::apiRequest('GET', '/checkout/sessions', $params);
+            $data = is_array($result['data'] ?? null) ? $result['data'] : [];
+            foreach ($data as $session) {
+                if (!is_array($session)
+                    || (string) ($session['object'] ?? '') !== 'checkout.session'
+                    || !self::validCheckoutSessionReference((string) ($session['id'] ?? ''))
+                    || (string) ($session['customer'] ?? '') !== $stripeCustomerId
+                    || !self::providerObjectMatchesLockedMapping($session, $subscription)
+                ) {
+                    continue;
+                }
+                $matches[(string) $session['id']] = $session;
+                $actionableCount = count(array_filter(
+                    $matches,
+                    static fn (array $candidate): bool => in_array((string) ($candidate['status'] ?? ''), ['open', 'complete'], true)
+                ));
+                if ($actionableCount > 1) {
+                    return array_values($matches);
+                }
+            }
+            if (empty($result['has_more'])) {
+                return array_values($matches);
+            }
+            $last = end($data);
+            $startingAfter = is_array($last) ? self::stringOrNull($last['id'] ?? null) : null;
+            if ($startingAfter === null) {
+                throw new StripeReconciliationException('Payment setup requires provider reconciliation support.');
+            }
+        }
+        throw new StripeReconciliationException('Payment setup requires provider reconciliation support.');
+    }
+
+    private static function reconcileCheckoutSessionCandidate(
+        array $session,
+        array $subscription,
+        string $stripeCustomerId,
+        bool $persistRecoveredReference
+    ): ?array {
+        self::assertProviderObjectMatchesLockedMapping($session, $subscription);
+        if ((string) ($session['customer'] ?? '') !== $stripeCustomerId) {
+            throw new StripeReconciliationException('Payment setup requires provider reconciliation support.');
+        }
+        $status = (string) ($session['status'] ?? '');
+        if ($status === 'open') {
+            if (trim((string) ($session['url'] ?? '')) === '') {
+                throw new StripeReconciliationException('Payment setup requires provider reconciliation support.');
+            }
+            if ($persistRecoveredReference) {
+                BillingFoundation::updateSubscriptionBillingState((int) $subscription['id'], [
+                    'stripe_customer_id' => $stripeCustomerId,
+                    'stripe_checkout_session_id' => (string) $session['id'],
+                    'payment_method_status' => self::paymentMethodStatusWithoutCheckoutRegression(
+                        (string) ($subscription['payment_method_status'] ?? '')
+                    ),
+                    'status' => self::statusWithoutCheckoutRegression(
+                        (string) ($subscription['status'] ?? ''),
+                        'pending_payment'
+                    ),
+                ]);
+            }
+            $session['ubo_reused'] = true;
+            return $session;
+        }
+        if ($status === 'complete') {
+            self::handleCheckoutSessionCompleted($session);
+            $session['ubo_already_complete'] = true;
+            return $session;
+        }
+        if ($status === 'expired') {
+            return null;
+        }
+        throw new StripeReconciliationException('Payment setup requires provider reconciliation support.');
+    }
+
+    private static function assertProviderCreateReplayIsSafe(array $subscription): void
+    {
+        $timestamp = self::stringOrNull($subscription['pricing_assigned_at'] ?? null)
+            ?? self::stringOrNull($subscription['business_signup_completed_at'] ?? null);
+        if ($timestamp === null) {
+            throw new StripeReconciliationException('Payment setup requires provider reconciliation support.');
+        }
+        $age = time() - self::timestampFromUtc($timestamp);
+        if ($age < -300 || $age > self::PROVIDER_IDEMPOTENCY_REPLAY_WINDOW_SECONDS) {
+            throw new StripeReconciliationException('Payment setup requires provider reconciliation support.');
+        }
+    }
+
+    private static function expectedMappingMetadata(array $subscription): array
+    {
+        return [
+            'business_id' => (string) ((int) ($subscription['business_id'] ?? 0)),
+            'subscription_id' => (string) ((int) ($subscription['id'] ?? $subscription['subscription_id'] ?? 0)),
+            'allocation_id' => (string) ((int) ($subscription['allocation_id'] ?? 0)),
+            'product_key' => '247sp',
+            'configuration_version' => (string) ((int) ($subscription['configuration_version'] ?? 0)),
+        ];
+    }
+
+    private static function providerObjectMatchesLockedMapping(array $object, array $subscription): bool
+    {
+        $metadata = is_array($object['metadata'] ?? null) ? $object['metadata'] : [];
+        foreach (self::expectedMappingMetadata($subscription) as $key => $expected) {
+            if (!array_key_exists($key, $metadata) || (string) $metadata[$key] !== $expected) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static function assertProviderObjectMatchesLockedMapping(array $object, array $subscription): void
+    {
+        if (!self::providerObjectMatchesLockedMapping($object, $subscription)) {
+            throw new RuntimeException('Provider metadata does not match the local locked subscription.');
         }
     }
 
@@ -457,13 +752,7 @@ final class StripeBilling
             [
                 'email' => trim((string) ($user['email'] ?? $business['email'] ?? '')),
                 'name' => trim((string) ($business['business_name'] ?? '')),
-                'metadata' => [
-                    'business_id' => (string) ($business['id'] ?? ''),
-                    'subscription_id' => (string) ($subscription['id'] ?? $subscription['subscription_id'] ?? ''),
-                    'allocation_id' => (string) ($subscription['allocation_id'] ?? ''),
-                    'product_key' => '247sp',
-                    'configuration_version' => (string) ($subscription['configuration_version'] ?? ''),
-                ],
+                'metadata' => self::expectedMappingMetadata($subscription),
             ],
             self::providerOperationIdentity($subscription, 'customer_create')
         );
@@ -475,25 +764,46 @@ final class StripeBilling
         array $params = [],
         ?string $idempotencyKey = null
     ): array {
+        $method = strtoupper($method);
+        if ($method === 'POST' && ($idempotencyKey === null || trim($idempotencyKey) === '')) {
+            throw new RuntimeException('Provider operation identity is missing.');
+        }
+        if (is_callable(self::$providerTransport)) {
+            $result = (self::$providerTransport)($method, $path, $params, $idempotencyKey);
+            if (!is_array($result)) {
+                throw new StripeProviderException('Payment setup is temporarily unavailable.');
+            }
+            return $result;
+        }
         if (!function_exists('curl_init')) {
-            throw new RuntimeException('Payment setup is temporarily unavailable.');
+            throw new StripeProviderException('Payment setup is temporarily unavailable.');
         }
         $secretKey = trim((string) Database::config('STRIPE_SECRET_KEY', ''));
         if ($secretKey === '') {
-            throw new RuntimeException('Payment setup is temporarily unavailable.');
+            throw new StripeProviderException('Payment setup is temporarily unavailable.');
+        }
+        $mode = strtolower(trim((string) Database::config('STRIPE_MODE', '')));
+        $environment = strtolower(trim((string) Database::config('APP_ENV', '')));
+        if (!in_array($mode, ['test', 'live'], true)
+            || ($environment === 'production' && $mode !== 'live')
+            || ($environment !== 'production' && $mode !== 'test')
+            || ($mode === 'test' && !str_starts_with($secretKey, 'sk_test_'))
+            || ($mode === 'live' && !str_starts_with($secretKey, 'sk_live_'))
+        ) {
+            throw new StripeProviderException('Payment setup is temporarily unavailable.');
         }
 
-        $method = strtoupper($method);
-        $curl = curl_init(self::API_BASE . $path);
+        $requestUrl = self::API_BASE . $path;
+        if ($method === 'GET' && count($params) > 0) {
+            $requestUrl .= (str_contains($requestUrl, '?') ? '&' : '?')
+                . http_build_query(self::flattenParams($params), '', '&');
+        }
+        $curl = curl_init($requestUrl);
         if ($curl === false) {
-            throw new RuntimeException('Payment setup is temporarily unavailable.');
+            throw new StripeProviderException('Payment setup is temporarily unavailable.');
         }
         $headers = ['Content-Type: application/x-www-form-urlencoded'];
         if ($method === 'POST') {
-            if ($idempotencyKey === null || trim($idempotencyKey) === '') {
-                curl_close($curl);
-                throw new RuntimeException('Provider operation identity is missing.');
-            }
             $headers[] = 'Idempotency-Key: ' . $idempotencyKey;
         }
         curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
@@ -511,12 +821,12 @@ final class StripeBilling
         curl_close($curl);
         if ($response === false) {
             error_log('[StripeBilling] provider request transport failure.');
-            throw new RuntimeException('Payment setup is temporarily unavailable.');
+            throw new StripeProviderException('Payment setup is temporarily unavailable.');
         }
         $decoded = json_decode((string) $response, true);
         if (!is_array($decoded) || $statusCode < 200 || $statusCode >= 300) {
             error_log('[StripeBilling] provider request failed with HTTP status ' . $statusCode . '.');
-            throw new RuntimeException('Payment setup is temporarily unavailable.');
+            throw new StripeProviderException('Payment setup is temporarily unavailable.', $statusCode);
         }
         return $decoded;
     }
@@ -618,6 +928,11 @@ final class StripeBilling
         return $candidate;
     }
 
+    private static function paymentMethodStatusWithoutCheckoutRegression(string $existing): string
+    {
+        return in_array($existing, ['complete', 'cancelled'], true) ? $existing : 'pending';
+    }
+
     private static function introductoryPeriodIsCurrent(array $subscription): bool
     {
         if ((int) ($subscription['free_introductory_months'] ?? 0) <= 0) {
@@ -625,11 +940,6 @@ final class StripeBilling
         }
         $expiresAt = self::stringOrNull($subscription['introductory_period_expires_at'] ?? null);
         return $expiresAt !== null && self::timestampFromUtc($expiresAt) > time();
-    }
-
-    private static function preserveCompletePaymentMethod(string $existing): string
-    {
-        return $existing === 'complete' ? 'complete' : 'pending';
     }
 
     private static function stripeSubscriptionIdFromObject(array $object): ?string
@@ -680,6 +990,16 @@ final class StripeBilling
     private static function validPriceReference(string $value): bool
     {
         return preg_match('/^price_[A-Za-z0-9]+$/', $value) === 1;
+    }
+
+    private static function validCustomerReference(string $value): bool
+    {
+        return preg_match('/^cus_[A-Za-z0-9]+$/', $value) === 1;
+    }
+
+    private static function validCheckoutSessionReference(string $value): bool
+    {
+        return preg_match('/^cs_(?:test_|live_)?[A-Za-z0-9]+$/', $value) === 1;
     }
 
     private static function flattenParams(array $params, ?string $prefix = null): array

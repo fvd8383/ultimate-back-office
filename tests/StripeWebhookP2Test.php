@@ -169,6 +169,29 @@ $config->setValue(null, [
 $connection = new StripeWebhookTestConnection();
 $database = new ReflectionProperty(Database::class, 'connection');
 $database->setValue(null, $connection);
+$providerSubscriptions = [];
+$providerUnavailable = [];
+$providerRequests = [];
+$providerTransport = new ReflectionProperty(StripeBilling::class, 'providerTransport');
+$providerTransport->setValue(null, static function (
+    string $method,
+    string $path,
+    array $params,
+    ?string $idempotencyKey
+) use (&$providerSubscriptions, &$providerUnavailable, &$providerRequests): array {
+    $providerRequests[] = compact('method', 'path', 'params', 'idempotencyKey');
+    if ($method !== 'GET' || !str_starts_with($path, '/subscriptions/')) {
+        throw new RuntimeException('Unexpected provider request in webhook test.');
+    }
+    $id = rawurldecode(substr($path, strlen('/subscriptions/')));
+    if (!empty($providerUnavailable[$id])) {
+        throw new StripeProviderException('Provider unavailable.');
+    }
+    if (!isset($providerSubscriptions[$id])) {
+        throw new StripeProviderException('Subscription not found.', 404);
+    }
+    return $providerSubscriptions[$id];
+});
 
 $signed = static function (string $eventId, string $eventType = 'customer.created', array $object = []) use ($secret): array {
     $payload = json_encode([
@@ -240,8 +263,34 @@ $metadata = static fn (array $subscription): array => [
     'product_key' => '247sp',
     'configuration_version' => (string) $subscription['configuration_version'],
 ];
+$currentProviderSubscription = static function (
+    array $subscription,
+    string $providerId,
+    string $status,
+    int $periodEnd,
+    ?string $defaultPaymentMethod = 'pm_current'
+) use ($metadata): array {
+    return [
+        'id' => $providerId,
+        'object' => 'subscription',
+        'metadata' => $metadata($subscription),
+        'status' => $status,
+        'customer' => 'cus_current' . $subscription['id'],
+        'latest_invoice' => 'in_current' . $subscription['id'],
+        'default_payment_method' => $defaultPaymentMethod,
+        'current_period_start' => $periodEnd - (30 * 86400),
+        'current_period_end' => $periodEnd,
+        'cancel_at_period_end' => false,
+    ];
+};
 
 $connection->subscriptions[100] = $subscriptionFixture(100, 'pending_payment', 'pending');
+$providerSubscriptions['sub_orderguard'] = $currentProviderSubscription(
+    $connection->subscriptions[100],
+    'sub_orderguard',
+    'active',
+    time() + (30 * 86400)
+);
 $invoice = [
     'id' => 'in_order_guard',
     'object' => 'invoice',
@@ -249,23 +298,38 @@ $invoice = [
     'amount_paid' => 14700,
     'amount_due' => 14700,
     'customer' => 'cus_order_guard',
-    'subscription' => 'sub_order_guard',
+    'subscription' => 'sub_orderguard',
 ];
 [$payload, $signature] = $signed('evt_invoice_paid', 'invoice.payment_succeeded', $invoice);
 StripeBilling::handleWebhook($payload, $signature);
 [$payload, $signature] = $signed('evt_invoice_late_failure', 'invoice.payment_failed', $invoice);
 StripeBilling::handleWebhook($payload, $signature);
 stripeWebhookAssert($connection->payments['in_order_guard']['status'] === 'paid', 'A late failure must not regress a paid invoice row.');
-stripeWebhookAssert($connection->subscriptions[100]['status'] === 'active', 'A late failure must not regress an active subscription backed by a paid invoice.');
+stripeWebhookAssert($connection->subscriptions[100]['status'] === 'active', 'Current provider state must keep the subscription active after a late failure.');
+
+$oldFailedInvoice = $invoice;
+$oldFailedInvoice['id'] = 'in_old_failure';
+[$payload, $signature] = $signed('evt_distinct_old_failure', 'invoice.payment_failed', $oldFailedInvoice);
+StripeBilling::handleWebhook($payload, $signature);
+stripeWebhookAssert($connection->payments['in_old_failure']['status'] === 'failed', 'A distinct failed invoice must retain its own payment evidence.');
+stripeWebhookAssert($connection->subscriptions[100]['status'] === 'active', 'A distinct old failed invoice must not override current active provider state.');
 
 $introExpires = gmdate('Y-m-d H:i:s', time() + (30 * 86400));
 $connection->subscriptions[101] = $subscriptionFixture(101, 'trial', 'complete', 6, $introExpires);
+$providerSubscriptions['sub_alphazero'] = $currentProviderSubscription(
+    $connection->subscriptions[101],
+    'sub_alphazero',
+    'trialing',
+    time() + (30 * 86400),
+    null
+);
 $alphaInvoice = [
     'id' => 'in_alpha_zero',
     'object' => 'invoice',
     'metadata' => $metadata($connection->subscriptions[101]),
     'amount_paid' => 0,
     'amount_due' => 0,
+    'subscription' => 'sub_alphazero',
 ];
 [$payload, $signature] = $signed('evt_alpha_zero', 'invoice.payment_succeeded', $alphaInvoice);
 StripeBilling::handleWebhook($payload, $signature);
@@ -273,32 +337,103 @@ stripeWebhookAssert($connection->subscriptions[101]['status'] === 'trial', 'A cu
 stripeWebhookAssert($connection->subscriptions[101]['payment_method_status'] === 'complete', 'Alpha must retain its collected payment method during the free period.');
 
 $connection->subscriptions[102] = $subscriptionFixture(102, 'cancelled', 'cancelled');
+$providerSubscriptions['sub_cancelledlate'] = $currentProviderSubscription(
+    $connection->subscriptions[102],
+    'sub_cancelledlate',
+    'active',
+    time() + (30 * 86400)
+);
 $cancelledInvoice = [
     'id' => 'in_cancelled_late',
     'object' => 'invoice',
     'metadata' => $metadata($connection->subscriptions[102]),
     'amount_paid' => 19700,
     'amount_due' => 19700,
+    'subscription' => 'sub_cancelledlate',
 ];
 [$payload, $signature] = $signed('evt_cancelled_late_invoice', 'invoice.payment_succeeded', $cancelledInvoice);
 StripeBilling::handleWebhook($payload, $signature);
 stripeWebhookAssert($connection->subscriptions[102]['status'] === 'cancelled', 'A late paid invoice must not reopen a cancelled subscription.');
 stripeWebhookAssert($connection->subscriptions[102]['payment_method_status'] === 'cancelled', 'A cancelled subscription must retain cancelled payment state.');
 
-$storedPeriodEnd = gmdate('Y-m-d H:i:s', time() + (60 * 86400));
+$samePeriodEnd = time() + (60 * 86400);
+$storedPeriodEnd = gmdate('Y-m-d H:i:s', $samePeriodEnd);
 $connection->subscriptions[103] = $subscriptionFixture(103, 'active', 'complete', 0, null, $storedPeriodEnd);
+$providerSubscriptions['sub_sameperiod'] = $currentProviderSubscription(
+    $connection->subscriptions[103],
+    'sub_sameperiod',
+    'active',
+    $samePeriodEnd
+);
 $staleSubscription = [
-    'id' => 'sub_stale_period',
+    'id' => 'sub_sameperiod',
     'object' => 'subscription',
     'metadata' => $metadata($connection->subscriptions[103]),
     'status' => 'past_due',
     'current_period_start' => time() - 86400,
-    'current_period_end' => time() + 86400,
+    'current_period_end' => $samePeriodEnd,
 ];
 [$payload, $signature] = $signed('evt_stale_subscription', 'customer.subscription.updated', $staleSubscription);
 StripeBilling::handleWebhook($payload, $signature);
-stripeWebhookAssert($connection->subscriptions[103]['status'] === 'active', 'An older subscription period must not regress current status.');
-stripeWebhookAssert($connection->subscriptions[103]['current_period_end'] === $storedPeriodEnd, 'An older subscription period must not replace the stored period.');
+stripeWebhookAssert($connection->subscriptions[103]['status'] === 'active', 'A stale same-period payload must yield current active provider status.');
+stripeWebhookAssert($connection->subscriptions[103]['current_period_end'] === $storedPeriodEnd, 'Current same-period provider dates must remain authoritative.');
+
+$connection->subscriptions[104] = $subscriptionFixture(104, 'active', 'complete');
+$providerSubscriptions['sub_currentpastdue'] = $currentProviderSubscription(
+    $connection->subscriptions[104],
+    'sub_currentpastdue',
+    'past_due',
+    time() + (30 * 86400),
+    null
+);
+$deliveredActive = $providerSubscriptions['sub_currentpastdue'];
+$deliveredActive['status'] = 'active';
+[$payload, $signature] = $signed('evt_delivered_active_current_past_due', 'customer.subscription.updated', $deliveredActive);
+StripeBilling::handleWebhook($payload, $signature);
+stripeWebhookAssert($connection->subscriptions[104]['status'] === 'past_due', 'Current provider past-due state must override an older delivered active payload.');
+
+$connection->subscriptions[105] = $subscriptionFixture(105, 'active', 'complete');
+$providerUnavailable['sub_unavailable'] = true;
+$unavailablePayload = [
+    'id' => 'sub_unavailable',
+    'object' => 'subscription',
+    'metadata' => $metadata($connection->subscriptions[105]),
+    'status' => 'past_due',
+    'current_period_start' => time() - 86400,
+    'current_period_end' => time() + (30 * 86400),
+];
+[$payload, $signature] = $signed('evt_provider_unavailable', 'customer.subscription.updated', $unavailablePayload);
+$unavailableFailed = false;
+try {
+    StripeBilling::handleWebhook($payload, $signature);
+} catch (StripeProviderException $exception) {
+    $unavailableFailed = true;
+}
+stripeWebhookAssert($unavailableFailed, 'Provider retrieval failure must leave the webhook retryable.');
+stripeWebhookAssert($connection->events['evt_provider_unavailable']['status'] === 'failed', 'Provider retrieval failure must mark the event failed.');
+stripeWebhookAssert($connection->subscriptions[105]['status'] === 'active', 'Provider retrieval failure must not apply the delivered stale lifecycle state.');
+
+$connection->subscriptions[106] = $subscriptionFixture(106, 'active', 'complete');
+$providerUnavailable['sub_invoiceunavailable'] = true;
+$unavailableInvoice = [
+    'id' => 'in_provider_unavailable',
+    'object' => 'invoice',
+    'metadata' => $metadata($connection->subscriptions[106]),
+    'amount_due' => 19700,
+    'subscription' => 'sub_invoiceunavailable',
+];
+[$payload, $signature] = $signed('evt_invoice_provider_unavailable', 'invoice.payment_failed', $unavailableInvoice);
+$unavailableInvoiceFailed = false;
+try {
+    StripeBilling::handleWebhook($payload, $signature);
+} catch (StripeProviderException $exception) {
+    $unavailableInvoiceFailed = true;
+}
+stripeWebhookAssert($unavailableInvoiceFailed, 'Invoice lifecycle reconciliation failure must remain retryable.');
+stripeWebhookAssert($connection->payments['in_provider_unavailable']['status'] === 'failed', 'The individual invoice may be recorded idempotently before lifecycle reconciliation retries.');
+stripeWebhookAssert($connection->subscriptions[106]['status'] === 'active', 'Failed invoice provider retrieval must not regress local lifecycle from the delivered payload.');
+stripeWebhookAssert($connection->events['evt_invoice_provider_unavailable']['status'] === 'failed', 'Invoice provider retrieval failure must leave the event reclaimable.');
+stripeWebhookAssert(count(array_filter($providerRequests, static fn (array $request): bool => $request['method'] === 'GET' && $request['idempotencyKey'] === null)) >= 1, 'Subscription reconciliation GETs must not carry idempotency keys.');
 
 $invalidRejected = false;
 try {
