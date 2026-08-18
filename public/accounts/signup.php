@@ -1,11 +1,13 @@
 <?php
 
 require_once __DIR__ . '/../../private/classes/Auth.php';
+require_once __DIR__ . '/../../private/classes/SignupContext.php';
 
 Session::start();
+$productContext = SignupContext::fromRequest($_POST, $_GET);
 
 if (Session::isAuthenticated()) {
-    header('Location: dashboard.php');
+    header('Location: ' . SignupContext::destination($productContext));
     exit;
 }
 
@@ -24,7 +26,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         try {
             Auth::createActiveUser($firstName, $lastName, $email);
-            header('Location: login.php?email=' . urlencode($email) . '&signup=1');
+            header('Location: login.php' . SignupContext::query($productContext, ['email' => $email, 'signup' => '1']));
             exit;
         } catch (RuntimeException $exception) {
             $error = $exception->getMessage();
@@ -34,22 +36,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-$pageTitle = 'Create Account - Ultimate Back Office';
+$pageTitle = SignupContext::is247sp($productContext)
+    ? 'Create Your 24/7 Sales Partner Account - Ultimate Back Office'
+    : 'Create Account - Ultimate Back Office';
 $bodyClass = 'accounts-page';
 $layoutHomeHref = 'login.php';
 require __DIR__ . '/../../private/views/header.php';
 ?>
 <section class="auth-panel">
     <div class="auth-panel__content">
-        <p class="eyebrow">Accounts</p>
-        <h1>Create account</h1>
-        <p class="muted">Create your account, then sign in with a one-time code. No password is required.</p>
+        <p class="eyebrow"><?= SignupContext::is247sp($productContext) ? '24/7 Sales Partner signup' : 'Accounts' ?></p>
+        <h1><?= SignupContext::is247sp($productContext) ? 'Create your 24/7 Sales Partner account' : 'Create account' ?></h1>
+        <p class="muted"><?= SignupContext::is247sp($productContext)
+            ? "You're signing up for 24/7 Sales Partner through Ultimate Back Office. Create your account, then sign in with a one-time code to set up your business."
+            : 'Create your account, then sign in with a one-time code. No password is required.' ?></p>
 
         <?php if ($error !== ''): ?>
             <?= ui_alert($error, 'error') ?>
         <?php endif; ?>
 
         <form method="post" action="signup.php" class="form-stack">
+            <?php if ($productContext !== null): ?>
+                <input type="hidden" name="product" value="<?= e($productContext) ?>">
+            <?php endif; ?>
             <label for="first_name">First name</label>
             <input id="first_name" name="first_name" autocomplete="given-name" required value="<?= e($firstName) ?>">
 
@@ -63,7 +72,7 @@ require __DIR__ . '/../../private/views/header.php';
         </form>
 
         <p class="secondary-link">
-            Already have an account? <a href="login.php<?= $email !== '' ? '?email=' . urlencode($email) : '' ?>">Sign in</a>
+            Already have an account? <a href="login.php<?= e(SignupContext::query($productContext, $email !== '' ? ['email' => $email] : [])) ?>">Sign in</a>
         </p>
     </div>
 </section>

@@ -3,9 +3,11 @@
 require_once __DIR__ . '/../../private/classes/Auth.php';
 require_once __DIR__ . '/../../private/classes/BusinessFoundation.php';
 require_once __DIR__ . '/../../private/classes/Csrf.php';
+require_once __DIR__ . '/../../private/classes/SignupContext.php';
 require_once __DIR__ . '/../../private/classes/StripeBilling.php';
 
 Session::requireAuth('login.php');
+$productContext = SignupContext::fromRequest($_POST, $_GET);
 
 try {
     $user = Auth::currentUser();
@@ -313,9 +315,11 @@ require __DIR__ . '/../../private/views/account-navigation.php';
 account_shell_begin('businesses');
 ?>
 <section class="dashboard-card dashboard-card--wide">
-    <p class="eyebrow">Business onboarding</p>
-    <h1>Create Business</h1>
-    <p class="muted">Create your business profile and service selections. Product setup continues inside each active module.</p>
+    <p class="eyebrow"><?= SignupContext::is247sp($productContext) ? '24/7 Sales Partner signup' : 'Business onboarding' ?></p>
+    <h1><?= SignupContext::is247sp($productContext) ? 'Set up your 24/7 Sales Partner business' : 'Create Business' ?></h1>
+    <p class="muted"><?= SignupContext::is247sp($productContext)
+        ? "You're signing up for 24/7 Sales Partner through Ultimate Back Office. Complete your business profile to continue into the existing 247SP setup and billing flow."
+        : 'Create your business profile and service selections. Product setup continues inside each active module.' ?></p>
 </section>
 
 <?php if ($notice !== ''): ?>
@@ -336,9 +340,11 @@ account_shell_begin('businesses');
 
 <?php if ($step === 'welcome'): ?>
     <section class="dashboard-card onboarding-welcome">
-        <p class="eyebrow">Welcome to Ultimate Back Office</p>
-        <h2>Set up your business profile</h2>
-        <p class="muted">Create your business profile and service selections. Product setup continues inside each active module.</p>
+        <p class="eyebrow"><?= SignupContext::is247sp($productContext) ? '24/7 Sales Partner + Ultimate Back Office' : 'Welcome to Ultimate Back Office' ?></p>
+        <h2><?= SignupContext::is247sp($productContext) ? 'Start with your business' : 'Set up your business profile' ?></h2>
+        <p class="muted"><?= SignupContext::is247sp($productContext)
+            ? 'Ultimate Back Office securely manages the account and subscription for the 24/7 Sales Partner system you are purchasing.'
+            : 'Create your business profile and service selections. Product setup continues inside each active module.' ?></p>
         <ul class="setup-checklist">
             <li>Business Profile</li>
             <li>Services</li>
@@ -349,7 +355,7 @@ account_shell_begin('businesses');
         </ul>
         <p class="muted">Estimated time: 8-10 minutes.</p>
         <div class="button-row">
-            <?= ui_button('Begin Setup', 'business-create.php?step=business_info' . ($businessId > 0 ? '&business_id=' . urlencode((string) $businessId) : '')) ?>
+            <?= ui_button('Begin Setup', 'business-create.php?step=business_info' . ($businessId > 0 ? '&business_id=' . urlencode((string) $businessId) : '') . ($productContext !== null ? '&product=' . urlencode($productContext) : '')) ?>
             <?= ui_button('Cancel', 'dashboard.php', 'secondary') ?>
         </div>
     </section>
