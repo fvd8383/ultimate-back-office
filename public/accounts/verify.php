@@ -1,11 +1,13 @@
 <?php
 
 require_once __DIR__ . '/../../private/classes/Auth.php';
+require_once __DIR__ . '/../../private/classes/SignupContext.php';
 
 Session::start();
+$productContext = SignupContext::fromRequest($_POST, $_GET);
 
 if (Session::isAuthenticated()) {
-    header('Location: dashboard.php');
+    header('Location: ' . SignupContext::destination($productContext));
     exit;
 }
 
@@ -19,7 +21,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     try {
         if (Auth::verifyLoginCode($email, $code)) {
-            header('Location: dashboard.php');
+            header('Location: ' . SignupContext::destination($productContext));
             exit;
         }
 
@@ -29,13 +31,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-$pageTitle = 'Verify Login - Ultimate Back Office';
+$pageTitle = SignupContext::is247sp($productContext)
+    ? 'Verify 24/7 Sales Partner Signup - Ultimate Back Office'
+    : 'Verify Login - Ultimate Back Office';
 $bodyClass = 'accounts-page';
 require __DIR__ . '/../../private/views/header.php';
 ?>
 <section class="auth-panel">
     <div class="auth-panel__content">
-        <p class="eyebrow">Accounts</p>
+        <p class="eyebrow"><?= SignupContext::is247sp($productContext) ? '24/7 Sales Partner signup' : 'Accounts' ?></p>
         <h1>Verify your login code</h1>
         <p class="muted">Codes expire after 10 minutes and can only be used once.</p>
 
@@ -48,6 +52,9 @@ require __DIR__ . '/../../private/views/header.php';
         <?php endif; ?>
 
         <form method="post" action="verify.php" class="form-stack">
+            <?php if ($productContext !== null): ?>
+                <input type="hidden" name="product" value="<?= e($productContext) ?>">
+            <?php endif; ?>
             <label for="email">Email</label>
             <input id="email" name="email" type="email" autocomplete="email" required value="<?= e($email) ?>">
 
@@ -58,7 +65,7 @@ require __DIR__ . '/../../private/views/header.php';
         </form>
 
         <p class="secondary-link">
-            Need a new code? <a href="login.php<?= $email !== '' ? '?email=' . urlencode($email) : '' ?>">Request one</a>
+            Need a new code? <a href="login.php<?= e(SignupContext::query($productContext, $email !== '' ? ['email' => $email] : [])) ?>">Request one</a>
         </p>
     </div>
 </section>
