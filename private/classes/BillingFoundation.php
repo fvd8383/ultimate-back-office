@@ -53,8 +53,21 @@ final class BillingFoundation
                     s.cancelled_at,
                     p.product_key,
                     p.name AS plan_name,
-                    p.setup_fee,
-                    p.monthly_fee,
+                    CASE WHEN p.product_key = \'247sp\' THEN terms.locked_setup_fee ELSE p.setup_fee END AS setup_fee,
+                    CASE WHEN p.product_key = \'247sp\' THEN terms.locked_monthly_fee ELSE p.monthly_fee END AS monthly_fee,
+                    terms.id AS commercial_terms_id,
+                    terms.allocation_id,
+                    terms.customer_sequence_number,
+                    cohort.cohort_key,
+                    cohort.display_name AS cohort_display_name,
+                    terms.currency,
+                    terms.locked_free_introductory_months AS free_introductory_months,
+                    terms.pricing_assigned_at,
+                    terms.business_signup_completed_at,
+                    terms.introductory_period_starts_at,
+                    terms.introductory_period_expires_at,
+                    terms.recurring_billing_starts_at,
+                    terms.configuration_version,
                     CASE
                         WHEN p.product_key IS NULL THEN NULL
                         WHEN access_bm.id IS NULL THEN 0
@@ -65,6 +78,8 @@ final class BillingFoundation
              INNER JOIN business_users bu ON bu.business_id = b.id
              LEFT JOIN subscriptions s ON s.business_id = b.id
              LEFT JOIN plans p ON p.id = s.plan_id
+             LEFT JOIN subscription_commercial_terms terms ON terms.subscription_id = s.id
+             LEFT JOIN pricing_cohorts cohort ON cohort.id = terms.pricing_cohort_id
              LEFT JOIN modules access_module ON access_module.module_key = p.product_key
              LEFT JOIN business_modules access_bm ON access_bm.business_id = b.id
                 AND access_bm.module_id = access_module.id
@@ -134,9 +149,28 @@ final class BillingFoundation
     public static function subscriptionForBusiness(int $businessId, string $productKey = '247sp'): ?array
     {
         $statement = Database::connection()->prepare(
-            'SELECT s.*, p.product_key, p.name AS plan_name, p.setup_fee, p.monthly_fee
+            'SELECT s.*, p.product_key, p.name AS plan_name,
+                    CASE WHEN p.product_key = \'247sp\' THEN terms.locked_setup_fee ELSE p.setup_fee END AS setup_fee,
+                    CASE WHEN p.product_key = \'247sp\' THEN terms.locked_monthly_fee ELSE p.monthly_fee END AS monthly_fee,
+                    terms.id AS commercial_terms_id,
+                    terms.allocation_id,
+                    terms.customer_sequence_number,
+                    cohort.cohort_key,
+                    cohort.display_name AS cohort_display_name,
+                    terms.currency,
+                    terms.locked_free_introductory_months AS free_introductory_months,
+                    terms.pricing_assigned_at,
+                    terms.business_signup_completed_at,
+                    terms.introductory_period_starts_at,
+                    terms.introductory_period_expires_at,
+                    terms.recurring_billing_starts_at,
+                    terms.locked_stripe_recurring_price_ref,
+                    terms.locked_stripe_setup_price_ref,
+                    terms.configuration_version
              FROM subscriptions s
              INNER JOIN plans p ON p.id = s.plan_id
+             LEFT JOIN subscription_commercial_terms terms ON terms.subscription_id = s.id
+             LEFT JOIN pricing_cohorts cohort ON cohort.id = terms.pricing_cohort_id
              WHERE s.business_id = :business_id
                AND p.product_key = :product_key
              ORDER BY s.created_at DESC, s.id DESC
@@ -175,8 +209,23 @@ final class BillingFoundation
                     b.business_name,
                     p.product_key,
                     p.name AS plan_name,
-                    p.setup_fee,
-                    p.monthly_fee,
+                    CASE WHEN p.product_key = '247sp' THEN terms.locked_setup_fee ELSE p.setup_fee END AS setup_fee,
+                    CASE WHEN p.product_key = '247sp' THEN terms.locked_monthly_fee ELSE p.monthly_fee END AS monthly_fee,
+                    terms.id AS commercial_terms_id,
+                    terms.allocation_id,
+                    terms.customer_sequence_number,
+                    cohort.cohort_key,
+                    cohort.display_name AS cohort_display_name,
+                    terms.currency,
+                    terms.locked_free_introductory_months AS free_introductory_months,
+                    terms.pricing_assigned_at,
+                    terms.business_signup_completed_at,
+                    terms.introductory_period_starts_at,
+                    terms.introductory_period_expires_at,
+                    terms.recurring_billing_starts_at,
+                    terms.locked_stripe_recurring_price_ref,
+                    terms.locked_stripe_setup_price_ref,
+                    terms.configuration_version,
                     CASE
                         WHEN access_bm.id IS NULL THEN 0
                         ELSE 1
@@ -185,6 +234,8 @@ final class BillingFoundation
              FROM subscriptions s
              INNER JOIN businesses b ON b.id = s.business_id
              INNER JOIN plans p ON p.id = s.plan_id
+             LEFT JOIN subscription_commercial_terms terms ON terms.subscription_id = s.id
+             LEFT JOIN pricing_cohorts cohort ON cohort.id = terms.pricing_cohort_id
              LEFT JOIN modules access_module ON access_module.module_key = p.product_key
              LEFT JOIN business_modules access_bm ON access_bm.business_id = b.id
                 AND access_bm.module_id = access_module.id
@@ -207,9 +258,14 @@ final class BillingFoundation
                 SUM(CASE WHEN s.status = 'active' THEN 1 ELSE 0 END) AS active_subscriptions,
                 SUM(CASE WHEN s.status = 'trial' THEN 1 ELSE 0 END) AS trial_accounts,
                 SUM(CASE WHEN s.status = 'past_due' THEN 1 ELSE 0 END) AS past_due_accounts,
-                SUM(CASE WHEN s.status = 'active' THEN p.monthly_fee ELSE 0 END) AS mrr
+                SUM(CASE
+                    WHEN s.status <> 'active' THEN 0
+                    WHEN p.product_key = '247sp' THEN COALESCE(terms.locked_monthly_fee, 0)
+                    ELSE p.monthly_fee
+                END) AS mrr
              FROM subscriptions s
-             INNER JOIN plans p ON p.id = s.plan_id"
+             INNER JOIN plans p ON p.id = s.plan_id
+             LEFT JOIN subscription_commercial_terms terms ON terms.subscription_id = s.id"
         );
         $metrics = $statement->fetch() ?: [];
 
@@ -235,7 +291,12 @@ final class BillingFoundation
         $statement = Database::connection()->prepare(
             'UPDATE subscriptions
              SET status = :status,
-                 payment_method_status = :payment_method_status,
+                 payment_method_status = CASE
+                    WHEN :payment_method_status = :not_on_file_status
+                         AND payment_method_status = :complete_payment_status
+                    THEN payment_method_status
+                    ELSE :payment_method_status_value
+                 END,
                  started_at = IF(started_at IS NULL AND :status_for_started <> :cancelled_status, NOW(), started_at),
                  cancelled_at = IF(:status_for_cancelled = :cancelled_status_check, NOW(), NULL),
                  updated_at = NOW()
@@ -244,6 +305,9 @@ final class BillingFoundation
         $statement->execute([
             'status' => $status,
             'payment_method_status' => self::paymentMethodStatusForSubscriptionStatus($status),
+            'not_on_file_status' => 'not_on_file',
+            'complete_payment_status' => 'complete',
+            'payment_method_status_value' => self::paymentMethodStatusForSubscriptionStatus($status),
             'status_for_started' => $status,
             'cancelled_status' => 'cancelled',
             'status_for_cancelled' => $status,
@@ -256,67 +320,35 @@ final class BillingFoundation
 
     public static function adminSubscription(int $subscriptionId): ?array
     {
-        $statement = Database::connection()->prepare(
-            'SELECT s.*, p.product_key, p.name AS plan_name
-             FROM subscriptions s
-             INNER JOIN plans p ON p.id = s.plan_id
-             WHERE s.id = :subscription_id
-             LIMIT 1'
+        return self::subscriptionRecord(
+            's.id = :subscription_id',
+            ['subscription_id' => $subscriptionId]
         );
-        $statement->execute(['subscription_id' => $subscriptionId]);
-        $subscription = $statement->fetch();
-
-        return $subscription ?: null;
     }
 
     public static function subscriptionByStripeSubscriptionId(string $stripeSubscriptionId): ?array
     {
-        $statement = Database::connection()->prepare(
-            'SELECT s.*, p.product_key, p.name AS plan_name, p.setup_fee, p.monthly_fee
-             FROM subscriptions s
-             INNER JOIN plans p ON p.id = s.plan_id
-             WHERE s.stripe_subscription_id = :stripe_subscription_id
-             LIMIT 1'
+        return self::subscriptionRecord(
+            's.stripe_subscription_id = :stripe_subscription_id',
+            ['stripe_subscription_id' => $stripeSubscriptionId]
         );
-        $statement->execute(['stripe_subscription_id' => $stripeSubscriptionId]);
-        $subscription = $statement->fetch();
-
-        return $subscription ?: null;
     }
 
     public static function subscriptionByStripeCheckoutSessionId(string $stripeCheckoutSessionId): ?array
     {
-        $statement = Database::connection()->prepare(
-            'SELECT s.*, p.product_key, p.name AS plan_name, p.setup_fee, p.monthly_fee
-             FROM subscriptions s
-             INNER JOIN plans p ON p.id = s.plan_id
-             WHERE s.stripe_checkout_session_id = :stripe_checkout_session_id
-             LIMIT 1'
+        return self::subscriptionRecord(
+            's.stripe_checkout_session_id = :stripe_checkout_session_id',
+            ['stripe_checkout_session_id' => $stripeCheckoutSessionId]
         );
-        $statement->execute(['stripe_checkout_session_id' => $stripeCheckoutSessionId]);
-        $subscription = $statement->fetch();
-
-        return $subscription ?: null;
     }
 
     public static function subscriptionByStripeCustomerId(string $stripeCustomerId, string $productKey = '247sp'): ?array
     {
-        $statement = Database::connection()->prepare(
-            'SELECT s.*, p.product_key, p.name AS plan_name, p.setup_fee, p.monthly_fee
-             FROM subscriptions s
-             INNER JOIN plans p ON p.id = s.plan_id
-             WHERE s.stripe_customer_id = :stripe_customer_id
-               AND p.product_key = :product_key
-             ORDER BY s.created_at DESC, s.id DESC
-             LIMIT 1'
+        return self::subscriptionRecord(
+            's.stripe_customer_id = :stripe_customer_id AND p.product_key = :product_key',
+            ['stripe_customer_id' => $stripeCustomerId, 'product_key' => $productKey],
+            'ORDER BY s.created_at DESC, s.id DESC'
         );
-        $statement->execute([
-            'stripe_customer_id' => $stripeCustomerId,
-            'product_key' => $productKey,
-        ]);
-        $subscription = $statement->fetch();
-
-        return $subscription ?: null;
     }
 
     public static function updateSubscriptionBillingState(int $subscriptionId, array $fields): void
@@ -377,44 +409,11 @@ final class BillingFoundation
         $statement->execute($params);
     }
 
-    public static function recordStripePayment(int $subscriptionId, array $payment): void
+    public static function recordStripePayment(int $subscriptionId, array $payment): string
     {
         $stripeInvoiceId = trim((string) ($payment['stripe_invoice_id'] ?? ''));
-
-        if ($stripeInvoiceId !== '') {
-            $existing = Database::connection()->prepare(
-                'SELECT id FROM payments WHERE stripe_invoice_id = :stripe_invoice_id LIMIT 1'
-            );
-            $existing->execute(['stripe_invoice_id' => $stripeInvoiceId]);
-            $existingPaymentId = (int) ($existing->fetchColumn() ?: 0);
-
-            if ($existingPaymentId > 0) {
-                $statement = Database::connection()->prepare(
-                    'UPDATE payments
-                     SET payment_type = :payment_type,
-                         amount = :amount,
-                         status = :status,
-                         transaction_reference = :transaction_reference,
-                         stripe_payment_intent_id = :stripe_payment_intent_id,
-                         stripe_checkout_session_id = :stripe_checkout_session_id,
-                         stripe_event_id = :stripe_event_id,
-                         invoice_url = :invoice_url,
-                         updated_at = NOW()
-                     WHERE id = :payment_id'
-                );
-                $statement->execute([
-                    'payment_type' => (string) ($payment['payment_type'] ?? 'stripe_invoice'),
-                    'amount' => (float) ($payment['amount'] ?? 0),
-                    'status' => (string) ($payment['status'] ?? 'pending'),
-                    'transaction_reference' => (string) ($payment['transaction_reference'] ?? $stripeInvoiceId),
-                    'stripe_payment_intent_id' => self::nullableString($payment['stripe_payment_intent_id'] ?? null),
-                    'stripe_checkout_session_id' => self::nullableString($payment['stripe_checkout_session_id'] ?? null),
-                    'stripe_event_id' => self::nullableString($payment['stripe_event_id'] ?? null),
-                    'invoice_url' => self::nullableString($payment['invoice_url'] ?? null),
-                    'payment_id' => $existingPaymentId,
-                ]);
-                return;
-            }
+        if ($stripeInvoiceId === '') {
+            throw new InvalidArgumentException('A Stripe invoice identifier is required.');
         }
 
         $statement = Database::connection()->prepare(
@@ -426,7 +425,20 @@ final class BillingFoundation
                 :subscription_id, :payment_type, :amount, :status, :transaction_reference,
                 :stripe_invoice_id, :stripe_payment_intent_id, :stripe_checkout_session_id,
                 :stripe_event_id, :invoice_url, NOW(), NOW()
-             )'
+             )
+             ON DUPLICATE KEY UPDATE
+                payment_type = VALUES(payment_type),
+                amount = VALUES(amount),
+                status = CASE
+                    WHEN status = \'paid\' AND VALUES(status) = \'failed\' THEN status
+                    ELSE VALUES(status)
+                END,
+                transaction_reference = VALUES(transaction_reference),
+                stripe_payment_intent_id = VALUES(stripe_payment_intent_id),
+                stripe_checkout_session_id = VALUES(stripe_checkout_session_id),
+                stripe_event_id = VALUES(stripe_event_id),
+                invoice_url = VALUES(invoice_url),
+                updated_at = NOW()'
         );
         $statement->execute([
             'subscription_id' => $subscriptionId,
@@ -434,41 +446,139 @@ final class BillingFoundation
             'amount' => (float) ($payment['amount'] ?? 0),
             'status' => (string) ($payment['status'] ?? 'pending'),
             'transaction_reference' => (string) ($payment['transaction_reference'] ?? ''),
-            'stripe_invoice_id' => $stripeInvoiceId !== '' ? $stripeInvoiceId : null,
+            'stripe_invoice_id' => $stripeInvoiceId,
             'stripe_payment_intent_id' => self::nullableString($payment['stripe_payment_intent_id'] ?? null),
             'stripe_checkout_session_id' => self::nullableString($payment['stripe_checkout_session_id'] ?? null),
             'stripe_event_id' => self::nullableString($payment['stripe_event_id'] ?? null),
             'invoice_url' => self::nullableString($payment['invoice_url'] ?? null),
         ]);
+
+        $read = Database::connection()->prepare(
+            'SELECT status
+             FROM payments
+             WHERE stripe_invoice_id = :stripe_invoice_id
+             LIMIT 1'
+        );
+        $read->execute(['stripe_invoice_id' => $stripeInvoiceId]);
+        $status = (string) ($read->fetchColumn() ?: '');
+        if ($status === '') {
+            throw new RuntimeException('Stripe payment state could not be read after recording.');
+        }
+
+        return $status;
     }
 
-    public static function stripeWebhookEventExists(string $eventId): bool
+    public static function claimStripeWebhookEvent(string $eventId, string $eventType, string $payload): string
     {
-        $statement = Database::connection()->prepare(
-            'SELECT status FROM stripe_webhook_events WHERE event_id = :event_id LIMIT 1'
-        );
-        $statement->execute(['event_id' => $eventId]);
+        $connection = Database::connection();
+        if ($connection->inTransaction()) {
+            throw new RuntimeException('Stripe webhook claiming must own its transaction.');
+        }
 
-        return (string) ($statement->fetchColumn() ?: '') === 'processed';
-    }
+        $connection->beginTransaction();
 
-    public static function recordStripeWebhookEvent(string $eventId, string $eventType, string $payload): void
-    {
-        $statement = Database::connection()->prepare(
-            'INSERT INTO stripe_webhook_events (event_id, event_type, status, payload_json, created_at, updated_at)
-             VALUES (:event_id, :event_type, :status, :payload_json, NOW(), NOW())'
-            . ' ON DUPLICATE KEY UPDATE event_type = VALUES(event_type), status = VALUES(status), payload_json = VALUES(payload_json), error_message = NULL, updated_at = NOW()'
-        );
-        $statement->execute([
-            'event_id' => $eventId,
-            'event_type' => $eventType,
-            'status' => 'processing',
-            'payload_json' => $payload,
-        ]);
+        try {
+            $insert = $connection->prepare(
+                'INSERT IGNORE INTO stripe_webhook_events (
+                    event_id, event_type, status, payload_json, created_at, updated_at
+                 ) VALUES (
+                    :event_id, :event_type, :status, :payload_json, NOW(), NOW()
+                 )'
+            );
+            $insert->execute([
+                'event_id' => $eventId,
+                'event_type' => $eventType,
+                'status' => 'processing',
+                'payload_json' => $payload,
+            ]);
+
+            if ($insert->rowCount() === 1) {
+                $connection->commit();
+                return 'claimed';
+            }
+
+            $select = $connection->prepare(
+                'SELECT status, updated_at
+                 FROM stripe_webhook_events
+                 WHERE event_id = :event_id
+                 LIMIT 1
+                 FOR UPDATE'
+            );
+            $select->execute(['event_id' => $eventId]);
+            $status = (string) ($select->fetchColumn() ?: '');
+
+            if ($status === 'processed') {
+                $connection->commit();
+                return 'already_processed';
+            }
+            if ($status === 'processing') {
+                $reclaimProcessing = $connection->prepare(
+                    'UPDATE stripe_webhook_events
+                     SET event_type = :event_type,
+                         payload_json = :payload_json,
+                         error_message = NULL,
+                         processed_at = NULL,
+                         updated_at = NOW()
+                     WHERE event_id = :event_id
+                       AND status = :processing_status
+                       AND COALESCE(updated_at, created_at) <= DATE_SUB(NOW(), INTERVAL 5 MINUTE)'
+                );
+                $reclaimProcessing->execute([
+                    'event_type' => $eventType,
+                    'payload_json' => $payload,
+                    'event_id' => $eventId,
+                    'processing_status' => 'processing',
+                ]);
+                if ($reclaimProcessing->rowCount() === 1) {
+                    $connection->commit();
+                    return 'claimed';
+                }
+
+                $connection->commit();
+                return 'already_processing';
+            }
+            if ($status !== 'failed') {
+                throw new RuntimeException('Stripe webhook event state is invalid.');
+            }
+
+            $reclaim = $connection->prepare(
+                'UPDATE stripe_webhook_events
+                 SET event_type = :event_type,
+                     status = :status,
+                     payload_json = :payload_json,
+                     error_message = NULL,
+                     processed_at = NULL,
+                     updated_at = NOW()
+                 WHERE event_id = :event_id
+                   AND status = :failed_status'
+            );
+            $reclaim->execute([
+                'event_type' => $eventType,
+                'status' => 'processing',
+                'payload_json' => $payload,
+                'event_id' => $eventId,
+                'failed_status' => 'failed',
+            ]);
+            if ($reclaim->rowCount() !== 1) {
+                throw new RuntimeException('Stripe webhook event could not be reclaimed.');
+            }
+
+            $connection->commit();
+            return 'claimed';
+        } catch (Throwable $exception) {
+            if ($connection->inTransaction()) {
+                $connection->rollBack();
+            }
+            throw $exception;
+        }
     }
 
     public static function markStripeWebhookEvent(string $eventId, string $status, string $errorMessage = ''): void
     {
+        if (!in_array($status, ['processed', 'failed'], true)) {
+            throw new InvalidArgumentException('Unsupported Stripe webhook status.');
+        }
+
         $statement = Database::connection()->prepare(
             'UPDATE stripe_webhook_events
              SET status = :status,
@@ -484,6 +594,41 @@ final class BillingFoundation
             'processed_status' => 'processed',
             'event_id' => $eventId,
         ]);
+    }
+
+    private static function subscriptionRecord(string $where, array $params, string $orderBy = ''): ?array
+    {
+        $statement = Database::connection()->prepare(
+            'SELECT s.*, p.product_key, p.name AS plan_name,
+                    CASE WHEN p.product_key = \'247sp\' THEN terms.locked_setup_fee ELSE p.setup_fee END AS setup_fee,
+                    CASE WHEN p.product_key = \'247sp\' THEN terms.locked_monthly_fee ELSE p.monthly_fee END AS monthly_fee,
+                    terms.id AS commercial_terms_id,
+                    terms.allocation_id,
+                    terms.customer_sequence_number,
+                    cohort.cohort_key,
+                    cohort.display_name AS cohort_display_name,
+                    terms.currency,
+                    terms.locked_free_introductory_months AS free_introductory_months,
+                    terms.pricing_assigned_at,
+                    terms.business_signup_completed_at,
+                    terms.introductory_period_starts_at,
+                    terms.introductory_period_expires_at,
+                    terms.recurring_billing_starts_at,
+                    terms.locked_stripe_recurring_price_ref,
+                    terms.locked_stripe_setup_price_ref,
+                    terms.configuration_version
+             FROM subscriptions s
+             INNER JOIN plans p ON p.id = s.plan_id
+             LEFT JOIN subscription_commercial_terms terms ON terms.subscription_id = s.id
+             LEFT JOIN pricing_cohorts cohort ON cohort.id = terms.pricing_cohort_id
+             WHERE ' . $where . '
+             ' . $orderBy . '
+             LIMIT 1'
+        );
+        $statement->execute($params);
+        $subscription = $statement->fetch();
+
+        return is_array($subscription) ? $subscription : null;
     }
 
     private static function logActivity(int $businessId, int $adminUserId, string $activityType, string $subject): void

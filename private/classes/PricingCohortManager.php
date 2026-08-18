@@ -37,9 +37,12 @@ final class PricingCohortManager
     {
         $input = self::normalizeAssignmentCommand($command);
         $connection = Database::connection();
+        $ownsTransaction = !$connection->inTransaction();
 
         try {
-            $connection->beginTransaction();
+            if ($ownsTransaction) {
+                $connection->beginTransaction();
+            }
 
             $subscription = self::lockedSubscription($connection, $input['subscription_id']);
             self::assertSubscriptionContext($subscription, $input['business_id']);
@@ -53,7 +56,9 @@ final class PricingCohortManager
             );
             if ($existing !== null) {
                 self::assertExistingAssignmentMatches($existing, $input, $subscription);
-                $connection->commit();
+                if ($ownsTransaction) {
+                    $connection->commit();
+                }
 
                 return self::normalizeAssignment($existing);
             }
@@ -65,7 +70,9 @@ final class PricingCohortManager
             );
             if ($existing !== null) {
                 self::assertExistingAssignmentMatches($existing, $input, $subscription, false);
-                $connection->commit();
+                if ($ownsTransaction) {
+                    $connection->commit();
+                }
 
                 return self::normalizeAssignment($existing);
             }
@@ -154,8 +161,8 @@ final class PricingCohortManager
                 'introductory_period_starts_at' => $terms['introductory_period_starts_at'],
                 'introductory_period_expires_at' => $terms['introductory_period_expires_at'],
                 'recurring_billing_starts_at' => $terms['recurring_billing_starts_at'],
-                'locked_stripe_recurring_price_ref' => self::nullableReference($cohort['stripe_recurring_price_ref'] ?? null),
-                'locked_stripe_setup_price_ref' => self::nullableReference($cohort['stripe_setup_price_ref'] ?? null),
+                'locked_stripe_recurring_price_ref' => $terms['stripe_recurring_price_ref'],
+                'locked_stripe_setup_price_ref' => $terms['stripe_setup_price_ref'],
                 'configuration_version' => (int) $cohort['version'],
                 'correlation_id' => $input['correlation_id'],
             ]);
@@ -195,11 +202,13 @@ final class PricingCohortManager
                 throw new RuntimeException('Commercial terms could not be read after assignment.');
             }
 
-            $connection->commit();
+            if ($ownsTransaction) {
+                $connection->commit();
+            }
 
             return self::normalizeAssignment($result);
         } catch (Throwable $exception) {
-            if ($connection->inTransaction()) {
+            if ($ownsTransaction && $connection->inTransaction()) {
                 $connection->rollBack();
             }
 
@@ -207,7 +216,7 @@ final class PricingCohortManager
                 throw $exception;
             }
 
-            if (self::isDuplicateKeyFailure($exception)) {
+            if ($ownsTransaction && self::isDuplicateKeyFailure($exception)) {
                 $recovered = self::recoverConcurrentAssignment($input);
                 if ($recovered !== null) {
                     return $recovered;
@@ -563,6 +572,19 @@ final class PricingCohortManager
 
     private static function commercialTerms(array $cohort, string $completedAt): array
     {
+        $recurringPriceRef = self::nullableReference($cohort['stripe_recurring_price_ref'] ?? null);
+        $setupPriceRef = self::nullableReference($cohort['stripe_setup_price_ref'] ?? null);
+        $setupFee = self::normalizeMoney($cohort['setup_fee']);
+
+        if (!self::validStripePriceReference($recurringPriceRef)
+            || ((float) $setupFee > 0 && !self::validStripePriceReference($setupPriceRef))
+        ) {
+            throw new PricingCohortException(
+                'invalid_configuration',
+                '247SP provider pricing configuration is not available.'
+            );
+        }
+
         $introMonths = (int) $cohort['free_introductory_months'];
         $introStart = null;
         $introExpires = null;
@@ -574,13 +596,15 @@ final class PricingCohortManager
         }
 
         return [
-            'setup_fee' => self::normalizeMoney($cohort['setup_fee']),
+            'setup_fee' => $setupFee,
             'monthly_fee' => self::normalizeMoney($cohort['monthly_fee']),
             'currency' => strtoupper((string) $cohort['currency']),
             'free_introductory_months' => $introMonths,
             'introductory_period_starts_at' => $introStart,
             'introductory_period_expires_at' => $introExpires,
             'recurring_billing_starts_at' => $recurringStarts,
+            'stripe_recurring_price_ref' => $recurringPriceRef,
+            'stripe_setup_price_ref' => (float) $setupFee > 0 ? $setupPriceRef : null,
         ];
     }
 
@@ -805,6 +829,11 @@ final class PricingCohortManager
         $value = trim((string) $value);
 
         return $value === '' ? null : $value;
+    }
+
+    private static function validStripePriceReference(?string $value): bool
+    {
+        return $value !== null && preg_match('/^price_[A-Za-z0-9]+$/', $value) === 1;
     }
 
     private static function reportFailure(string $operation, Throwable $exception): void

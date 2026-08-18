@@ -2,6 +2,7 @@
 
 require_once __DIR__ . '/../../private/classes/Auth.php';
 require_once __DIR__ . '/../../private/classes/BillingFoundation.php';
+require_once __DIR__ . '/../../private/classes/Csrf.php';
 
 Session::requireAuth('login.php');
 
@@ -11,6 +12,7 @@ $subscriptions = [];
 $payments = [];
 $checkoutSuccess = (string) ($_GET['checkout'] ?? '') === 'success';
 $checkoutCancelled = (string) ($_GET['checkout'] ?? '') === 'cancelled';
+$checkoutCsrfScope = '247sp-checkout';
 
 try {
     $user = Auth::currentUser();
@@ -66,7 +68,7 @@ function accounts_billing_payment_method_label(?string $value, ?string $subscrip
 
 function accounts_billing_billable_status(string $status): bool
 {
-    return in_array($status, ['active', 'past_due', 'pending_payment'], true);
+    return $status === 'active';
 }
 
 function accounts_billing_current_monthly_charges(array $subscriptions): float
@@ -78,6 +80,11 @@ function accounts_billing_current_monthly_charges(array $subscriptions): float
             continue;
         }
 
+        if ((string) ($subscription['product_key'] ?? '') === '247sp'
+            && (int) ($subscription['commercial_terms_id'] ?? 0) <= 0
+        ) {
+            continue;
+        }
         $total += (float) ($subscription['monthly_fee'] ?? 0);
     }
 
@@ -153,8 +160,9 @@ function accounts_billing_launch_payment_state(array $subscriptions): array
 
         $has247sp = true;
         $status = (string) ($subscription['subscription_status'] ?? '');
-        $hasActive247sp = $hasActive247sp || $status === 'active';
-        $hasIncomplete247sp = $hasIncomplete247sp || $status !== 'active';
+        $paymentComplete = (string) ($subscription['payment_method_status'] ?? '') === 'complete';
+        $hasActive247sp = $hasActive247sp || $status === 'active' || ($status === 'trial' && $paymentComplete);
+        $hasIncomplete247sp = $hasIncomplete247sp || !($status === 'active' || ($status === 'trial' && $paymentComplete));
     }
 
     if ($hasActive247sp && !$hasIncomplete247sp) {
@@ -162,7 +170,7 @@ function accounts_billing_launch_payment_state(array $subscriptions): array
     }
 
     if ($has247sp) {
-        return ['label' => 'Payment needed before launch', 'type' => 'role', 'detail' => 'Complete payment after your website preview is ready.'];
+        return ['label' => 'Payment setup needed', 'type' => 'role', 'detail' => 'Complete payment setup for the locked 24/7 Sales Partner subscription.'];
     }
 
     return ['label' => 'No launch payment needed', 'type' => 'status', 'detail' => 'No 24/7 Sales Partner subscription is connected yet.'];
@@ -171,23 +179,22 @@ function accounts_billing_launch_payment_state(array $subscriptions): array
 function accounts_billing_invoice_download_href(array $payment): string
 {
     $invoiceUrl = trim((string) ($payment['invoice_url'] ?? ''));
-    if (preg_match('/^https?:\/\//i', $invoiceUrl) === 1) {
+    $host = strtolower((string) parse_url($invoiceUrl, PHP_URL_HOST));
+    if (parse_url($invoiceUrl, PHP_URL_SCHEME) === 'https'
+        && ($host === 'stripe.com' || str_ends_with($host, '.stripe.com'))
+    ) {
         return $invoiceUrl;
     }
-
-    $reference = trim((string) ($payment['transaction_reference'] ?? ''));
-
-    if (preg_match('/^https?:\/\//i', $reference) !== 1) {
-        return '';
-    }
-
-    return $reference;
+    return '';
 }
 
 function accounts_billing_needs_checkout(array $subscription): bool
 {
     return (string) ($subscription['product_key'] ?? '') === '247sp'
-        && in_array((string) ($subscription['subscription_status'] ?? ''), ['trial', 'pending_payment', 'past_due'], true);
+        && (int) ($subscription['commercial_terms_id'] ?? 0) > 0
+        && (string) ($subscription['subscription_status'] ?? '') !== 'cancelled'
+        && !((string) ($subscription['payment_method_status'] ?? '') === 'complete'
+            && in_array((string) ($subscription['subscription_status'] ?? ''), ['trial', 'active'], true));
 }
 
 $currentMonthlyCharges = accounts_billing_current_monthly_charges($subscriptions);
@@ -255,14 +262,30 @@ account_shell_begin('billing');
                             <?= ui_alert('Billing status needs attention.', 'warning') ?>
                         <?php endif; ?>
                         <?php if ($needsCheckout): ?>
-                            <?= ui_button('Complete Payment', 'checkout.php?business_id=' . urlencode((string) $subscription['business_id']), 'primary', ['class' => 'ubo-button--compact']) ?>
+                            <form method="post" action="checkout.php">
+                                <?= Csrf::input($checkoutCsrfScope) ?>
+                                <input type="hidden" name="business_id" value="<?= e($subscription['business_id']) ?>">
+                                <?= ui_button('Complete Payment', '', 'primary', ['class' => 'ubo-button--compact']) ?>
+                            </form>
                         <?php endif; ?>
                     </div>
                     <div class="summary-list billing-summary-list">
                         <div><dt>Payment Method</dt><dd><?= e($paymentMethod) ?></dd></div>
                         <div><dt>Billing Status</dt><dd><?= ui_badge($billingStatus, in_array((string) $subscription['subscription_status'], ['past_due', 'cancelled'], true) ? 'role' : 'status') ?></dd></div>
-                        <div><dt>Monthly Fee</dt><dd><?= e(accounts_billing_money($subscription['monthly_fee'])) ?></dd></div>
-                        <div><dt>Setup Fee</dt><dd><?= e(accounts_billing_money($subscription['setup_fee'])) ?></dd></div>
+                        <?php if ((string) ($subscription['product_key'] ?? '') === '247sp' && (int) ($subscription['commercial_terms_id'] ?? 0) <= 0): ?>
+                            <div><dt>Pricing</dt><dd>Pending completed signup</dd></div>
+                        <?php else: ?>
+                            <div><dt>Pricing</dt><dd><?= e($subscription['cohort_display_name'] ?: 'Locked contract') ?></dd></div>
+                            <?php if ((int) ($subscription['free_introductory_months'] ?? 0) > 0 && (string) ($subscription['subscription_status'] ?? '') === 'trial'): ?>
+                                <div><dt>Current Monthly Charge</dt><dd><?= e(accounts_billing_money(0)) ?> during introductory period</dd></div>
+                            <?php endif; ?>
+                            <div><dt>Locked Recurring Price</dt><dd><?= e(accounts_billing_money($subscription['monthly_fee'])) ?>/month</dd></div>
+                            <div><dt>Locked Setup Price</dt><dd><?= e(accounts_billing_money($subscription['setup_fee'])) ?></dd></div>
+                            <?php if ((int) ($subscription['free_introductory_months'] ?? 0) > 0): ?>
+                                <div><dt>Free Through</dt><dd><?= e($subscription['introductory_period_expires_at'] ?: 'Not recorded') ?></dd></div>
+                                <div><dt>Recurring Billing Begins</dt><dd><?= e($subscription['recurring_billing_starts_at'] ?: 'Not recorded') ?></dd></div>
+                            <?php endif; ?>
+                        <?php endif; ?>
                         <div><dt>Upcoming Renewal</dt><dd><?= e($subscription['current_period_end'] ?: 'Appears after payment setup') ?></dd></div>
                         <div><dt>Start Date</dt><dd><?= e($subscription['started_at'] ?: 'Not started') ?></dd></div>
                     </div>

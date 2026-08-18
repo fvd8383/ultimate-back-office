@@ -2,6 +2,7 @@
 
 require_once __DIR__ . '/Database.php';
 require_once __DIR__ . '/BillingFoundation.php';
+require_once __DIR__ . '/PricingCohortManager.php';
 
 final class BusinessFoundation
 {
@@ -512,22 +513,150 @@ final class BusinessFoundation
         return true;
     }
 
-    public static function completeOnboarding(int $businessId, int $userId): void
+    public static function completeOnboarding(int $businessId, int $userId): array
     {
-        $statement = Database::connection()->prepare(
-            'UPDATE businesses
-             SET setup_status = :setup_status,
-                 setup_step = :setup_step,
-                 updated_at = NOW()
-             WHERE id = :business_id'
-        );
-        $statement->execute([
-            'setup_status' => 'complete',
-            'setup_step' => 'completed',
-            'business_id' => $businessId,
-        ]);
+        if ($businessId <= 0 || $userId <= 0) {
+            throw new InvalidArgumentException('A valid business is required.');
+        }
 
-        self::logActivity($businessId, $userId, 'business_onboarding_completed', 'Business onboarding completed');
+        $connection = Database::connection();
+        if ($connection->inTransaction()) {
+            throw new RuntimeException('Business onboarding completion must own its transaction.');
+        }
+
+        $connection->beginTransaction();
+
+        try {
+            $businessStatement = $connection->prepare(
+                '/* onboarding:lock_business */
+                 SELECT b.id, b.status, b.is_suspended, b.setup_status, b.setup_step
+                 FROM businesses b
+                 INNER JOIN business_users bu ON bu.business_id = b.id
+                 INNER JOIN users u ON u.id = bu.user_id
+                 WHERE b.id = :business_id
+                   AND bu.user_id = :user_id
+                   AND bu.status = :membership_status
+                   AND u.status = :user_status
+                 LIMIT 1
+                 FOR UPDATE'
+            );
+            $businessStatement->execute([
+                'business_id' => $businessId,
+                'user_id' => $userId,
+                'membership_status' => 'active',
+                'user_status' => 'active',
+            ]);
+            $business = $businessStatement->fetch();
+
+            if (!is_array($business)
+                || (string) $business['status'] !== 'active'
+                || (int) $business['is_suspended'] === 1
+            ) {
+                throw new InvalidArgumentException('This business is not eligible to complete onboarding.');
+            }
+
+            $subscriptionStatement = $connection->prepare(
+                '/* onboarding:lock_247sp_subscription */
+                 SELECT s.id, s.business_id, s.plan_id, s.status, p.product_key
+                 FROM business_modules bm
+                 INNER JOIN modules m ON m.id = bm.module_id
+                 LEFT JOIN plans p ON p.product_key = m.module_key AND p.active = 1
+                 LEFT JOIN subscriptions s ON s.business_id = bm.business_id AND s.plan_id = p.id
+                 WHERE bm.business_id = :business_id
+                   AND bm.status = :module_status
+                   AND m.is_active = 1
+                   AND m.module_key = :product_key
+                 FOR UPDATE'
+            );
+            $subscriptionStatement->execute([
+                'business_id' => $businessId,
+                'module_status' => 'active',
+                'product_key' => '247sp',
+            ]);
+            $subscriptions = $subscriptionStatement->fetchAll();
+
+            if (count($subscriptions) > 1) {
+                throw new RuntimeException('247SP signup has an invalid subscription relationship.');
+            }
+
+            $alreadyCompleted = (string) $business['setup_status'] === 'complete'
+                && (string) $business['setup_step'] === 'completed';
+            $assignment = null;
+            $subscriptionId = null;
+
+            if (count($subscriptions) === 1) {
+                $subscriptionId = (int) $subscriptions[0]['id'];
+                if ($subscriptionId <= 0) {
+                    throw new RuntimeException('247SP signup requires one local subscription.');
+                }
+                $completedAt = gmdate('Y-m-d H:i:s');
+                $assignment = PricingCohortManager::assignCompletedSignup([
+                    'business_id' => $businessId,
+                    'subscription_id' => $subscriptionId,
+                    'completed_signup_idempotency_key' => self::completedSignupIdempotencyIdentity(
+                        $businessId,
+                        $subscriptionId
+                    ),
+                    'signup_completed_at' => $completedAt,
+                    'actor_type' => 'system',
+                    'system_actor_key' => '247sp_completed_signup',
+                    'correlation_id' => self::completedSignupCorrelationIdentity($businessId, $subscriptionId),
+                ]);
+            }
+
+            $statement = $connection->prepare(
+                '/* onboarding:mark_complete */
+                 UPDATE businesses
+                 SET setup_status = :setup_status,
+                     setup_step = :setup_step,
+                     updated_at = NOW()
+                 WHERE id = :business_id'
+            );
+            $statement->execute([
+                'setup_status' => 'complete',
+                'setup_step' => 'completed',
+                'business_id' => $businessId,
+            ]);
+
+            if (!$alreadyCompleted) {
+                self::logActivity(
+                    $businessId,
+                    $userId,
+                    'business_onboarding_completed',
+                    'Business onboarding completed'
+                );
+            }
+
+            $connection->commit();
+
+            return [
+                'business_id' => $businessId,
+                'subscription_id' => $subscriptionId,
+                'product_key' => $subscriptionId === null ? null : '247sp',
+                'pricing_assignment' => $assignment,
+                'newly_completed' => !$alreadyCompleted,
+            ];
+        } catch (Throwable $exception) {
+            if ($connection->inTransaction()) {
+                $connection->rollBack();
+            }
+
+            throw $exception;
+        }
+    }
+
+    public static function completedSignupIdempotencyIdentity(int $businessId, int $subscriptionId): string
+    {
+        if ($businessId <= 0 || $subscriptionId <= 0) {
+            throw new InvalidArgumentException('A valid business and subscription are required.');
+        }
+
+        return sprintf('247sp-signup:v1:business:%d:subscription:%d', $businessId, $subscriptionId);
+    }
+
+    private static function completedSignupCorrelationIdentity(int $businessId, int $subscriptionId): string
+    {
+        return substr(hash('sha256', self::completedSignupIdempotencyIdentity($businessId, $subscriptionId)), 0, 32);
     }
 
     public static function resetOnboardingForTesting(int $businessId, int $userId): bool

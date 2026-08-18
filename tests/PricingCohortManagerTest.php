@@ -72,6 +72,9 @@ final class PricingCohortTestConnection extends PDO
     public array $activities = [];
     public array $preparedSql = [];
     public ?string $failOn = null;
+    public int $beginCount = 0;
+    public int $commitCount = 0;
+    public int $rollbackCount = 0;
     private bool $transaction = false;
     private array $transactionBackup = [];
     private int $lastId = 0;
@@ -151,8 +154,8 @@ final class PricingCohortTestConnection extends PDO
             'effective_until' => null,
             'version' => 1,
             'is_active' => $active,
-            'stripe_recurring_price_ref' => null,
-            'stripe_setup_price_ref' => null,
+            'stripe_recurring_price_ref' => 'price_' . ucfirst($key) . 'Recurring1',
+            'stripe_setup_price_ref' => (float) $setup > 0 ? 'price_' . ucfirst($key) . 'Setup1' : null,
         ];
     }
 
@@ -176,12 +179,14 @@ final class PricingCohortTestConnection extends PDO
             'last_id' => $this->lastId,
         ];
         $this->transaction = true;
+        $this->beginCount++;
 
         return true;
     }
 
     public function commit(): bool
     {
+        $this->commitCount++;
         $this->transaction = false;
         $this->transactionBackup = [];
 
@@ -190,6 +195,7 @@ final class PricingCohortTestConnection extends PDO
 
     public function rollBack(): bool
     {
+        $this->rollbackCount++;
         $this->counters = $this->transactionBackup['counters'];
         $this->allocations = $this->transactionBackup['allocations'];
         $this->terms = $this->transactionBackup['terms'];
@@ -655,6 +661,70 @@ pricingTest('locking and database uniqueness assumptions are exercised', static 
     $sql = implode("\n", $connection->preparedSql);
     assertPricing(str_contains($sql, 'product_customer_sequence_counters') && str_contains($sql, 'FOR UPDATE'), 'The product counter must use a locking read.');
     assertPricing(str_contains($sql, 'AND next_sequence_number = :allocated_sequence'), 'Counter advancement must be compare-and-swap guarded.');
+});
+
+pricingTest('provider Price requirements fail before allocation', static function (): void {
+    $cases = [
+        ['sequence' => 1, 'index' => 0, 'field' => 'stripe_recurring_price_ref'],
+        ['sequence' => 6, 'index' => 1, 'field' => 'stripe_recurring_price_ref'],
+        ['sequence' => 11, 'index' => 2, 'field' => 'stripe_recurring_price_ref'],
+        ['sequence' => 11, 'index' => 2, 'field' => 'stripe_setup_price_ref'],
+        ['sequence' => 26, 'index' => 3, 'field' => 'stripe_recurring_price_ref'],
+        ['sequence' => 26, 'index' => 3, 'field' => 'stripe_setup_price_ref'],
+        ['sequence' => 1, 'index' => 0, 'field' => 'stripe_recurring_price_ref', 'value' => 'invalid'],
+        ['sequence' => 26, 'index' => 3, 'field' => 'stripe_setup_price_ref', 'value' => 'invalid'],
+    ];
+    foreach ($cases as $case) {
+        $connection = PricingCohortTestConnection::fixture();
+        $connection->counters[1] = $case['sequence'];
+        $connection->cohorts[$case['index']][$case['field']] = $case['value'] ?? null;
+        usePricingConnection($connection);
+        assertPricingThrows(
+            static fn (): array => PricingCohortManager::assignCompletedSignup(pricingSystemCommand()),
+            'invalid_configuration',
+            'A required provider Price reference must fail safely.'
+        );
+        assertPricing(
+            $connection->counters[1] === $case['sequence']
+                && $connection->allocations === []
+                && $connection->terms === [],
+            'Missing provider configuration must consume no position.'
+        );
+    }
+
+    foreach ([1, 6] as $sequence) {
+        $connection = PricingCohortTestConnection::fixture();
+        $connection->counters[1] = $sequence;
+        $connection->cohorts[$sequence === 1 ? 0 : 1]['stripe_setup_price_ref'] = 'invalid';
+        usePricingConnection($connection);
+        $result = PricingCohortManager::assignCompletedSignup(pricingSystemCommand());
+        assertPricing($result['stripe_setup_price_ref'] === null, 'Alpha and Beta must not require setup Price references.');
+    }
+});
+
+pricingTest('caller-owned transaction is never committed or rolled back by pricing', static function (): void {
+    $connection = PricingCohortTestConnection::fixture();
+    usePricingConnection($connection);
+    $connection->beginTransaction();
+    $result = PricingCohortManager::assignCompletedSignup(pricingSystemCommand());
+    assertPricing($result['cohort_key'] === 'alpha', 'Assignment must participate in the caller transaction.');
+    assertPricing($connection->inTransaction(), 'Pricing must leave the caller transaction open.');
+    assertPricing($connection->commitCount === 0 && $connection->rollbackCount === 0, 'Pricing must not finish a caller-owned transaction.');
+    $connection->rollBack();
+    assertPricing($connection->counters[1] === 1 && $connection->allocations === [], 'Caller rollback must remove all pricing writes.');
+
+    $connection = PricingCohortTestConnection::fixture();
+    $connection->failOn = 'insert_terms';
+    usePricingConnection($connection);
+    $connection->beginTransaction();
+    assertPricingThrows(
+        static fn (): array => PricingCohortManager::assignCompletedSignup(pricingSystemCommand()),
+        'database_failure',
+        'A caller-owned pricing failure must propagate safely.'
+    );
+    assertPricing($connection->inTransaction(), 'Pricing failure must leave caller rollback ownership intact.');
+    assertPricing($connection->rollbackCount === 0, 'Pricing must not roll back the caller transaction.');
+    $connection->rollBack();
 });
 
 echo "PricingCohortManager: {$pricingTests} tests, {$pricingAssertions} assertions passed.\n";

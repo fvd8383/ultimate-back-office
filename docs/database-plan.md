@@ -761,12 +761,16 @@ six-month expiration, and identical recurring start. Non-Alpha introductory date
 null and recurring billing starts at signup completion. Stripe references are nullable
 configuration/snapshot fields in P1.
 
-P1 does not change the legacy `plans` prices consumed by existing billing screens or
-Stripe code. Completed-signup route integration, cohort-aware Checkout, Alpha payment
-method/free-period behavior, setup-charge execution, webhook/reconciliation changes,
-and pricing UI are Pricing P2. Applied migration and genuine parallel-session locking
-remain part of the dedicated staging gate. Historical pricing migrations remain
-unchanged. See `docs/247sp-pricing-cohort-implementation-plan.md`.
+Pricing P2 is implemented locally without a new schema migration. Completed 247SP
+business signup now owns one transaction that includes P1 assignment and business
+completion. Assigned 247SP billing/customer/admin reads use
+`subscription_commercial_terms`; unassigned 247SP records do not present mutable
+`plans` fees as a locked contract. Cohort-aware Checkout uses only snapshot Price
+references, and webhook/payment recovery continues to use `subscriptions`, `payments`,
+and `stripe_webhook_events`. Migration 023 remains reserved for Sprint 8.8. Applied
+MySQL behavior and Stripe TEST behavior remain part of the dedicated staging gate.
+Historical pricing migrations remain unchanged. See
+`docs/247sp-pricing-cohort-implementation-plan.md`.
 
 ---
 

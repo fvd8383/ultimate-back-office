@@ -2,6 +2,7 @@
 
 require_once __DIR__ . '/../../private/classes/Auth.php';
 require_once __DIR__ . '/../../private/classes/BillingFoundation.php';
+require_once __DIR__ . '/../../private/classes/Csrf.php';
 
 Session::requireAuth('login.php');
 
@@ -9,6 +10,7 @@ $loadError = '';
 $user = null;
 $subscriptions = [];
 $availablePlans = [];
+$checkoutCsrfScope = '247sp-checkout';
 
 try {
     $user = Auth::currentUser();
@@ -65,16 +67,18 @@ function accounts_subscription_launch_readiness(array $subscription): array
         return ['label' => 'Product setup', 'type' => 'status', 'detail' => 'Setup status is tracked inside the product workspace.'];
     }
 
-    if ($status === 'active') {
+    if ($status === 'active'
+        || ($status === 'trial' && (string) ($subscription['payment_method_status'] ?? '') === 'complete')
+    ) {
         return ['label' => 'Payment ready', 'type' => 'status', 'detail' => 'Billing is active for launch readiness.'];
     }
 
     if (in_array($status, ['pending_payment', 'past_due'], true)) {
-        return ['label' => 'Payment needed', 'type' => 'role', 'detail' => 'Complete payment setup after your website preview is ready.'];
+        return ['label' => 'Payment needed', 'type' => 'role', 'detail' => 'Complete payment setup for this locked subscription.'];
     }
 
     if ($status === 'trial') {
-        return ['label' => 'Setup in progress', 'type' => 'status', 'detail' => 'Payment is completed later in the launch flow.'];
+        return ['label' => 'Setup in progress', 'type' => 'status', 'detail' => 'Complete payment setup to continue the signup flow.'];
     }
 
     if ($status === 'cancelled') {
@@ -87,7 +91,10 @@ function accounts_subscription_launch_readiness(array $subscription): array
 function accounts_subscription_needs_checkout(array $subscription): bool
 {
     return (string) ($subscription['product_key'] ?? '') === '247sp'
-        && in_array((string) ($subscription['subscription_status'] ?? ''), ['trial', 'pending_payment', 'past_due'], true);
+        && (int) ($subscription['commercial_terms_id'] ?? 0) > 0
+        && (string) ($subscription['subscription_status'] ?? '') !== 'cancelled'
+        && !((string) ($subscription['payment_method_status'] ?? '') === 'complete'
+            && in_array((string) ($subscription['subscription_status'] ?? ''), ['trial', 'active'], true));
 }
 
 function accounts_subscription_plan_summary(array $plan): string
@@ -153,14 +160,27 @@ account_shell_begin('subscriptions');
                             <?= ui_alert('This subscription needs billing attention before everything is fully ready.', 'warning') ?>
                         <?php endif; ?>
                         <?php if ($needsCheckout): ?>
-                            <?= ui_button('Complete Payment', 'checkout.php?business_id=' . urlencode((string) $subscription['business_id']), 'primary', ['class' => 'ubo-button--compact']) ?>
+                            <form method="post" action="checkout.php">
+                                <?= Csrf::input($checkoutCsrfScope) ?>
+                                <input type="hidden" name="business_id" value="<?= e($subscription['business_id']) ?>">
+                                <?= ui_button('Complete Payment', '', 'primary', ['class' => 'ubo-button--compact']) ?>
+                            </form>
                         <?php endif; ?>
                     </div>
                     <div class="summary-list billing-summary-list">
                         <div><dt>Plan</dt><dd><?= e($subscription['plan_name'] ?: 'No plan recorded') ?></dd></div>
                         <div><dt>Subscription Status</dt><dd><?= ui_badge(accounts_subscription_status($status), in_array($status, ['past_due', 'cancelled'], true) ? 'role' : 'status') ?></dd></div>
-                        <div><dt>Monthly Fee</dt><dd><?= e(accounts_subscription_money($subscription['monthly_fee'])) ?></dd></div>
-                        <div><dt>Setup Fee</dt><dd><?= e(accounts_subscription_money($subscription['setup_fee'])) ?></dd></div>
+                        <?php if ((string) ($subscription['product_key'] ?? '') === '247sp' && (int) ($subscription['commercial_terms_id'] ?? 0) <= 0): ?>
+                            <div><dt>Pricing</dt><dd>Pending completed signup</dd></div>
+                        <?php else: ?>
+                            <div><dt>Pricing</dt><dd><?= e($subscription['cohort_display_name'] ?: 'Locked contract') ?></dd></div>
+                            <div><dt>Locked Monthly Price</dt><dd><?= e(accounts_subscription_money($subscription['monthly_fee'])) ?>/month</dd></div>
+                            <div><dt>Locked Setup Price</dt><dd><?= e(accounts_subscription_money($subscription['setup_fee'])) ?></dd></div>
+                            <?php if ((int) ($subscription['free_introductory_months'] ?? 0) > 0): ?>
+                                <div><dt>Free Through</dt><dd><?= e($subscription['introductory_period_expires_at'] ?: 'Not recorded') ?></dd></div>
+                                <div><dt>Recurring Billing Begins</dt><dd><?= e($subscription['recurring_billing_starts_at'] ?: 'Not recorded') ?></dd></div>
+                            <?php endif; ?>
+                        <?php endif; ?>
                         <div><dt>Launch Readiness</dt><dd><?= ui_badge($launchReadiness['label'], $launchReadiness['type']) ?></dd></div>
                         <div><dt>Product Access</dt><dd><?= ui_badge($accessLabel, $accessActive ? 'status' : 'role') ?></dd></div>
                         <div><dt>Start Date</dt><dd><?= e($subscription['started_at'] ?: 'Not started') ?></dd></div>
@@ -187,8 +207,12 @@ account_shell_begin('subscriptions');
                         <p class="muted"><?= $isAvailable ? 'Available to discuss with support.' : 'Already connected to one of your businesses.' ?></p>
                     </div>
                     <div class="summary-list billing-summary-list">
-                        <div><dt>Monthly Fee</dt><dd><?= e(accounts_subscription_money($plan['monthly_fee'])) ?></dd></div>
-                        <div><dt>Setup Fee</dt><dd><?= e(accounts_subscription_money($plan['setup_fee'])) ?></dd></div>
+                        <?php if ((string) ($plan['product_key'] ?? '') === '247sp'): ?>
+                            <div><dt>Pricing</dt><dd>Assigned and locked when business signup is completed</dd></div>
+                        <?php else: ?>
+                            <div><dt>Monthly Fee</dt><dd><?= e(accounts_subscription_money($plan['monthly_fee'])) ?></dd></div>
+                            <div><dt>Setup Fee</dt><dd><?= e(accounts_subscription_money($plan['setup_fee'])) ?></dd></div>
+                        <?php endif; ?>
                         <div><dt>Status</dt><dd><?= ui_badge($isAvailable ? 'Available' : 'Connected', 'status') ?></dd></div>
                     </div>
                 </article>

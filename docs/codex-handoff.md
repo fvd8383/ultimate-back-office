@@ -18,22 +18,27 @@ artifact SHA-256 is
 
 Sprint 8.7 Milestone 6 is COMPLETE and its documentation-only website-platform
 architecture audit was merged at `fa9228eefbbba94523781599e74ca04e0dbadb22`.
-Sprint 8.7 is complete at the Pricing P1 baseline
-`0aa076140eb04c66141121fda48198efb5081fb8`.
+Sprint 8.7 is complete. Pricing P1 is merged and staging validated PASS at
+`e71f7bed62e54cc5851e2bb365c136e6b5f6321d`; validation evidence SHA-256 is
+`6d20e5fc601a18a494dbf2eac15d4f903ceac24e5860d99429737518f335d67c`.
 
-Pricing P1 is implemented for review in migration
-`022_247sp_pricing_cohorts.sql`, `private/classes/PricingCohortManager.php`, and the
-focused standalone tests. It reuses the stable `plans.id` for `product_key = '247sp'`,
-adds durable cohort/counter/allocation/snapshot records, atomically assigns never-reused
-positions, stores Alpha dates, enforces user/system authorization and tenant isolation,
-and records success activity inside the transaction. No migration has been applied to
-staging or production.
+Pricing P1 is implemented in migration `022_247sp_pricing_cohorts.sql`,
+`private/classes/PricingCohortManager.php`, and the focused standalone tests. It reuses
+the stable `plans.id` for `product_key = '247sp'`, adds durable
+cohort/counter/allocation/snapshot records, atomically assigns never-reused positions,
+stores Alpha dates, enforces user/system authorization and tenant isolation, and
+records success activity inside the transaction. Migration 022 has been applied and
+validated on staging. No pricing migration has been applied to production.
 
-Pricing P2 remains the next part of the first-customer gate: completed-signup route
-integration, cohort-aware Checkout, Alpha payment-method/free-period behavior, setup
-charges, webhooks/reconciliation, and customer/admin pricing presentation. A dedicated
-staging validation remains required after P1 and P2 review/merge. Migration 022
-precedes planned Sprint 8.8 migration `023_website_platform_foundation.sql`.
+Pricing P2 is implemented locally for review: completed-signup allocation and business
+completion share one local transaction; Checkout is POST/CSRF and consumes locked
+cohort Price references; Alpha collects a payment method and uses its exact stored trial
+end; setup lines, provider idempotency/recovery, webhook replay/order guards, locked
+customer/admin presentation, and MRR changes are included. The CLI-only
+`scripts/configure-247sp-stripe-prices.php` populates the current environment catalog
+from separate TEST/LIVE configuration and refuses unsafe replacement. P2 required no
+new migration, and migration 023 remains reserved for Sprint 8.8. P2 is not yet merged,
+deployed, or staging validated; the dedicated Stripe TEST gate remains blocking.
 
 The executable future plans are `docs/sprint-8.8.md` for the Website Platform And
 Component CMS and `docs/sprint-8.9.md` for the Communications Core Foundation.

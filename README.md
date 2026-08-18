@@ -530,9 +530,10 @@ atomically as part of successful completion of that business signup; a failed tr
 consumes no position, and an idempotent retry returns the existing assignment.
 Cancellations do not reopen positions. Anonymous account creation, website launch,
 payment/webhook events, later billing-state changes, and active-customer counts do not
-determine cohort. The current runtime does not yet implement the required sequence,
-locked terms, dates, Stripe references, or Alpha free period; that work is
-first-customer critical.
+determine cohort. Pricing P1 provides the staging-validated sequence and immutable
+snapshot foundation. Pricing P2 now integrates locked dates and Price references,
+Alpha's exact free period, Checkout, webhooks, and billing presentation locally; the
+dedicated Stripe TEST staging gate remains first-customer critical.
 
 The monthly package includes the done-for-you website, domain, professional email,
 local business phone number, AI receptionist, business texting, AI website chat,
@@ -578,19 +579,25 @@ Billing controls support:
 - Manually set subscription status to trial, pending payment, active, past due, or cancelled.
 - View Stripe customer ID, subscription ID, payment method status, and latest invoice/payment status when Stripe has synchronized those values.
 
-Customer subscription visibility lives at `public/accounts/subscriptions.php` and shows current subscriptions, product status, monthly price, setup fee, launch readiness status, available products, and support-assisted upgrade or cancellation guidance.
+Customer subscription visibility lives at `public/accounts/subscriptions.php` and shows current subscriptions, locked cohort terms, introductory state, product/payment status, launch readiness, available products, and support-assisted upgrade or cancellation guidance. Unassigned 247SP subscriptions do not display mutable legacy plan fees as a customer contract.
 
-Customer billing visibility lives at `public/accounts/billing.php` and focuses on financial status: current monthly charges, upcoming renewal, payment method status, invoice history, and the launch-readiness payment state. Incomplete 24/7 Sales Partner payment readiness routes customers to `public/accounts/checkout.php`, which creates a Stripe Checkout Session using server-side Stripe Price IDs.
+Customer billing visibility lives at `public/accounts/billing.php` and focuses on financial status: locked cohort terms, introductory/free-period state, current monthly charges, upcoming renewal, payment method status, invoice history, and payment readiness. Checkout GET is read-only; Billing and Subscriptions submit POST + CSRF to `public/accounts/checkout.php`, which creates or recovers a Stripe Checkout Session from the subscription's locked Price references.
 
 Required Stripe configuration values live in `private/config/env.php` and are shown with empty placeholders in `private/config/env.example.php`:
 
 - `STRIPE_SECRET_KEY`
 - `STRIPE_PUBLISHABLE_KEY`
 - `STRIPE_WEBHOOK_SECRET`
-- `STRIPE_247SP_PRICE_ID`
-- `STRIPE_247SP_SETUP_FEE_PRICE_ID`
+- `STRIPE_MODE`
+- six `STRIPE_TEST_247SP_*` Price IDs (Alpha recurring, Beta recurring, Founding recurring/setup, Standard recurring/setup)
+- six matching `STRIPE_LIVE_247SP_*` Price IDs
 - `STRIPE_SUCCESS_URL`
 - `STRIPE_CANCEL_URL`
+
+The legacy global 247SP Price settings are not authoritative for cohort Checkout and
+are never used as fallback. After environment values are reviewed, an operator runs
+`php scripts/configure-247sp-stripe-prices.php` to populate only NULL current cohort
+references; the utility refuses unsafe replacements and never calls Stripe.
 
 The current accounts-root webhook endpoint is:
 

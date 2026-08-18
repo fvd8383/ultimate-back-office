@@ -17,6 +17,7 @@ $sql = file_get_contents($migrationPath);
 if (!is_string($sql)) {
     throw new RuntimeException('Migration 022 must be readable.');
 }
+$sql = str_replace(["\r\n", "\r"], "\n", $sql);
 
 $migrationAssertions = 0;
 function assertPricingMigration(bool $condition, string $message): void
