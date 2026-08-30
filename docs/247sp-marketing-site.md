@@ -76,7 +76,7 @@ Placeholders are explicitly marked in configuration and markup. No fake testimon
 From the repository root:
 
 ```powershell
-php -S 127.0.0.1:8765 -t public
+php -S 127.0.0.1:8765 -t public/marketing
 ```
 
-Then open `http://127.0.0.1:8765/marketing/`. The production document-root layout can also be tested with `php -S 127.0.0.1:8766 -t public/marketing` and `http://127.0.0.1:8766/`.
+Then open `http://127.0.0.1:8765/`. Marketing assets use document-root-safe `/assets/...` URLs so they continue to resolve from future clean campaign paths such as `/plumbers` and `/plumbers/`.

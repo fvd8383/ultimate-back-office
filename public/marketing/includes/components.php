@@ -7,7 +7,7 @@ function marketing_e($value): string
 
 function marketing_asset_url(string $path): string
 {
-    return ltrim($path, '/');
+    return '/' . ltrim($path, '/');
 }
 
 function marketing_signup_url(array $config, string $location): string
@@ -66,7 +66,7 @@ function marketing_document_head(array $config, array $page): void
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="assets/css/marketing.css">
+    <link rel="stylesheet" href="<?= marketing_e(marketing_asset_url('/assets/css/marketing.css')) ?>">
     <script>document.documentElement.classList.remove('no-js');document.documentElement.classList.add('js');</script>
 <?php if (!empty($page['social'])): ?>
     <meta property="og:type" content="website">
@@ -131,7 +131,7 @@ function marketing_footer(array $config): void
         <p class="site-footer__copyright">&copy; <?= date('Y') ?> Ultimate Back Office. 24/7 Sales Partner.</p>
     </div>
 </footer>
-<script src="assets/js/marketing.js" defer></script>
+<script src="<?= marketing_e(marketing_asset_url('/assets/js/marketing.js')) ?>" defer></script>
 </body>
 </html>
 <?php
