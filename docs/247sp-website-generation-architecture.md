@@ -8,12 +8,17 @@ Sprint 8.7 Milestone 6 completed the implementation-ready repository audit in
 `docs/sprint-8.7-milestone-6-website-platform-audit.md`. That audit is authoritative
 where this earlier architecture used proposed purpose/lifecycle values or left legacy
 transition, analytics, approval, pricing, and migration decisions open. It remains a
-documentation design; no generic CMS or publisher is currently implemented.
+documentation design. Sprint 8.8 M1 now has a local review implementation of only the
+dormant generic schema and legacy compatibility/backfill foundation; no generic CMS
+management runtime or publisher is implemented.
 
 Milestone 7 locked the executable Sprint 8.8 sequence in `docs/sprint-8.8.md` and the
 initial planned website migration as `023_website_platform_foundation.sql`. The preceding
 pricing migration 022 is applied and staging validated, and the dedicated pricing gate
-is CLEARED / PASS. Migration 023 and the website runtime remain planned, not implemented.
+is CLEARED / PASS. Migration 023 is implemented locally for review but is not applied
+or staging validated. The legacy website runtime remains authoritative, the generic
+model remains dormant/read-compatible, and M2 and the publisher/runtime milestones
+remain unimplemented.
 
 ---
 

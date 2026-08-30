@@ -253,10 +253,25 @@ DataForSEO, or a migration.
 
 Sprint 8.7 is complete. The two-PR 247SP pricing implementation and its dedicated
 staging validation gate are also COMPLETE / PASS; migration
-`022_247sp_pricing_cohorts.sql` is applied and validated on staging. The next planned
-application work is Sprint 8.8 M1 with reserved, not-yet-created migration
-`023_website_platform_foundation.sql`; see `docs/sprint-8.8.md`. The planned
-communications core remains in `docs/sprint-8.9.md`.
+`022_247sp_pricing_cohorts.sql` is applied and validated on staging. Sprint 8.8 M1 now
+implements `023_website_platform_foundation.sql` locally for review; migration 023 has
+not been applied or staging validated. It adds only the dormant generic foundation and
+legacy compatibility/import records. The existing legacy website runtime remains
+authoritative; see `docs/sprint-8.8.md`. The planned communications core remains in
+`docs/sprint-8.9.md`.
+
+After review/merge and separate authorization to run migration 023 on an approved
+environment, the bounded import and read-only reconciliation entry points are:
+
+```bash
+php scripts/import-legacy-websites.php --batch=25 --after-id=0
+php scripts/import-legacy-websites.php --website-id=LEGACY_WEBSITE_ID
+php scripts/import-legacy-websites.php --report --hash-limit=100
+```
+
+Continue a batch with the returned `next_after_id`. Do not run the importer before
+migration 023. The command makes no provider calls and does not publish or switch any
+website reader.
 
 ## Testing OTP Login In Staging
 

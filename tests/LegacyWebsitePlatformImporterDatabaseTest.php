@@ -1,0 +1,479 @@
+<?php
+
+declare(strict_types=1);
+
+error_reporting(E_ALL);
+
+require_once __DIR__ . '/../private/classes/LegacyWebsitePlatformImporter.php';
+
+final class LegacyImportDatabaseStatement extends PDOStatement
+{
+    private array $rows = [];
+    private array $bound = [];
+    private int $affected = 0;
+
+    public function __construct(private LegacyImportDatabaseConnection $connection, private string $sql)
+    {
+    }
+
+    public function bindValue(string|int $param, mixed $value, int $type = PDO::PARAM_STR): bool
+    {
+        $this->bound[ltrim((string) $param, ':')] = $value;
+        return true;
+    }
+
+    public function execute(?array $params = null): bool
+    {
+        $params = array_merge($this->bound, $params ?? []);
+        [$this->rows, $this->affected] = $this->connection->executeMarked($this->sql, $params);
+        return true;
+    }
+
+    public function fetch(int $mode = PDO::FETCH_DEFAULT, int $cursorOrientation = PDO::FETCH_ORI_NEXT, int $cursorOffset = 0): mixed
+    {
+        return array_shift($this->rows) ?? false;
+    }
+
+    public function fetchAll(int $mode = PDO::FETCH_DEFAULT, mixed ...$args): array
+    {
+        $rows = $this->rows;
+        $this->rows = [];
+        return $rows;
+    }
+
+    public function fetchColumn(int $column = 0): mixed
+    {
+        $row = array_shift($this->rows);
+        return is_array($row) ? (array_values($row)[$column] ?? false) : false;
+    }
+
+    public function rowCount(): int
+    {
+        return $this->affected;
+    }
+}
+
+final class LegacyImportDatabaseConnection extends PDO
+{
+    public array $legacyWebsites = [];
+    public array $legacyPages = [];
+    public array $mappings = [];
+    public array $sites = [];
+    public array $associations = [];
+    public array $briefs = [];
+    public array $revisions = [];
+    public array $sitePages = [];
+    public array $revisionPages = [];
+    public array $sections = [];
+    public array $themes = [];
+    public array $pageMappings = [];
+    public array $events = [];
+    public ?int $failOnSiteInsertForLegacyId = null;
+    public int $beginCount = 0;
+    public int $commitCount = 0;
+    public int $rollbackCount = 0;
+
+    private bool $transaction = false;
+    private array $backup = [];
+    private int $nextId = 0;
+    private int $lastId = 0;
+    private int $currentLegacyId = 0;
+
+    public function __construct()
+    {
+    }
+
+    public static function fixture(): self
+    {
+        $connection = new self();
+        for ($id = 1; $id <= 6; $id++) {
+            $connection->legacyWebsites[$id] = [
+                'id' => $id,
+                'business_id' => 100 + $id,
+                'onboarding_id' => 200 + $id,
+                'template_id' => 1,
+                'status' => 'generated',
+                'generated_at' => '2026-08-30 12:00:00',
+                'published_at' => null,
+                'created_at' => '2026-08-30 12:00:00',
+                'updated_at' => '2026-08-30 12:00:00',
+                'resolved_business_id' => 100 + $id,
+                'resolved_onboarding_id' => 200 + $id,
+                'onboarding_business_id' => 100 + $id,
+                'resolved_template_id' => 1,
+                'template_key' => 'starter_local_service',
+            ];
+            $connection->legacyPages[$id] = [[
+                'id' => 1000 + $id,
+                'website_id' => $id,
+                'business_id' => 100 + $id,
+                'page_type' => 'home',
+                'title' => 'Home',
+                'slug' => 'home',
+                'content_json' => json_encode(['headline' => 'Business ' . $id], JSON_THROW_ON_ERROR),
+                'status' => 'generated',
+                'sort_order' => 10,
+                'created_at' => '2026-08-30 12:00:00',
+                'updated_at' => '2026-08-30 12:00:00',
+            ]];
+        }
+        $connection->legacyPages[3][0]['content_json'] = '{broken';
+        return $connection;
+    }
+
+    public function prepare(string $query, array $options = []): PDOStatement|false
+    {
+        return new LegacyImportDatabaseStatement($this, $query);
+    }
+
+    public function beginTransaction(): bool
+    {
+        if ($this->transaction) {
+            throw new PDOException('Nested test transaction.');
+        }
+        $this->backup = [];
+        foreach ($this->stateProperties() as $property) {
+            $this->backup[$property] = $this->{$property};
+        }
+        $this->backup['nextId'] = $this->nextId;
+        $this->backup['lastId'] = $this->lastId;
+        $this->transaction = true;
+        $this->beginCount++;
+        return true;
+    }
+
+    public function commit(): bool
+    {
+        $this->transaction = false;
+        $this->backup = [];
+        $this->commitCount++;
+        return true;
+    }
+
+    public function rollBack(): bool
+    {
+        foreach ($this->stateProperties() as $property) {
+            $this->{$property} = $this->backup[$property];
+        }
+        $this->nextId = $this->backup['nextId'];
+        $this->lastId = $this->backup['lastId'];
+        $this->transaction = false;
+        $this->backup = [];
+        $this->rollbackCount++;
+        return true;
+    }
+
+    public function inTransaction(): bool
+    {
+        return $this->transaction;
+    }
+
+    public function lastInsertId(?string $name = null): string|false
+    {
+        return (string) $this->lastId;
+    }
+
+    public function executeMarked(string $sql, array $params): array
+    {
+        $marker = $this->marker($sql);
+        if ($marker === 'list-batch') {
+            $ids = array_values(array_filter(array_keys($this->legacyWebsites), static fn (int $id): bool => $id > (int) $params['after_id']));
+            sort($ids);
+            return [array_map(static fn (int $id): array => ['id' => $id], array_slice($ids, 0, (int) $params['batch_size'])), 0];
+        }
+        if ($marker === 'has-more') {
+            foreach (array_keys($this->legacyWebsites) as $id) {
+                if ($id > (int) $params['after_id']) {
+                    return [[[1]], 0];
+                }
+            }
+            return [[], 0];
+        }
+        if ($marker === 'load-website') {
+            $this->currentLegacyId = (int) $params['legacy_website_id'];
+            $row = $this->legacyWebsites[$this->currentLegacyId] ?? null;
+            return [$row === null ? [] : [$row], 0];
+        }
+        if ($marker === 'load-pages') {
+            return [$this->legacyPages[(int) $params['website_id']] ?? [], 0];
+        }
+        if (in_array($marker, ['load-overrides', 'load-service-images', 'load-service-pages', 'load-selected-service-references', 'load-custom-service-references'], true)) {
+            return [[], 0];
+        }
+        if (in_array($marker, ['load-branding', 'load-integrations', 'load-configuration', 'load-business-content', 'load-profile-reference'], true)) {
+            return [[], 0];
+        }
+        if (in_array($marker, ['lock-mapping', 'read-mapping'], true)) {
+            $row = $this->mappingByLegacy((int) $params['legacy_website_id']);
+            return [$row === null ? [] : [$row], 0];
+        }
+        if ($marker === 'insert-mapping') {
+            $id = $this->newId();
+            $this->mappings[$id] = [
+                'id' => $id, 'legacy_website_id' => (int) $params['legacy_website_id'],
+                'site_id' => null, 'import_revision_id' => null, 'import_status' => $params['status'],
+                'source_hash' => $params['source_hash'], 'imported_hash' => null, 'attempt_count' => 1,
+            ];
+            return [[], 1];
+        }
+        if ($marker === 'retry-mapping') {
+            $row = &$this->mappings[(int) $params['mapping_id']];
+            $row['import_status'] = $params['status'];
+            $row['source_hash'] = $params['source_hash'];
+            $row['attempt_count']++;
+            $row['error_code'] = null;
+            return [[], 1];
+        }
+        if ($marker === 'site-key-collision') {
+            foreach ($this->sites as $site) {
+                if ($site['site_key'] === $params['site_key']) {
+                    return [[['id' => $site['id']]], 0];
+                }
+            }
+            return [[], 0];
+        }
+        if ($marker === 'insert-site') {
+            if ($this->failOnSiteInsertForLegacyId === $this->currentLegacyId) {
+                throw new RuntimeException('Injected database failure with private_table.secret.');
+            }
+            $id = $this->newId();
+            $this->sites[$id] = ['id' => $id] + $params;
+            return [[], 1];
+        }
+        if ($marker === 'insert-association') {
+            $id = $this->newId();
+            $this->associations[$id] = ['id' => $id] + $params;
+            return [[], 1];
+        }
+        if ($marker === 'insert-brief') {
+            $id = $this->newId();
+            $this->briefs[$id] = ['id' => $id] + $params;
+            return [[], 1];
+        }
+        if ($marker === 'insert-revision') {
+            $id = $this->newId();
+            $this->revisions[$id] = ['id' => $id] + $params;
+            return [[], 1];
+        }
+        if ($marker === 'load-variants') {
+            return [[
+                ['id' => 1, 'variant_key' => 'about'], ['id' => 2, 'variant_key' => 'contact'],
+                ['id' => 3, 'variant_key' => 'home'], ['id' => 4, 'variant_key' => 'service'],
+            ], 0];
+        }
+        if ($marker === 'insert-logical-page') {
+            $id = $this->newId();
+            $this->sitePages[$id] = ['id' => $id] + $params;
+            return [[], 1];
+        }
+        if ($marker === 'insert-revision-page') {
+            $id = $this->newId();
+            $this->revisionPages[$id] = ['id' => $id, 'seo_json' => null] + $params;
+            return [[], 1];
+        }
+        if ($marker === 'insert-section') {
+            $id = $this->newId();
+            $this->sections[$id] = ['id' => $id] + $params;
+            return [[], 1];
+        }
+        if ($marker === 'insert-page-mapping') {
+            $id = $this->newId();
+            $this->pageMappings[$id] = ['id' => $id] + $params;
+            return [[], 1];
+        }
+        if ($marker === 'insert-theme') {
+            $id = $this->newId();
+            $this->themes[$id] = ['id' => $id, 'theme_version' => 1, 'typography_json' => null] + $params;
+            return [[], 1];
+        }
+        if ($marker === 'insert-event') {
+            $id = $this->newId();
+            $this->events[$id] = ['id' => $id] + $params;
+            return [[], 1];
+        }
+        if ($marker === 'hash-pages') {
+            $rows = [];
+            foreach ($this->revisionPages as $row) {
+                if ((int) $row['revision_id'] === (int) $params['revision_id']) {
+                    $rows[] = $row;
+                }
+            }
+            usort($rows, static fn (array $a, array $b): int => [$a['sort_order'], $a['id']] <=> [$b['sort_order'], $b['id']]);
+            return [$rows, 0];
+        }
+        if ($marker === 'hash-sections') {
+            $rows = [];
+            foreach ($this->sections as $row) {
+                if ((int) $row['revision_page_id'] === (int) $params['revision_page_id']) {
+                    $rows[] = $row;
+                }
+            }
+            return [$rows, 0];
+        }
+        if ($marker === 'hash-theme') {
+            foreach ($this->themes as $row) {
+                if ((int) $row['revision_id'] === (int) $params['revision_id']) {
+                    return [[$row], 0];
+                }
+            }
+            return [[], 0];
+        }
+        if ($marker === 'hash-assets') {
+            return [[], 0];
+        }
+        if ($marker === 'complete-mapping') {
+            $row = &$this->mappings[(int) $params['mapping_id']];
+            $row['site_id'] = (int) $params['site_id'];
+            $row['import_revision_id'] = (int) $params['revision_id'];
+            $row['import_status'] = $params['status'];
+            $row['source_hash'] = $params['source_hash'];
+            $row['imported_hash'] = $params['imported_hash'];
+            $row['error_code'] = null;
+            return [[], 1];
+        }
+        if ($marker === 'page-count') {
+            $count = 0;
+            foreach ($this->revisionPages as $row) {
+                $count += (int) $row['revision_id'] === (int) $params['revision_id'] ? 1 : 0;
+            }
+            return [[['page_count' => $count]], 0];
+        }
+        if ($marker === 'reconcile-mapping') {
+            $row = &$this->mappings[(int) $params['mapping_id']];
+            $row['import_status'] = $params['status'];
+            $row['attempt_count']++;
+            $row['error_code'] = null;
+            return [[], 1];
+        }
+        if ($marker === 'quarantine-source') {
+            return isset($this->legacyWebsites[(int) $params['legacy_website_id']]) ? [[['id' => (int) $params['legacy_website_id']]], 0] : [[], 0];
+        }
+        if ($marker === 'record-quarantine') {
+            $row = $this->mappingByLegacy((int) $params['legacy_website_id']);
+            if ($row === null) {
+                $id = $this->newId();
+                $this->mappings[$id] = [
+                    'id' => $id, 'legacy_website_id' => (int) $params['legacy_website_id'],
+                    'site_id' => null, 'import_revision_id' => null, 'import_status' => $params['status'],
+                    'source_hash' => $params['source_hash'], 'imported_hash' => null, 'attempt_count' => 1,
+                    'error_code' => $params['error_code'], 'error_summary' => $params['error_summary'],
+                ];
+            } else {
+                $id = (int) $row['id'];
+                $this->mappings[$id]['import_status'] = $params['status'];
+                $this->mappings[$id]['source_hash'] ??= $params['source_hash'];
+                $this->mappings[$id]['attempt_count']++;
+                $this->mappings[$id]['error_code'] = $params['error_code'];
+                $this->mappings[$id]['error_summary'] = $params['error_summary'];
+            }
+            return [[], 1];
+        }
+
+        throw new RuntimeException('Unexpected importer SQL marker: ' . $marker);
+    }
+
+    public function mappingByLegacyForTest(int $legacyWebsiteId): ?array
+    {
+        return $this->mappingByLegacy($legacyWebsiteId);
+    }
+
+    private function marker(string $sql): string
+    {
+        if (preg_match('/\/\* legacy-import:([a-z0-9-]+) \*\//', $sql, $matches) !== 1) {
+            throw new RuntimeException('Unmarked importer SQL.');
+        }
+        return $matches[1];
+    }
+
+    private function newId(): int
+    {
+        $this->lastId = ++$this->nextId;
+        return $this->lastId;
+    }
+
+    private function mappingByLegacy(int $legacyWebsiteId): ?array
+    {
+        foreach ($this->mappings as $row) {
+            if ((int) $row['legacy_website_id'] === $legacyWebsiteId) {
+                return $row;
+            }
+        }
+        return null;
+    }
+
+    private function stateProperties(): array
+    {
+        return ['mappings', 'sites', 'associations', 'briefs', 'revisions', 'sitePages', 'revisionPages', 'sections', 'themes', 'pageMappings', 'events'];
+    }
+}
+
+$assertions = 0;
+function assertLegacyDatabase(bool $condition, string $message): void
+{
+    global $assertions;
+    $assertions++;
+    if (!$condition) {
+        throw new RuntimeException($message);
+    }
+}
+
+function useLegacyDatabaseConnection(LegacyImportDatabaseConnection $connection): void
+{
+    $property = new ReflectionProperty(Database::class, 'connection');
+    $property->setValue(null, $connection);
+}
+
+$connection = LegacyImportDatabaseConnection::fixture();
+useLegacyDatabaseConnection($connection);
+
+$firstBatch = LegacyWebsitePlatformImporter::importBatch(2, 0);
+assertLegacyDatabase($firstBatch['processed'] === 2 && $firstBatch['imported'] === 2, 'Two eligible sites must import in one bounded batch.');
+assertLegacyDatabase($firstBatch['has_more'] === true && $firstBatch['next_after_id'] === 2, 'Batch cursor must report remaining work.');
+assertLegacyDatabase(count($connection->sites) === 2 && count($connection->revisions) === 2, 'Each eligible legacy site must create one site and baseline revision.');
+assertLegacyDatabase(count($connection->associations) === 2 && count($connection->revisionPages) === 2, 'Ownership and page composition must be imported per site.');
+
+$siteCount = count($connection->sites);
+$revisionCount = count($connection->revisions);
+$rerun = LegacyWebsitePlatformImporter::importWebsite(1);
+assertLegacyDatabase($rerun['result'] === 'reconciled', 'A completed duplicate run must reconcile.');
+assertLegacyDatabase(count($connection->sites) === $siteCount && count($connection->revisions) === $revisionCount, 'A rerun must not create another site or revision.');
+
+$legacyFourBefore = serialize([$connection->legacyWebsites[4], $connection->legacyPages[4]]);
+$mixedBatch = LegacyWebsitePlatformImporter::importBatch(2, 2);
+assertLegacyDatabase($mixedBatch['quarantined'] === 1 && $mixedBatch['imported'] === 1, 'One malformed site must not prevent the next site from importing.');
+assertLegacyDatabase(($connection->mappingByLegacyForTest(3)['error_code'] ?? null) === 'malformed_page_json', 'Malformed JSON must have actionable quarantine evidence.');
+assertLegacyDatabase(serialize([$connection->legacyWebsites[4], $connection->legacyPages[4]]) === $legacyFourBefore, 'A successful import must not mutate legacy source rows.');
+
+$connection->failOnSiteInsertForLegacyId = 5;
+$sitesBeforeFailure = count($connection->sites);
+$failed = LegacyWebsitePlatformImporter::importWebsite(5);
+assertLegacyDatabase($failed['result'] === 'quarantined' && $failed['error_code'] === 'database_failure', 'A database failure must quarantine with a safe error.');
+assertLegacyDatabase(count($connection->sites) === $sitesBeforeFailure && $connection->rollbackCount > 0, 'A failed unit must roll back all generic writes.');
+
+$connection->legacyPages[3][0]['content_json'] = json_encode(['headline' => 'Business 3 repaired'], JSON_THROW_ON_ERROR);
+$repaired = LegacyWebsitePlatformImporter::importWebsite(3);
+assertLegacyDatabase($repaired['result'] === 'imported', 'A repaired quarantined source must be retryable.');
+
+$sitesBeforeDrift = count($connection->sites);
+$connection->legacyPages[1][0]['content_json'] = json_encode(['headline' => 'Changed after baseline'], JSON_THROW_ON_ERROR);
+$drift = LegacyWebsitePlatformImporter::importWebsite(1);
+assertLegacyDatabase($drift['result'] === 'quarantined' && $drift['error_code'] === 'source_changed', 'Changed legacy presentation must not overwrite the baseline revision.');
+assertLegacyDatabase(count($connection->sites) === $sitesBeforeDrift, 'Source drift must not create another site.');
+
+$unmappedSix = LegacyWebsitePlatformImporter::compareWebsite(6);
+$connection->mappings[999] = [
+    'id' => 999,
+    'legacy_website_id' => 6,
+    'site_id' => 999,
+    'import_revision_id' => null,
+    'import_status' => 'imported',
+    'source_hash' => $unmappedSix['source_hash'],
+    'imported_hash' => null,
+    'attempt_count' => 1,
+];
+$collision = LegacyWebsitePlatformImporter::importWebsite(6);
+assertLegacyDatabase($collision['result'] === 'quarantined' && $collision['error_code'] === 'mapping_collision', 'An inconsistent duplicate mapping must quarantine instead of duplicating data.');
+
+assertLegacyDatabase($connection->beginCount === $connection->commitCount + $connection->rollbackCount, 'Every importer transaction must finish with commit or rollback.');
+
+echo "Legacy website importer database contract: {$assertions} assertions passed.\n";

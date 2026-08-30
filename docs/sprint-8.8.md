@@ -2,9 +2,10 @@
 
 ## Status And Objective
 
-**Planned; next authorized roadmap work.** Sprint 8.7 is closed and the dedicated 247SP
-first-customer pricing implementation and staging gate are COMPLETE / PASS. Sprint 8.8
-has not begun as part of the pricing closeout.
+**M1 IMPLEMENTED LOCALLY / REVIEW REQUIRED / STAGING VALIDATION PENDING.** Sprint 8.7
+is closed and the dedicated 247SP first-customer pricing implementation and staging
+gate are COMPLETE / PASS. Sprint 8.8 M1 now has a local review implementation; no
+Sprint 8.8 migration has been applied and M2 has not begun.
 
 The sprint implements the approved generic 247SP/EMD website platform in eight focused
 milestones. It replaces no historical migration and does not treat the customer
@@ -64,6 +65,27 @@ forward-repairable, and staging reconciled.
   intact when regeneration/build/deployment fails.
 
 ## M1 — Generic Schema + Legacy Compatibility/Backfill
+
+### Local implementation status
+
+Migration `023_website_platform_foundation.sql`, the dormant generic schema, the
+bounded/idempotent legacy importer, compatibility comparison/reconciliation reporting,
+and focused standalone tests are implemented on the M1 branch for review. The actual
+schema dependencies discovered before implementation are recorded in
+`docs/sprint-8.8-m1-current-schema-audit.md`.
+
+The importer uses one transaction and legacy-row lock per website, deterministic site
+and logical-page identities, explicit website/page mappings, source/imported hashes,
+and retryable quarantine evidence. It imports the current repository preview as one
+snapshot-only legacy page component with the four repository-supported page variants:
+`home`, `service`, `about`, and `contact`. It creates no authoritative generic approval,
+publication, build, deployment, domain, routing, conversion, or public-ingestion
+behavior.
+
+The migration is not applied locally, on staging, or in production by this status.
+The existing 247SP generated website reader remains authoritative, generic data remains
+dormant/read-compatible, staging migration/backfill/reconciliation validation remains
+required, and M1 is not COMPLETE.
 
 ### Deliverables
 

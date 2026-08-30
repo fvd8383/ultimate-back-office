@@ -768,8 +768,10 @@ completion. Assigned 247SP billing/customer/admin reads use
 `plans` fees as a locked contract. Cohort-aware Checkout uses only snapshot Price
 references, and webhook/payment recovery continues to use `subscriptions`, `payments`,
 and `stripe_webhook_events`. Migration 022 is applied and validated on staging.
-Migration 023 is absent and remains reserved for Sprint 8.8. Applied MySQL behavior and
-Stripe TEST behavior passed the dedicated pricing staging gate. Historical pricing
+Migration 023 was absent at pricing closeout and reserved for Sprint 8.8. It is now
+implemented on the Sprint 8.8 M1 local review branch but has not been applied or
+staging validated. Applied MySQL behavior for migration 022 and Stripe TEST behavior
+passed the dedicated pricing staging gate. Historical pricing
 migrations remain unchanged. See
 `docs/247sp-pricing-cohort-implementation-plan.md`.
 
@@ -2117,6 +2119,15 @@ validation. Milestone 7 locked `023_website_platform_foundation.sql` as the plan
 dependency-safe Sprint 8.8 M1 core because migration 022 implements Pricing P1.
 Build/deployment and domain/routing/conversion structures may use later focused
 additive migrations in implementation order. Historical migrations are never edited.
+
+Sprint 8.8 M1 now implements that dependency-safe core locally for review. Migration
+023 adds generic sites, optional business associations, stable logical pages,
+generation briefs, revisions and immutable composition snapshots, the minimum
+repository-backed legacy component metadata, revision themes/assets/approvals,
+legacy website/page mappings and import state, and generic site events. The importer
+keeps Shared Business Profile and existing services authoritative, creates no generic
+published/active state, and leaves all existing website readers unchanged. Migration
+023 is not applied; staging validation and reconciliation remain pending.
 
 Component implementation remains repository-owned; database records never contain
 executable PHP or JavaScript. 247SP and EMD share the public ingestion contract, while
