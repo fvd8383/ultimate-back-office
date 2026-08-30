@@ -626,8 +626,8 @@ Use `STRIPE_MODE=test` for local/test/staging and `STRIPE_MODE=live` only with
 historical compatibility, but cohort-aware Checkout never reads them and never falls
 back to them.
 
-After Pricing P2 merges, an authorized staging operator configures the six
-`STRIPE_TEST_247SP_*` values in the uncommitted staging environment file and runs:
+For the completed pricing gate, an authorized staging operator configured the six
+`STRIPE_TEST_247SP_*` values in the uncommitted staging environment file and ran:
 
 ```bash
 php scripts/configure-247sp-stripe-prices.php
@@ -637,9 +637,9 @@ The utility is database-only and does not call Stripe. It populates only NULL Pr
 references on the current active cohort version, reports cohort keys but not provider
 values, is idempotent for matching values, and refuses any different populated value.
 If the version has allocations, a different value requires a reviewed new pricing
-configuration version. Afterward, the dedicated staging gate must verify the referenced
-Prices belong to the TEST account and have the expected recurring/one-time behavior.
-Do not put actual provider IDs in Git.
+configuration version. The dedicated staging gate verified that all six referenced
+Prices belong to the TEST account, are active, and have the expected recurring/one-time
+behavior. Do not put actual provider IDs in Git.
 
 These values are for customers paying Ultimate Back Office for 24/7 Sales Partner. Do not configure Stripe Connect here; Stripe Connect is reserved for future customer payment-processing products such as Super Simple Payments.
 
@@ -768,11 +768,11 @@ For Stripe billing changes, also validate on staging:
 * Admin Billing shows Stripe customer ID, Stripe subscription ID, payment method status, and latest payment/invoice status.
 * Module access remains unchanged by failed payment handling.
 
-For the planned first-customer pricing P1/P2 gate, additionally validate migration 022,
+The completed first-customer pricing P1/P2 gate additionally validated migration 022,
 atomic never-reused sequence allocation, range boundaries, concurrency/idempotency,
 rollback without consumption, locked terms, Alpha's stored six-month dates and payment
-method, cohort-aware test Price selection, setup-fee idempotency, customer/admin terms,
-webhook reconciliation, cleanup, and schema/provider reconciliation. Use Stripe test
+method, cohort-aware TEST Price selection, setup-fee idempotency, customer/admin terms,
+webhook reconciliation, cleanup, and schema/provider reconciliation. It used Stripe TEST
 mode only. See `docs/247sp-pricing-cohort-implementation-plan.md`.
 
 For Domain Services changes, also validate on staging:

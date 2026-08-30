@@ -314,10 +314,10 @@ Milestone 7 may define the responsible route/service, Stripe mechanics, idempote
 retry, and detailed refund/reactivation/admin-exception policy. It must not reopen the
 approved completed-business-signup assignment event.
 
-The future subscription stores its sequence, assigned cohort, locked fees, assignment
-and signup dates, introductory start/expiration, recurring billing start, and applicable
-Stripe references/version. The current billing runtime does not implement this model or
-Alpha's free period; the focused implementation is first-customer critical.
+At the time of Milestone 3, the planned subscription was to store its sequence, assigned
+cohort, locked fees, assignment and signup dates, introductory start/expiration,
+recurring billing start, and applicable Stripe references/version. That historical gap
+was subsequently closed by Pricing P1/P2 and their staging validation PASS.
 
 ---
 
@@ -325,11 +325,12 @@ Alpha's free period; the focused implementation is first-customer critical.
 
 No existing Sprint 8.8, 8.9, or 8.10 plan conflicts were found in the repository. The architectural sequence is:
 
-## Pre-Sprint 8.8 Gate - 247SP First-Customer Pricing Implementation
+## Completed Pre-Sprint 8.8 Gate - 247SP First-Customer Pricing Implementation
 
-Immediately after Sprint 8.7 closes, implement pricing P1, pricing P2, and the dedicated
-staging validation in `docs/247sp-pricing-cohort-implementation-plan.md`. Planned
-migration 022 belongs to pricing. This gate must pass before Sprint 8.8 M1.
+Pricing P1, Pricing P2, and the dedicated staging validation in
+`docs/247sp-pricing-cohort-implementation-plan.md` are COMPLETE / PASS. Migration 022
+belongs to pricing and is applied and validated on staging. The gate is cleared; Sprint
+8.8 M1 is the next planned application-development work.
 
 ## Sprint 8.8 - Website Platform And Component CMS
 
@@ -404,7 +405,6 @@ Planned categories must not be marked complete until implementation and required
 
 # Recommended Next Task
 
-Merge the Milestone 7 documentation-only closeout after review. The next executable
-work is the first-customer-critical pricing P1/P2 implementation and staging gate in
-`docs/247sp-pricing-cohort-implementation-plan.md`. Sprint 8.8 M1 begins only after
-that gate passes.
+The Milestone 7 documentation-only closeout and the subsequent pricing P1/P2
+implementation and staging gate are complete. The next authorized roadmap work is
+Sprint 8.8 M1 in `docs/sprint-8.8.md`.

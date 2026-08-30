@@ -2,7 +2,7 @@
 
 ## Review Date
 
-August 11, 2026
+August 11, 2026; pricing closeout status updated August 30, 2026
 
 ## Overall Status
 
@@ -14,7 +14,7 @@ The website-generation and LeadHub foundations exist. Migration 021 established 
 initial Shared Business Profile schema, Milestone 4 added its validated service, and
 Milestone 5's customer/admin interface completed staging validation as PASS. The
 component CMS, portable site lifecycle/publisher, registered-site ingestion,
-cohort-aware billing, DataForSEO, unified inbox, communications provider layer, AI
+DataForSEO, unified inbox, communications provider layer, AI
 receptionist, business texting, website chat, usage metering, and internal MCP gateway
 remain planned.
 
@@ -30,7 +30,7 @@ remain planned.
 | Single-template website generation and private preview | Complete |
 | Website branding, content management, and admin editing foundation | Complete |
 | LeadHub contacts, notes, tasks, activity, and website form capture foundation | Complete; staging revalidation remains part of launch QA |
-| Stripe billing foundation and integration | Pricing P1 staging PASS; P2 completed-signup/locked billing/Checkout/webhook/UI integration implemented locally but not yet staging validated |
+| Stripe billing foundation and integration | Pricing P1 and P2 COMPLETE / STAGING VALIDATED PASS; dedicated pricing gate CLEARED |
 | Domain workflow and provider abstraction | Implemented; end-to-end staging launch validation pending |
 | Email request/assignment foundation | Complete; Vendasta professional-email provisioning is planned and first-customer critical |
 | Shared Business Profile schema | Complete and staging validated |
@@ -171,8 +171,9 @@ Required:
 Approved cohorts are Alpha positions 1-5 at $0 setup, six months free, then $79/month;
 Beta positions 6-10 at $0 setup and $97/month; Founding positions 11-25 at $100 setup
 and $147/month; and Standard positions 26+ at $250 setup and $197/month. They price
-one product and are not feature tiers. P2 implements the model locally, but it is not
-customer-ready until the dedicated Stripe TEST staging gate passes.
+one product and are not feature tiers. P1 and P2 implement the model, and the dedicated
+Stripe TEST pricing staging gate is CLEARED / PASS. Overall first-customer and production
+readiness remain blocked by the separate items in this review.
 
 ---
 
@@ -193,20 +194,20 @@ Complete the site model, structured page/component definitions, revisions, appro
 
 ## Billing And Commercial Policy
 
-Status: Pricing P1 staging PASS; Pricing P2 implemented locally; dedicated staging validation remains first-customer critical
+Status: Pricing P1 and P2 COMPLETE / STAGING VALIDATED PASS; dedicated pricing gate CLEARED
 
 Pricing P1 implements durable cohort configuration, the lockable product counter,
 immutable allocation evidence, locked subscription terms, Alpha's stored
 calendar-month-clamped dates, authorized/idempotent transaction behavior, and bounded
-success activity. Migration 022 has been applied and validated on staging; P2 now
-integrates that boundary into completed signup locally.
+success activity. Migration 022 has been applied and validated on staging; P2 integrates
+that boundary into completed signup.
 
 Pricing P2 now integrates the service at successful signup, implements Alpha's exact
 stored trial end and payment-method collection, selects locked cohort-aware Stripe
 Prices, includes one-time setup lines, reconciles webhook retry/order, and adds
-customer/admin visibility. It required no new migration. Actual Stripe TEST Checkout,
-invoice/trial transition, signed webhook delivery/reordering, browser, MySQL concurrency,
-and log validation remain pending in the dedicated staging gate.
+customer/admin visibility. It required no new migration. Stripe TEST Checkout,
+invoice/trial transition, signed webhook delivery and stale ordering, browser UI, real
+MySQL concurrency, and log validation passed the dedicated staging gate.
 Failed signup transactions consume no position; idempotent retry returns the existing
 assignment; cancellations do not reopen positions. Anonymous registration, launch,
 payment/webhook events, later billing states, and active counts do not determine cohort.
@@ -267,11 +268,11 @@ Before any site conversion or cancellation workflow can be launch-ready:
 
 ## First-Customer Pricing Gate
 
-Pricing P1 is staging validated PASS. Pricing P2 is implemented locally for review,
-and the dedicated staging gate
-in `docs/247sp-pricing-cohort-implementation-plan.md` remain next. Migration
-`022_247sp_pricing_cohorts.sql` precedes Sprint 8.8 and must be applied and validated
-through the approved workflow before Sprint 8.8 M1.
+Pricing P1 and P2 are COMPLETE / STAGING VALIDATED PASS, and the dedicated gate in
+`docs/247sp-pricing-cohort-implementation-plan.md` is CLEARED. Migration
+`022_247sp_pricing_cohorts.sql` is applied and validated on staging. Pricing production
+migration/deployment remains unauthorized and has not been performed. Sprint 8.8 M1 is
+the next planned application-development work.
 
 ## Sprint 8.8 - Website Platform And Component CMS
 
@@ -308,7 +309,7 @@ Full customer use of EMD, SSP, TUHWD, KYN, Full OS, and Enterprise remains defer
 
 The platform has solid website, LeadHub, billing, domain, email-workflow, and Shared Business Profile foundations, but the approved 247SP product is broader than the implemented runtime. Readiness must be measured by the complete digital-front-office workflow, not by website-preview completion alone.
 
-Pricing P1 is the validated foundation. Pricing P2 and a dedicated staging PASS remain
-required before Sprint 8.8. None of the CMS, publisher, DataForSEO,
-Vendasta, communications, Twilio/Retell, or customer-facing cohort-aware billing
-runtime is complete merely because its plan or P1 foundation exists.
+Pricing P1 and P2 are the staging-validated billing foundation, and the dedicated pricing
+gate is CLEARED. None of the CMS, publisher, DataForSEO, Vendasta, communications,
+Twilio/Retell, or broader first-customer runtime is complete merely because the pricing
+gate passed. Production remains unauthorized pending separate readiness and approval.

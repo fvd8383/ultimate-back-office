@@ -10,8 +10,8 @@ New module development is paused until 247SP is launch-ready. EMD, SSP, TUHWD, a
 
 # Roadmap Priority
 
-1. Sprint 8.7: Shared Business Profile and Website Platform Alignment (closes when Milestone 7 PR merges)
-2. 247SP First-Customer Pricing Implementation and staging gate
+1. Sprint 8.7: Shared Business Profile and Website Platform Alignment — COMPLETE
+2. 247SP First-Customer Pricing Implementation and staging gate — COMPLETE / PASS
 3. Sprint 8.8: Website Platform and Component CMS
 4. Sprint 8.9: Communications Core Foundation
 5. Sprint 8.10: Telephony and AI Receptionist
@@ -64,19 +64,19 @@ New module development is paused until 247SP is launch-ready. EMD, SSP, TUHWD, a
 
 # Billing & Payments
 
-* [x] LOCAL IMPLEMENTATION: Stripe Payment Integration; dedicated TEST staging gate pending
+* [x] Pricing P2 Stripe payment integration: dedicated TEST staging gate PASS at `f4f767d7cf907a085d77f705e734288a3af04f16`
 * [x] Pricing P1 foundation: migration `022_247sp_pricing_cohorts.sql` staging validated PASS at `e71f7bed62e54cc5851e2bb365c136e6b5f6321d`
 * [x] Pricing P1 foundation: atomic never-reused customer sequence/cohort service with idempotency and rollback
 * [x] Pricing P1 foundation: Alpha/Beta/Founding/Standard durable cohort configuration
 * [x] Pricing P1 foundation: locked subscription setup/monthly/nullable Stripe-reference snapshot
-* [x] LOCAL IMPLEMENTATION: Integrate Pricing P1 atomically at completed 247SP business signup; staging gate pending
-* [x] LOCAL IMPLEMENTATION: Alpha exact stored six-month period and automatic recurring transition; Stripe TEST validation pending
-* [x] LOCAL IMPLEMENTATION: Cohort-aware locked Stripe recurring/setup prices; TEST catalog configuration and staging validation pending
-* [x] LOCAL IMPLEMENTATION: Setup Fee Collection; Stripe TEST validation pending
-* [x] LOCAL IMPLEMENTATION: Monthly Subscription Collection; Stripe TEST validation pending
-* [x] LOCAL IMPLEMENTATION: Trial-to-Paid Workflow; Stripe TEST validation pending
-* [x] LOCAL IMPLEMENTATION: Billing Failure Workflow; Stripe TEST validation pending
-* [x] LOCAL IMPLEMENTATION: Subscription Cancellation Workflow; Stripe TEST validation pending
+* [x] STAGING VALIDATED: Pricing P1 integrated atomically at completed 247SP business signup
+* [x] STAGING VALIDATED: Alpha exact stored six-calendar-month period and automatic $79 recurring transition
+* [x] STAGING VALIDATED: Cohort-aware locked Stripe recurring/setup Prices and six-entry TEST catalog
+* [x] STAGING VALIDATED: Setup fee collection exactly once for Founding and Standard
+* [x] STAGING VALIDATED: Monthly subscription collection and MRR excluding setup fees
+* [x] STAGING VALIDATED: Trial-to-paid workflow
+* [x] STAGING VALIDATED: Billing failure/reconciliation workflow
+* [x] STAGING VALIDATED: Subscription cancellation does not reopen a sequence position
 
 ---
 
@@ -254,23 +254,19 @@ validation SHA-256 is
 `687a1444664f9d7167dfb316510f09094e922c2b83166874849db44fb10382a6`.
 The platform has persistent navigation, legacy website generation/editing, LeadHub
 website capture, billing/domain/email foundations, and the Shared Business Profile.
-Pricing P1 provides the staging-validated schema/service/test foundation for durable
-cohorts, never-reused sequence allocation, locked terms, and Alpha dates. Pricing P2 is
-implemented locally for review with no new migration: completed-signup atomicity,
-locked billing reads, POST/CSRF Checkout, all four cohort payloads, provider
-idempotency/recovery, webhook replay/order guards, and customer/admin presentation.
-P2 is not yet merged or staging validated, and the dedicated Stripe TEST gate remains
-first-customer blocking.
-The generic CMS, publisher/restore lifecycle, registered-site ingestion, complete
-cohort-aware billing, DataForSEO, unified inbox, communications services, AI
+Pricing P1 and Pricing P2 are COMPLETE / STAGING VALIDATED PASS. They provide durable
+cohorts, never-reused sequence allocation, locked terms and Alpha dates,
+completed-signup atomicity, locked billing reads, POST/CSRF Checkout, all four cohort
+payloads, provider idempotency/recovery, webhook replay/order guards, and customer/admin
+presentation. The dedicated pricing first-customer technical gate is CLEARED.
+The generic CMS, publisher/restore lifecycle, registered-site ingestion, broader Sprint
+8.8 website platform, DataForSEO, unified inbox, communications services, AI
 receptionist, texting, chat, usage metering, and conversion workflows remain planned.
 
 Major Remaining Milestones:
 
-1. Review and merge Pricing P2, configure the staging TEST Price catalog, and run the dedicated pricing staging gate
-2. Validate P2 completed-signup integration, Alpha billing, setup charges, cohort-aware Stripe, reconciliation, and pricing presentation on staging
-3. Sprint 8.8 staged website platform/component/revision/publishing/routing implementation beginning with planned migration 023 and full validation
-4. Sprint 8.9 communications core, Vendasta professional email, Twilio foundation, and LeadHub timeline
-5. Sprint 8.10 telephony and AI receptionist
-6. Later messaging, website chat, unified inbox, usage, and overages required by the sold product
-7. Production provider setup/end-to-end QA, legal/policy, support, first-customer admin/customer QA, and production deployment gate
+1. Sprint 8.8 staged website platform/component/revision/publishing/routing implementation beginning with planned migration 023 and full validation
+2. Sprint 8.9 communications core, Vendasta professional email, Twilio foundation, and LeadHub timeline
+3. Sprint 8.10 telephony and AI receptionist
+4. Later messaging, website chat, unified inbox, usage, and overages required by the sold product
+5. Production provider setup/end-to-end QA, legal/policy, support, first-customer admin/customer QA, and production deployment gate

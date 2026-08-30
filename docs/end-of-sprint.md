@@ -202,20 +202,19 @@ Deferred items remain outside Sprint 8.5 and should be handled by future sprints
 
 ## Current Roadmap
 
-Current review task: Sprint 8.7 Milestone 7 documentation-only closeout. Milestone 6 is
-COMPLETE and merged at `fa9228eefbbba94523781599e74ca04e0dbadb22`. Sprint 8.7 is
-complete effective when the Milestone 7 closeout PR merges. The generic CMS,
-publisher, cohort billing, DataForSEO, communications runtime, and planned migrations
-remain future work.
+Sprint 8.7 and its Milestone 7 documentation-only closeout are COMPLETE. Milestone 6 is
+merged at `fa9228eefbbba94523781599e74ca04e0dbadb22`. Pricing P1/P2 and the dedicated
+pricing staging gate are also COMPLETE / PASS. The generic CMS, publisher, DataForSEO,
+communications runtime, and planned website migrations remain future work.
 
 Sprint 8.7 Milestone 5 is COMPLETE / PASS. The final validated/deployed `main` state
 after its fixes is `ea81194e7d853782f927fdf58ed65eecd6473a7f`; final successful
 validation SHA-256:
 `687a1444664f9d7167dfb316510f09094e922c2b83166874849db44fb10382a6`.
 
-After closeout, the next gate is the first-customer pricing P1/P2 implementation and
-staging validation using planned `022_247sp_pricing_cohorts.sql`. Sprint 8.8 follows
-with planned `023_website_platform_foundation.sql` and the M1-M8 execution plan in
+Migration `022_247sp_pricing_cohorts.sql` is applied and validated on staging, and the
+pricing gate is cleared. Sprint 8.8 is the next planned application work, with reserved
+`023_website_platform_foundation.sql` and the M1-M8 execution plan in
 `docs/sprint-8.8.md`. Sprint 8.9 communications planning is in `docs/sprint-8.9.md`.
 
 ## Sprint 8.7 Milestone 4 Closeout

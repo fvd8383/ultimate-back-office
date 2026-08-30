@@ -2,8 +2,9 @@
 
 ## Status And Objective
 
-**Planned.** Sprint 8.8 begins only after Sprint 8.7 closes and the dedicated 247SP
-first-customer pricing implementation and staging gate pass.
+**Planned; next authorized roadmap work.** Sprint 8.7 is closed and the dedicated 247SP
+first-customer pricing implementation and staging gate are COMPLETE / PASS. Sprint 8.8
+has not begun as part of the pricing closeout.
 
 The sprint implements the approved generic 247SP/EMD website platform in eight focused
 milestones. It replaces no historical migration and does not treat the customer
