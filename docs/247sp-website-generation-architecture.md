@@ -11,9 +11,9 @@ transition, analytics, approval, pricing, and migration decisions open. It remai
 documentation design; no generic CMS or publisher is currently implemented.
 
 Milestone 7 locked the executable Sprint 8.8 sequence in `docs/sprint-8.8.md` and the
-initial planned website migration as `023_website_platform_foundation.sql`, after the
-planned first-customer pricing migration 022 and staging gate. Migration 023 and the
-website runtime remain planned, not implemented.
+initial planned website migration as `023_website_platform_foundation.sql`. The preceding
+pricing migration 022 is applied and staging validated, and the dedicated pricing gate
+is CLEARED / PASS. Migration 023 and the website runtime remain planned, not implemented.
 
 ---
 

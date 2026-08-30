@@ -1,11 +1,12 @@
 Pending Credentials And Planned Provider Configuration
 
-247SP cohort Price catalogs are environment-specific. After review/merge, staging uses
-only the TEST keys and an authorized operator runs
-`php scripts/configure-247sp-stripe-prices.php`; production uses only LIVE keys after
-separate authorization. The utility does not call Stripe, does not print Price values,
-does not change locked subscriptions, and refuses a different populated reference.
-Legacy global 247SP Price keys are not authoritative and are not Checkout fallbacks.
+247SP cohort Price catalogs are environment-specific. For the completed dedicated
+pricing gate, staging used only the TEST keys and an authorized operator ran
+`php scripts/configure-247sp-stripe-prices.php`; all six retained TEST Price references
+were validated. Production may use only LIVE keys after separate authorization, which
+has not been given. The utility does not call Stripe, does not print Price values, does
+not change locked subscriptions, and refuses a different populated reference. Legacy
+global 247SP Price keys are not authoritative and are not Checkout fallbacks.
 
 STAGING
 --------

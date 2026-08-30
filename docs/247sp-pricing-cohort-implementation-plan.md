@@ -2,26 +2,37 @@
 
 ## Status And Gate
 
-Pricing P1 is complete and staging validated PASS at
-`e71f7bed62e54cc5851e2bb365c136e6b5f6321d`; validation evidence SHA-256 is
+**Pricing P1: COMPLETE / STAGING VALIDATED PASS.** The merged, deployed, and validated
+SHA is `e71f7bed62e54cc5851e2bb365c136e6b5f6321d`; validation evidence SHA-256 is
 `6d20e5fc601a18a494dbf2eac15d4f903ceac24e5860d99429737518f335d67c`.
-Pricing P2 is implemented locally for review, with no new migration, but has not been
-merged, deployed, or staging validated. The dedicated Stripe test-mode staging gate
-remains blocking, so this document does not claim that cohort-aware billing is
-available to customers or production-ready.
 
-The implementation is the first gate after Sprint 8.7 closes and before Sprint 8.8 M1:
+**Pricing P2: COMPLETE / STAGING VALIDATED PASS.** The merged, deployed, and validated
+SHA is `f4f767d7cf907a085d77f705e734288a3af04f16` (PR #94).
+
+**Dedicated Pricing Staging Validation Gate: CLEARED / PASS.** The readiness report,
+primary validation report, and final closeout evidence and checksums are retained in
+`docs/247sp-pricing-p1-p2-closeout.md`.
+
+Authoritative Pricing P2 evidence SHA-256 values are:
+
+- readiness: `bed6aecb1ba6c398ea10ce3a4cdb9e0420f3f5440003a2de464c8935cc6621e7`;
+- primary staging validation: `95f4a582ef0c2da9c7a391f2d5ed03d7b45b500c33f3519c64de266cb11605fd`;
+- final closeout: `51e7d41ccf0485623b29a9d35b3d7431b851766059ad0a04f8a847f22ce84249`.
+
+The completed execution sequence was:
 
 ```text
-Sprint 8.7 closeout merged
-  -> Pricing P1: schema and PricingCohortManager
-  -> Pricing P2: billing, Stripe, customer, and admin integration
-  -> dedicated staging validation PASS
-  -> Sprint 8.8 M1
+Sprint 8.7 closeout: COMPLETE
+  -> Pricing P1: COMPLETE / STAGING VALIDATED PASS
+  -> Pricing P2: COMPLETE / STAGING VALIDATED PASS
+  -> dedicated pricing staging validation gate: CLEARED / PASS
+  -> NEXT: Sprint 8.8 M1
 ```
 
-No production 247SP business signup may be accepted until this gate passes. The
-P1 additive migration is `022_247sp_pricing_cohorts.sql`. Historical migrations,
+The pricing gate PASS does not mean that the entire 247SP product is first-customer or
+production ready. Production pricing migration/deployment and production 247SP business
+signup remain unauthorized pending separate production readiness and explicit approval.
+The P1 additive migration is `022_247sp_pricing_cohorts.sql`. Historical migrations,
 including their legacy prices, remain immutable.
 
 ## Fixed Product And Assignment Contract
@@ -193,13 +204,13 @@ completed business signup
   -> automatic $79/month billing after the stored expiration
 ```
 
-The implementation must define a single UTC/calendar-month rule and test end-of-month,
-leap-year, and time-zone boundaries. Reads must not repeatedly calculate six months
-from signup.
+The implementation defines one UTC/calendar-month rule and covers end-of-month,
+leap-year, and time-zone boundaries. Reads do not repeatedly calculate six months from
+signup.
 
 ### P1 tests and exit criteria
 
-Standalone tests must cover:
+Standalone tests cover:
 
 - sequences 1/5 Alpha, 6/10 Beta, 11/25 Founding, 26/high Standard;
 - concurrent allocation protection and unique constraints;
@@ -214,14 +225,14 @@ Standalone tests must cover:
 - customer/tenant/admin authorization and cross-business rejection;
 - no direct pricing SQL in route controllers.
 
-P1 local implementation exits after migration checks, standalone tests, repository
-lint, and rollback review pass. Genuine parallel-session allocation behavior and the
-applied migration remain mandatory dedicated staging validations after review and
-merge; P1 does not authorize staging access by itself.
+P1 exited after migration checks, standalone tests, repository lint, rollback review,
+the applied staging migration, and genuine parallel-session allocation validation
+passed. Its staging validation was separately authorized and did not authorize any
+production access.
 
 ## Pricing P2 — Billing, Stripe, Customer, And Admin Integration
 
-### Implemented local scope and services
+### Implemented scope and services
 
 P2 integrates the P1 contract through `BillingFoundation`, `StripeBilling`, and the
 service that owns successful completion of the 247SP business signup. It updates
@@ -282,9 +293,10 @@ configured mode, populates only NULL current cohort references, is idempotent wh
 values match, and refuses replacements or consumed-version mutations. It never changes
 locked snapshots, cohort amounts, ranges, or versions and never calls Stripe.
 
-After merge, an authorized staging operator must configure TEST catalog values in the
-uncommitted staging environment file, run the CLI utility once, and verify the resulting
-TEST Price objects during the dedicated gate. No IDs are configured by this local work.
+During the authorized staging gate, the TEST catalog values were configured in the
+uncommitted staging environment file, the CLI utility populated the references, and all
+six referenced TEST Price objects were verified correct and active. No provider IDs are
+committed to the repository, and no LIVE Stripe objects were created.
 
 ### Implemented presentation
 
@@ -295,46 +307,47 @@ locked terms and status. Customers cannot edit cohorts, sequence, or snapshots.
 
 ### P2 tests and exit criteria
 
-Local tests cover completed-signup orchestration, all four commercial contracts, Stripe
+Focused tests cover completed-signup orchestration, all four commercial contracts, Stripe
 reference selection, Alpha payment-method retention and expiration transition,
 one-time setup idempotency, webhook replay/order/failure, reconciliation, customer and
 admin authorization, safe missing configuration, and the absence of hard-coded UI
-prices. Local implementation does not satisfy the gate: actual MySQL concurrency,
-Stripe TEST Checkout/payment methods/invoices/trial transition, signed delivery and
-reordering, browser UI, and log review remain staging-only.
+prices. The dedicated gate also passed actual MySQL concurrency, Stripe TEST Checkout,
+payment-method/invoice/trial-transition behavior, signed delivery and stale ordering,
+human browser UI verification, and log review.
 
 ## Dedicated Pricing Staging Validation Gate
 
-This gate runs only after P1 and P2 are merged through the approved workflow. It uses
-Stripe test mode and no production calls.
+This gate completed after P1 and P2 were merged through the approved workflow. It used
+Stripe TEST mode and made no production calls. The completed gate:
 
-1. Record repository, database, environment, and log baselines.
-2. Validate migration `022`, rollback assumptions, indexes/FKs/uniqueness, seed ranges,
+1. Recorded repository, database, environment, and log baselines.
+2. Validated migration `022`, rollback assumptions, indexes/FKs/uniqueness, seed ranges,
    and schema reconciliation.
-3. Run PHP lint and all standalone pricing/billing/authorization/static-route tests.
-4. Exercise boundary allocations 1, 5, 6, 10, 11, 25, 26, and a high sequence in an
+3. Ran PHP lint and all standalone pricing/billing/authorization/static-route tests.
+4. Exercised boundary allocations 1, 5, 6, 10, 11, 25, 26, and a high sequence in an
    isolated approved fixture strategy.
-5. Prove concurrent signup uniqueness, idempotent retry, transaction rollback without
+5. Proved concurrent signup uniqueness, idempotent retry, transaction rollback without
    consumption, cancellation without reopening, and multi-business behavior.
-6. Verify locked snapshots survive cohort configuration version changes.
-7. Verify exact Alpha start/expiration/recurring dates and automatic `$79/month`
+6. Verified locked snapshots survive cohort configuration version changes.
+7. Verified exact Alpha start/expiration/recurring dates and automatic `$79/month`
    test-mode transition behavior.
-8. Complete Stripe test-mode Checkout/payment-method collection for each cohort;
-   verify setup charges, recurring prices, subscriptions, invoices, and local state.
-9. Replay and reorder signed test webhook events; verify deduplication and
+8. Completed Stripe test-mode Checkout/payment-method collection for each cohort and
+   verified setup charges, recurring prices, subscriptions, invoices, and local state.
+9. Replayed and reordered signed test webhook events; verified deduplication and
    reconciliation after safe simulated failures.
-10. Verify customer and admin UI fields, tenant isolation, CSRF, safe errors, and a
+10. Verified customer and admin UI fields, tenant isolation, CSRF, safe errors, and a
     clean browser console.
-11. Review bounded Apache/PHP and worker/webhook logs for warnings, fatals, PDO errors,
+11. Reviewed bounded Apache/PHP and worker/webhook logs for warnings, fatals, PDO errors,
     secrets, and unnecessary customer/provider payloads.
-12. Remove synthetic customers, subscriptions, Stripe test objects where appropriate,
-    payments, allocations, and activities; reconcile counters, tables, provider state,
+12. Removed synthetic customers, subscriptions, Stripe test objects where appropriate,
+    payments, allocations, and activities; reconciled counters, tables, provider state,
     and repository baseline.
-13. Record an evidence-backed PASS/FAIL report and checksum.
+13. Recorded evidence-backed PASS reports and checksums.
 
-Any failed atomicity, duplicate allocation, wrong price, Alpha date/payment-method,
-tenant-isolation, webhook, or reconciliation check blocks Sprint 8.8 and first-customer
-acceptance until repaired and rerun.
+The completed run had no failed atomicity, duplicate-allocation, price, Alpha
+date/payment-method, tenant-isolation, webhook, or reconciliation check. Any future
+regression in these contracts must still be repaired and rerun before affected release
+work proceeds.
 
 ## Deferred Commercial Policy
 
@@ -345,9 +358,14 @@ event or consumed Alpha/Beta/Founding positions.
 
 ## Completion Evidence
 
-The pricing gate is complete only when both implementation PRs are merged, migration
-022 is applied and reconciled on staging under explicit approval, all required tests
-and browser/provider checks pass, cleanup/reconciliation passes, documentation reflects
-implemented behavior, and the validation report/checksum are retained. Until then the
-overall pricing gate remains **incomplete / first-customer critical** despite the
-implemented P1 foundation.
+**COMPLETE / PASS.** Both implementation PRs are merged, migration 022 was applied and
+reconciled on staging under explicit approval, required tests and browser/provider
+checks passed, cleanup/reconciliation passed, and the reports/checksums are retained in
+`docs/247sp-pricing-p1-p2-closeout.md`. The staging counter was restored to sequence 1
+with lock version 0, allocations and commercial terms were restored to 0, and the six
+TEST Price references were retained.
+
+This completion clears only the dedicated 247SP pricing first-customer technical gate.
+It does not make the entire 247SP product first-customer ready, does not establish
+production readiness, and does not authorize production migration, deployment, provider
+configuration, or customer signup.

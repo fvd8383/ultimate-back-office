@@ -734,7 +734,7 @@ then $79/month; Beta positions 6-10 at $0 setup and $97/month; Founding position
 11-25 at $100 setup and $147/month; and Standard positions 26+ at $250 setup and
 $197/month. These are cohorts for one core product, not feature tiers.
 
-Future billing must separate product, durable cohort configuration, atomic never-reused
+Implemented billing separates product, durable cohort configuration, atomic never-reused
 customer sequence assignment, and locked subscription commercial terms. One completed
 247SP business signup consumes one permanent position. Assignment occurs atomically as
 part of successful completion of that signup, including creation/confirmation of the
@@ -761,15 +761,16 @@ six-month expiration, and identical recurring start. Non-Alpha introductory date
 null and recurring billing starts at signup completion. Stripe references are nullable
 configuration/snapshot fields in P1.
 
-Pricing P2 is implemented locally without a new schema migration. Completed 247SP
+Pricing P2 is implemented and staging validated without a new schema migration. Completed 247SP
 business signup now owns one transaction that includes P1 assignment and business
 completion. Assigned 247SP billing/customer/admin reads use
 `subscription_commercial_terms`; unassigned 247SP records do not present mutable
 `plans` fees as a locked contract. Cohort-aware Checkout uses only snapshot Price
 references, and webhook/payment recovery continues to use `subscriptions`, `payments`,
-and `stripe_webhook_events`. Migration 023 remains reserved for Sprint 8.8. Applied
-MySQL behavior and Stripe TEST behavior remain part of the dedicated staging gate.
-Historical pricing migrations remain unchanged. See
+and `stripe_webhook_events`. Migration 022 is applied and validated on staging.
+Migration 023 is absent and remains reserved for Sprint 8.8. Applied MySQL behavior and
+Stripe TEST behavior passed the dedicated pricing staging gate. Historical pricing
+migrations remain unchanged. See
 `docs/247sp-pricing-cohort-implementation-plan.md`.
 
 ---

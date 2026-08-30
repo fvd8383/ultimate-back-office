@@ -251,12 +251,12 @@ audit in `docs/sprint-8.7-milestone-6-website-platform-audit.md` defines the fut
 cohort-pricing architecture. It does not implement the CMS, publisher, billing changes,
 DataForSEO, or a migration.
 
-Sprint 8.7 closes when the Milestone 7 closeout PR merges. The next planned gate is the
-two-PR 247SP pricing implementation and staging validation in
-`docs/247sp-pricing-cohort-implementation-plan.md`, using planned migration
-`022_247sp_pricing_cohorts.sql`. Sprint 8.8 follows with planned migration
+Sprint 8.7 is complete. The two-PR 247SP pricing implementation and its dedicated
+staging validation gate are also COMPLETE / PASS; migration
+`022_247sp_pricing_cohorts.sql` is applied and validated on staging. The next planned
+application work is Sprint 8.8 M1 with reserved, not-yet-created migration
 `023_website_platform_foundation.sql`; see `docs/sprint-8.8.md`. The planned
-communications core is in `docs/sprint-8.9.md`.
+communications core remains in `docs/sprint-8.9.md`.
 
 ## Testing OTP Login In Staging
 
@@ -530,10 +530,10 @@ atomically as part of successful completion of that business signup; a failed tr
 consumes no position, and an idempotent retry returns the existing assignment.
 Cancellations do not reopen positions. Anonymous account creation, website launch,
 payment/webhook events, later billing-state changes, and active-customer counts do not
-determine cohort. Pricing P1 provides the staging-validated sequence and immutable
-snapshot foundation. Pricing P2 now integrates locked dates and Price references,
-Alpha's exact free period, Checkout, webhooks, and billing presentation locally; the
-dedicated Stripe TEST staging gate remains first-customer critical.
+determine cohort. Pricing P1 and P2 provide the staging-validated sequence and immutable
+snapshot foundation, locked dates and Price references, Alpha's exact free period,
+Checkout, webhooks, and billing presentation. The dedicated Stripe TEST pricing gate is
+CLEARED / PASS. This does not make the complete 247SP product or production ready.
 
 The monthly package includes the done-for-you website, domain, professional email,
 local business phone number, AI receptionist, business texting, AI website chat,

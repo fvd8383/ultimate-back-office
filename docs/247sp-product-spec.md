@@ -64,12 +64,12 @@ The following approved product capabilities are not yet complete unless a later 
 * Usage metering and overage billing
 * EMD demo and bidirectional site-conversion workflows
 
-Execution is sequenced through the immediate first-customer pricing gate in
-`docs/247sp-pricing-cohort-implementation-plan.md`, Sprint 8.8 website work in
-`docs/sprint-8.8.md`, and Sprint 8.9 communications/professional-email work in
-`docs/sprint-8.9.md`. Vendasta professional-email provisioning is first-customer
-critical; Twilio foundation is planned for Sprint 8.9 and Retell voice runtime remains
-planned for Sprint 8.10.
+The first-customer pricing gate in
+`docs/247sp-pricing-cohort-implementation-plan.md` is COMPLETE / PASS. Execution now
+continues with Sprint 8.8 website work in `docs/sprint-8.8.md`, followed by Sprint 8.9
+communications/professional-email work in `docs/sprint-8.9.md`. Vendasta
+professional-email provisioning is first-customer critical; Twilio foundation is
+planned for Sprint 8.9 and Retell voice runtime remains planned for Sprint 8.10.
 
 ---
 
@@ -224,15 +224,16 @@ repriced merely because public pricing or active-customer counts change.
 
 # Billing Direction
 
-Billing must distinguish the one `247sp` product from pricing-cohort configuration and
+Billing distinguishes the one `247sp` product from pricing-cohort configuration and
 locked subscription commercial terms. Approved cohort identifiers are `alpha`, `beta`,
-`founding`, and `standard`; they are not implemented in the current runtime.
+`founding`, and `standard`; Pricing P1/P2 implement them and are staging validated PASS.
 
-The current implementation still uses one legacy plan, mutable plan fees, one
-`STRIPE_247SP_PRICE_ID`, and an optional setup-price ID. It has no durable cohort,
-sequence, locked-price snapshot, free-month configuration, introductory expiration, or
-dedicated recurring-billing start. A separate additive implementation is
-first-customer critical and does not authorize changes in this documentation milestone.
+The implementation preserves one stable `247sp` product identity while separating
+durable cohort configuration, never-reused sequence allocation, locked-price snapshots,
+Alpha's exact free period, introductory expiration, recurring billing start, and six
+cohort-aware Stripe TEST Price references. Legacy global Price IDs are not authoritative
+Checkout fallbacks. The dedicated pricing staging gate is CLEARED; production remains
+unauthorized.
 
 ---
 
@@ -310,4 +311,4 @@ The customer dashboard should report website, domain, professional email, busine
 * Customers may use an FDV-purchased domain or connect a customer-owned domain.
 * Basic SEO setup is included; Google Analytics is an optional customer-connected integration.
 * Usage and overages follow the approved allowances and the active pricing/order/billing policy.
-* Proposed communications, CMS, MCP, EMD conversion, and billing-cohort identifiers do not become implemented merely because they are documented.
+* Proposed communications, CMS, MCP, and EMD conversion capabilities do not become implemented merely because they are documented.
