@@ -3,9 +3,11 @@
 require_once __DIR__ . '/../../private/classes/Auth.php';
 require_once __DIR__ . '/../../private/classes/BusinessFoundation.php';
 require_once __DIR__ . '/../../private/classes/Csrf.php';
+require_once __DIR__ . '/../../private/classes/SignupContext.php';
 require_once __DIR__ . '/../../private/classes/StripeBilling.php';
 
 Session::requireAuth('login.php');
+$productContext = SignupContext::fromRequest($_POST, $_GET);
 
 try {
     $user = Auth::currentUser();
@@ -100,6 +102,17 @@ function report_business_onboarding_exception(Throwable $exception): void
     error_log('[BusinessOnboarding] request failed: ' . get_class($exception));
 }
 
+function business_onboarding_url(string $step, int $businessId, ?string $productContext): string
+{
+    $parameters = ['step' => $step];
+
+    if ($businessId > 0) {
+        $parameters['business_id'] = $businessId;
+    }
+
+    return 'business-create.php' . SignupContext::query($productContext, $parameters);
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && count($errors) === 0) {
     try {
         Csrf::requireValid($_POST['csrf_token'] ?? null, $csrfScope);
@@ -135,7 +148,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && count($errors) === 0) {
 
             if (count($errors) === 0) {
                 $businessId = BusinessFoundation::saveBusinessInfo((int) $user['id'], $_POST, $businessId > 0 ? $businessId : null);
-                header('Location: business-create.php?step=services&business_id=' . $businessId);
+                header('Location: ' . business_onboarding_url('services', $businessId, $productContext));
                 exit;
             }
         }
@@ -170,7 +183,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && count($errors) === 0) {
 
             if (count($errors) === 0) {
                 BusinessFoundation::saveServices($businessId, (int) $user['id'], $categoryId, $postedServices, $customService);
-                header('Location: business-create.php?step=modules&business_id=' . $businessId);
+                header('Location: ' . business_onboarding_url('modules', $businessId, $productContext));
                 exit;
             }
         }
@@ -194,7 +207,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && count($errors) === 0) {
             if (count($errors) === 0) {
                 BusinessFoundation::setEnterpriseAccessForUser((int) $user['id'], $businessId, false);
                 BusinessFoundation::saveModules($businessId, (int) $user['id'], $postedModules, $packageType, false);
-                header('Location: business-create.php?step=confirmation&business_id=' . $businessId);
+                header('Location: ' . business_onboarding_url('confirmation', $businessId, $productContext));
                 exit;
             }
         }
@@ -313,9 +326,11 @@ require __DIR__ . '/../../private/views/account-navigation.php';
 account_shell_begin('businesses');
 ?>
 <section class="dashboard-card dashboard-card--wide">
-    <p class="eyebrow">Business onboarding</p>
-    <h1>Create Business</h1>
-    <p class="muted">Create your business profile and service selections. Product setup continues inside each active module.</p>
+    <p class="eyebrow"><?= SignupContext::is247sp($productContext) ? '24/7 Sales Partner signup' : 'Business onboarding' ?></p>
+    <h1><?= SignupContext::is247sp($productContext) ? 'Set up your 24/7 Sales Partner business' : 'Create Business' ?></h1>
+    <p class="muted"><?= SignupContext::is247sp($productContext)
+        ? "You're signing up for 24/7 Sales Partner through Ultimate Back Office. Complete your business profile to continue into the existing 247SP setup and billing flow."
+        : 'Create your business profile and service selections. Product setup continues inside each active module.' ?></p>
 </section>
 
 <?php if ($notice !== ''): ?>
@@ -336,9 +351,11 @@ account_shell_begin('businesses');
 
 <?php if ($step === 'welcome'): ?>
     <section class="dashboard-card onboarding-welcome">
-        <p class="eyebrow">Welcome to Ultimate Back Office</p>
-        <h2>Set up your business profile</h2>
-        <p class="muted">Create your business profile and service selections. Product setup continues inside each active module.</p>
+        <p class="eyebrow"><?= SignupContext::is247sp($productContext) ? '24/7 Sales Partner + Ultimate Back Office' : 'Welcome to Ultimate Back Office' ?></p>
+        <h2><?= SignupContext::is247sp($productContext) ? 'Start with your business' : 'Set up your business profile' ?></h2>
+        <p class="muted"><?= SignupContext::is247sp($productContext)
+            ? 'Ultimate Back Office securely manages the account and subscription for the 24/7 Sales Partner system you are purchasing.'
+            : 'Create your business profile and service selections. Product setup continues inside each active module.' ?></p>
         <ul class="setup-checklist">
             <li>Business Profile</li>
             <li>Services</li>
@@ -349,7 +366,7 @@ account_shell_begin('businesses');
         </ul>
         <p class="muted">Estimated time: 8-10 minutes.</p>
         <div class="button-row">
-            <?= ui_button('Begin Setup', 'business-create.php?step=business_info' . ($businessId > 0 ? '&business_id=' . urlencode((string) $businessId) : '')) ?>
+            <?= ui_button('Begin Setup', business_onboarding_url('business_info', $businessId, $productContext)) ?>
             <?= ui_button('Cancel', 'dashboard.php', 'secondary') ?>
         </div>
     </section>
@@ -357,6 +374,9 @@ account_shell_begin('businesses');
     <form method="post" action="business-create.php" class="dashboard-card form-stack">
         <?= Csrf::input($csrfScope) ?>
         <input type="hidden" name="step" value="business_info">
+        <?php if ($productContext !== null): ?>
+            <input type="hidden" name="product" value="<?= e($productContext) ?>">
+        <?php endif; ?>
         <?php if ($businessId > 0): ?>
             <input type="hidden" name="business_id" value="<?= e($businessId) ?>">
         <?php endif; ?>
@@ -423,6 +443,9 @@ account_shell_begin('businesses');
         <?= Csrf::input($csrfScope) ?>
         <input type="hidden" name="step" value="services">
         <input type="hidden" name="business_id" value="<?= e($businessId) ?>">
+        <?php if ($productContext !== null): ?>
+            <input type="hidden" name="product" value="<?= e($productContext) ?>">
+        <?php endif; ?>
 
         <label>Primary Category
             <select name="primary_category_id" required data-service-category-select>
@@ -459,7 +482,7 @@ account_shell_begin('businesses');
         </label>
 
         <div class="button-row">
-            <?= ui_button('Back', 'business-create.php?step=business_info&business_id=' . urlencode((string) $businessId), 'secondary') ?>
+            <?= ui_button('Back', business_onboarding_url('business_info', $businessId, $productContext), 'secondary') ?>
             <?= ui_button('Save and continue') ?>
         </div>
     </form>
@@ -468,6 +491,9 @@ account_shell_begin('businesses');
         <?= Csrf::input($csrfScope) ?>
         <input type="hidden" name="step" value="modules">
         <input type="hidden" name="business_id" value="<?= e($businessId) ?>">
+        <?php if ($productContext !== null): ?>
+            <input type="hidden" name="product" value="<?= e($productContext) ?>">
+        <?php endif; ?>
 
         <section class="module-selection">
             <h2>Available Launch Module</h2>
@@ -484,7 +510,7 @@ account_shell_begin('businesses');
         </section>
 
         <div class="button-row">
-            <?= ui_button('Back', 'business-create.php?step=services&business_id=' . urlencode((string) $businessId), 'secondary') ?>
+            <?= ui_button('Back', business_onboarding_url('services', $businessId, $productContext), 'secondary') ?>
             <?= ui_button('Save and continue') ?>
         </div>
     </form>
@@ -523,7 +549,10 @@ account_shell_begin('businesses');
                 <?= Csrf::input($csrfScope) ?>
                 <input type="hidden" name="step" value="confirmation">
                 <input type="hidden" name="business_id" value="<?= e($businessId) ?>">
-                <?= ui_button('Back', 'business-create.php?step=modules&business_id=' . urlencode((string) $businessId), 'secondary') ?>
+                <?php if ($productContext !== null): ?>
+                    <input type="hidden" name="product" value="<?= e($productContext) ?>">
+                <?php endif; ?>
+                <?= ui_button('Back', business_onboarding_url('modules', $businessId, $productContext), 'secondary') ?>
                 <?= ui_button('Complete onboarding', '', 'primary', ['name' => 'complete_onboarding', 'value' => '1']) ?>
             </form>
         <?php endif; ?>
