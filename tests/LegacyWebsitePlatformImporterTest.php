@@ -216,6 +216,25 @@ legacyImportTest('ownership, slug, order, and variant collisions are rejected', 
     expectLegacyImportError($unsupported, 'unsupported_page_type');
 });
 
+legacyImportTest('strict MySQL destination widths are validated before writes', static function (): void {
+    $longTitle = legacySource();
+    $longTitle['pages'][0]['title'] = str_repeat('T', 151);
+    expectLegacyImportError($longTitle, 'page_title_too_long');
+
+    $longSlug = legacySource();
+    $longSlug['pages'][0]['slug'] = str_repeat('a', 256);
+    expectLegacyImportError($longSlug, 'page_slug_too_long');
+
+    try {
+        $arguments = ['/' . str_repeat('a', 500)];
+        callLegacyPrivate('normalizeAssetPath', $arguments);
+    } catch (LegacyWebsiteImportException $exception) {
+        assertLegacyImport($exception->importErrorCode() === 'asset_reference_too_long', 'Overlong asset storage/source references must fail before database writes.');
+        return;
+    }
+    throw new RuntimeException('An overlong asset reference was accepted.');
+});
+
 legacyImportTest('rerun identity and source hashes are stable', static function (): void {
     $first = legacySource();
     $second = legacySource();
