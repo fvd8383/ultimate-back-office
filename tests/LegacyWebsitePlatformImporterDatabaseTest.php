@@ -69,8 +69,11 @@ final class LegacyImportDatabaseConnection extends PDO
     public array $pageMappings = [];
     public array $events = [];
     public ?int $failOnSiteInsertForLegacyId = null;
+    public ?int $failOnPageMappingForLegacyId = null;
     public bool $failOnQuarantineWrite = false;
     public ?int $mutateOnLockedLoadForLegacyId = null;
+    public int $verifiedBoundPageMappings = 0;
+    public int $verifiedMappingFinalizations = 0;
     public int $beginCount = 0;
     public int $commitCount = 0;
     public int $rollbackCount = 0;
@@ -125,6 +128,10 @@ final class LegacyImportDatabaseConnection extends PDO
 
     public function prepare(string $query, array $options = []): PDOStatement|false
     {
+        preg_match_all('/(?<!:):([a-zA-Z_][a-zA-Z0-9_]*)/', $query, $placeholders);
+        if (count($placeholders[1]) !== count(array_unique($placeholders[1]))) {
+            throw new RuntimeException('Duplicate named placeholder rejected by native-prepares test contract.');
+        }
         return new LegacyImportDatabaseStatement($this, $query);
     }
 
@@ -261,6 +268,18 @@ final class LegacyImportDatabaseConnection extends PDO
             $this->revisions[$id] = ['id' => $id] + $params;
             return [[], 1];
         }
+        if ($marker === 'bind-mapping') {
+            $row = &$this->mappings[(int) $params['mapping_id']];
+            if ($row['site_id'] !== null
+                || $row['import_revision_id'] !== null
+                || $row['import_status'] !== $params['pending_status']
+            ) {
+                return [[], 0];
+            }
+            $row['site_id'] = (int) $params['site_id'];
+            $row['import_revision_id'] = (int) $params['revision_id'];
+            return [[], 1];
+        }
         if ($marker === 'load-variants') {
             return [[
                 ['id' => 1, 'variant_key' => 'about'], ['id' => 2, 'variant_key' => 'contact'],
@@ -283,6 +302,18 @@ final class LegacyImportDatabaseConnection extends PDO
             return [[], 1];
         }
         if ($marker === 'insert-page-mapping') {
+            $mapping = $this->mappings[(int) $params['mapping_id']] ?? null;
+            $revisionPage = $this->revisionPages[(int) $params['revision_page_id']] ?? null;
+            if ($mapping === null
+                || (int) ($mapping['site_id'] ?? 0) !== (int) $params['site_id']
+                || (int) ($mapping['import_revision_id'] ?? 0) !== (int) ($revisionPage['revision_id'] ?? 0)
+            ) {
+                throw new RuntimeException('Simulated composite mapping/site foreign-key failure.');
+            }
+            $this->verifiedBoundPageMappings++;
+            if ($this->failOnPageMappingForLegacyId === $this->currentLegacyId) {
+                throw new RuntimeException('Injected post-bind page-mapping failure.');
+            }
             $id = $this->newId();
             $this->pageMappings[$id] = ['id' => $id] + $params;
             return [[], 1];
@@ -360,12 +391,17 @@ final class LegacyImportDatabaseConnection extends PDO
         }
         if ($marker === 'complete-mapping') {
             $row = &$this->mappings[(int) $params['mapping_id']];
-            $row['site_id'] = (int) $params['site_id'];
-            $row['import_revision_id'] = (int) $params['revision_id'];
-            $row['import_status'] = $params['status'];
+            if ((int) ($row['site_id'] ?? 0) !== (int) $params['site_id']
+                || (int) ($row['import_revision_id'] ?? 0) !== (int) $params['revision_id']
+                || $row['import_status'] !== $params['pending_status']
+            ) {
+                return [[], 0];
+            }
+            $row['import_status'] = $params['imported_status'];
             $row['source_hash'] = $params['source_hash'];
             $row['imported_hash'] = $params['imported_hash'];
             $row['error_code'] = null;
+            $this->verifiedMappingFinalizations++;
             return [[], 1];
         }
         if ($marker === 'page-count') {
@@ -463,6 +499,16 @@ function useLegacyDatabaseConnection(LegacyImportDatabaseConnection $connection)
     $property->setValue(null, $connection);
 }
 
+$databaseSource = file_get_contents(__DIR__ . '/../private/classes/Database.php');
+$importerSource = file_get_contents(__DIR__ . '/../private/classes/LegacyWebsitePlatformImporter.php');
+assertLegacyDatabase(is_string($databaseSource) && str_contains($databaseSource, 'PDO::ATTR_EMULATE_PREPARES => false'), 'The database contract must retain native PDO prepares.');
+assertLegacyDatabase(
+    is_string($importerSource)
+        && str_contains($importerSource, 'cd.status = :definition_status')
+        && str_contains($importerSource, 'cv.status = :variant_status'),
+    'Component variant loading must use distinct native-PDO status placeholders.'
+);
+
 $connection = LegacyImportDatabaseConnection::fixture();
 useLegacyDatabaseConnection($connection);
 
@@ -471,8 +517,14 @@ assertLegacyDatabase($firstBatch['processed'] === 2 && $firstBatch['imported'] =
 assertLegacyDatabase($firstBatch['has_more'] === true && $firstBatch['next_after_id'] === 2, 'Batch cursor must report remaining work.');
 assertLegacyDatabase(count($connection->sites) === 2 && count($connection->revisions) === 2, 'Each eligible legacy site must create one site and baseline revision.');
 assertLegacyDatabase(count($connection->associations) === 2 && count($connection->revisionPages) === 2, 'Ownership and page composition must be imported per site.');
+assertLegacyDatabase($connection->verifiedBoundPageMappings === 2, 'Every page mapping insert must observe an already-bound mapping/site parent tuple.');
+assertLegacyDatabase($connection->verifiedMappingFinalizations === 2, 'Every completed import must finalize the same bound mapping relationship.');
 $firstMapping = $connection->mappingByLegacyForTest(1);
 $firstRevision = $connection->revisions[(int) $firstMapping['import_revision_id']];
+assertLegacyDatabase(
+    (int) $firstMapping['site_id'] === (int) $firstRevision['site_id'],
+    'Successful finalization must preserve the mapping site/revision ownership established before page mappings.'
+);
 assertLegacyDatabase(
     hash_equals((string) $firstRevision['snapshot_hash'], (string) $firstMapping['imported_hash']),
     'The revision snapshot hash and mapping imported hash must store the same canonical evidence.'
@@ -547,6 +599,24 @@ $mapping = $hashMismatch->mappingByLegacyForTest(1);
 $hashMismatch->revisions[(int) $mapping['import_revision_id']]['snapshot_hash'] = str_repeat('0', 64);
 $mismatch = LegacyWebsitePlatformImporter::importWebsite(1);
 assertLegacyDatabase($mismatch['result'] === 'quarantined' && $mismatch['error_code'] === 'revision_hash_mismatch', 'Reconciliation must verify the stored revision snapshot hash.');
+
+$postBind = LegacyImportDatabaseConnection::fixture();
+useLegacyDatabaseConnection($postBind);
+$postBind->failOnPageMappingForLegacyId = 1;
+$legacyBeforePostBindFailure = serialize([$postBind->legacyWebsites[1], $postBind->legacyPages[1]]);
+$postBindFailure = LegacyWebsitePlatformImporter::importWebsite(1);
+$postBindMapping = $postBind->mappingByLegacyForTest(1);
+assertLegacyDatabase($postBindFailure['result'] === 'quarantined' && $postBindFailure['error_code'] === 'database_failure', 'A failure after mapping bind must quarantine safely.');
+assertLegacyDatabase($postBind->verifiedBoundPageMappings === 1, 'The injected failure must occur only after the mapping parent tuple was bound.');
+assertLegacyDatabase(count($postBind->sites) === 0 && count($postBind->revisions) === 0 && count($postBind->pageMappings) === 0, 'Post-bind rollback must remove the complete partial generic aggregate.');
+assertLegacyDatabase($postBindMapping !== null && $postBindMapping['site_id'] === null && $postBindMapping['import_revision_id'] === null, 'Fresh-import quarantine evidence must not retain rolled-back mapping ownership.');
+assertLegacyDatabase(serialize([$postBind->legacyWebsites[1], $postBind->legacyPages[1]]) === $legacyBeforePostBindFailure, 'Post-bind failure must not mutate legacy source data.');
+
+$postBindRetry = LegacyWebsitePlatformImporter::importWebsite(1);
+$postBindRetryMapping = $postBind->mappingByLegacyForTest(1);
+assertLegacyDatabase($postBindRetry['result'] === 'quarantined' && $postBindRetry['error_code'] === 'database_failure', 'A quarantined mapping retry must remain rollback-safe after binding.');
+assertLegacyDatabase($postBindRetryMapping !== null && $postBindRetryMapping['site_id'] === null && $postBindRetryMapping['import_revision_id'] === null, 'Retried quarantine evidence must not retain rolled-back mapping ownership.');
+assertLegacyDatabase(count($postBind->sites) === 0 && count($postBind->revisions) === 0 && count($postBind->pageMappings) === 0, 'Retried post-bind failure must leave no partial generic aggregate.');
 
 $boundary = LegacyImportDatabaseConnection::fixture();
 useLegacyDatabaseConnection($boundary);

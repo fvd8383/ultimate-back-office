@@ -425,6 +425,9 @@ final class LegacyWebsitePlatformImporter
             if ($slug === '' || preg_match('/^[a-z0-9]+(?:-[a-z0-9]+)*$/', $slug) !== 1) {
                 throw new LegacyWebsiteImportException('invalid_page_slug', 'A legacy generated page has an invalid slug.');
             }
+            if (strlen($slug) > 255) {
+                throw new LegacyWebsiteImportException('page_slug_too_long', 'A legacy generated page slug exceeds the imported revision limit.');
+            }
             if (isset($slugs[$slug])) {
                 throw new LegacyWebsiteImportException('page_slug_collision', 'Legacy generated page slugs collide after normalization.');
             }
@@ -432,8 +435,12 @@ final class LegacyWebsitePlatformImporter
             if (isset($orders[$order])) {
                 throw new LegacyWebsiteImportException('page_order_collision', 'Legacy generated page ordering is ambiguous.');
             }
-            if (trim((string) $page['title']) === '') {
+            $title = (string) $page['title'];
+            if (trim($title) === '') {
                 throw new LegacyWebsiteImportException('invalid_page_title', 'A legacy generated page title is empty.');
+            }
+            if (self::textLength($title) > 150) {
+                throw new LegacyWebsiteImportException('page_title_too_long', 'A legacy generated page title exceeds the imported navigation-label limit.');
             }
             try {
                 $decoded = json_decode((string) $page['content_json'], true, 512, JSON_THROW_ON_ERROR);
@@ -552,6 +559,7 @@ final class LegacyWebsitePlatformImporter
             ]
         );
         $revisionId = (int) $connection->lastInsertId();
+        self::bindPendingMapping($mappingId, $siteId, $revisionId);
         $variants = self::loadVariants();
         $pageImports = [];
 
@@ -672,22 +680,7 @@ final class LegacyWebsitePlatformImporter
                 'The imported revision does not match its canonical preflight representation.'
             );
         }
-        self::execute(
-            '/* legacy-import:complete-mapping */ UPDATE legacy_site_mappings
-             SET site_id = :site_id, import_revision_id = :revision_id, import_status = :status,
-                 source_hash = :source_hash, imported_hash = :imported_hash,
-                 imported_at = NOW(), quarantined_at = NULL, error_code = NULL, error_summary = NULL,
-                 updated_at = NOW()
-             WHERE id = :mapping_id AND site_id IS NULL',
-            [
-                'site_id' => $siteId,
-                'revision_id' => $revisionId,
-                'status' => 'imported',
-                'source_hash' => $sourceHash,
-                'imported_hash' => $revisionHash,
-                'mapping_id' => $mappingId,
-            ]
-        );
+        self::completePendingMapping($mappingId, $siteId, $revisionId, $sourceHash, $revisionHash);
 
         return [
             'legacy_website_id' => $legacyWebsiteId,
@@ -747,9 +740,14 @@ final class LegacyWebsitePlatformImporter
              INNER JOIN component_definitions cd ON cd.id = cv.component_definition_id
              WHERE cd.component_key = :component_key
                AND cd.implementation_version = :implementation_version
-               AND cd.status = :status AND cv.status = :status
+               AND cd.status = :definition_status AND cv.status = :variant_status
              ORDER BY cv.variant_key',
-            ['component_key' => self::COMPONENT_KEY, 'implementation_version' => self::COMPONENT_IMPLEMENTATION_VERSION, 'status' => 'active']
+            [
+                'component_key' => self::COMPONENT_KEY,
+                'implementation_version' => self::COMPONENT_IMPLEMENTATION_VERSION,
+                'definition_status' => 'active',
+                'variant_status' => 'active',
+            ]
         );
         $variants = [];
         foreach ($rows as $row) {
@@ -883,6 +881,9 @@ final class LegacyWebsitePlatformImporter
         $publicPath = preg_replace('#/+#', '/', $publicPath) ?? $publicPath;
         if ($publicPath === '' || $publicPath[0] !== '/' || str_contains($publicPath, '..')) {
             throw new LegacyWebsiteImportException('invalid_asset_reference', 'A legacy asset reference is not a safe application-public path.');
+        }
+        if (strlen($publicPath) > 500) {
+            throw new LegacyWebsiteImportException('asset_reference_too_long', 'A legacy asset reference exceeds the imported storage-key limit.');
         }
         return $publicPath;
     }
@@ -1158,6 +1159,59 @@ final class LegacyWebsitePlatformImporter
         return $mappingId;
     }
 
+    private static function bindPendingMapping(int $mappingId, int $siteId, int $revisionId): void
+    {
+        $statement = Database::connection()->prepare(
+            '/* legacy-import:bind-mapping */ UPDATE legacy_site_mappings
+             SET site_id = :site_id, import_revision_id = :revision_id, updated_at = NOW()
+             WHERE id = :mapping_id
+               AND site_id IS NULL
+               AND import_revision_id IS NULL
+               AND import_status = :pending_status'
+        );
+        $statement->execute([
+            'site_id' => $siteId,
+            'revision_id' => $revisionId,
+            'mapping_id' => $mappingId,
+            'pending_status' => 'pending',
+        ]);
+        if ($statement->rowCount() !== 1) {
+            throw new LegacyWebsiteImportException('mapping_collision', 'The pending legacy mapping could not be bound to its imported site and revision.');
+        }
+    }
+
+    private static function completePendingMapping(
+        int $mappingId,
+        int $siteId,
+        int $revisionId,
+        string $sourceHash,
+        string $importedHash
+    ): void {
+        $statement = Database::connection()->prepare(
+            '/* legacy-import:complete-mapping */ UPDATE legacy_site_mappings
+             SET import_status = :imported_status,
+                 source_hash = :source_hash, imported_hash = :imported_hash,
+                 imported_at = NOW(), quarantined_at = NULL, error_code = NULL, error_summary = NULL,
+                 updated_at = NOW()
+             WHERE id = :mapping_id
+               AND site_id = :site_id
+               AND import_revision_id = :revision_id
+               AND import_status = :pending_status'
+        );
+        $statement->execute([
+            'imported_status' => 'imported',
+            'source_hash' => $sourceHash,
+            'imported_hash' => $importedHash,
+            'mapping_id' => $mappingId,
+            'site_id' => $siteId,
+            'revision_id' => $revisionId,
+            'pending_status' => 'pending',
+        ]);
+        if ($statement->rowCount() !== 1) {
+            throw new LegacyWebsiteImportException('mapping_collision', 'The bound legacy mapping could not be finalized for its imported site and revision.');
+        }
+    }
+
     private static function mappingForWebsite(int $legacyWebsiteId): ?array
     {
         return self::fetchOne(
@@ -1430,6 +1484,15 @@ final class LegacyWebsitePlatformImporter
     {
         $text = trim((string) $value);
         return $text === '' ? null : $text;
+    }
+
+    private static function textLength(string $value): int
+    {
+        if (function_exists('mb_strlen')) {
+            return mb_strlen($value);
+        }
+        $count = preg_match_all('/./us', $value);
+        return $count === false ? strlen($value) : $count;
     }
 
     private static function boundedSummary(string $summary): string
