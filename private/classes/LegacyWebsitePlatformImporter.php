@@ -412,7 +412,6 @@ final class LegacyWebsitePlatformImporter
         }
 
         $slugs = [];
-        $orders = [];
         foreach ($source['pages'] as &$page) {
             if ((int) $page['website_id'] !== (int) $website['id'] || (int) $page['business_id'] !== $businessId) {
                 throw new LegacyWebsiteImportException('cross_business_page', 'A legacy generated page has an unexpected website or business owner.');
@@ -430,10 +429,6 @@ final class LegacyWebsitePlatformImporter
             }
             if (isset($slugs[$slug])) {
                 throw new LegacyWebsiteImportException('page_slug_collision', 'Legacy generated page slugs collide after normalization.');
-            }
-            $order = (int) $page['sort_order'];
-            if (isset($orders[$order])) {
-                throw new LegacyWebsiteImportException('page_order_collision', 'Legacy generated page ordering is ambiguous.');
             }
             $title = (string) $page['title'];
             if (trim($title) === '') {
@@ -453,7 +448,18 @@ final class LegacyWebsitePlatformImporter
             $page['normalized_slug'] = $slug;
             $page['decoded_content'] = $decoded;
             $slugs[$slug] = true;
-            $orders[$order] = true;
+        }
+        unset($page);
+
+        self::applyImportedPageSortOrders($source['pages']);
+    }
+
+    private static function applyImportedPageSortOrders(array &$pages): void
+    {
+        $sortOrder = 10;
+        foreach ($pages as &$page) {
+            $page['imported_sort_order'] = $sortOrder;
+            $sortOrder += 10;
         }
         unset($page);
     }
@@ -575,6 +581,7 @@ final class LegacyWebsitePlatformImporter
             $presentation = [
                 'legacy_page_id' => (int) $page['id'],
                 'legacy_status' => (string) $page['status'],
+                'legacy_sort_order' => (int) $page['sort_order'],
                 'snapshot_only' => true,
             ];
             self::execute(
@@ -591,7 +598,7 @@ final class LegacyWebsitePlatformImporter
                     'slug' => (string) $page['normalized_slug'],
                     'page_type' => (string) $page['page_type'],
                     'navigation_label' => (string) $page['title'],
-                    'sort_order' => (int) $page['sort_order'],
+                    'sort_order' => (int) $page['imported_sort_order'],
                     'presentation_json' => self::encode($presentation),
                     'content_hash' => $pageContentHash,
                 ]
@@ -1234,7 +1241,7 @@ final class LegacyWebsitePlatformImporter
         return [
             'website' => $source['website'],
             'pages' => array_map(static function (array $page): array {
-                unset($page['decoded_content']);
+                unset($page['decoded_content'], $page['imported_sort_order']);
                 return $page;
             }, $source['pages']),
             'branding' => $source['branding'],
@@ -1286,11 +1293,12 @@ final class LegacyWebsitePlatformImporter
                 'slug' => (string) $page['normalized_slug'],
                 'page_type' => (string) $page['page_type'],
                 'navigation_label' => (string) $page['title'],
-                'sort_order' => (int) $page['sort_order'],
+                'sort_order' => (int) $page['imported_sort_order'],
                 'seo' => null,
                 'presentation' => [
                     'legacy_page_id' => (int) $page['id'],
                     'legacy_status' => (string) $page['status'],
+                    'legacy_sort_order' => (int) $page['sort_order'],
                     'snapshot_only' => true,
                 ],
                 'content_hash' => $contentHash,

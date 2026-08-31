@@ -232,7 +232,7 @@ final class SiteGenerator
             'page_type' => 'about',
             'title' => 'About',
             'slug' => 'about',
-            'sort_order' => 50,
+            'sort_order' => $sortOrder,
             'content' => [
                 'about_heading' => self::override($overrides, 'about', 'heading', 'About ' . $businessName),
                 'company_description' => self::override($overrides, 'about', 'description', (string) $content['about_company']),
@@ -242,12 +242,13 @@ final class SiteGenerator
                 'about_image_path' => (string) ($branding['about_image_path'] ?? ''),
             ],
         ];
+        $sortOrder += 10;
 
         $pages[] = [
             'page_type' => 'contact',
             'title' => 'Contact',
             'slug' => 'contact',
-            'sort_order' => 60,
+            'sort_order' => $sortOrder,
             'content' => [
                 'contact_heading' => self::override($overrides, 'contact', 'heading', 'Contact ' . $businessName),
                 'contact_description' => self::override($overrides, 'contact', 'description', 'Tell us what you need and we will help you take the next step.'),
