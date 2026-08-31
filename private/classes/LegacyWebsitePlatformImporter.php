@@ -891,7 +891,19 @@ final class LegacyWebsitePlatformImporter
     {
         $publicPath = self::normalizeAssetPath($publicPath);
         $root = realpath(dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . 'public' . DIRECTORY_SEPARATOR . 'app');
-        $candidate = realpath(dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . 'public' . DIRECTORY_SEPARATOR . 'app' . str_replace('/', DIRECTORY_SEPARATOR, $publicPath));
+        if ($root === false) {
+            throw new LegacyWebsiteImportException('missing_asset', 'A referenced legacy asset is missing or unreadable.');
+        }
+        return self::inspectAssetWithinRoot($publicPath, $root);
+    }
+
+    private static function inspectAssetWithinRoot(string $publicPath, string $publicRoot): array
+    {
+        $publicPath = self::normalizeAssetPath($publicPath);
+        $root = realpath($publicRoot);
+        $candidate = $root === false
+            ? false
+            : realpath($root . str_replace('/', DIRECTORY_SEPARATOR, $publicPath));
         if ($root === false || $candidate === false || !str_starts_with($candidate, $root . DIRECTORY_SEPARATOR) || !is_file($candidate) || !is_readable($candidate)) {
             throw new LegacyWebsiteImportException('missing_asset', 'A referenced legacy asset is missing or unreadable.');
         }
