@@ -94,7 +94,10 @@ foreach ([
     'public/marketing/index.php',
     'private/classes/SignupContext.php',
 ] as $protectedPath) {
-    $command = 'git diff --quiet origin/main -- ' . escapeshellarg($protectedPath);
+    $command = 'git -c ' . escapeshellarg('safe.directory=' . $root)
+        . ' -C ' . escapeshellarg($root)
+        . ' diff --quiet origin/main -- ' . escapeshellarg($protectedPath);
+    $output = [];
     exec($command, $output, $status);
     assertWebsiteScope($status === 0, "M1 must not change {$protectedPath}.");
 }
