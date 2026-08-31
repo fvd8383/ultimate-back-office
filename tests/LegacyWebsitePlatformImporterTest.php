@@ -122,6 +122,32 @@ function legacyHash(mixed $value): string
     return callLegacyPrivate('hashValue', $arguments);
 }
 
+function legacyRevisionRepresentation(array $source, array $assetEvidence = []): array
+{
+    validateLegacySource($source);
+    $facts = [
+        'business_id' => (int) $source['website']['business_id'],
+        'business_profile_id' => isset($source['business_profile']['id']) ? (int) $source['business_profile']['id'] : null,
+        'selected_sub_service_ids' => array_map('intval', array_column($source['selected_services'], 'sub_service_id')),
+        'custom_service_ids' => array_map('intval', array_column($source['custom_services'], 'id')),
+        'authority' => 'references_only',
+    ];
+    $referenceArguments = [&$source];
+    $references = callLegacyPrivate('sourceReferences', $referenceArguments);
+    $brief = [
+        'legacy_website_id' => (int) $source['website']['id'],
+        'template_key' => 'starter_local_service',
+        'page_count' => count($source['pages']),
+        'source_tables' => [
+            '247sp_generated_websites', '247sp_generated_pages', '247sp_website_branding',
+            '247sp_website_content_overrides', '247sp_website_service_images', 'website_integrations',
+        ],
+        'authority' => 'legacy_presentation_snapshot_only',
+    ];
+    $arguments = [$source, $assetEvidence, $facts, $references, $brief, legacyHash($brief)];
+    return callLegacyPrivate('revisionRepresentationFromSource', $arguments);
+}
+
 legacyImportTest('one eligible legacy site preserves meaningful presentation', static function (): void {
     $source = legacySource();
     $before = $source['pages'][0]['content_json'];
@@ -222,6 +248,95 @@ legacyImportTest('source changes are visible to reconciliation', static function
 legacyImportTest('canonical hashes ignore associative insertion order but preserve list order', static function (): void {
     assertLegacyImport(legacyHash(['b' => 2, 'a' => 1]) === legacyHash(['a' => 1, 'b' => 2]), 'Associative key order must not affect hashes.');
     assertLegacyImport(legacyHash(['a', 'b']) !== legacyHash(['b', 'a']), 'Composition list order must affect hashes.');
+});
+
+legacyImportTest('canonical revision hash covers pages theme assets and stable component keys', static function (): void {
+    $asset = [[
+        'normalized_path' => '/assets/example.png',
+        'checksum_sha256' => str_repeat('a', 64),
+        'byte_size' => 123,
+        'mime_type' => 'image/png',
+        'asset_type' => 'image',
+        'usage_key' => 'theme-logo-path',
+        'legacy_page_id' => null,
+    ]];
+    $base = legacyRevisionRepresentation(legacySource(), $asset);
+    $equivalent = legacyRevisionRepresentation(legacySource(), $asset);
+    assertLegacyImport(legacyHash($base) === legacyHash($equivalent), 'Equivalent imported revisions must hash deterministically.');
+
+    $pageMutation = legacySource();
+    $pageMutation['pages'][0]['content_json'] = json_encode(['headline' => 'Mutated page'], JSON_THROW_ON_ERROR);
+    assertLegacyImport(legacyHash($base) !== legacyHash(legacyRevisionRepresentation($pageMutation, $asset)), 'Page content must participate in the revision hash.');
+
+    $themeMutation = legacySource();
+    $themeMutation['branding']['primary_color'] = '#FFFFFF';
+    assertLegacyImport(legacyHash($base) !== legacyHash(legacyRevisionRepresentation($themeMutation, $asset)), 'Theme content must participate in the revision hash.');
+
+    $assetMutation = $asset;
+    $assetMutation[0]['checksum_sha256'] = str_repeat('b', 64);
+    assertLegacyImport(legacyHash($base) !== legacyHash(legacyRevisionRepresentation(legacySource(), $assetMutation)), 'Asset checksums must participate in the revision hash.');
+
+    $encoded = json_encode($base, JSON_THROW_ON_ERROR);
+    assertLegacyImport(str_contains($encoded, 'component_key') && str_contains($encoded, 'variant_key'), 'Stable component and variant keys must be hashed.');
+    assertLegacyImport(!str_contains($encoded, 'component_variant_id'), 'Environment-local component variant IDs must not be hashed.');
+});
+
+legacyImportTest('source drift evidence includes asset bytes path size and type', static function (): void {
+    $source = legacySource();
+    validateLegacySource($source);
+    $asset = [[
+        'normalized_path' => '/assets/example.png',
+        'checksum_sha256' => str_repeat('c', 64),
+        'byte_size' => 456,
+        'mime_type' => 'image/png',
+        'asset_type' => 'image',
+        'usage_key' => 'theme-logo-path',
+        'legacy_page_id' => null,
+    ]];
+    $arguments = [&$source, $asset];
+    $first = callLegacyPrivate('sourceHashPayload', $arguments);
+    $changed = $asset;
+    $changed[0]['checksum_sha256'] = str_repeat('d', 64);
+    $changedArguments = [&$source, $changed];
+    assertLegacyImport(legacyHash($first) !== legacyHash(callLegacyPrivate('sourceHashPayload', $changedArguments)), 'Same-path byte changes must alter source evidence.');
+    $changed[0]['normalized_path'] = '/assets/renamed.png';
+    $pathArguments = [&$source, $changed];
+    assertLegacyImport(legacyHash($first) !== legacyHash(callLegacyPrivate('sourceHashPayload', $pathArguments)), 'Asset path changes must alter source evidence.');
+});
+
+legacyImportTest('asset inspection detects byte drift missing files and unchanged files', static function (): void {
+    $directory = __DIR__ . '/../public/app/assets';
+    $path = tempnam($directory, 'm1-asset-');
+    if (!is_string($path)) {
+        throw new RuntimeException('Could not create an asset inspection fixture.');
+    }
+    $publicPath = str_replace('\\', '/', substr($path, strlen(realpath(__DIR__ . '/../public/app'))));
+    try {
+        file_put_contents($path, 'first asset bytes');
+        $arguments = [$publicPath];
+        $first = callLegacyPrivate('inspectAsset', $arguments);
+        $sameArguments = [$publicPath];
+        $same = callLegacyPrivate('inspectAsset', $sameArguments);
+        assertLegacyImport($first === $same, 'An unchanged asset must produce identical evidence.');
+
+        file_put_contents($path, 'second asset bytes');
+        $changedArguments = [$publicPath];
+        $changed = callLegacyPrivate('inspectAsset', $changedArguments);
+        assertLegacyImport($first['checksum_sha256'] !== $changed['checksum_sha256'], 'Changed bytes at the same path must be detected.');
+        unlink($path);
+        try {
+            $missingArguments = [$publicPath];
+            callLegacyPrivate('inspectAsset', $missingArguments);
+        } catch (LegacyWebsiteImportException $exception) {
+            assertLegacyImport($exception->importErrorCode() === 'missing_asset', 'A deleted asset must report missing_asset.');
+            return;
+        }
+        throw new RuntimeException('A deleted asset was accepted.');
+    } finally {
+        if (is_file($path)) {
+            unlink($path);
+        }
+    }
 });
 
 legacyImportTest('logical page identity is stable and bounded', static function (): void {

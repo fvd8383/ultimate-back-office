@@ -74,13 +74,34 @@ and focused standalone tests are implemented on the M1 branch for review. The ac
 schema dependencies discovered before implementation are recorded in
 `docs/sprint-8.8-m1-current-schema-audit.md`.
 
-The importer uses one transaction and legacy-row lock per website, deterministic site
-and logical-page identities, explicit website/page mappings, source/imported hashes,
-and retryable quarantine evidence. It imports the current repository preview as one
-snapshot-only legacy page component with the four repository-supported page variants:
+The importer uses a filesystem preflight followed by one short transaction and locked
+DB-source comparison per website, deterministic site and logical-page identities,
+explicit website/page mappings, source/imported hashes, and explicit quarantine
+durability outcomes. It imports the current repository preview as one snapshot-only
+legacy page component with the four repository-supported page variants:
 `home`, `service`, `about`, and `contact`. It creates no authoritative generic approval,
 publication, build, deployment, domain, routing, conversion, or public-ingestion
 behavior.
+
+The canonical imported-revision hash covers the facts/reference payload, generation
+brief, logical pages, page presentation and section configuration, repository component
+and variant keys/versions, theme, and asset usage/checksums. It does not depend on
+environment-local component row IDs. The baseline revision snapshot hash and legacy
+mapping imported hash store the same evidence and reconciliation verifies both. Asset
+source evidence includes normalized path, SHA-256 bytes, size, MIME/type, and usage, so
+a changed, renamed, missing, or unreadable file is detected without overwriting the
+baseline.
+
+Revision number remains unique per site, while snapshot hash is an ordinary diagnostic
+index: two distinct historical revisions may intentionally have identical presentation
+content. Composite ownership foreign keys reject cross-site published, ancestry,
+restore, brief, import, approval-supersession, revision-page, section, and asset
+references at the database boundary. Nullable historical pointers remain nullable and
+history deletion remains restrictive.
+
+Reconciliation reports `candidate_legacy_count`, not an overstated exact eligibility
+count, plus imported, quarantined, and unmapped-candidate counts. Full eligibility still
+requires importer validation of page content and local asset evidence.
 
 The migration is not applied locally, on staging, or in production by this status.
 The existing 247SP generated website reader remains authoritative, generic data remains
@@ -101,8 +122,12 @@ required, and M1 is not COMPLETE.
 
 ### Implementation rules
 
-Backfill runs in bounded batches, locks only the rows needed for each unit, and is
-idempotent by unique legacy mapping. It derives lifecycle conservatively and never
+Backfill runs in bounded batches and is idempotent by unique legacy mapping. Before a
+write transaction it validates DB source structure, discovers asset references, and
+reads/hashes files. The short transaction then reloads and locks the unit, verifies the
+DB source still matches preflight, and consumes the immutable preflight asset evidence;
+filesystem inspection does not run while the transaction is active. It derives
+lifecycle conservatively and never
 marks a site active merely because DomainManager says live. Existing generated pages,
 branding, overrides, integration references, and authoritative facts are imported as
 snapshot/reference inputs without becoming new authoritative facts.

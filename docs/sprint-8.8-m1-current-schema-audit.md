@@ -68,9 +68,17 @@ authoritative.
 - One active customer association links that site to the legacy website business.
   Generic sites remain independently creatable without any business association.
 - Stable logical page keys are derived from normalized legacy page type and slug.
-- One baseline imported revision stores bounded source references, the legacy
-  presentation snapshot, deterministic page/section/theme hashes, and explicit legacy
-  website/page mappings.
+- One baseline imported revision stores bounded source references, the generation
+  brief, legacy presentation snapshot, deterministic page/section/theme/asset evidence,
+  and explicit legacy website/page mappings. Its canonical hash uses stable logical
+  page and repository component/variant keys rather than environment-local component
+  IDs. The revision snapshot hash and mapping imported hash represent the same evidence.
+- Revision number, not snapshot content hash, is the historical identity. Identical
+  presentation content is valid in separate revision events; snapshot hash remains a
+  non-unique reconciliation index.
+- Composite ownership foreign keys enforce same-site published, ancestry, restore,
+  brief, legacy import, approval supersession, revision-page/section, and revision-asset
+  references. Generic EMD and internal-demo sites still require no business.
 - Repository component metadata is limited to `legacy_247sp_page` and its existing
   preview variants: `home`, `service`, `about`, and `contact`. These rows select no
   executable path and contain no PHP, JavaScript, template, or include content.
@@ -83,10 +91,20 @@ An import unit is eligible only when the legacy website, business, onboarding, a
 `starter_local_service` template agree; it has at least one page; every page belongs
 to the same website/business; slugs are non-empty and unique after normalization;
 page JSON is valid; and each page type has a seeded legacy variant. Referenced local
-assets must resolve beneath the application public root and be readable.
+assets must resolve beneath the application public root and be readable. Their
+normalized paths, SHA-256 checksums, byte sizes, MIME/types, and uses participate in
+source and imported-revision evidence.
 
 Missing dependencies, malformed JSON, ownership mismatches, unsupported page types,
 asset failures, deterministic-key collisions, and mapping collisions are quarantined
-with a bounded error code/summary. Each website is locked and imported in its own
-transaction. Completed mappings are reconciled on rerun; no legacy row is updated or
-deleted.
+with a bounded error code/summary. A result claims quarantine only when that evidence
+write commits; a persistence failure is returned separately with bounded class/code
+metadata and no raw database message.
+
+File discovery and hashing happen in preflight outside the write transaction. The
+transaction reloads/locks the legacy DB unit and compares it to the preflight DB-source
+hash before creating or reconciling generic rows. A mismatch returns a retryable
+source-change result and imports no mixed snapshot. Completed mappings reconcile the
+stored mapping hash and revision snapshot hash on rerun; no legacy row is updated or
+deleted. SQL reporting uses structural candidate terminology because exact eligibility
+also requires page and filesystem validation.

@@ -47,6 +47,8 @@ assertWebsiteMigration(str_contains($sql, 'lifecycle_status VARCHAR(40) NOT NULL
 assertWebsiteMigration(!preg_match('/business_id BIGINT UNSIGNED NOT NULL[^;]+CREATE TABLE site_pages/s', $sql), 'The sites table must not require a business.');
 assertWebsiteMigration(str_contains($sql, 'UNIQUE KEY uq_site_pages_site_key (site_id, page_key)'), 'Logical page identity must be durable per site.');
 assertWebsiteMigration(str_contains($sql, 'UNIQUE KEY uq_site_revisions_number (site_id, revision_number)'), 'Revision numbers must be unique per site.');
+assertWebsiteMigration(!str_contains($sql, 'UNIQUE KEY uq_site_revisions_snapshot'), 'Identical snapshot hashes must be permitted for different revisions of the same site.');
+assertWebsiteMigration(str_contains($sql, 'INDEX idx_site_revisions_snapshot (site_id, snapshot_hash)'), 'Snapshot hashes must remain indexed for reconciliation diagnostics.');
 assertWebsiteMigration(str_contains($sql, 'UNIQUE KEY uq_site_revision_pages_page (revision_id, site_page_id)'), 'A logical page may appear once per revision.');
 assertWebsiteMigration(str_contains($sql, 'UNIQUE KEY uq_site_revision_pages_slug (revision_id, slug)'), 'Revision slugs must be unique.');
 assertWebsiteMigration(str_contains($sql, 'UNIQUE KEY uq_site_page_sections_order (revision_page_id, sort_order)'), 'Section order must be deterministic.');
@@ -66,9 +68,15 @@ foreach ([
 }
 
 foreach ([
+    'fk_sites_current_published_revision',
+    'fk_site_revisions_based_on_site', 'fk_site_revisions_restored_from_site',
+    'fk_site_revisions_brief_site',
     'fk_site_revision_pages_revision_site', 'fk_site_revision_pages_page_site',
     'fk_site_page_sections_revision_page_site', 'fk_site_revision_assets_revision_site',
-    'fk_site_revision_assets_asset_site', 'fk_site_approvals_revision_site',
+    'fk_site_revision_assets_asset_site', 'fk_site_revision_assets_page_site',
+    'fk_site_revision_assets_section_site', 'fk_site_approvals_revision_site',
+    'fk_site_approvals_supersedes_site', 'fk_legacy_site_mappings_revision_site',
+    'fk_legacy_site_page_mappings_mapping_site',
     'fk_legacy_site_page_mappings_page_site', 'fk_legacy_site_page_mappings_revision_page_site',
 ] as $constraint) {
     assertWebsiteMigration(str_contains($sql, $constraint), "Migration must enforce tenant ownership with {$constraint}.");
@@ -78,11 +86,22 @@ assertWebsiteMigration(str_contains($sql, 'REFERENCES sites (id) ON DELETE RESTR
 assertWebsiteMigration(str_contains($sql, 'REFERENCES businesses (id) ON DELETE RESTRICT'), 'Business associations must not cascade-delete site history.');
 assertWebsiteMigration(str_contains($sql, 'fk_site_revisions_actor FOREIGN KEY (created_by_user_id) REFERENCES users (id) ON DELETE SET NULL'), 'Optional revision actors must be nullable history references.');
 assertWebsiteMigration(str_contains($sql, 'fk_sites_current_published_revision'), 'The published revision pointer must reference a revision.');
+assertWebsiteMigration(str_contains($sql, 'FOREIGN KEY (current_published_revision_id, id) REFERENCES site_revisions (id, site_id)'), 'The published revision pointer must remain within its site.');
+assertWebsiteMigration(str_contains($sql, 'FOREIGN KEY (based_on_revision_id, site_id) REFERENCES site_revisions (id, site_id)'), 'Revision ancestry must remain within its site.');
+assertWebsiteMigration(str_contains($sql, 'FOREIGN KEY (restored_from_revision_id, site_id) REFERENCES site_revisions (id, site_id)'), 'Revision restoration must remain within its site.');
+assertWebsiteMigration(str_contains($sql, 'FOREIGN KEY (generation_brief_id, site_id) REFERENCES site_generation_briefs (id, site_id)'), 'Revision briefs must remain within their site.');
+assertWebsiteMigration(str_contains($sql, 'FOREIGN KEY (import_revision_id, site_id) REFERENCES site_revisions (id, site_id)'), 'Legacy import revisions must remain within their mapped site.');
+assertWebsiteMigration(str_contains($sql, 'FOREIGN KEY (site_revision_page_id, revision_id, site_id)'), 'Revision asset page references must match both revision and site.');
+assertWebsiteMigration(str_contains($sql, 'FOREIGN KEY (site_page_section_id, revision_id, site_id)'), 'Revision asset section references must match both revision and site.');
+assertWebsiteMigration(str_contains($sql, 'FOREIGN KEY (supersedes_approval_id, site_id) REFERENCES site_approvals (id, site_id)'), 'Approval supersession must remain within its site.');
 assertWebsiteMigration(!str_contains($sql, 'current_production_deployment_id'), 'M1 must not pre-create an unbacked deployment pointer.');
 
 foreach ([
     'uq_sites_site_key', 'uq_site_business_active_customer', 'uq_site_generation_briefs_version',
     'uq_site_revisions_published', 'uq_component_definitions_key',
+    'uq_site_generation_briefs_id_site', 'uq_site_revision_pages_id_revision_site',
+    'uq_site_page_sections_id_revision_site', 'uq_site_approvals_id_site',
+    'uq_legacy_site_mappings_id_site',
     'uq_component_variants_definition_key', 'uq_site_themes_revision',
     'uq_site_assets_asset_key', 'uq_site_approvals_current',
     'uq_legacy_site_mappings_website', 'uq_legacy_site_mappings_site',

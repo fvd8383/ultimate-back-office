@@ -13,7 +13,7 @@ CREATE TABLE sites (
     UNIQUE KEY uq_sites_site_key (site_key),
     INDEX idx_sites_purpose_lifecycle (purpose, lifecycle_status),
     INDEX idx_sites_lifecycle (lifecycle_status),
-    INDEX idx_sites_current_published_revision (current_published_revision_id),
+    INDEX idx_sites_current_published_revision (current_published_revision_id, id),
     CONSTRAINT chk_sites_purpose CHECK (purpose IN ('247sp', 'emd', 'internal_demo')),
     CONSTRAINT chk_sites_lifecycle CHECK (lifecycle_status IN (
         'draft', 'demo', 'pending_customer', 'pending_internal_review', 'approved',
@@ -76,6 +76,7 @@ CREATE TABLE site_generation_briefs (
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     UNIQUE KEY uq_site_generation_briefs_version (site_id, brief_version),
     UNIQUE KEY uq_site_generation_briefs_hash (site_id, content_hash),
+    UNIQUE KEY uq_site_generation_briefs_id_site (id, site_id),
     INDEX idx_site_generation_briefs_state (site_id, state),
     CONSTRAINT fk_site_generation_briefs_site FOREIGN KEY (site_id) REFERENCES sites (id) ON DELETE RESTRICT,
     CONSTRAINT fk_site_generation_briefs_actor FOREIGN KEY (created_by_user_id) REFERENCES users (id) ON DELETE SET NULL
@@ -105,7 +106,7 @@ CREATE TABLE site_revisions (
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     UNIQUE KEY uq_site_revisions_number (site_id, revision_number),
-    UNIQUE KEY uq_site_revisions_snapshot (site_id, snapshot_hash),
+    INDEX idx_site_revisions_snapshot (site_id, snapshot_hash),
     UNIQUE KEY uq_site_revisions_published (published_site_id),
     UNIQUE KEY uq_site_revisions_id_site (id, site_id),
     INDEX idx_site_revisions_site_status (site_id, lifecycle_status),
@@ -116,15 +117,15 @@ CREATE TABLE site_revisions (
     )),
     CONSTRAINT chk_site_revisions_materiality CHECK (materiality IN ('material', 'non_material', 'undetermined')),
     CONSTRAINT fk_site_revisions_site FOREIGN KEY (site_id) REFERENCES sites (id) ON DELETE RESTRICT,
-    CONSTRAINT fk_site_revisions_based_on FOREIGN KEY (based_on_revision_id) REFERENCES site_revisions (id) ON DELETE SET NULL,
-    CONSTRAINT fk_site_revisions_restored_from FOREIGN KEY (restored_from_revision_id) REFERENCES site_revisions (id) ON DELETE SET NULL,
-    CONSTRAINT fk_site_revisions_brief FOREIGN KEY (generation_brief_id) REFERENCES site_generation_briefs (id) ON DELETE SET NULL,
+    CONSTRAINT fk_site_revisions_based_on_site FOREIGN KEY (based_on_revision_id, site_id) REFERENCES site_revisions (id, site_id) ON DELETE RESTRICT,
+    CONSTRAINT fk_site_revisions_restored_from_site FOREIGN KEY (restored_from_revision_id, site_id) REFERENCES site_revisions (id, site_id) ON DELETE RESTRICT,
+    CONSTRAINT fk_site_revisions_brief_site FOREIGN KEY (generation_brief_id, site_id) REFERENCES site_generation_briefs (id, site_id) ON DELETE RESTRICT,
     CONSTRAINT fk_site_revisions_actor FOREIGN KEY (created_by_user_id) REFERENCES users (id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 ALTER TABLE sites
     ADD CONSTRAINT fk_sites_current_published_revision
-        FOREIGN KEY (current_published_revision_id) REFERENCES site_revisions (id) ON DELETE SET NULL;
+        FOREIGN KEY (current_published_revision_id, id) REFERENCES site_revisions (id, site_id) ON DELETE RESTRICT;
 
 CREATE TABLE component_definitions (
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -174,6 +175,7 @@ CREATE TABLE site_revision_pages (
     UNIQUE KEY uq_site_revision_pages_slug (revision_id, slug),
     UNIQUE KEY uq_site_revision_pages_order (revision_id, sort_order),
     UNIQUE KEY uq_site_revision_pages_id_site (id, site_id),
+    UNIQUE KEY uq_site_revision_pages_id_revision_site (id, revision_id, site_id),
     INDEX idx_site_revision_pages_revision_order (revision_id, sort_order),
     CONSTRAINT fk_site_revision_pages_revision_site FOREIGN KEY (revision_id, site_id) REFERENCES site_revisions (id, site_id) ON DELETE RESTRICT,
     CONSTRAINT fk_site_revision_pages_page_site FOREIGN KEY (site_page_id, site_id) REFERENCES site_pages (id, site_id) ON DELETE RESTRICT
@@ -182,6 +184,7 @@ CREATE TABLE site_revision_pages (
 CREATE TABLE site_page_sections (
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     site_id BIGINT UNSIGNED NOT NULL,
+    revision_id BIGINT UNSIGNED NOT NULL,
     revision_page_id BIGINT UNSIGNED NOT NULL,
     section_key VARCHAR(100) NOT NULL,
     component_variant_id BIGINT UNSIGNED NOT NULL,
@@ -193,8 +196,9 @@ CREATE TABLE site_page_sections (
     UNIQUE KEY uq_site_page_sections_key (revision_page_id, section_key),
     UNIQUE KEY uq_site_page_sections_order (revision_page_id, sort_order),
     UNIQUE KEY uq_site_page_sections_id_site (id, site_id),
+    UNIQUE KEY uq_site_page_sections_id_revision_site (id, revision_id, site_id),
     INDEX idx_site_page_sections_variant (component_variant_id),
-    CONSTRAINT fk_site_page_sections_revision_page_site FOREIGN KEY (revision_page_id, site_id) REFERENCES site_revision_pages (id, site_id) ON DELETE RESTRICT,
+    CONSTRAINT fk_site_page_sections_revision_page_site FOREIGN KEY (revision_page_id, revision_id, site_id) REFERENCES site_revision_pages (id, revision_id, site_id) ON DELETE RESTRICT,
     CONSTRAINT fk_site_page_sections_variant FOREIGN KEY (component_variant_id) REFERENCES component_variants (id) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -258,12 +262,12 @@ CREATE TABLE site_revision_assets (
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     UNIQUE KEY uq_site_revision_assets_usage (revision_id, asset_id, usage_key),
     INDEX idx_site_revision_assets_asset (asset_id),
-    INDEX idx_site_revision_assets_page (site_revision_page_id),
-    INDEX idx_site_revision_assets_section (site_page_section_id),
+    INDEX idx_site_revision_assets_page (site_revision_page_id, revision_id, site_id),
+    INDEX idx_site_revision_assets_section (site_page_section_id, revision_id, site_id),
     CONSTRAINT fk_site_revision_assets_revision_site FOREIGN KEY (revision_id, site_id) REFERENCES site_revisions (id, site_id) ON DELETE RESTRICT,
     CONSTRAINT fk_site_revision_assets_asset_site FOREIGN KEY (asset_id, site_id) REFERENCES site_assets (id, site_id) ON DELETE RESTRICT,
-    CONSTRAINT fk_site_revision_assets_page_site FOREIGN KEY (site_revision_page_id, site_id) REFERENCES site_revision_pages (id, site_id) ON DELETE RESTRICT,
-    CONSTRAINT fk_site_revision_assets_section_site FOREIGN KEY (site_page_section_id, site_id) REFERENCES site_page_sections (id, site_id) ON DELETE RESTRICT
+    CONSTRAINT fk_site_revision_assets_page_site FOREIGN KEY (site_revision_page_id, revision_id, site_id) REFERENCES site_revision_pages (id, revision_id, site_id) ON DELETE RESTRICT,
+    CONSTRAINT fk_site_revision_assets_section_site FOREIGN KEY (site_page_section_id, revision_id, site_id) REFERENCES site_page_sections (id, revision_id, site_id) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE site_approvals (
@@ -287,6 +291,7 @@ CREATE TABLE site_approvals (
     ) STORED,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     UNIQUE KEY uq_site_approvals_current (current_approved_revision_id, approval_type),
+    UNIQUE KEY uq_site_approvals_id_site (id, site_id),
     INDEX idx_site_approvals_revision_type_state (revision_id, approval_type, state),
     INDEX idx_site_approvals_site_date (site_id, requested_at),
     INDEX idx_site_approvals_correlation (correlation_id),
@@ -295,7 +300,7 @@ CREATE TABLE site_approvals (
     CONSTRAINT fk_site_approvals_site FOREIGN KEY (site_id) REFERENCES sites (id) ON DELETE RESTRICT,
     CONSTRAINT fk_site_approvals_revision_site FOREIGN KEY (revision_id, site_id) REFERENCES site_revisions (id, site_id) ON DELETE RESTRICT,
     CONSTRAINT fk_site_approvals_actor FOREIGN KEY (actor_user_id) REFERENCES users (id) ON DELETE SET NULL,
-    CONSTRAINT fk_site_approvals_supersedes FOREIGN KEY (supersedes_approval_id) REFERENCES site_approvals (id) ON DELETE SET NULL
+    CONSTRAINT fk_site_approvals_supersedes_site FOREIGN KEY (supersedes_approval_id, site_id) REFERENCES site_approvals (id, site_id) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE legacy_site_mappings (
@@ -316,12 +321,13 @@ CREATE TABLE legacy_site_mappings (
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     UNIQUE KEY uq_legacy_site_mappings_website (legacy_website_id),
     UNIQUE KEY uq_legacy_site_mappings_site (site_id),
+    UNIQUE KEY uq_legacy_site_mappings_id_site (id, site_id),
     INDEX idx_legacy_site_mappings_status_attempted (import_status, last_attempted_at),
     INDEX idx_legacy_site_mappings_source_hash (source_hash),
     CONSTRAINT chk_legacy_site_mappings_status CHECK (import_status IN ('pending', 'imported', 'quarantined')),
     CONSTRAINT fk_legacy_site_mappings_website FOREIGN KEY (legacy_website_id) REFERENCES `247sp_generated_websites` (id) ON DELETE RESTRICT,
     CONSTRAINT fk_legacy_site_mappings_site FOREIGN KEY (site_id) REFERENCES sites (id) ON DELETE RESTRICT,
-    CONSTRAINT fk_legacy_site_mappings_revision FOREIGN KEY (import_revision_id) REFERENCES site_revisions (id) ON DELETE RESTRICT
+    CONSTRAINT fk_legacy_site_mappings_revision_site FOREIGN KEY (import_revision_id, site_id) REFERENCES site_revisions (id, site_id) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE legacy_site_page_mappings (
@@ -336,8 +342,8 @@ CREATE TABLE legacy_site_page_mappings (
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     UNIQUE KEY uq_legacy_site_page_mappings_page (legacy_page_id),
     UNIQUE KEY uq_legacy_site_page_mappings_revision_page (site_revision_page_id),
-    INDEX idx_legacy_site_page_mappings_mapping (legacy_mapping_id),
-    CONSTRAINT fk_legacy_site_page_mappings_mapping FOREIGN KEY (legacy_mapping_id) REFERENCES legacy_site_mappings (id) ON DELETE RESTRICT,
+    INDEX idx_legacy_site_page_mappings_mapping (legacy_mapping_id, site_id),
+    CONSTRAINT fk_legacy_site_page_mappings_mapping_site FOREIGN KEY (legacy_mapping_id, site_id) REFERENCES legacy_site_mappings (id, site_id) ON DELETE RESTRICT,
     CONSTRAINT fk_legacy_site_page_mappings_legacy_page FOREIGN KEY (legacy_page_id) REFERENCES `247sp_generated_pages` (id) ON DELETE RESTRICT,
     CONSTRAINT fk_legacy_site_page_mappings_page_site FOREIGN KEY (site_page_id, site_id) REFERENCES site_pages (id, site_id) ON DELETE RESTRICT,
     CONSTRAINT fk_legacy_site_page_mappings_revision_page_site FOREIGN KEY (site_revision_page_id, site_id) REFERENCES site_revision_pages (id, site_id) ON DELETE RESTRICT

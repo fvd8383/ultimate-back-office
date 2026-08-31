@@ -69,6 +69,8 @@ final class LegacyImportDatabaseConnection extends PDO
     public array $pageMappings = [];
     public array $events = [];
     public ?int $failOnSiteInsertForLegacyId = null;
+    public bool $failOnQuarantineWrite = false;
+    public ?int $mutateOnLockedLoadForLegacyId = null;
     public int $beginCount = 0;
     public int $commitCount = 0;
     public int $rollbackCount = 0;
@@ -191,6 +193,10 @@ final class LegacyImportDatabaseConnection extends PDO
         }
         if ($marker === 'load-website') {
             $this->currentLegacyId = (int) $params['legacy_website_id'];
+            if (str_contains($sql, 'FOR UPDATE') && $this->mutateOnLockedLoadForLegacyId === $this->currentLegacyId) {
+                $this->legacyPages[$this->currentLegacyId][0]['content_json'] = json_encode(['headline' => 'Changed during import'], JSON_THROW_ON_ERROR);
+                $this->mutateOnLockedLoadForLegacyId = null;
+            }
             $row = $this->legacyWebsites[$this->currentLegacyId] ?? null;
             return [$row === null ? [] : [$row], 0];
         }
@@ -247,7 +253,7 @@ final class LegacyImportDatabaseConnection extends PDO
         }
         if ($marker === 'insert-brief') {
             $id = $this->newId();
-            $this->briefs[$id] = ['id' => $id] + $params;
+            $this->briefs[$id] = ['id' => $id, 'brief_version' => 1] + $params;
             return [[], 1];
         }
         if ($marker === 'insert-revision') {
@@ -273,7 +279,7 @@ final class LegacyImportDatabaseConnection extends PDO
         }
         if ($marker === 'insert-section') {
             $id = $this->newId();
-            $this->sections[$id] = ['id' => $id] + $params;
+            $this->sections[$id] = ['id' => $id, 'sort_order' => 10, 'configuration_schema_version' => 1] + $params;
             return [[], 1];
         }
         if ($marker === 'insert-page-mapping') {
@@ -295,7 +301,8 @@ final class LegacyImportDatabaseConnection extends PDO
             $rows = [];
             foreach ($this->revisionPages as $row) {
                 if ((int) $row['revision_id'] === (int) $params['revision_id']) {
-                    $rows[] = $row;
+                    $page = $this->sitePages[(int) $row['site_page_id']];
+                    $rows[] = ['page_key' => $page['page_key']] + $row;
                 }
             }
             usort($rows, static fn (array $a, array $b): int => [$a['sort_order'], $a['id']] <=> [$b['sort_order'], $b['id']]);
@@ -305,7 +312,13 @@ final class LegacyImportDatabaseConnection extends PDO
             $rows = [];
             foreach ($this->sections as $row) {
                 if ((int) $row['revision_page_id'] === (int) $params['revision_page_id']) {
-                    $rows[] = $row;
+                    $variantKeys = [1 => 'about', 2 => 'contact', 3 => 'home', 4 => 'service'];
+                    $rows[] = [
+                        'component_key' => 'legacy_247sp_page',
+                        'implementation_version' => 'legacy-preview-v1',
+                        'variant_key' => $variantKeys[(int) $row['variant_id']],
+                        'variant_configuration_schema_version' => 1,
+                    ] + $row;
                 }
             }
             return [$rows, 0];
@@ -320,6 +333,30 @@ final class LegacyImportDatabaseConnection extends PDO
         }
         if ($marker === 'hash-assets') {
             return [[], 0];
+        }
+        if ($marker === 'hash-revision') {
+            $row = $this->revisions[(int) $params['revision_id']] ?? null;
+            return [$row === null ? [] : [[
+                'snapshot_schema_version' => $row['schema_version'],
+                'facts_snapshot_json' => $row['facts_json'],
+                'source_references_json' => $row['references_json'],
+                'generation_brief_id' => $row['brief_id'],
+            ]], 0];
+        }
+        if ($marker === 'hash-brief') {
+            $row = $this->briefs[(int) $params['brief_id']] ?? null;
+            return [$row === null ? [] : [[
+                'brief_version' => $row['brief_version'],
+                'state' => $row['state'],
+                'brief_json' => $row['brief_json'],
+                'source_type' => $row['source_type'],
+                'source_reference' => $row['source_reference'],
+                'content_hash' => $row['content_hash'],
+            ]], 0];
+        }
+        if ($marker === 'stored-revision-hash') {
+            $row = $this->revisions[(int) $params['revision_id']] ?? null;
+            return [$row === null ? [] : [['snapshot_hash' => $row['snapshot_hash']]], 0];
         }
         if ($marker === 'complete-mapping') {
             $row = &$this->mappings[(int) $params['mapping_id']];
@@ -349,6 +386,9 @@ final class LegacyImportDatabaseConnection extends PDO
             return isset($this->legacyWebsites[(int) $params['legacy_website_id']]) ? [[['id' => (int) $params['legacy_website_id']]], 0] : [[], 0];
         }
         if ($marker === 'record-quarantine') {
+            if ($this->failOnQuarantineWrite) {
+                throw new RuntimeException('Injected quarantine persistence failure with private_table.secret.');
+            }
             $row = $this->mappingByLegacy((int) $params['legacy_website_id']);
             if ($row === null) {
                 $id = $this->newId();
@@ -431,6 +471,12 @@ assertLegacyDatabase($firstBatch['processed'] === 2 && $firstBatch['imported'] =
 assertLegacyDatabase($firstBatch['has_more'] === true && $firstBatch['next_after_id'] === 2, 'Batch cursor must report remaining work.');
 assertLegacyDatabase(count($connection->sites) === 2 && count($connection->revisions) === 2, 'Each eligible legacy site must create one site and baseline revision.');
 assertLegacyDatabase(count($connection->associations) === 2 && count($connection->revisionPages) === 2, 'Ownership and page composition must be imported per site.');
+$firstMapping = $connection->mappingByLegacyForTest(1);
+$firstRevision = $connection->revisions[(int) $firstMapping['import_revision_id']];
+assertLegacyDatabase(
+    hash_equals((string) $firstRevision['snapshot_hash'], (string) $firstMapping['imported_hash']),
+    'The revision snapshot hash and mapping imported hash must store the same canonical evidence.'
+);
 
 $siteCount = count($connection->sites);
 $revisionCount = count($connection->revisions);
@@ -442,12 +488,14 @@ $legacyFourBefore = serialize([$connection->legacyWebsites[4], $connection->lega
 $mixedBatch = LegacyWebsitePlatformImporter::importBatch(2, 2);
 assertLegacyDatabase($mixedBatch['quarantined'] === 1 && $mixedBatch['imported'] === 1, 'One malformed site must not prevent the next site from importing.');
 assertLegacyDatabase(($connection->mappingByLegacyForTest(3)['error_code'] ?? null) === 'malformed_page_json', 'Malformed JSON must have actionable quarantine evidence.');
+assertLegacyDatabase(($mixedBatch['units'][0]['quarantine_evidence'] ?? null) === 'recorded', 'A quarantined result must explicitly confirm durable evidence.');
 assertLegacyDatabase(serialize([$connection->legacyWebsites[4], $connection->legacyPages[4]]) === $legacyFourBefore, 'A successful import must not mutate legacy source rows.');
 
 $connection->failOnSiteInsertForLegacyId = 5;
 $sitesBeforeFailure = count($connection->sites);
 $failed = LegacyWebsitePlatformImporter::importWebsite(5);
 assertLegacyDatabase($failed['result'] === 'quarantined' && $failed['error_code'] === 'database_failure', 'A database failure must quarantine with a safe error.');
+assertLegacyDatabase($failed['quarantine_evidence'] === 'recorded', 'A database failure must report that quarantine evidence was recorded.');
 assertLegacyDatabase(count($connection->sites) === $sitesBeforeFailure && $connection->rollbackCount > 0, 'A failed unit must roll back all generic writes.');
 
 $connection->legacyPages[3][0]['content_json'] = json_encode(['headline' => 'Business 3 repaired'], JSON_THROW_ON_ERROR);
@@ -475,5 +523,47 @@ $collision = LegacyWebsitePlatformImporter::importWebsite(6);
 assertLegacyDatabase($collision['result'] === 'quarantined' && $collision['error_code'] === 'mapping_collision', 'An inconsistent duplicate mapping must quarantine instead of duplicating data.');
 
 assertLegacyDatabase($connection->beginCount === $connection->commitCount + $connection->rollbackCount, 'Every importer transaction must finish with commit or rollback.');
+
+$concurrent = LegacyImportDatabaseConnection::fixture();
+$concurrent->mutateOnLockedLoadForLegacyId = 1;
+useLegacyDatabaseConnection($concurrent);
+$retryable = LegacyWebsitePlatformImporter::importWebsite(1);
+assertLegacyDatabase($retryable['result'] === 'retryable' && $retryable['error_code'] === 'source_changed_during_import', 'A DB source change between preflight and lock must return a retryable result.');
+assertLegacyDatabase(count($concurrent->sites) === 0 && count($concurrent->mappings) === 0, 'A mixed preflight/locked snapshot must create no generic rows.');
+
+$quarantineFailure = LegacyImportDatabaseConnection::fixture();
+$quarantineFailure->failOnQuarantineWrite = true;
+useLegacyDatabaseConnection($quarantineFailure);
+$notDurable = LegacyWebsitePlatformImporter::importWebsite(3);
+assertLegacyDatabase($notDurable['result'] === 'failed', 'A quarantine persistence failure must not be reported as quarantined.');
+assertLegacyDatabase($notDurable['quarantine_evidence'] === 'persistence_failed', 'A quarantine persistence failure must be explicit.');
+assertLegacyDatabase($notDurable['quarantine_failure_class'] === RuntimeException::class, 'Only bounded failure classification may be returned.');
+assertLegacyDatabase(!str_contains(json_encode($notDurable, JSON_THROW_ON_ERROR), 'private_table.secret'), 'Raw quarantine database failures must not leak.');
+
+$hashMismatch = LegacyImportDatabaseConnection::fixture();
+useLegacyDatabaseConnection($hashMismatch);
+LegacyWebsitePlatformImporter::importWebsite(1);
+$mapping = $hashMismatch->mappingByLegacyForTest(1);
+$hashMismatch->revisions[(int) $mapping['import_revision_id']]['snapshot_hash'] = str_repeat('0', 64);
+$mismatch = LegacyWebsitePlatformImporter::importWebsite(1);
+assertLegacyDatabase($mismatch['result'] === 'quarantined' && $mismatch['error_code'] === 'revision_hash_mismatch', 'Reconciliation must verify the stored revision snapshot hash.');
+
+$boundary = LegacyImportDatabaseConnection::fixture();
+useLegacyDatabaseConnection($boundary);
+$boundary->beginTransaction();
+try {
+    $reflection = new ReflectionMethod(LegacyWebsitePlatformImporter::class, 'collectAssetEvidence');
+    $reflection->invoke(null, []);
+    throw new RuntimeException('Filesystem collection was allowed inside a transaction.');
+} catch (ReflectionException $exception) {
+    throw $exception;
+} catch (Throwable $exception) {
+    $cause = $exception instanceof ReflectionException ? $exception : ($exception->getPrevious() ?? $exception);
+    assertLegacyDatabase($cause instanceof LegacyWebsiteImportException && $cause->importErrorCode() === 'filesystem_in_transaction', 'Filesystem inspection must be rejected while a transaction is active.');
+} finally {
+    if ($boundary->inTransaction()) {
+        $boundary->rollBack();
+    }
+}
 
 echo "Legacy website importer database contract: {$assertions} assertions passed.\n";

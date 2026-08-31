@@ -28,7 +28,20 @@ assertWebsiteScope(!preg_match('/\b(?:UPDATE|DELETE FROM)\s+`?247sp_(?:generated
 assertWebsiteScope(str_contains($importer, 'FOR UPDATE'), 'Importer must lock each legacy import unit and mapping.');
 assertWebsiteScope(str_contains($importer, 'MAX_BATCH_SIZE = 100'), 'Importer must enforce a bounded maximum batch.');
 assertWebsiteScope(str_contains($importer, 'beginTransaction()') && str_contains($importer, 'rollBack()'), 'Importer must own per-unit transactions and rollback.');
+assertWebsiteScope(
+    strpos($importer, 'collectAssetEvidence($preflightSource)') < strpos($importer, '$connection->beginTransaction()'),
+    'Asset evidence collection must precede the write transaction.'
+);
+preg_match('/private static function importAssets\(.*?\n    }\n\n    private static function collectAssetEvidence/s', $importer, $importAssetMethod);
+assertWebsiteScope(
+    isset($importAssetMethod[0]) && !preg_match('/\b(?:realpath|hash_file|filesize|finfo_file|file_get_contents)\s*\(/', $importAssetMethod[0]),
+    'The transactional asset writer must consume preflight evidence without filesystem inspection.'
+);
+assertWebsiteScope(str_contains($importer, 'source_changed_during_import'), 'Locked DB source drift must produce an explicit retryable result.');
 assertWebsiteScope(str_contains($importer, 'source_changed'), 'A changed imported source must be quarantined instead of overwritten.');
+assertWebsiteScope(str_contains($importer, "'quarantine_evidence' =>") && str_contains($importer, "'persistence_failed'"), 'Quarantine durability must be explicit in returned results.');
+assertWebsiteScope(!str_contains($importer, "'eligible_legacy_count'"), 'A structural candidate count must not be labeled as exact eligibility.');
+assertWebsiteScope(str_contains($importer, "'candidate_legacy_count'") && str_contains($importer, "'unmapped_candidate_count'"), 'Reconciliation reporting must use accurate candidate terminology.');
 assertWebsiteScope(str_contains($importer, "'lifecycle_status' => 'draft'"), 'Imported generic sites must remain draft.');
 assertWebsiteScope(!preg_match('/lifecycle_status[^\n]+(?:active|published)/i', $importer), 'Importer must not activate or publish a generic site.');
 assertWebsiteScope(!str_contains($importer, 'site_approvals'), 'Legacy launch activity must not become a generic approval.');

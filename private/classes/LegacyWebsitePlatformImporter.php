@@ -21,6 +21,7 @@ final class LegacyWebsitePlatformImporter
 {
     private const TEMPLATE_KEY = 'starter_local_service';
     private const COMPONENT_KEY = 'legacy_247sp_page';
+    private const COMPONENT_IMPLEMENTATION_VERSION = 'legacy-preview-v1';
     private const PAGE_TYPES = ['home', 'service', 'about', 'contact'];
     private const MAX_BATCH_SIZE = 100;
     private const SNAPSHOT_SCHEMA_VERSION = 1;
@@ -50,6 +51,8 @@ final class LegacyWebsitePlatformImporter
             'imported' => 0,
             'reconciled' => 0,
             'quarantined' => 0,
+            'failed' => 0,
+            'retryable' => 0,
             'next_after_id' => $afterLegacyWebsiteId,
             'has_more' => false,
             'units' => [],
@@ -88,10 +91,23 @@ final class LegacyWebsitePlatformImporter
         $sourceHash = null;
 
         try {
+            // Filesystem inspection is deliberately completed before the write transaction.
+            $preflightSource = self::loadSource($legacyWebsiteId, false);
+            self::validateSource($preflightSource);
+            $preflightDatabaseHash = self::hashValue(self::databaseSourcePayload($preflightSource));
+            $assetEvidence = self::collectAssetEvidence($preflightSource);
+            $sourceHash = self::hashValue(self::sourceHashPayload($preflightSource, $assetEvidence));
+
             $connection->beginTransaction();
             $source = self::loadSource($legacyWebsiteId, true);
             self::validateSource($source);
-            $sourceHash = self::hashValue(self::sourceHashPayload($source));
+            $lockedDatabaseHash = self::hashValue(self::databaseSourcePayload($source));
+            if (!hash_equals($preflightDatabaseHash, $lockedDatabaseHash)) {
+                throw new LegacyWebsiteImportException(
+                    'source_changed_during_import',
+                    'The legacy database source changed during import; retry the import unit.'
+                );
+            }
             $mapping = self::lockMapping($legacyWebsiteId);
 
             if ($mapping !== null && $mapping['site_id'] !== null) {
@@ -103,7 +119,7 @@ final class LegacyWebsitePlatformImporter
             $mappingId = $mapping === null
                 ? self::insertPendingMapping($legacyWebsiteId, $sourceHash)
                 : self::retryPendingMapping((int) $mapping['id'], $sourceHash);
-            $result = self::createImportedAggregate($source, $sourceHash, $mappingId);
+            $result = self::createImportedAggregate($source, $assetEvidence, $sourceHash, $mappingId);
             $connection->commit();
 
             return $result;
@@ -118,14 +134,26 @@ final class LegacyWebsitePlatformImporter
             $summary = $exception instanceof LegacyWebsiteImportException
                 ? $exception->getMessage()
                 : 'The import unit failed; review application logs and repair the legacy source or schema.';
-            self::recordQuarantine($legacyWebsiteId, $sourceHash, $code, $summary);
+
+            if ($code === 'source_changed_during_import') {
+                return [
+                    'legacy_website_id' => $legacyWebsiteId,
+                    'result' => 'retryable',
+                    'retryable' => true,
+                    'error_code' => $code,
+                    'error_summary' => self::boundedSummary($summary),
+                ];
+            }
+
+            $quarantine = self::recordQuarantine($legacyWebsiteId, $sourceHash, $code, $summary);
 
             return [
                 'legacy_website_id' => $legacyWebsiteId,
-                'result' => 'quarantined',
+                'result' => $quarantine['recorded'] ? 'quarantined' : 'failed',
                 'error_code' => $code,
                 'error_summary' => self::boundedSummary($summary),
-            ];
+                'quarantine_evidence' => $quarantine['status'],
+            ] + ($quarantine['failure'] ?? []);
         }
     }
 
@@ -138,15 +166,18 @@ final class LegacyWebsitePlatformImporter
 
         try {
             self::validateSource($source);
-            $sourceHash = self::hashValue(self::sourceHashPayload($source));
+            $assetEvidence = self::collectAssetEvidence($source);
+            $sourceHash = self::hashValue(self::sourceHashPayload($source, $assetEvidence));
         } catch (LegacyWebsiteImportException $exception) {
             $eligibilityError = $exception->importErrorCode();
         }
 
         $calculatedImportedHash = null;
+        $storedRevisionHash = null;
         $importedPageCount = 0;
         if ($mapping !== null && $mapping['import_revision_id'] !== null) {
             $calculatedImportedHash = self::calculateImportedHash((int) $mapping['import_revision_id']);
+            $storedRevisionHash = self::storedRevisionHash((int) $mapping['import_revision_id']);
             $importedPageCount = self::importedPageCount((int) $mapping['import_revision_id']);
         }
 
@@ -162,9 +193,12 @@ final class LegacyWebsitePlatformImporter
             'source_hash' => $sourceHash,
             'stored_source_hash' => $mapping['source_hash'] ?? null,
             'stored_imported_hash' => $mapping['imported_hash'] ?? null,
+            'stored_revision_hash' => $storedRevisionHash,
             'calculated_imported_hash' => $calculatedImportedHash,
             'source_matches' => $mapping !== null && hash_equals((string) ($mapping['source_hash'] ?? ''), (string) $sourceHash),
             'import_matches' => $mapping !== null && hash_equals((string) ($mapping['imported_hash'] ?? ''), (string) $calculatedImportedHash),
+            'revision_hash_matches' => $storedRevisionHash !== null
+                && hash_equals($storedRevisionHash, (string) $calculatedImportedHash),
         ];
     }
 
@@ -189,9 +223,31 @@ final class LegacyWebsitePlatformImporter
         );
         $hashes->bindValue(':hash_limit', $hashLimit, PDO::PARAM_INT);
         $hashes->execute();
+        $hashRows = $hashes->fetchAll();
+        foreach ($hashRows as &$hashRow) {
+            $hashRow['calculated_imported_hash'] = null;
+            $hashRow['stored_revision_hash'] = null;
+            $hashRow['mapping_hash_matches'] = false;
+            $hashRow['revision_hash_matches'] = false;
+            if ($hashRow['import_revision_id'] === null) {
+                continue;
+            }
+            try {
+                $revisionId = (int) $hashRow['import_revision_id'];
+                $calculated = self::calculateImportedHash($revisionId);
+                $storedRevision = self::storedRevisionHash($revisionId);
+                $hashRow['calculated_imported_hash'] = $calculated;
+                $hashRow['stored_revision_hash'] = $storedRevision;
+                $hashRow['mapping_hash_matches'] = hash_equals((string) ($hashRow['imported_hash'] ?? ''), $calculated);
+                $hashRow['revision_hash_matches'] = $storedRevision !== null && hash_equals($storedRevision, $calculated);
+            } catch (LegacyWebsiteImportException $exception) {
+                $hashRow['reconciliation_error'] = $exception->importErrorCode();
+            }
+        }
+        unset($hashRow);
 
         return [
-            'eligible_legacy_count' => $scalar(
+            'candidate_legacy_count' => $scalar(
                 "SELECT COUNT(*)
                  FROM `247sp_generated_websites` gw
                  INNER JOIN businesses b ON b.id = gw.business_id
@@ -204,6 +260,19 @@ final class LegacyWebsitePlatformImporter
             ),
             'imported_count' => $scalar("SELECT COUNT(*) FROM legacy_site_mappings WHERE import_status = 'imported'"),
             'quarantined_count' => $scalar("SELECT COUNT(*) FROM legacy_site_mappings WHERE import_status = 'quarantined'"),
+            'unmapped_candidate_count' => $scalar(
+                "SELECT COUNT(*)
+                 FROM `247sp_generated_websites` gw
+                 INNER JOIN businesses b ON b.id = gw.business_id
+                 INNER JOIN `247sp_onboarding` o ON o.id = gw.onboarding_id AND o.business_id = gw.business_id
+                 INNER JOIN `247sp_templates` t ON t.id = gw.template_id AND t.template_key = 'starter_local_service'
+                 LEFT JOIN legacy_site_mappings lm ON lm.legacy_website_id = gw.id
+                 WHERE lm.id IS NULL
+                   AND EXISTS (
+                       SELECT 1 FROM `247sp_generated_pages` gp
+                       WHERE gp.website_id = gw.id AND gp.business_id = gw.business_id
+                   )"
+            ),
             'mapping_count' => $scalar('SELECT COUNT(*) FROM legacy_site_mappings'),
             'legacy_page_count' => $scalar('SELECT COUNT(*) FROM `247sp_generated_pages`'),
             'imported_page_count' => $scalar('SELECT COUNT(*) FROM legacy_site_page_mappings'),
@@ -232,13 +301,14 @@ final class LegacyWebsitePlatformImporter
                  WHERE (sba.id IS NOT NULL AND sba.business_id <> gw.business_id)
                     OR (gp.id IS NOT NULL AND gp.business_id <> gw.business_id)'
             ),
-            'hashes' => $hashes->fetchAll(),
+            'hashes' => $hashRows,
         ];
     }
 
     private static function loadSource(int $legacyWebsiteId, bool $lock): array
     {
         $connection = Database::connection();
+        $forUpdate = $lock ? ' FOR UPDATE' : '';
         $website = $connection->prepare(
             '/* legacy-import:load-website */
              SELECT gw.*, b.id AS resolved_business_id,
@@ -249,7 +319,7 @@ final class LegacyWebsitePlatformImporter
              LEFT JOIN `247sp_onboarding` o ON o.id = gw.onboarding_id
              LEFT JOIN `247sp_templates` t ON t.id = gw.template_id
              WHERE gw.id = :legacy_website_id
-             LIMIT 1' . ($lock ? ' FOR UPDATE' : '')
+             LIMIT 1' . $forUpdate
         );
         $website->execute(['legacy_website_id' => $legacyWebsiteId]);
         $row = $website->fetch();
@@ -264,7 +334,7 @@ final class LegacyWebsitePlatformImporter
                     status, sort_order, created_at, updated_at
              FROM `247sp_generated_pages`
              WHERE website_id = :website_id
-             ORDER BY sort_order ASC, id ASC',
+             ORDER BY sort_order ASC, id ASC' . $forUpdate,
             ['website_id' => $legacyWebsiteId]
         );
 
@@ -272,51 +342,51 @@ final class LegacyWebsitePlatformImporter
             'website' => $row,
             'pages' => $pages,
             'branding' => self::fetchOne(
-                '/* legacy-import:load-branding */ SELECT * FROM `247sp_website_branding` WHERE business_id = :business_id LIMIT 1',
+                '/* legacy-import:load-branding */ SELECT * FROM `247sp_website_branding` WHERE business_id = :business_id LIMIT 1' . $forUpdate,
                 ['business_id' => $businessId]
             ),
             'overrides' => self::fetchAll(
                 '/* legacy-import:load-overrides */ SELECT id, page_key, field_key, field_value, updated_at
-                 FROM `247sp_website_content_overrides` WHERE business_id = :business_id ORDER BY page_key, field_key, id',
+                 FROM `247sp_website_content_overrides` WHERE business_id = :business_id ORDER BY page_key, field_key, id' . $forUpdate,
                 ['business_id' => $businessId]
             ),
             'service_images' => self::fetchAll(
                 '/* legacy-import:load-service-images */ SELECT id, service_number, image_path, updated_at
-                 FROM `247sp_website_service_images` WHERE business_id = :business_id ORDER BY service_number, id',
+                 FROM `247sp_website_service_images` WHERE business_id = :business_id ORDER BY service_number, id' . $forUpdate,
                 ['business_id' => $businessId]
             ),
             'integrations' => self::fetchOne(
-                '/* legacy-import:load-integrations */ SELECT * FROM website_integrations WHERE business_id = :business_id LIMIT 1',
+                '/* legacy-import:load-integrations */ SELECT * FROM website_integrations WHERE business_id = :business_id LIMIT 1' . $forUpdate,
                 ['business_id' => $businessId]
             ),
             'configuration' => self::fetchOne(
-                '/* legacy-import:load-configuration */ SELECT * FROM `247sp_website_configurations` WHERE business_id = :business_id LIMIT 1',
+                '/* legacy-import:load-configuration */ SELECT * FROM `247sp_website_configurations` WHERE business_id = :business_id LIMIT 1' . $forUpdate,
                 ['business_id' => $businessId]
             ),
             'business_content' => self::fetchOne(
                 '/* legacy-import:load-business-content */ SELECT id, business_id, onboarding_id, updated_at
-                 FROM `247sp_business_content` WHERE business_id = :business_id LIMIT 1',
+                 FROM `247sp_business_content` WHERE business_id = :business_id LIMIT 1' . $forUpdate,
                 ['business_id' => $businessId]
             ),
             'service_pages' => self::fetchAll(
                 '/* legacy-import:load-service-pages */ SELECT id, business_id, onboarding_id, service_number,
                         parent_service_page_id, sort_order, status, slug, updated_at
-                 FROM `247sp_service_pages` WHERE business_id = :business_id ORDER BY sort_order, id',
+                 FROM `247sp_service_pages` WHERE business_id = :business_id ORDER BY sort_order, id' . $forUpdate,
                 ['business_id' => $businessId]
             ),
             'business_profile' => self::fetchOne(
                 '/* legacy-import:load-profile-reference */ SELECT id, business_id, lifecycle_status, updated_at
-                 FROM business_profiles WHERE business_id = :business_id LIMIT 1',
+                 FROM business_profiles WHERE business_id = :business_id LIMIT 1' . $forUpdate,
                 ['business_id' => $businessId]
             ),
             'selected_services' => self::fetchAll(
                 '/* legacy-import:load-selected-service-references */ SELECT business_id, sub_service_id
-                 FROM business_sub_services WHERE business_id = :business_id ORDER BY sub_service_id',
+                 FROM business_sub_services WHERE business_id = :business_id ORDER BY sub_service_id' . $forUpdate,
                 ['business_id' => $businessId]
             ),
             'custom_services' => self::fetchAll(
                 '/* legacy-import:load-custom-service-references */ SELECT id, business_id, category_id, updated_at
-                 FROM business_custom_services WHERE business_id = :business_id ORDER BY id',
+                 FROM business_custom_services WHERE business_id = :business_id ORDER BY id' . $forUpdate,
                 ['business_id' => $businessId]
             ),
         ];
@@ -381,7 +451,7 @@ final class LegacyWebsitePlatformImporter
         unset($page);
     }
 
-    private static function createImportedAggregate(array $source, string $sourceHash, int $mappingId): array
+    private static function createImportedAggregate(array $source, array $assetEvidence, string $sourceHash, int $mappingId): array
     {
         $connection = Database::connection();
         $website = $source['website'];
@@ -453,18 +523,14 @@ final class LegacyWebsitePlatformImporter
             'authority' => 'references_only',
         ];
         $sourceReferences = self::sourceReferences($source);
-        $snapshotSeed = [
-            'source_hash' => $sourceHash,
-            'facts_references' => $factsReferences,
-            'source_references' => $sourceReferences,
-            'pages' => array_map(static fn (array $page): array => [
-                'legacy_page_id' => (int) $page['id'],
-                'page_type' => (string) $page['page_type'],
-                'slug' => (string) $page['normalized_slug'],
-                'content_hash' => self::hashValue($page['decoded_content']),
-            ], $source['pages']),
-        ];
-        $snapshotHash = self::hashValue($snapshotSeed);
+        $revisionHash = self::hashValue(self::revisionRepresentationFromSource(
+            $source,
+            $assetEvidence,
+            $factsReferences,
+            $sourceReferences,
+            $brief,
+            $briefHash
+        ));
 
         self::execute(
             '/* legacy-import:insert-revision */ INSERT INTO site_revisions
@@ -481,7 +547,7 @@ final class LegacyWebsitePlatformImporter
                 'schema_version' => self::SNAPSHOT_SCHEMA_VERSION,
                 'facts_json' => self::encode($factsReferences),
                 'references_json' => self::encode($sourceReferences),
-                'snapshot_hash' => $snapshotHash,
+                'snapshot_hash' => $revisionHash,
                 'correlation_id' => 'legacy-import-' . $legacyWebsiteId,
             ]
         );
@@ -525,12 +591,13 @@ final class LegacyWebsitePlatformImporter
             $revisionPageId = (int) $connection->lastInsertId();
             self::execute(
                 '/* legacy-import:insert-section */ INSERT INTO site_page_sections
-                    (site_id, revision_page_id, section_key, component_variant_id, sort_order,
+                    (site_id, revision_id, revision_page_id, section_key, component_variant_id, sort_order,
                      configuration_schema_version, configuration_json, content_hash, created_at)
-                 VALUES (:site_id, :revision_page_id, :section_key, :variant_id, 10, 1,
+                 VALUES (:site_id, :revision_id, :revision_page_id, :section_key, :variant_id, 10, 1,
                          :configuration_json, :content_hash, NOW())',
                 [
                     'site_id' => $siteId,
+                    'revision_id' => $revisionId,
                     'revision_page_id' => $revisionPageId,
                     'section_key' => 'legacy-page-snapshot',
                     'variant_id' => $variants[(string) $page['page_type']],
@@ -580,7 +647,7 @@ final class LegacyWebsitePlatformImporter
             ]
         );
 
-        self::importAssets($source, $siteId, $businessId, $revisionId, $pageImports);
+        self::importAssets($assetEvidence, $siteId, $businessId, $revisionId, $pageImports);
         self::execute(
             '/* legacy-import:insert-event */ INSERT INTO site_events
                 (site_id, revision_id, actor_type, event_type, result, reason, correlation_id, metadata_json, created_at)
@@ -599,6 +666,12 @@ final class LegacyWebsitePlatformImporter
         );
 
         $importedHash = self::calculateImportedHash($revisionId);
+        if (!hash_equals($revisionHash, $importedHash)) {
+            throw new LegacyWebsiteImportException(
+                'revision_hash_mismatch',
+                'The imported revision does not match its canonical preflight representation.'
+            );
+        }
         self::execute(
             '/* legacy-import:complete-mapping */ UPDATE legacy_site_mappings
              SET site_id = :site_id, import_revision_id = :revision_id, import_status = :status,
@@ -611,7 +684,7 @@ final class LegacyWebsitePlatformImporter
                 'revision_id' => $revisionId,
                 'status' => 'imported',
                 'source_hash' => $sourceHash,
-                'imported_hash' => $importedHash,
+                'imported_hash' => $revisionHash,
                 'mapping_id' => $mappingId,
             ]
         );
@@ -623,7 +696,7 @@ final class LegacyWebsitePlatformImporter
             'revision_id' => $revisionId,
             'page_count' => count($source['pages']),
             'source_hash' => $sourceHash,
-            'imported_hash' => $importedHash,
+            'imported_hash' => $revisionHash,
         ];
     }
 
@@ -636,6 +709,10 @@ final class LegacyWebsitePlatformImporter
             throw new LegacyWebsiteImportException('mapping_collision', 'The legacy mapping has a site but no imported revision.');
         }
         $calculated = self::calculateImportedHash((int) $mapping['import_revision_id']);
+        $storedRevisionHash = self::storedRevisionHash((int) $mapping['import_revision_id']);
+        if ($storedRevisionHash === null || !hash_equals($storedRevisionHash, $calculated)) {
+            throw new LegacyWebsiteImportException('revision_hash_mismatch', 'The imported revision no longer matches its stored snapshot hash.');
+        }
         if (!hash_equals((string) ($mapping['imported_hash'] ?? ''), $calculated)) {
             throw new LegacyWebsiteImportException('import_hash_mismatch', 'The imported generic representation no longer matches its stored hash.');
         }
@@ -672,7 +749,7 @@ final class LegacyWebsitePlatformImporter
                AND cd.implementation_version = :implementation_version
                AND cd.status = :status AND cv.status = :status
              ORDER BY cv.variant_key',
-            ['component_key' => self::COMPONENT_KEY, 'implementation_version' => 'legacy-preview-v1', 'status' => 'active']
+            ['component_key' => self::COMPONENT_KEY, 'implementation_version' => self::COMPONENT_IMPLEMENTATION_VERSION, 'status' => 'active']
         );
         $variants = [];
         foreach ($rows as $row) {
@@ -686,41 +763,19 @@ final class LegacyWebsitePlatformImporter
         return $variants;
     }
 
-    private static function importAssets(array $source, int $siteId, int $businessId, int $revisionId, array $pageImports): void
+    private static function importAssets(array $assetEvidence, int $siteId, int $businessId, int $revisionId, array $pageImports): void
     {
-        $usages = [];
-        foreach (self::pathsInValue($source['branding'] ?? [], 'theme') as $usage) {
-            $usages[] = $usage + ['legacy_page_id' => null];
-        }
-        foreach ($source['service_images'] as $row) {
-            $path = trim((string) ($row['image_path'] ?? ''));
-            if ($path !== '') {
-                $usages[] = ['path' => $path, 'usage_key' => 'service-image-' . (int) $row['service_number'], 'legacy_page_id' => null];
-            }
-        }
-        foreach ($pageImports as $legacyPageId => $pageImport) {
-            foreach (self::pathsInValue($pageImport['content'], 'page-' . $legacyPageId) as $usage) {
-                $usages[] = $usage + ['legacy_page_id' => $legacyPageId];
-            }
-        }
-
-        $seen = [];
-        foreach ($usages as $usage) {
-            $dedupe = $usage['path'] . '|' . $usage['usage_key'];
-            if (isset($seen[$dedupe])) {
-                continue;
-            }
-            $seen[$dedupe] = true;
-            $file = self::inspectAsset((string) $usage['path']);
-            $assetKey = self::deterministicKey('legacy-asset-' . $businessId, (string) $usage['path']);
+        foreach ($assetEvidence as $usage) {
+            $path = (string) $usage['normalized_path'];
+            $assetKey = self::deterministicKey('legacy-asset-' . $businessId, $path);
             $existing = self::fetchOne(
                 '/* legacy-import:asset-collision */ SELECT * FROM site_assets WHERE asset_key = :asset_key LIMIT 1 FOR UPDATE',
                 ['asset_key' => $assetKey]
             );
             if ($existing !== null) {
                 if ((int) $existing['site_id'] !== $siteId
-                    || (string) $existing['storage_key'] !== (string) $usage['path']
-                    || !hash_equals((string) $existing['checksum_sha256'], $file['checksum'])
+                    || (string) $existing['storage_key'] !== $path
+                    || !hash_equals((string) $existing['checksum_sha256'], (string) $usage['checksum_sha256'])
                 ) {
                     throw new LegacyWebsiteImportException('asset_key_collision', 'A deterministic imported asset key collides with different asset evidence.');
                 }
@@ -737,11 +792,11 @@ final class LegacyWebsitePlatformImporter
                         'site_id' => $siteId,
                         'business_id' => $businessId,
                         'asset_key' => $assetKey,
-                        'asset_type' => $file['asset_type'],
-                        'storage_key' => (string) $usage['path'],
-                        'checksum' => $file['checksum'],
-                        'mime_type' => $file['mime_type'],
-                        'byte_size' => $file['byte_size'],
+                        'asset_type' => $usage['asset_type'],
+                        'storage_key' => $path,
+                        'checksum' => $usage['checksum_sha256'],
+                        'mime_type' => $usage['mime_type'],
+                        'byte_size' => $usage['byte_size'],
                         'source' => 'legacy_247sp',
                         'rights' => 'unknown',
                         'rights_json' => self::encode(['review_required' => true, 'legacy_reference' => true]),
@@ -765,17 +820,76 @@ final class LegacyWebsitePlatformImporter
                     'usage_key' => substr((string) $usage['usage_key'], 0, 100),
                     'revision_page_id' => $pageImport['revision_page_id'] ?? null,
                     'section_id' => $pageImport['section_id'] ?? null,
-                    'source_reference' => (string) $usage['path'],
+                    'source_reference' => $path,
                 ]
             );
         }
     }
 
-    private static function inspectAsset(string $publicPath): array
+    private static function collectAssetEvidence(array $source): array
     {
-        if ($publicPath === '' || $publicPath[0] !== '/' || str_contains($publicPath, '..') || preg_match('#^//#', $publicPath)) {
+        if (Database::connection()->inTransaction()) {
+            throw new LegacyWebsiteImportException(
+                'filesystem_in_transaction',
+                'Legacy asset inspection must run before the database write transaction.'
+            );
+        }
+
+        $usages = [];
+        foreach (self::pathsInValue($source['branding'] ?? [], 'theme') as $usage) {
+            $usages[] = $usage + ['legacy_page_id' => null];
+        }
+        foreach ($source['service_images'] as $row) {
+            $path = trim((string) ($row['image_path'] ?? ''));
+            if ($path !== '') {
+                $usages[] = ['path' => $path, 'usage_key' => 'service-image-' . (int) $row['service_number'], 'legacy_page_id' => null];
+            }
+        }
+        foreach ($source['pages'] as $page) {
+            foreach (self::pathsInValue($page['decoded_content'], 'page-' . (int) $page['id']) as $usage) {
+                $usages[] = $usage + ['legacy_page_id' => (int) $page['id']];
+            }
+        }
+
+        $evidence = [];
+        $seen = [];
+        foreach ($usages as $usage) {
+            $path = self::normalizeAssetPath((string) $usage['path']);
+            $dedupe = $path . '|' . (string) $usage['usage_key'] . '|' . (string) ($usage['legacy_page_id'] ?? '');
+            if (isset($seen[$dedupe])) {
+                continue;
+            }
+            $seen[$dedupe] = true;
+            $evidence[] = [
+                'normalized_path' => $path,
+                'usage_key' => substr((string) $usage['usage_key'], 0, 100),
+                'legacy_page_id' => $usage['legacy_page_id'],
+            ] + self::inspectAsset($path);
+        }
+        usort($evidence, static fn (array $left, array $right): int => [
+            $left['usage_key'], $left['normalized_path'], $left['legacy_page_id'] ?? 0,
+        ] <=> [
+            $right['usage_key'], $right['normalized_path'], $right['legacy_page_id'] ?? 0,
+        ]);
+        return $evidence;
+    }
+
+    private static function normalizeAssetPath(string $publicPath): string
+    {
+        $publicPath = str_replace('\\', '/', trim($publicPath));
+        if (str_starts_with($publicPath, '//')) {
             throw new LegacyWebsiteImportException('invalid_asset_reference', 'A legacy asset reference is not a safe application-public path.');
         }
+        $publicPath = preg_replace('#/+#', '/', $publicPath) ?? $publicPath;
+        if ($publicPath === '' || $publicPath[0] !== '/' || str_contains($publicPath, '..')) {
+            throw new LegacyWebsiteImportException('invalid_asset_reference', 'A legacy asset reference is not a safe application-public path.');
+        }
+        return $publicPath;
+    }
+
+    private static function inspectAsset(string $publicPath): array
+    {
+        $publicPath = self::normalizeAssetPath($publicPath);
         $root = realpath(dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . 'public' . DIRECTORY_SEPARATOR . 'app');
         $candidate = realpath(dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . 'public' . DIRECTORY_SEPARATOR . 'app' . str_replace('/', DIRECTORY_SEPARATOR, $publicPath));
         if ($root === false || $candidate === false || !str_starts_with($candidate, $root . DIRECTORY_SEPARATOR) || !is_file($candidate) || !is_readable($candidate)) {
@@ -798,7 +912,7 @@ final class LegacyWebsitePlatformImporter
             }
         }
         return [
-            'checksum' => $checksum,
+            'checksum_sha256' => $checksum,
             'byte_size' => (int) $byteSize,
             'mime_type' => $mime,
             'asset_type' => str_starts_with($mime, 'image/') ? 'image' : ($mime === 'application/pdf' ? 'document' : 'file'),
@@ -807,26 +921,71 @@ final class LegacyWebsitePlatformImporter
 
     private static function calculateImportedHash(int $revisionId): string
     {
+        $revision = self::fetchOne(
+            '/* legacy-import:hash-revision */ SELECT snapshot_schema_version, facts_snapshot_json,
+                    source_references_json, generation_brief_id
+             FROM site_revisions WHERE id = :revision_id LIMIT 1',
+            ['revision_id' => $revisionId]
+        );
+        if ($revision === null || $revision['generation_brief_id'] === null) {
+            throw new LegacyWebsiteImportException('missing_import_revision', 'The imported baseline revision or generation brief is missing.');
+        }
+        $brief = self::fetchOne(
+            '/* legacy-import:hash-brief */ SELECT brief_version, state, brief_json, source_type,
+                    source_reference, content_hash
+             FROM site_generation_briefs WHERE id = :brief_id LIMIT 1',
+            ['brief_id' => (int) $revision['generation_brief_id']]
+        );
+        if ($brief === null) {
+            throw new LegacyWebsiteImportException('missing_import_brief', 'The imported baseline generation brief is missing.');
+        }
+
         $pages = self::fetchAll(
-            '/* legacy-import:hash-pages */ SELECT id, site_page_id, title, slug, page_type,
+            '/* legacy-import:hash-pages */ SELECT rp.id, p.page_key, rp.title, rp.slug, rp.page_type,
                     navigation_label, sort_order, seo_json, presentation_json, content_hash
-             FROM site_revision_pages WHERE revision_id = :revision_id ORDER BY sort_order, id',
+             FROM site_revision_pages rp
+             INNER JOIN site_pages p ON p.id = rp.site_page_id AND p.site_id = rp.site_id
+             WHERE rp.revision_id = :revision_id ORDER BY rp.sort_order, rp.id',
             ['revision_id' => $revisionId]
         );
         foreach ($pages as &$page) {
-            $page['seo_json'] = self::decodeNullableJson($page['seo_json']);
-            $page['presentation_json'] = self::decodeNullableJson($page['presentation_json']);
-            $page['sections'] = self::fetchAll(
-                '/* legacy-import:hash-sections */ SELECT section_key, component_variant_id, sort_order,
-                        configuration_schema_version, configuration_json, content_hash
-                 FROM site_page_sections WHERE revision_page_id = :revision_page_id ORDER BY sort_order, id',
+            $sections = self::fetchAll(
+                '/* legacy-import:hash-sections */ SELECT s.section_key, cd.component_key,
+                        cd.implementation_version, cv.variant_key,
+                        cv.configuration_schema_version AS variant_configuration_schema_version,
+                        s.sort_order, s.configuration_schema_version, s.configuration_json, s.content_hash
+                 FROM site_page_sections s
+                 INNER JOIN component_variants cv ON cv.id = s.component_variant_id
+                 INNER JOIN component_definitions cd ON cd.id = cv.component_definition_id
+                 WHERE s.revision_page_id = :revision_page_id ORDER BY s.sort_order, s.id',
                 ['revision_page_id' => (int) $page['id']]
             );
-            foreach ($page['sections'] as &$section) {
-                $section['configuration_json'] = self::decodeNullableJson($section['configuration_json']);
+            foreach ($sections as &$section) {
+                $section = [
+                    'section_key' => (string) $section['section_key'],
+                    'component_key' => (string) $section['component_key'],
+                    'implementation_version' => (string) $section['implementation_version'],
+                    'variant_key' => (string) $section['variant_key'],
+                    'variant_configuration_schema_version' => (int) $section['variant_configuration_schema_version'],
+                    'sort_order' => (int) $section['sort_order'],
+                    'configuration_schema_version' => (int) $section['configuration_schema_version'],
+                    'configuration' => self::decodeNullableJson($section['configuration_json']),
+                    'content_hash' => (string) $section['content_hash'],
+                ];
             }
             unset($section);
-            unset($page['id']);
+            $page = [
+                'page_key' => (string) $page['page_key'],
+                'title' => (string) $page['title'],
+                'slug' => (string) $page['slug'],
+                'page_type' => (string) $page['page_type'],
+                'navigation_label' => self::nullableString($page['navigation_label']),
+                'sort_order' => (int) $page['sort_order'],
+                'seo' => self::decodeNullableJson($page['seo_json']),
+                'presentation' => self::decodeNullableJson($page['presentation_json']),
+                'content_hash' => (string) $page['content_hash'],
+                'sections' => $sections,
+            ];
         }
         unset($page);
         $theme = self::fetchOne(
@@ -838,21 +997,73 @@ final class LegacyWebsitePlatformImporter
         if ($theme === null) {
             throw new LegacyWebsiteImportException('missing_import_theme', 'The imported baseline revision theme is missing.');
         }
-        $theme['typography_json'] = self::decodeNullableJson($theme['typography_json']);
-        $theme['configuration_json'] = self::decodeNullableJson($theme['configuration_json']);
+        $theme = [
+            'theme_key' => (string) $theme['theme_key'],
+            'theme_version' => (int) $theme['theme_version'],
+            'primary_color' => self::nullableString($theme['primary_color']),
+            'secondary_color' => self::nullableString($theme['secondary_color']),
+            'typography' => self::decodeNullableJson($theme['typography_json']),
+            'configuration' => self::decodeNullableJson($theme['configuration_json']),
+            'content_hash' => (string) $theme['content_hash'],
+        ];
         $assets = self::fetchAll(
-            '/* legacy-import:hash-assets */ SELECT a.asset_key, a.storage_key, a.checksum_sha256,
-                    ra.usage_key, ra.source_reference
+            '/* legacy-import:hash-assets */ SELECT a.asset_type, a.storage_key, a.checksum_sha256,
+                    a.mime_type, a.byte_size, ra.usage_key, ra.source_reference,
+                    p.page_key, s.section_key
              FROM site_revision_assets ra
              INNER JOIN site_assets a ON a.id = ra.asset_id
-             WHERE ra.revision_id = :revision_id ORDER BY ra.usage_key, a.asset_key',
+             LEFT JOIN site_revision_pages rp ON rp.id = ra.site_revision_page_id
+             LEFT JOIN site_pages p ON p.id = rp.site_page_id
+             LEFT JOIN site_page_sections s ON s.id = ra.site_page_section_id
+             WHERE ra.revision_id = :revision_id ORDER BY ra.usage_key, a.storage_key, p.page_key',
             ['revision_id' => $revisionId]
         );
+        foreach ($assets as &$asset) {
+            $asset = [
+                'asset_type' => (string) $asset['asset_type'],
+                'storage_key' => (string) $asset['storage_key'],
+                'checksum_sha256' => (string) $asset['checksum_sha256'],
+                'mime_type' => (string) $asset['mime_type'],
+                'byte_size' => (int) $asset['byte_size'],
+                'usage_key' => (string) $asset['usage_key'],
+                'source_reference' => self::nullableString($asset['source_reference']),
+                'page_key' => self::nullableString($asset['page_key']),
+                'section_key' => self::nullableString($asset['section_key']),
+            ];
+        }
+        unset($asset);
 
-        return self::hashValue(['pages' => $pages, 'theme' => $theme, 'assets' => $assets]);
+        return self::hashValue([
+            'schema_version' => (int) $revision['snapshot_schema_version'],
+            'facts_snapshot' => self::decodeNullableJson($revision['facts_snapshot_json']),
+            'source_references' => self::decodeNullableJson($revision['source_references_json']),
+            'generation_brief' => [
+                'brief_version' => (int) $brief['brief_version'],
+                'state' => (string) $brief['state'],
+                'brief' => self::decodeNullableJson($brief['brief_json']),
+                'source_type' => (string) $brief['source_type'],
+                'source_reference' => self::nullableString($brief['source_reference']),
+                'content_hash' => (string) $brief['content_hash'],
+            ],
+            'pages' => $pages,
+            'theme' => $theme,
+            'assets' => $assets,
+        ]);
     }
 
-    private static function recordQuarantine(int $legacyWebsiteId, ?string $sourceHash, string $errorCode, string $summary): void
+    private static function storedRevisionHash(int $revisionId): ?string
+    {
+        if ($revisionId < 1) {
+            return null;
+        }
+        $row = self::fetchOne(
+            '/* legacy-import:stored-revision-hash */ SELECT snapshot_hash FROM site_revisions WHERE id = :revision_id LIMIT 1',
+            ['revision_id' => $revisionId]
+        );
+        return isset($row['snapshot_hash']) ? (string) $row['snapshot_hash'] : null;
+    }
+
+    private static function recordQuarantine(int $legacyWebsiteId, ?string $sourceHash, string $errorCode, string $summary): array
     {
         $connection = Database::connection();
         try {
@@ -864,7 +1075,7 @@ final class LegacyWebsitePlatformImporter
             );
             if ($exists === null) {
                 $connection->rollBack();
-                return;
+                return ['recorded' => false, 'status' => 'source_missing'];
             }
             self::execute(
                 '/* legacy-import:record-quarantine */ INSERT INTO legacy_site_mappings
@@ -886,10 +1097,19 @@ final class LegacyWebsitePlatformImporter
                 ]
             );
             $connection->commit();
+            return ['recorded' => true, 'status' => 'recorded'];
         } catch (Throwable $quarantineFailure) {
             if ($connection->inTransaction()) {
                 $connection->rollBack();
             }
+            return [
+                'recorded' => false,
+                'status' => 'persistence_failed',
+                'failure' => [
+                    'quarantine_failure_class' => get_class($quarantineFailure),
+                    'quarantine_failure_code' => substr((string) $quarantineFailure->getCode(), 0, 32),
+                ],
+            ];
         }
     }
 
@@ -943,7 +1163,7 @@ final class LegacyWebsitePlatformImporter
         return (int) ($row['page_count'] ?? 0);
     }
 
-    private static function sourceHashPayload(array $source): array
+    private static function databaseSourcePayload(array $source): array
     {
         return [
             'website' => $source['website'],
@@ -961,6 +1181,106 @@ final class LegacyWebsitePlatformImporter
             'business_profile_reference' => $source['business_profile'],
             'selected_service_references' => $source['selected_services'],
             'custom_service_references' => $source['custom_services'],
+        ];
+    }
+
+    private static function sourceHashPayload(array $source, array $assetEvidence = []): array
+    {
+        return [
+            'database_source' => self::databaseSourcePayload($source),
+            'asset_evidence' => array_map(static fn (array $asset): array => [
+                'normalized_path' => (string) $asset['normalized_path'],
+                'checksum_sha256' => (string) $asset['checksum_sha256'],
+                'byte_size' => (int) $asset['byte_size'],
+                'mime_type' => (string) $asset['mime_type'],
+                'asset_type' => (string) $asset['asset_type'],
+                'usage_key' => (string) $asset['usage_key'],
+                'legacy_page_id' => $asset['legacy_page_id'] === null ? null : (int) $asset['legacy_page_id'],
+            ], $assetEvidence),
+        ];
+    }
+
+    private static function revisionRepresentationFromSource(
+        array $source,
+        array $assetEvidence,
+        array $factsReferences,
+        array $sourceReferences,
+        array $brief,
+        string $briefHash
+    ): array {
+        $pageKeys = [];
+        $pages = [];
+        foreach ($source['pages'] as $page) {
+            $pageKey = self::logicalPageKey((string) $page['page_type'], (string) $page['normalized_slug']);
+            $pageKeys[(int) $page['id']] = $pageKey;
+            $contentHash = self::hashValue($page['decoded_content']);
+            $pages[] = [
+                'page_key' => $pageKey,
+                'title' => (string) $page['title'],
+                'slug' => (string) $page['normalized_slug'],
+                'page_type' => (string) $page['page_type'],
+                'navigation_label' => (string) $page['title'],
+                'sort_order' => (int) $page['sort_order'],
+                'seo' => null,
+                'presentation' => [
+                    'legacy_page_id' => (int) $page['id'],
+                    'legacy_status' => (string) $page['status'],
+                    'snapshot_only' => true,
+                ],
+                'content_hash' => $contentHash,
+                'sections' => [[
+                    'section_key' => 'legacy-page-snapshot',
+                    'component_key' => self::COMPONENT_KEY,
+                    'implementation_version' => self::COMPONENT_IMPLEMENTATION_VERSION,
+                    'variant_key' => (string) $page['page_type'],
+                    'variant_configuration_schema_version' => 1,
+                    'sort_order' => 10,
+                    'configuration_schema_version' => 1,
+                    'configuration' => $page['decoded_content'],
+                    'content_hash' => $contentHash,
+                ]],
+            ];
+        }
+
+        $themeSnapshot = self::themeSnapshot($source['branding']);
+        $assets = array_map(static function (array $asset) use ($pageKeys): array {
+            $legacyPageId = $asset['legacy_page_id'] === null ? null : (int) $asset['legacy_page_id'];
+            return [
+                'asset_type' => (string) $asset['asset_type'],
+                'storage_key' => (string) $asset['normalized_path'],
+                'checksum_sha256' => (string) $asset['checksum_sha256'],
+                'mime_type' => (string) $asset['mime_type'],
+                'byte_size' => (int) $asset['byte_size'],
+                'usage_key' => (string) $asset['usage_key'],
+                'source_reference' => (string) $asset['normalized_path'],
+                'page_key' => $legacyPageId === null ? null : ($pageKeys[$legacyPageId] ?? null),
+                'section_key' => $legacyPageId === null ? null : 'legacy-page-snapshot',
+            ];
+        }, $assetEvidence);
+
+        return [
+            'schema_version' => self::SNAPSHOT_SCHEMA_VERSION,
+            'facts_snapshot' => $factsReferences,
+            'source_references' => $sourceReferences,
+            'generation_brief' => [
+                'brief_version' => 1,
+                'state' => 'imported',
+                'brief' => $brief,
+                'source_type' => 'legacy_247sp',
+                'source_reference' => '247sp_generated_websites:' . (int) $source['website']['id'],
+                'content_hash' => $briefHash,
+            ],
+            'pages' => $pages,
+            'theme' => [
+                'theme_key' => 'legacy_247sp_starter',
+                'theme_version' => 1,
+                'primary_color' => $themeSnapshot['primary_color'],
+                'secondary_color' => $themeSnapshot['secondary_color'],
+                'typography' => null,
+                'configuration' => $themeSnapshot['configuration'],
+                'content_hash' => self::hashValue($themeSnapshot),
+            ],
+            'assets' => $assets,
         ];
     }
 
