@@ -198,7 +198,7 @@ legacyImportTest('malformed and unsafe legacy content is rejected', static funct
     expectLegacyImportError($executable, 'unsafe_page_content');
 });
 
-legacyImportTest('ownership, slug, order, and variant collisions are rejected', static function (): void {
+legacyImportTest('ownership, slug, and variant collisions are rejected', static function (): void {
     $crossBusiness = legacySource();
     $crossBusiness['pages'][0]['business_id'] = 11;
     expectLegacyImportError($crossBusiness, 'cross_business_page');
@@ -207,13 +207,56 @@ legacyImportTest('ownership, slug, order, and variant collisions are rejected', 
     $slugCollision['pages'][1]['slug'] = 'home';
     expectLegacyImportError($slugCollision, 'page_slug_collision');
 
-    $orderCollision = legacySource();
-    $orderCollision['pages'][1]['sort_order'] = 10;
-    expectLegacyImportError($orderCollision, 'page_order_collision');
-
     $unsupported = legacySource();
     $unsupported['pages'][0]['page_type'] = 'pricing';
     expectLegacyImportError($unsupported, 'unsupported_page_type');
+});
+
+legacyImportTest('duplicate legacy orders normalize by effective runtime sequence with provenance', static function (): void {
+    $source = legacySource();
+    $websiteId = (int) $source['website']['id'];
+    $businessId = (int) $source['website']['business_id'];
+    $source['pages'] = [
+        legacyPage(101, $websiteId, $businessId, 'home', 'home', 10, ['name' => 'A']),
+        legacyPage(102, $websiteId, $businessId, 'service', 'service-one', 20, ['name' => 'B']),
+        legacyPage(103, $websiteId, $businessId, 'service', 'service-two', 50, ['name' => 'C']),
+        legacyPage(104, $websiteId, $businessId, 'about', 'about', 50, ['name' => 'D']),
+        legacyPage(105, $websiteId, $businessId, 'contact', 'contact', 60, ['name' => 'E']),
+    ];
+
+    validateLegacySource($source);
+    assertLegacyImport(array_column($source['pages'], 'id') === [101, 102, 103, 104, 105], 'Duplicate legacy orders must retain the lower-ID-first runtime sequence.');
+    assertLegacyImport(array_column($source['pages'], 'imported_sort_order') === [10, 20, 30, 40, 50], 'Every imported page must receive an ordinal generic sort order.');
+
+    $representation = legacyRevisionRepresentation($source);
+    assertLegacyImport(array_column($representation['pages'], 'sort_order') === [10, 20, 30, 40, 50], 'The canonical revision representation must use normalized generic order.');
+    assertLegacyImport(
+        array_column(array_column($representation['pages'], 'presentation'), 'legacy_sort_order') === [10, 20, 50, 50, 60],
+        'Canonical presentation metadata must retain every raw legacy sort order.'
+    );
+    assertLegacyImport(
+        array_column(array_column($representation['pages'], 'presentation'), 'legacy_page_id') === [101, 102, 103, 104, 105],
+        'Canonical presentation metadata must retain the effective legacy page-ID sequence.'
+    );
+});
+
+legacyImportTest('four-service generator collision imports as a unique equivalent sequence', static function (): void {
+    $source = legacySource(5, 6);
+    $source['pages'] = [
+        legacyPage(501, 5, 6, 'home', 'home', 10, ['name' => 'Home']),
+        legacyPage(502, 5, 6, 'service', 'service-one', 20, ['name' => 'Service 1']),
+        legacyPage(503, 5, 6, 'service', 'service-two', 30, ['name' => 'Service 2']),
+        legacyPage(504, 5, 6, 'service', 'service-three', 40, ['name' => 'Service 3']),
+        legacyPage(505, 5, 6, 'service', 'service-four', 50, ['name' => 'Service 4']),
+        legacyPage(506, 5, 6, 'about', 'about', 50, ['name' => 'About']),
+        legacyPage(507, 5, 6, 'contact', 'contact', 60, ['name' => 'Contact']),
+    ];
+
+    validateLegacySource($source);
+    $representation = legacyRevisionRepresentation($source);
+    assertLegacyImport(array_column($representation['pages'], 'sort_order') === [10, 20, 30, 40, 50, 60, 70], 'The four-service collision must normalize to seven unique generic positions.');
+    assertLegacyImport(array_column(array_column($representation['pages'], 'presentation'), 'legacy_page_id') === [501, 502, 503, 504, 505, 506, 507], 'The four-service presentation sequence must remain unchanged.');
+    assertLegacyImport(array_column(array_column($representation['pages'], 'presentation'), 'legacy_sort_order') === [10, 20, 30, 40, 50, 50, 60], 'The four-service raw legacy orders must remain in presentation provenance.');
 });
 
 legacyImportTest('strict MySQL destination widths are validated before writes', static function (): void {
@@ -262,6 +305,24 @@ legacyImportTest('source changes are visible to reconciliation', static function
     $originalPayload = callLegacyPrivate('sourceHashPayload', $originalArgs);
     $changedPayload = callLegacyPrivate('sourceHashPayload', $changedArgs);
     assertLegacyImport(legacyHash($originalPayload) !== legacyHash($changedPayload), 'A presentation change must change the source hash.');
+});
+
+legacyImportTest('source hashing detects raw sort-order drift independently of normalized order', static function (): void {
+    $original = legacySource();
+    $changed = legacySource();
+    $changed['pages'][1]['sort_order'] = 70;
+    validateLegacySource($original);
+    validateLegacySource($changed);
+    assertLegacyImport(
+        array_column($original['pages'], 'imported_sort_order') === array_column($changed['pages'], 'imported_sort_order'),
+        'Raw order drift must not change the ordinal generic positions when sequence is unchanged.'
+    );
+    $originalArgs = [&$original];
+    $changedArgs = [&$changed];
+    assertLegacyImport(
+        legacyHash(callLegacyPrivate('sourceHashPayload', $originalArgs)) !== legacyHash(callLegacyPrivate('sourceHashPayload', $changedArgs)),
+        'Raw legacy sort-order drift must change the source hash.'
+    );
 });
 
 legacyImportTest('canonical hashes ignore associative insertion order but preserve list order', static function (): void {

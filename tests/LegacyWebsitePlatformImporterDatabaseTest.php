@@ -208,7 +208,9 @@ final class LegacyImportDatabaseConnection extends PDO
             return [$row === null ? [] : [$row], 0];
         }
         if ($marker === 'load-pages') {
-            return [$this->legacyPages[(int) $params['website_id']] ?? [], 0];
+            $rows = $this->legacyPages[(int) $params['website_id']] ?? [];
+            usort($rows, static fn (array $a, array $b): int => [$a['sort_order'], $a['id']] <=> [$b['sort_order'], $b['id']]);
+            return [$rows, 0];
         }
         if (in_array($marker, ['load-overrides', 'load-service-images', 'load-service-pages', 'load-selected-service-references', 'load-custom-service-references'], true)) {
             return [[], 0];
@@ -292,6 +294,13 @@ final class LegacyImportDatabaseConnection extends PDO
             return [[], 1];
         }
         if ($marker === 'insert-revision-page') {
+            foreach ($this->revisionPages as $revisionPage) {
+                if ((int) $revisionPage['revision_id'] === (int) $params['revision_id']
+                    && (int) $revisionPage['sort_order'] === (int) $params['sort_order']
+                ) {
+                    throw new RuntimeException('Simulated UNIQUE (revision_id, sort_order) failure.');
+                }
+            }
             $id = $this->newId();
             $this->revisionPages[$id] = ['id' => $id, 'seo_json' => null] + $params;
             return [[], 1];
@@ -529,6 +538,38 @@ assertLegacyDatabase(
     hash_equals((string) $firstRevision['snapshot_hash'], (string) $firstMapping['imported_hash']),
     'The revision snapshot hash and mapping imported hash must store the same canonical evidence.'
 );
+
+$duplicateOrder = LegacyImportDatabaseConnection::fixture();
+$duplicateOrder->legacyPages[1] = [
+    ['id' => 101, 'website_id' => 1, 'business_id' => 101, 'page_type' => 'home', 'title' => 'Home', 'slug' => 'home', 'content_json' => '{"name":"Home"}', 'status' => 'generated', 'sort_order' => 10, 'created_at' => '2026-08-30 12:00:00', 'updated_at' => '2026-08-30 12:00:00'],
+    ['id' => 102, 'website_id' => 1, 'business_id' => 101, 'page_type' => 'service', 'title' => 'Service 1', 'slug' => 'service-one', 'content_json' => '{"name":"Service 1"}', 'status' => 'generated', 'sort_order' => 20, 'created_at' => '2026-08-30 12:00:00', 'updated_at' => '2026-08-30 12:00:00'],
+    ['id' => 103, 'website_id' => 1, 'business_id' => 101, 'page_type' => 'service', 'title' => 'Service 2', 'slug' => 'service-two', 'content_json' => '{"name":"Service 2"}', 'status' => 'generated', 'sort_order' => 30, 'created_at' => '2026-08-30 12:00:00', 'updated_at' => '2026-08-30 12:00:00'],
+    ['id' => 104, 'website_id' => 1, 'business_id' => 101, 'page_type' => 'service', 'title' => 'Service 3', 'slug' => 'service-three', 'content_json' => '{"name":"Service 3"}', 'status' => 'generated', 'sort_order' => 40, 'created_at' => '2026-08-30 12:00:00', 'updated_at' => '2026-08-30 12:00:00'],
+    ['id' => 105, 'website_id' => 1, 'business_id' => 101, 'page_type' => 'service', 'title' => 'Service 4', 'slug' => 'service-four', 'content_json' => '{"name":"Service 4"}', 'status' => 'generated', 'sort_order' => 50, 'created_at' => '2026-08-30 12:00:00', 'updated_at' => '2026-08-30 12:00:00'],
+    ['id' => 106, 'website_id' => 1, 'business_id' => 101, 'page_type' => 'about', 'title' => 'About', 'slug' => 'about', 'content_json' => '{"name":"About"}', 'status' => 'generated', 'sort_order' => 50, 'created_at' => '2026-08-30 12:00:00', 'updated_at' => '2026-08-30 12:00:00'],
+    ['id' => 107, 'website_id' => 1, 'business_id' => 101, 'page_type' => 'contact', 'title' => 'Contact', 'slug' => 'contact', 'content_json' => '{"name":"Contact"}', 'status' => 'generated', 'sort_order' => 60, 'created_at' => '2026-08-30 12:00:00', 'updated_at' => '2026-08-30 12:00:00'],
+];
+useLegacyDatabaseConnection($duplicateOrder);
+$duplicateResult = LegacyWebsitePlatformImporter::importWebsite(1);
+assertLegacyDatabase($duplicateResult['result'] === 'imported', 'Duplicate raw legacy sort orders must import without quarantine.');
+$duplicateMapping = $duplicateOrder->mappingByLegacyForTest(1);
+$duplicateRevisionId = (int) $duplicateMapping['import_revision_id'];
+$duplicateRevisionPages = array_values(array_filter(
+    $duplicateOrder->revisionPages,
+    static fn (array $page): bool => (int) $page['revision_id'] === $duplicateRevisionId
+));
+usort($duplicateRevisionPages, static fn (array $a, array $b): int => $a['sort_order'] <=> $b['sort_order']);
+assertLegacyDatabase(array_column($duplicateRevisionPages, 'sort_order') === [10, 20, 30, 40, 50, 60, 70], 'Duplicate legacy order must produce unique ordinal generic sort orders.');
+assertLegacyDatabase(count(array_unique(array_column($duplicateRevisionPages, 'sort_order'))) === 7, 'The fake database unique-order contract must observe zero generic duplicates.');
+$duplicatePresentation = array_map(static fn (array $page): array => json_decode((string) $page['presentation_json'], true, 512, JSON_THROW_ON_ERROR), $duplicateRevisionPages);
+assertLegacyDatabase(array_column($duplicatePresentation, 'legacy_page_id') === [101, 102, 103, 104, 105, 106, 107], 'Generic page sequence must preserve the legacy sort-order and ID sequence.');
+assertLegacyDatabase(array_column($duplicatePresentation, 'legacy_sort_order') === [10, 20, 30, 40, 50, 50, 60], 'Imported presentation metadata must retain duplicate raw legacy orders.');
+assertLegacyDatabase(hash_equals((string) $duplicateOrder->revisions[$duplicateRevisionId]['snapshot_hash'], (string) $duplicateMapping['imported_hash']), 'Duplicate-order import must preserve canonical preflight/import hash equality.');
+$duplicateComparison = LegacyWebsitePlatformImporter::compareWebsite(1);
+assertLegacyDatabase($duplicateComparison['source_matches'] === true, 'Duplicate-order import must reconcile its raw legacy source hash.');
+assertLegacyDatabase($duplicateComparison['import_matches'] === true && $duplicateComparison['revision_hash_matches'] === true, 'Duplicate-order calculated, stored revision, and mapping hashes must reconcile.');
+
+useLegacyDatabaseConnection($connection);
 
 $siteCount = count($connection->sites);
 $revisionCount = count($connection->revisions);
