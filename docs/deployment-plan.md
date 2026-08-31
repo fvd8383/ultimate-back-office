@@ -704,10 +704,12 @@ Create a new migration for each sprint that changes database structure.
 Migration `021_shared_business_profile.sql` is complete and staging validated. Do not
 rewrite migration 021 or historical repair migrations 019 and 020. Migration
 `022_247sp_pricing_cohorts.sql` is complete and staging validated PASS. Pricing P2 uses
-its existing durable tables and requires no new migration. The planned initial Sprint
-8.8 migration remains reserved as `023_website_platform_foundation.sql`; P2 must not
-create or repurpose it. Later additive migrations use the next available numbers in
-implementation order.
+its existing durable tables and requires no new migration. The initial Sprint 8.8 M1
+migration `023_website_platform_foundation.sql` is implemented locally for review but
+has not been applied or staging validated. P2 did not create or repurpose it. Applying
+migration 023 and running its bounded legacy import/reconciliation require separate
+approved staging validation after review and merge. Later additive migrations use the
+next available numbers in implementation order.
 
 Sprint 8.7 Milestone 4 also passed staging runtime validation on deployed commit
 `d11bd0e7d14b9d9dd432f3ce244a9b2bbebfafb7` without a migration or schema change.

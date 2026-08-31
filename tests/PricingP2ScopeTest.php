@@ -84,6 +84,15 @@ pricingP2ScopeAssert(str_contains($source['utility'], 'subscription_commercial_t
 pricingP2ScopeAssert(str_contains($source['utility'], 'allocation_count'), 'Price replacement must detect consumed cohort versions.');
 
 $migration023 = glob(__DIR__ . '/../database/migrations/023*');
-pricingP2ScopeAssert(is_array($migration023) && count($migration023) === 0, 'P2 must not create reserved migration 023.');
+pricingP2ScopeAssert(
+    is_array($migration023)
+        && count($migration023) === 1
+        && basename($migration023[0]) === '023_website_platform_foundation.sql',
+    'Reserved migration 023 may exist only as the Sprint 8.8 website-platform foundation.'
+);
+pricingP2ScopeAssert(
+    !str_contains(implode("\n", $source), '023_website_platform_foundation'),
+    'Pricing P2 runtime and utility files must not reference or repurpose migration 023.'
+);
 
 echo "Pricing P2 scope tests passed.\n";
