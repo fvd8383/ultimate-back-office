@@ -32,11 +32,33 @@ assertWebsiteScope(
     strpos($importer, 'collectAssetEvidence($preflightSource)') < strpos($importer, '$connection->beginTransaction()'),
     'Asset evidence collection must precede the write transaction.'
 );
-preg_match('/private static function importAssets\(.*?\n    }\n\n    private static function collectAssetEvidence/s', $importer, $importAssetMethod);
+preg_match('/private static function importAssets\(.*?\R    }\R\R    private static function collectAssetEvidence/s', $importer, $importAssetMethod);
 assertWebsiteScope(
     isset($importAssetMethod[0]) && !preg_match('/\b(?:realpath|hash_file|filesize|finfo_file|file_get_contents)\s*\(/', $importAssetMethod[0]),
     'The transactional asset writer must consume preflight evidence without filesystem inspection.'
 );
+preg_match('/private static function inspectAsset\(string \$publicPath\): array\s*\{.*?\R    \}/s', $importer, $productionInspectionMethod);
+preg_match('/private static function inspectAssetWithinRoot\(string \$publicPath, string \$publicRoot\): array\s*\{.*?\R    \}/s', $importer, $rootInspectionMethod);
+assertWebsiteScope(
+    isset($productionInspectionMethod[0])
+        && str_contains($productionInspectionMethod[0], "dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . 'public' . DIRECTORY_SEPARATOR . 'app'")
+        && str_contains($productionInspectionMethod[0], 'self::inspectAssetWithinRoot($publicPath, $root)'),
+    'Production asset inspection must derive repository public/app internally.'
+);
+assertWebsiteScope(
+    isset($rootInspectionMethod[0])
+        && str_contains($rootInspectionMethod[0], 'realpath($publicRoot)')
+        && str_contains($rootInspectionMethod[0], '!str_starts_with($candidate, $root . DIRECTORY_SEPARATOR)')
+        && !str_contains($rootInspectionMethod[0], 'Database::'),
+    'The private inspection seam must preserve realpath containment within its supplied root.'
+);
+assertWebsiteScope(substr_count($importer, 'inspectAssetWithinRoot(') === 2, 'Only production inspectAsset may call the private explicit-root inspection seam.');
+assertWebsiteScope(
+    !preg_match('/\bgetenv\s*\(|\$_(?:ENV|SERVER)\b/', $importer)
+        && !preg_match('/(?:public|asset|filesystem)[_-]?root/i', $cli),
+    'Environment and CLI configuration must not select the importer filesystem root.'
+);
+assertWebsiteScope(!preg_match('/\$_(?:GET|POST|REQUEST|FILES|COOKIE)\b/', $importer), 'Browser/request input must not select the importer filesystem root.');
 assertWebsiteScope(str_contains($importer, 'source_changed_during_import'), 'Locked DB source drift must produce an explicit retryable result.');
 assertWebsiteScope(str_contains($importer, 'source_changed'), 'A changed imported source must be quarantined instead of overwritten.');
 assertWebsiteScope(str_contains($importer, "'quarantine_evidence' =>") && str_contains($importer, "'persistence_failed'"), 'Quarantine durability must be explicit in returned results.');

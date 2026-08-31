@@ -305,28 +305,46 @@ legacyImportTest('source drift evidence includes asset bytes path size and type'
 });
 
 legacyImportTest('asset inspection detects byte drift missing files and unchanged files', static function (): void {
-    $directory = __DIR__ . '/../public/app/assets';
-    $path = tempnam($directory, 'm1-asset-');
-    if (!is_string($path)) {
-        throw new RuntimeException('Could not create an asset inspection fixture.');
+    $temporaryRoot = rtrim(sys_get_temp_dir(), DIRECTORY_SEPARATOR)
+        . DIRECTORY_SEPARATOR . 'ubo-m1-assets-' . bin2hex(random_bytes(12));
+    $assetsDirectory = $temporaryRoot . DIRECTORY_SEPARATOR . 'assets';
+    $path = $assetsDirectory . DIRECTORY_SEPARATOR . 'example.png';
+    $outsidePath = $temporaryRoot . '-outside.png';
+    $escapePath = $assetsDirectory . DIRECTORY_SEPARATOR . 'escape.png';
+    if (!mkdir($assetsDirectory, 0700, true)) {
+        throw new RuntimeException('Could not create an isolated asset inspection root.');
     }
-    $publicPath = str_replace('\\', '/', substr($path, strlen(realpath(__DIR__ . '/../public/app'))));
     try {
-        file_put_contents($path, 'first asset bytes');
-        $arguments = [$publicPath];
-        $first = callLegacyPrivate('inspectAsset', $arguments);
-        $sameArguments = [$publicPath];
-        $same = callLegacyPrivate('inspectAsset', $sameArguments);
+        if (file_put_contents($path, 'first asset bytes') === false) {
+            throw new RuntimeException('Could not write the isolated asset fixture.');
+        }
+        $arguments = ['/assets/example.png', $temporaryRoot];
+        $first = callLegacyPrivate('inspectAssetWithinRoot', $arguments);
+        $sameArguments = ['/assets/example.png', $temporaryRoot];
+        $same = callLegacyPrivate('inspectAssetWithinRoot', $sameArguments);
         assertLegacyImport($first === $same, 'An unchanged asset must produce identical evidence.');
 
         file_put_contents($path, 'second asset bytes');
-        $changedArguments = [$publicPath];
-        $changed = callLegacyPrivate('inspectAsset', $changedArguments);
+        $changedArguments = ['/assets/example.png', $temporaryRoot];
+        $changed = callLegacyPrivate('inspectAssetWithinRoot', $changedArguments);
         assertLegacyImport($first['checksum_sha256'] !== $changed['checksum_sha256'], 'Changed bytes at the same path must be detected.');
+
+        file_put_contents($outsidePath, 'outside root');
+        if (@symlink($outsidePath, $escapePath)) {
+            try {
+                $escapeArguments = ['/assets/escape.png', $temporaryRoot];
+                callLegacyPrivate('inspectAssetWithinRoot', $escapeArguments);
+                throw new RuntimeException('An asset resolving outside the supplied root was accepted.');
+            } catch (LegacyWebsiteImportException $exception) {
+                assertLegacyImport($exception->importErrorCode() === 'missing_asset', 'A resolved path outside the supplied root must be rejected.');
+            }
+            unlink($escapePath);
+        }
+
         unlink($path);
         try {
-            $missingArguments = [$publicPath];
-            callLegacyPrivate('inspectAsset', $missingArguments);
+            $missingArguments = ['/assets/example.png', $temporaryRoot];
+            callLegacyPrivate('inspectAssetWithinRoot', $missingArguments);
         } catch (LegacyWebsiteImportException $exception) {
             assertLegacyImport($exception->importErrorCode() === 'missing_asset', 'A deleted asset must report missing_asset.');
             return;
@@ -336,7 +354,26 @@ legacyImportTest('asset inspection detects byte drift missing files and unchange
         if (is_file($path)) {
             unlink($path);
         }
+        if (is_link($escapePath) || is_file($escapePath)) {
+            unlink($escapePath);
+        }
+        if (is_file($outsidePath)) {
+            unlink($outsidePath);
+        }
+        if (is_dir($assetsDirectory)) {
+            rmdir($assetsDirectory);
+        }
+        if (is_dir($temporaryRoot)) {
+            rmdir($temporaryRoot);
+        }
     }
+});
+
+legacyImportTest('production asset inspection remains anchored to repository public app', static function (): void {
+    $arguments = ['/assets/css/app.css'];
+    $evidence = callLegacyPrivate('inspectAsset', $arguments);
+    $expected = hash_file('sha256', __DIR__ . '/../public/app/assets/css/app.css');
+    assertLegacyImport(is_string($expected) && hash_equals($expected, $evidence['checksum_sha256']), 'Production inspection must resolve beneath repository public/app.');
 });
 
 legacyImportTest('logical page identity is stable and bounded', static function (): void {
