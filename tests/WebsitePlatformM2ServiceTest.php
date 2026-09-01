@@ -94,7 +94,11 @@ assertM2Service(strpos($revisions, 'SiteManager::lockSite($connection, $siteId)'
 assertM2Service(str_contains($revisions, 'assertSameSiteRevision') && str_contains($revisions, 'assertSameSiteBrief'), 'Revision ancestry and brief ownership must be checked.');
 assertM2Service(str_contains($revisions, "!== 'undetermined'"), 'Materiality must be write-once.');
 assertM2Service(str_contains($revisions, 'material_successor_revision'), 'Material successors must supersede older customer approvals.');
-assertM2Service(str_contains($revisions, "\$materiality === 'material'"), 'Supersession must be conditional on materiality.');
+assertM2Service(str_contains($revisions, "\$materiality !== 'material'"), 'Supersession must be conditional on materiality.');
+assertM2Service(substr_count($revisions, 'applyMaterialSuccessorInvalidation(') === 3, 'Classification and restore must share one material-successor invalidation path.');
+assertM2Service(str_contains($revisions, 'SiteManager::invalidatePrePublicationApprovalState'), 'Material successors must invalidate pre-publication site approval state.');
+assertM2Service(str_contains($sites, "['approved', 'pending_customer', 'pending_internal_review', 'suspended']"), 'Only pre-publication workflow states and suspension may enter successor invalidation handling.');
+assertM2Service(str_contains($sites, "'material_successor_revision'"), 'Material-successor site invalidation must use the stable audit reason.');
 assertM2Service(str_contains($revisions, 'Every revision page requires at least one section.'), 'Review readiness must require sections on every page.');
 assertM2Service(str_contains($revisions, 'Exactly one same-site revision theme is required.'), 'Review readiness must require one theme.');
 assertM2Service(str_contains($revisions, 'sps.revision_page_id <> sra.site_revision_page_id'), 'Asset page/section consistency must be checked.');
@@ -120,7 +124,8 @@ assertM2Service(str_contains($approvals, 'supersedeApprovedInternalApproval'), '
 assertM2Service(str_contains($approvals, "'site_revision_changes_requested'"), 'Rejection must audit changes requested.');
 assertM2Service(str_contains($approvals, 'supersedes_approval_id'), 'Truthful customer decision linkage must be supported.');
 
-foreach (['createSite', 'transitionLifecycle', 'siteForActor', 'sitesForBusiness', 'activeBusinessAssociation'] as $method) {
+foreach (['createSite', 'transitionLifecycle', 'siteForActor', 'sitesForBusiness', 'activeBusinessAssociation',
+          'invalidatePrePublicationApprovalState'] as $method) {
     assertM2Service(method_exists(SiteManager::class, $method), "SiteManager::{$method} must exist.");
 }
 foreach (['createRevision', 'updateDraftSnapshot', 'assertRevisionMutableForComposition', 'classifyMateriality',

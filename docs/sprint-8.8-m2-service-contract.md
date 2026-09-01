@@ -130,7 +130,16 @@ audit metadata identifies approval type and successor revision. Approval decisio
 reject an older request whenever a newer material same-site revision exists, even if an
 inconsistent requested row somehow survived invalidation.
 
-Classifying a revision `non_material` does not supersede older customer approval.
+The same material-successor transaction also invalidates the site's pre-publication
+approval workflow state: `approved`, `pending_customer`, and
+`pending_internal_review` return to `draft` through `SiteManager`, with the ordinary
+transactional lifecycle audit. `suspended` remains suspended without a lock-version
+change or false lifecycle event. `draft`, `demo`, and later-gated states remain
+unchanged; in particular M2 never downgrades active published operation. Material
+restore candidates apply this same invalidation and remain unpublished.
+
+Classifying a revision `non_material` does not supersede older customer approval or
+reset the site lifecycle state.
 Migration 023 intentionally enforces current approval uniqueness per revision/type,
 not globally per site/type. Non-material never means customer approval is unnecessary:
 the revision may proceed to internal review only when it inherits exactly one still-

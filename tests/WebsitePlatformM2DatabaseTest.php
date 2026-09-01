@@ -62,9 +62,11 @@ foreach ([
 assertM2Database(str_contains($migration, 'CASE WHEN state = \'approved\' AND revoked_at IS NULL THEN revision_id ELSE NULL END'), 'Current approval uniqueness must be revision-specific.');
 assertM2Database(!str_contains($migration, 'current_approved_site_id'), 'Approval uniqueness must not become global per site/type.');
 assertM2Database(str_contains($revisions, 'revision_number < :revision_number'), 'Material successor logic must explicitly target older revisions.');
-assertM2Database(str_contains($revisions, "\$materiality === 'material'"), 'Only material successors may supersede prior customer approval.');
+assertM2Database(str_contains($revisions, "\$materiality !== 'material'"), 'Only material successors may supersede prior customer approval.');
 assertM2Database(str_contains($revisions, 'decided_at = CASE WHEN state = :requested_state THEN NOW() ELSE decided_at END'), 'Material successors must close requested workflows without replacing approved decision times.');
 assertM2Database(str_contains($revisions, 'sa.approval_type = :internal_type') && str_contains($revisions, 'requested_internal_state'), 'Material successors must close dependent internal requests.');
+assertM2Database(strpos($revisions, 'self::supersedeOlderCustomerApprovals(') < strpos($revisions, 'SiteManager::invalidatePrePublicationApprovalState('), 'Approval rows must be superseded before site approval state is invalidated.');
+assertM2Database(str_contains($sites, "'material_successor_revision'") && str_contains($sites, "'site_lifecycle_changed'"), 'Material-successor site lifecycle audit must use the normal transactional event path.');
 assertM2Database(str_contains($support, 'sr.revision_number < :target_revision_number'), 'Non-material effective approval must come from an earlier revision.');
 assertM2Database(str_contains($approvals, 'sr.revision_number < :current_revision_number'), 'Approval linkage must never point backward from an older revision to a newer decision.');
 

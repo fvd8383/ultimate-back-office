@@ -343,6 +343,7 @@ function m2Approval(int $id, int $revisionId, string $type, string $state): arra
 $internalGate = new ReflectionMethod(SiteApprovalManager::class, 'assertInternalApprovalEligible');
 $revocationGate = new ReflectionMethod(SiteApprovalManager::class, 'assertApprovalRevocationGate');
 $approvalGate = new ReflectionMethod(SiteManager::class, 'assertApprovalGate');
+$materialSuccessor = new ReflectionMethod(SiteRevisionManager::class, 'applyMaterialSuccessorInvalidation');
 
 m2InvariantTest('first non-material revision cannot bypass customer approval', static function () use ($internalGate): void {
     $connection = new M2InvariantConnection();
@@ -555,17 +556,169 @@ m2InvariantTest('M3 lock helper enforces same-transaction mutable states', stati
     expectM2InvariantError(static fn () => SiteRevisionManager::lockMutableRevisionForComposition($outsideTransaction, 1, 1), 'conflict');
 });
 
-m2InvariantTest('site approval gate rejects non-material approval after inherited baseline is superseded', static function () use ($approvalGate): void {
+m2InvariantTest('material successor resets approved site and invalidates inherited launch approval', static function () use ($approvalGate, $materialSuccessor): void {
     $connection = new M2InvariantConnection();
+    $connection->sites = [1 => m2Site(7, 'approved')];
     $connection->revisions = [
-        1 => m2Revision(1, 1, 'material', 'customer_approved'),
+        1 => m2Revision(1, 1, 'material', 'internally_approved'),
         2 => m2Revision(2, 2, 'non_material', 'internally_approved'),
         3 => m2Revision(3, 3, 'material', 'draft'),
     ];
-    $connection->approvals = [10 => m2Approval(10, 1, 'customer', 'approved'), 20 => m2Approval(20, 2, 'internal', 'approved')];
-    $supersede = new ReflectionMethod(SiteRevisionManager::class, 'supersedeOlderCustomerApprovals');
-    $supersede->invoke(null, $connection, 1, 3, 3, ['acting_user_id' => 7, 'actor_type' => 'internal_admin'], 'test:material');
+    $connection->approvals = [
+        10 => m2Approval(10, 1, 'customer', 'approved'),
+        11 => m2Approval(11, 1, 'internal', 'approved'),
+        20 => m2Approval(20, 2, 'internal', 'approved'),
+    ];
+    $ids = $materialSuccessor->invoke(
+        null,
+        $connection,
+        $connection->sites[1],
+        3,
+        3,
+        'material',
+        ['acting_user_id' => 7, 'actor_type' => 'internal_admin'],
+        'test:material'
+    );
+    assertM2Invariant($ids === [10], 'The material successor must invalidate the older customer approval basis.');
+    assertM2Invariant($connection->approvals[10]['state'] === 'superseded', 'The older customer approval must be superseded.');
+    assertM2Invariant($connection->sites[1]['lifecycle_status'] === 'draft', 'An approved pre-publication site must return to draft.');
+    assertM2Invariant($connection->sites[1]['lock_version'] === 8, 'The actual site lifecycle change must increment lock_version.');
     expectM2InvariantError(static fn () => $approvalGate->invoke(null, $connection, 1), 'invalid_transition');
+    assertM2Invariant($connection->revisions[3]['published_at'] === null, 'Material successor classification must not publish.');
+    $lifecycleEvents = array_values(array_filter(
+        $connection->events,
+        static fn (array $event): bool => $event['event_type'] === 'site_lifecycle_changed'
+    ));
+    assertM2Invariant(count($lifecycleEvents) === 1, 'The site downgrade must emit exactly one lifecycle event.');
+    assertM2Invariant($lifecycleEvents[0]['reason'] === 'material_successor_revision', 'The lifecycle event must use the material-successor reason.');
+    assertM2Invariant(
+        json_decode((string) $lifecycleEvents[0]['metadata_json'], true) === ['from' => 'approved', 'to' => 'draft', 'lock_version' => 8],
+        'The lifecycle event must record the approved-to-draft transition.'
+    );
+});
+
+m2InvariantTest('material successor resets pending approval workflows', static function () use ($materialSuccessor): void {
+    foreach (['pending_customer', 'pending_internal_review'] as $siteStatus) {
+        $connection = new M2InvariantConnection();
+        $connection->sites = [1 => m2Site(2, $siteStatus)];
+        $connection->revisions = [
+            1 => m2Revision(1, 1, 'material', 'customer_approved'),
+            2 => m2Revision(2, 2, 'non_material', 'ready_for_review'),
+            3 => m2Revision(3, 3, 'material', 'draft'),
+        ];
+        $connection->approvals = $siteStatus === 'pending_customer'
+            ? [10 => m2Approval(10, 1, 'customer', 'requested')]
+            : [10 => m2Approval(10, 1, 'customer', 'approved'), 20 => m2Approval(20, 2, 'internal', 'requested')];
+        $materialSuccessor->invoke(
+            null,
+            $connection,
+            $connection->sites[1],
+            3,
+            3,
+            'material',
+            ['acting_user_id' => 7, 'actor_type' => 'internal_admin'],
+            'test:pending'
+        );
+        assertM2Invariant($connection->sites[1]['lifecycle_status'] === 'draft', "{$siteStatus} must return to draft.");
+        assertM2Invariant($connection->sites[1]['lock_version'] === 3, 'A pending workflow reset must increment lock_version.');
+        foreach ($connection->approvals as $approval) {
+            assertM2Invariant($approval['state'] === 'superseded', 'Every stale requested/baseline approval must be superseded.');
+        }
+    }
+});
+
+m2InvariantTest('material successor preserves suspended site while invalidating approvals', static function () use ($materialSuccessor): void {
+    $connection = new M2InvariantConnection();
+    $connection->sites = [1 => m2Site(5, 'suspended')];
+    $connection->revisions = [1 => m2Revision(1, 1, 'material', 'customer_approved'), 2 => m2Revision(2, 2, 'material', 'draft')];
+    $connection->approvals = [10 => m2Approval(10, 1, 'customer', 'approved')];
+    $materialSuccessor->invoke(
+        null,
+        $connection,
+        $connection->sites[1],
+        2,
+        2,
+        'material',
+        ['acting_user_id' => 7, 'actor_type' => 'internal_admin'],
+        'test:suspended-material'
+    );
+    assertM2Invariant($connection->approvals[10]['state'] === 'superseded', 'Suspension must not prevent approval invalidation.');
+    assertM2Invariant($connection->sites[1]['lifecycle_status'] === 'suspended', 'Material successor must not unsuspend the site.');
+    assertM2Invariant($connection->sites[1]['lock_version'] === 5, 'Suspension preservation must not increment lock_version.');
+    assertM2Invariant(
+        array_filter($connection->events, static fn (array $event): bool => $event['event_type'] === 'site_lifecycle_changed') === [],
+        'Suspension preservation must not emit a lifecycle event.'
+    );
+});
+
+m2InvariantTest('non-material successor preserves approved site and customer baseline', static function () use ($materialSuccessor): void {
+    $connection = new M2InvariantConnection();
+    $connection->sites = [1 => m2Site(4, 'approved')];
+    $connection->revisions = [1 => m2Revision(1, 1, 'material', 'customer_approved'), 2 => m2Revision(2, 2, 'non_material', 'draft')];
+    $connection->approvals = [10 => m2Approval(10, 1, 'customer', 'approved')];
+    $ids = $materialSuccessor->invoke(
+        null,
+        $connection,
+        $connection->sites[1],
+        2,
+        2,
+        'non_material',
+        ['acting_user_id' => 7, 'actor_type' => 'internal_admin'],
+        'test:non-material'
+    );
+    assertM2Invariant($ids === [], 'Non-material classification must not invalidate approval rows.');
+    assertM2Invariant($connection->approvals[10]['state'] === 'approved', 'The earlier customer baseline must remain current.');
+    assertM2Invariant($connection->sites[1]['lifecycle_status'] === 'approved', 'Non-material classification must not downgrade the site.');
+    assertM2Invariant($connection->sites[1]['lock_version'] === 4, 'Non-material classification must not change the site lock version.');
+    assertM2Invariant($connection->events === [], 'Non-material classification must not emit invalidation events.');
+});
+
+m2InvariantTest('material restore resets approved site and preserves suspended site', static function () use ($materialSuccessor): void {
+    foreach (['approved' => 'draft', 'suspended' => 'suspended'] as $initial => $expected) {
+        $connection = new M2InvariantConnection();
+        $connection->sites = [1 => m2Site(6, $initial)];
+        $connection->revisions = [
+            1 => m2Revision(1, 1, 'material', 'internally_approved'),
+            2 => m2Revision(2, 2, 'material', 'restored'),
+        ];
+        $connection->approvals = [10 => m2Approval(10, 1, 'customer', 'approved')];
+        $materialSuccessor->invoke(
+            null,
+            $connection,
+            $connection->sites[1],
+            2,
+            2,
+            'material',
+            ['acting_user_id' => 7, 'actor_type' => 'internal_admin'],
+            'test:restore'
+        );
+        assertM2Invariant($connection->approvals[10]['state'] === 'superseded', 'A material restore must invalidate the prior customer approval.');
+        assertM2Invariant($connection->sites[1]['lifecycle_status'] === $expected, "Restore must leave {$initial} site as {$expected}.");
+        assertM2Invariant($connection->revisions[2]['lifecycle_status'] === 'restored', 'Restore candidate must remain in restored state.');
+        assertM2Invariant($connection->revisions[2]['published_at'] === null, 'Restore candidate must remain unpublished.');
+        assertM2Invariant($connection->sites[1]['lock_version'] === ($initial === 'approved' ? 7 : 6), 'Restore must change lock_version only for an actual lifecycle change.');
+    }
+});
+
+m2InvariantTest('material successor leaves non-workflow and future site states unchanged', static function () use ($materialSuccessor): void {
+    foreach (['draft', 'demo', 'active', 'cancellation_pending', 'conversion_pending'] as $siteStatus) {
+        $connection = new M2InvariantConnection();
+        $connection->sites = [1 => m2Site(9, $siteStatus)];
+        $connection->revisions = [1 => m2Revision(1, 1, 'material', 'draft')];
+        $materialSuccessor->invoke(
+            null,
+            $connection,
+            $connection->sites[1],
+            1,
+            1,
+            'material',
+            ['acting_user_id' => 7, 'actor_type' => 'internal_admin'],
+            'test:unchanged'
+        );
+        assertM2Invariant($connection->sites[1]['lifecycle_status'] === $siteStatus, "{$siteStatus} must not be downgraded.");
+        assertM2Invariant($connection->sites[1]['lock_version'] === 9, 'Unchanged material-successor state must preserve lock_version.');
+        assertM2Invariant($connection->events === [], 'Unchanged material-successor state must not emit events.');
+    }
 });
 
 echo "Website platform M2 approval invariants: {$tests} tests, {$assertions} assertions passed.\n";

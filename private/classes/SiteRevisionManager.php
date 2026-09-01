@@ -247,16 +247,15 @@ final class SiteRevisionManager
                 throw new SiteServiceException('conflict', 'Revision materiality was already classified.');
             }
 
-            $superseded = $materiality === 'material'
-                ? self::supersedeOlderCustomerApprovals(
-                    $connection,
-                    (int) $revision['site_id'],
-                    (int) $revision['revision_number'],
-                    $revisionId,
-                    $actor,
-                    $correlationId
-                )
-                : [];
+            $superseded = self::applyMaterialSuccessorInvalidation(
+                $connection,
+                $site,
+                (int) $revision['revision_number'],
+                $revisionId,
+                $materiality,
+                $actor,
+                $correlationId
+            );
             SiteServiceSupport::event(
                 $connection, (int) $revision['site_id'], $revisionId, $actor,
                 'site_revision_materiality_classified', $correlationId, $reason,
@@ -360,11 +359,12 @@ final class SiteRevisionManager
             ]);
             $revisionId = (int) $connection->lastInsertId();
             self::copyComposition($connection, $siteId, $sourceRevisionId, $revisionId);
-            $superseded = self::supersedeOlderCustomerApprovals(
+            $superseded = self::applyMaterialSuccessorInvalidation(
                 $connection,
-                $siteId,
+                $site,
                 $revisionNumber,
                 $revisionId,
+                'material',
                 $actor,
                 $correlationId
             );
@@ -796,6 +796,35 @@ final class SiteRevisionManager
             );
         }
         return $ids;
+    }
+
+    private static function applyMaterialSuccessorInvalidation(
+        object $connection,
+        array $site,
+        int $successorRevisionNumber,
+        int $successorRevisionId,
+        string $materiality,
+        array $actor,
+        string $correlationId
+    ): array {
+        if ($materiality !== 'material') {
+            return [];
+        }
+        $superseded = self::supersedeOlderCustomerApprovals(
+            $connection,
+            (int) $site['id'],
+            $successorRevisionNumber,
+            $successorRevisionId,
+            $actor,
+            $correlationId
+        );
+        SiteManager::invalidatePrePublicationApprovalState(
+            $connection,
+            $site,
+            $actor,
+            $correlationId
+        );
+        return $superseded;
     }
 
     private static function copyComposition(object $connection, int $siteId, int $sourceRevisionId, int $revisionId): void

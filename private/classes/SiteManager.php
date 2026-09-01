@@ -250,6 +250,35 @@ final class SiteManager
         ];
     }
 
+    /** @internal Invalidates only pre-publication approval workflow state after a material successor. */
+    public static function invalidatePrePublicationApprovalState(
+        object $connection,
+        array $site,
+        array $actor,
+        string $correlationId
+    ): array {
+        SiteServiceSupport::assertSiteOperational($site);
+        $current = (string) $site['lifecycle_status'];
+        if (!in_array($current, ['approved', 'pending_customer', 'pending_internal_review', 'suspended'], true)) {
+            return [
+                'site_id' => (int) $site['id'],
+                'lifecycle_status' => $current,
+                'lock_version' => (int) $site['lock_version'],
+                'approval_state_invalidated' => false,
+            ];
+        }
+        return self::applyLifecycleTransition(
+            $connection,
+            $site,
+            'draft',
+            null,
+            $actor,
+            $correlationId,
+            'material_successor_revision',
+            true
+        ) + ['approval_state_invalidated' => $current !== 'suspended'];
+    }
+
     /** @internal */
     public static function lockSite(object $connection, int $siteId): array
     {
