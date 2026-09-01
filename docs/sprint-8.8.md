@@ -5,7 +5,8 @@
 Sprint 8.8 overall is **IN PROGRESS**. M1 is **COMPLETE / STAGING PASS** on validated
 and deployed SHA `2a545a056f650122a3d9ccbf077f35cef83f6065`; migration
 `023_website_platform_foundation.sql` is applied and reconciled on staging. M2 is
-**NEXT / NOT STARTED**. Production is **UNAUTHORIZED / NOT DEPLOYED**. The detailed M1
+**IMPLEMENTED LOCALLY / REVIEW REQUIRED / STAGING VALIDATION PENDING**. Production is
+**UNAUTHORIZED / NOT DEPLOYED**. The detailed M1
 completion record is `docs/sprint-8.8-m1-closeout.md`.
 
 The sprint implements the approved generic 247SP/EMD website platform in eight focused
@@ -161,7 +162,16 @@ SHA-256 `db9dcf37aaac700b12604555f32c01d974c28a6a520c6bf1a8a28a97152f6daf`.
 
 ## M2 — `SiteManager` + Revision/Lifecycle/Approval Services
 
-Status: **NEXT / NOT STARTED**.
+Status: **IMPLEMENTED LOCALLY / REVIEW REQUIRED / STAGING VALIDATION PENDING**.
+
+The local M2 implementation adds the reusable authorization policy and focused site,
+revision, and approval managers without route/UI integration or schema changes. It
+keeps site activation and revision publication future-gated, applies revision-specific
+customer approval supersession only to material successors, preserves prior customer
+approval for non-material successors, creates restores as new unpublished revisions,
+and records success audit inside each mutation transaction. The detailed contract is
+`docs/sprint-8.8-m2-service-contract.md`. M2 is not complete until review, merge,
+approved staging deployment, and staging validation succeed.
 
 ### Deliverables
 
