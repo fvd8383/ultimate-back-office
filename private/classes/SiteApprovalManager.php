@@ -27,7 +27,22 @@ final class SiteApprovalManager
         ): array {
             $revisionProbe = self::revisionIdentity($connection, $revisionId);
             $site = SiteManager::lockSite($connection, (int) $revisionProbe['site_id']);
+            SiteServiceSupport::assertSiteOperational($site);
             $revision = SiteRevisionManager::lockRevision($connection, $revisionId);
+            if ((int) $revision['site_id'] !== (int) $site['id']) {
+                throw new SiteServiceException('conflict', 'Revision ownership is inconsistent.');
+            }
+            SiteServiceSupport::assertNoNewerMaterialRevision($connection, $revision);
+            if ($approvalType === 'customer') {
+                if ((string) $revision['materiality'] !== 'material'
+                    || (string) $revision['lifecycle_status'] !== 'ready_for_review') {
+                    throw new SiteServiceException('invalid_transition', 'Customer approval requires a material review-ready revision.');
+                }
+                $targetSiteStatus = 'pending_customer';
+            } else {
+                self::assertInternalApprovalEligible($connection, $revision);
+                $targetSiteStatus = 'pending_internal_review';
+            }
             $open = $connection->prepare(
                 'SELECT id, correlation_id
                  FROM site_approvals
@@ -52,28 +67,6 @@ final class SiteApprovalManager
                     'idempotent' => true,
                     'correlation_id' => (string) ($existing['correlation_id'] ?: $correlationId),
                 ];
-            }
-
-            if ($approvalType === 'customer') {
-                if ((string) $revision['materiality'] !== 'material'
-                    || (string) $revision['lifecycle_status'] !== 'ready_for_review') {
-                    throw new SiteServiceException('invalid_transition', 'Customer approval requires a material review-ready revision.');
-                }
-                $targetSiteStatus = 'pending_customer';
-            } else {
-                if ((string) $revision['materiality'] === 'material') {
-                    if ((string) $revision['lifecycle_status'] !== 'customer_approved'
-                        || !self::hasCurrentApproval($connection, $revisionId, 'customer')) {
-                        throw new SiteServiceException('invalid_transition', 'Material revisions require current customer approval first.');
-                    }
-                } elseif ((string) $revision['materiality'] === 'non_material') {
-                    if ((string) $revision['lifecycle_status'] !== 'ready_for_review') {
-                        throw new SiteServiceException('invalid_transition', 'Non-material internal approval requires a review-ready revision.');
-                    }
-                } else {
-                    throw new SiteServiceException('invalid_transition', 'Revision materiality must be classified first.');
-                }
-                $targetSiteStatus = 'pending_internal_review';
             }
 
             $metadata = [
@@ -103,7 +96,7 @@ final class SiteApprovalManager
             $approvalId = (int) $connection->lastInsertId();
             SiteManager::applyLifecycleTransition(
                 $connection, $site, $targetSiteStatus, null, $actor, $correlationId,
-                $approvalType . '_approval_requested'
+                $approvalType . '_approval_requested', true
             );
             SiteServiceSupport::event(
                 $connection, (int) $revision['site_id'], $revisionId, $actor,
@@ -146,7 +139,9 @@ final class SiteApprovalManager
         ): array {
             $probe = self::approvalIdentityWithConnection($connection, $approvalId);
             $site = SiteManager::lockSite($connection, (int) $probe['site_id']);
+            SiteServiceSupport::assertSiteOperational($site);
             $revision = SiteRevisionManager::lockRevision($connection, (int) $probe['revision_id']);
+            SiteServiceSupport::assertNoNewerMaterialRevision($connection, $revision);
             $approval = self::lockApproval($connection, $approvalId);
             if ((string) $approval['state'] !== 'requested') {
                 throw new SiteServiceException('conflict', 'Only a requested approval can be decided.');
@@ -154,12 +149,11 @@ final class SiteApprovalManager
             if ((int) $approval['site_id'] !== (int) $revision['site_id']) {
                 throw new SiteServiceException('conflict', 'Approval ownership is inconsistent.');
             }
-
             $approvalType = (string) $approval['approval_type'];
             if ($decision === 'approved') {
                 self::assertApprovalDecisionGate($connection, $revision, $approvalType);
                 $supersedesApprovalId = $approvalType === 'customer'
-                    ? self::priorCustomerDecision($connection, (int) $approval['site_id'])
+                    ? self::priorCustomerDecision($connection, $revision)
                     : null;
                 $update = $connection->prepare(
                     'UPDATE site_approvals
@@ -185,7 +179,7 @@ final class SiteApprovalManager
                 SiteRevisionManager::applyLifecycleTransition($connection, $revision, $revisionTarget);
                 SiteManager::applyLifecycleTransition(
                     $connection, $site, $siteTarget, null, $actor, $correlationId,
-                    $approvalType . '_approval_approved'
+                    $approvalType . '_approval_approved', true
                 );
                 SiteServiceSupport::event(
                     $connection, (int) $approval['site_id'], (int) $approval['revision_id'], $actor,
@@ -216,7 +210,7 @@ final class SiteApprovalManager
                 );
                 SiteRevisionManager::applyLifecycleTransition($connection, $revision, 'changes_requested');
                 SiteManager::applyLifecycleTransition(
-                    $connection, $site, 'draft', null, $actor, $correlationId, 'approval_rejected'
+                    $connection, $site, 'draft', null, $actor, $correlationId, 'approval_rejected', true
                 );
                 SiteServiceSupport::event(
                     $connection, (int) $approval['site_id'], (int) $approval['revision_id'], $actor,
@@ -260,21 +254,19 @@ final class SiteApprovalManager
         ): array {
             $probe = self::approvalIdentityWithConnection($connection, $approvalId);
             $site = SiteManager::lockSite($connection, (int) $probe['site_id']);
+            SiteServiceSupport::assertSiteOperational($site);
             $revision = SiteRevisionManager::lockRevision($connection, (int) $probe['revision_id']);
             $approval = self::lockApproval($connection, $approvalId);
+            if ((int) $approval['site_id'] !== (int) $site['id']
+                || (int) $approval['revision_id'] !== (int) $revision['id']
+                || (int) $revision['site_id'] !== (int) $site['id']) {
+                throw new SiteServiceException('conflict', 'Approval ownership is inconsistent.');
+            }
             if ((string) $approval['state'] !== 'approved' || $approval['revoked_at'] !== null) {
                 throw new SiteServiceException('conflict', 'Only a current approved approval can be revoked.');
             }
-            if ((string) $revision['lifecycle_status'] === 'published') {
-                throw new SiteServiceException('future_gate_required', 'Published approval history requires the later deployment rollback workflow.');
-            }
             $approvalType = (string) $approval['approval_type'];
-            if ($approvalType === 'customer' && (string) $revision['lifecycle_status'] !== 'customer_approved') {
-                throw new SiteServiceException('invalid_transition', 'Customer approval can only be revoked before internal approval.');
-            }
-            if ($approvalType === 'internal' && (string) $revision['lifecycle_status'] !== 'internally_approved') {
-                throw new SiteServiceException('invalid_transition', 'The revision is not currently internally approved.');
-            }
+            self::assertApprovalRevocationGate($revision, $approvalType);
 
             $update = $connection->prepare(
                 'UPDATE site_approvals
@@ -298,24 +290,36 @@ final class SiteApprovalManager
                 self::supersedeRequestedInternalApprovals(
                     $connection,
                     $approval,
-                    $actor,
                     $correlationId,
                     'customer_approval_revoked'
                 );
+                if ((string) $revision['lifecycle_status'] === 'internally_approved') {
+                    self::supersedeApprovedInternalApproval(
+                        $connection,
+                        $approval,
+                        $correlationId,
+                        'customer_approval_revoked'
+                    );
+                }
                 $revisionTarget = 'ready_for_review';
                 $siteTarget = 'pending_customer';
+                $fallbackCause = 'customer_approval_revoked';
             } elseif ((string) $revision['materiality'] === 'material'
-                && self::hasCurrentApproval($connection, (int) $revision['id'], 'customer')) {
+                && SiteServiceSupport::effectiveCustomerApproval($connection, $revision) !== null) {
                 $revisionTarget = 'customer_approved';
                 $siteTarget = 'pending_internal_review';
+                $fallbackCause = 'internal_approval_revoked';
             } else {
                 $revisionTarget = 'ready_for_review';
                 $siteTarget = 'pending_internal_review';
+                $fallbackCause = 'internal_approval_revoked';
             }
-            SiteRevisionManager::applyLifecycleTransition($connection, $revision, $revisionTarget);
-            SiteManager::applyLifecycleTransition(
+            SiteRevisionManager::applyApprovalInvalidationFallback(
+                $connection, $revision, $revisionTarget, $fallbackCause
+            );
+            $siteResult = SiteManager::applyLifecycleTransition(
                 $connection, $site, $siteTarget, null, $actor, $correlationId,
-                $approvalType . '_approval_revoked'
+                $approvalType . '_approval_revoked', true
             );
             SiteServiceSupport::event(
                 $connection, (int) $approval['site_id'], (int) $approval['revision_id'], $actor,
@@ -329,7 +333,7 @@ final class SiteApprovalManager
                 'approval_type' => $approvalType,
                 'state' => 'revoked',
                 'revision_status' => $revisionTarget,
-                'site_status' => $siteTarget,
+                'site_status' => (string) $siteResult['lifecycle_status'],
                 'correlation_id' => $correlationId,
             ];
         });
@@ -421,48 +425,62 @@ final class SiteApprovalManager
             return;
         }
         if ((string) $revision['materiality'] === 'material') {
+            self::assertInternalApprovalEligible($connection, $revision);
+            return;
+        }
+        self::assertInternalApprovalEligible($connection, $revision);
+    }
+
+    private static function assertInternalApprovalEligible(object $connection, array $revision): void
+    {
+        if ((string) $revision['materiality'] === 'material') {
             if ((string) $revision['lifecycle_status'] !== 'customer_approved'
-                || !self::hasCurrentApproval($connection, (int) $revision['id'], 'customer')) {
-                throw new SiteServiceException('invalid_transition', 'Material internal approval requires current customer approval.');
+                || SiteServiceSupport::effectiveCustomerApproval($connection, $revision) === null) {
+                throw new SiteServiceException('invalid_transition', 'Material revisions require current customer approval first.');
             }
             return;
         }
         if ((string) $revision['materiality'] !== 'non_material'
-            || (string) $revision['lifecycle_status'] !== 'ready_for_review') {
-            throw new SiteServiceException('invalid_transition', 'Internal approval requires an eligible review-ready revision.');
+            || (string) $revision['lifecycle_status'] !== 'ready_for_review'
+            || SiteServiceSupport::effectiveCustomerApproval($connection, $revision) === null) {
+            throw new SiteServiceException(
+                'invalid_transition',
+                'A non-material revision requires an existing customer-approved public baseline.'
+            );
         }
     }
 
-    private static function hasCurrentApproval(object $connection, int $revisionId, string $approvalType): bool
+    private static function assertApprovalRevocationGate(array $revision, string $approvalType): void
     {
-        $statement = $connection->prepare(
-            'SELECT 1 FROM site_approvals
-             WHERE revision_id = :revision_id AND approval_type = :approval_type
-               AND state = :state AND revoked_at IS NULL
-             LIMIT 1'
-        );
-        $statement->execute([
-            'revision_id' => $revisionId,
-            'approval_type' => $approvalType,
-            'state' => 'approved',
-        ]);
-        return (bool) $statement->fetchColumn();
+        if ((string) $revision['lifecycle_status'] === 'published') {
+            throw new SiteServiceException('future_gate_required', 'Published approval history requires the later deployment rollback workflow.');
+        }
+        if ($approvalType === 'customer'
+            && !in_array((string) $revision['lifecycle_status'], ['customer_approved', 'internally_approved'], true)) {
+            throw new SiteServiceException('invalid_transition', 'Customer approval can only be revoked before publication.');
+        }
+        if ($approvalType === 'internal' && (string) $revision['lifecycle_status'] !== 'internally_approved') {
+            throw new SiteServiceException('invalid_transition', 'The revision is not currently internally approved.');
+        }
     }
 
-    private static function priorCustomerDecision(object $connection, int $siteId): ?int
+    private static function priorCustomerDecision(object $connection, array $revision): ?int
     {
         $statement = $connection->prepare(
-            'SELECT sa.id
+            '/* site-m2:prior-customer-decision */
+             SELECT sa.id
              FROM site_approvals sa
              INNER JOIN site_revisions sr ON sr.id = sa.revision_id AND sr.site_id = sa.site_id
              WHERE sa.site_id = :site_id
+               AND sr.revision_number < :current_revision_number
                AND sa.approval_type = :approval_type
                AND sa.state IN (:superseded_state, :revoked_state)
              ORDER BY COALESCE(sa.revoked_at, sa.decided_at, sa.requested_at) DESC, sa.id DESC
              LIMIT 1'
         );
         $statement->execute([
-            'site_id' => $siteId,
+            'site_id' => (int) $revision['site_id'],
+            'current_revision_number' => (int) $revision['revision_number'],
             'approval_type' => 'customer',
             'superseded_state' => 'superseded',
             'revoked_state' => 'revoked',
@@ -474,7 +492,6 @@ final class SiteApprovalManager
     private static function supersedeRequestedInternalApprovals(
         object $connection,
         array $customerApproval,
-        array $actor,
         string $correlationId,
         string $reason
     ): void {
@@ -493,7 +510,7 @@ final class SiteApprovalManager
         ]);
         foreach ($statement->fetchAll() as $requested) {
             $update = $connection->prepare(
-                'UPDATE site_approvals SET state = :state, reason = :reason
+                'UPDATE site_approvals SET state = :state, reason = :reason, decided_at = NOW()
                  WHERE id = :approval_id AND state = :requested_state'
             );
             $update->execute([
@@ -502,12 +519,63 @@ final class SiteApprovalManager
                 'approval_id' => (int) $requested['id'],
                 'requested_state' => 'requested',
             ]);
+            if ($update->rowCount() !== 1) {
+                throw new SiteServiceException('conflict', 'The dependent internal request changed concurrently.');
+            }
             SiteServiceSupport::event(
                 $connection, (int) $customerApproval['site_id'], (int) $customerApproval['revision_id'],
-                $actor, 'site_approval_superseded', $correlationId, $reason,
+                SiteServiceSupport::systemActor(), 'site_approval_superseded', $correlationId, $reason,
                 ['approval_id' => (int) $requested['id'], 'approval_type' => 'internal']
             );
         }
+    }
+
+    private static function supersedeApprovedInternalApproval(
+        object $connection,
+        array $customerApproval,
+        string $correlationId,
+        string $reason
+    ): void {
+        $statement = $connection->prepare(
+            '/* site-m2:supersede-dependent-internal-approval */
+             SELECT id
+             FROM site_approvals
+             WHERE revision_id = :revision_id AND site_id = :site_id
+               AND approval_type = :approval_type
+               AND state = :state
+               AND revoked_at IS NULL
+             FOR UPDATE'
+        );
+        $statement->execute([
+            'revision_id' => (int) $customerApproval['revision_id'],
+            'site_id' => (int) $customerApproval['site_id'],
+            'approval_type' => 'internal',
+            'state' => 'approved',
+        ]);
+        $rows = $statement->fetchAll();
+        if (count($rows) !== 1) {
+            throw new SiteServiceException('conflict', 'The dependent internal approval is missing or ambiguous.');
+        }
+        $internalApprovalId = (int) $rows[0]['id'];
+        $update = $connection->prepare(
+            'UPDATE site_approvals
+             SET state = :state, reason = :reason
+             WHERE id = :approval_id AND state = :approved_state AND revoked_at IS NULL'
+        );
+        $update->execute([
+            'state' => 'superseded',
+            'reason' => $reason,
+            'approval_id' => $internalApprovalId,
+            'approved_state' => 'approved',
+        ]);
+        if ($update->rowCount() !== 1) {
+            throw new SiteServiceException('conflict', 'The dependent internal approval changed concurrently.');
+        }
+        SiteServiceSupport::event(
+            $connection, (int) $customerApproval['site_id'], (int) $customerApproval['revision_id'],
+            SiteServiceSupport::systemActor(), 'site_approval_superseded', $correlationId, $reason,
+            ['approval_id' => $internalApprovalId, 'approval_type' => 'internal']
+        );
     }
 
     private static function supersedeCurrentRevisionApprovals(

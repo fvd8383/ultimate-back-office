@@ -109,9 +109,14 @@ assertM2Service(SiteApprovalManager::FUTURE_GATED_TYPES === ['production', 'conv
 assertM2Service(str_contains($approvals, 'requested_by_user_id') && str_contains($approvals, 'requested_by_actor_type'), 'Requester identity must be preserved in metadata.');
 assertM2Service(str_contains($approvals, 'Only a requested approval can be decided.'), 'Second approval decisions must be rejected.');
 assertM2Service(str_contains($approvals, 'Material revisions require current customer approval first.'), 'Material internal requests must be customer-gated.');
-assertM2Service(str_contains($approvals, 'Non-material internal approval requires a review-ready revision.'), 'Non-material revisions may request internal approval directly.');
+assertM2Service(str_contains($approvals, 'A non-material revision requires an existing customer-approved public baseline.'), 'Non-material revisions must inherit a customer-approved baseline.');
+assertM2Service(str_contains($support, 'effectiveCustomerApproval'), 'One shared effective customer approval helper must own inheritance rules.');
+assertM2Service(str_contains($support, 'assertNoNewerMaterialRevision'), 'Stale older approval decisions must be blocked.');
+assertM2Service(str_contains($support, 'assertSiteOperational'), 'Archived-site operational gating must be reusable.');
+assertM2Service(str_contains($sites, '$preserveSuspended') && str_contains($sites, "\$current === 'suspended'"), 'Approval workflow must preserve suspension.');
 assertM2Service(str_contains($approvals, "\$revisionTarget = 'ready_for_review'"), 'Revocation must provide a review-ready fallback.');
 assertM2Service(str_contains($approvals, "\$revisionTarget = 'customer_approved'"), 'Material internal revocation must preserve current customer approval.');
+assertM2Service(str_contains($approvals, 'supersedeApprovedInternalApproval'), 'Customer revocation after internal approval must supersede the dependency.');
 assertM2Service(str_contains($approvals, "'site_revision_changes_requested'"), 'Rejection must audit changes requested.');
 assertM2Service(str_contains($approvals, 'supersedes_approval_id'), 'Truthful customer decision linkage must be supported.');
 
@@ -119,7 +124,8 @@ foreach (['createSite', 'transitionLifecycle', 'siteForActor', 'sitesForBusiness
     assertM2Service(method_exists(SiteManager::class, $method), "SiteManager::{$method} must exist.");
 }
 foreach (['createRevision', 'updateDraftSnapshot', 'assertRevisionMutableForComposition', 'classifyMateriality',
-          'markReadyForReview', 'createRestoreCandidate', 'latestRevision', 'revisionForActor', 'revisionsForSite'] as $method) {
+          'markReadyForReview', 'createRestoreCandidate', 'latestRevision', 'revisionForActor', 'revisionsForSite',
+          'lockMutableRevisionForComposition', 'applyApprovalInvalidationFallback'] as $method) {
     assertM2Service(method_exists(SiteRevisionManager::class, $method), "SiteRevisionManager::{$method} must exist.");
 }
 foreach (['requestApproval', 'decideApproval', 'revokeApproval', 'approvalsForRevision'] as $method) {

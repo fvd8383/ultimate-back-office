@@ -67,7 +67,11 @@ is CLEARED; its evidence is retained in
 The current roadmap milestone is Sprint 8.8 M2 — `SiteManager` and
 revision/lifecycle/approval services — in `docs/sprint-8.8.md`; its local implementation
 is complete, review is required, and staging validation is pending. M3 has not started.
-The detailed local contract is `docs/sprint-8.8-m2-service-contract.md`. The later executable plan is
+Review corrections now require an inherited current customer-approved baseline for
+non-material internal approval, close stale older workflows on material successors,
+allow pre-publication customer withdrawal, preserve suspension, and make archive
+operationally terminal. The detailed local contract is
+`docs/sprint-8.8-m2-service-contract.md`. The later executable plan is
 `docs/sprint-8.9.md` for the Communications Core Foundation.
 Vendasta professional email is first-customer critical in Sprint 8.9 M1; Twilio's
 shared provider/webhook foundation is Sprint 8.9; Retell voice runtime remains Sprint

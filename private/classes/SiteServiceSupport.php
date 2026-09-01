@@ -36,6 +36,82 @@ final class SiteServiceException extends RuntimeException
 
 final class SiteServiceSupport
 {
+    public static function assertSiteOperational(array $site): void
+    {
+        if ((string) ($site['lifecycle_status'] ?? '') === 'archived') {
+            throw new SiteServiceException('invalid_transition', 'Archived sites are operationally terminal.');
+        }
+    }
+
+    /** @internal Caller must hold the site lock that serializes approval workflow changes. */
+    public static function effectiveCustomerApproval(object $connection, array $revision): ?int
+    {
+        $materiality = (string) ($revision['materiality'] ?? '');
+        if (!in_array($materiality, ['material', 'non_material'], true)) {
+            throw new SiteServiceException('invalid_transition', 'Revision materiality is not eligible for approval.');
+        }
+
+        $comparison = $materiality === 'material'
+            ? 'sr.id = :target_revision_id'
+            : 'sr.revision_number < :target_revision_number';
+        $statement = $connection->prepare(
+            '/* site-m2:effective-customer-approval */
+             SELECT sa.id
+             FROM site_approvals sa
+             INNER JOIN site_revisions sr
+                ON sr.id = sa.revision_id AND sr.site_id = sa.site_id
+             WHERE sa.site_id = :site_id
+               AND sa.approval_type = :approval_type
+               AND sa.state = :approval_state
+               AND sa.revoked_at IS NULL
+               AND ' . $comparison . '
+             ORDER BY sr.revision_number DESC, sa.id DESC'
+        );
+        $parameters = [
+            'site_id' => (int) $revision['site_id'],
+            'approval_type' => 'customer',
+            'approval_state' => 'approved',
+        ];
+        if ($materiality === 'material') {
+            $parameters['target_revision_id'] = (int) $revision['id'];
+        } else {
+            $parameters['target_revision_number'] = (int) $revision['revision_number'];
+        }
+        $statement->execute($parameters);
+        $approvals = $statement->fetchAll();
+        if (count($approvals) > 1) {
+            throw new SiteServiceException('conflict', 'Customer approval history is ambiguous.');
+        }
+        return $approvals === [] ? null : (int) $approvals[0]['id'];
+    }
+
+    public static function assertNoNewerMaterialRevision(object $connection, array $revision): void
+    {
+        $statement = $connection->prepare(
+            '/* site-m2:no-newer-material-revision */
+             SELECT id
+             FROM site_revisions
+             WHERE site_id = :site_id
+               AND revision_number > :revision_number
+               AND materiality = :materiality
+             ORDER BY revision_number ASC
+             LIMIT 1'
+        );
+        $statement->execute([
+            'site_id' => (int) $revision['site_id'],
+            'revision_number' => (int) $revision['revision_number'],
+            'materiality' => 'material',
+        ]);
+        if ($statement->fetchColumn() !== false) {
+            throw new SiteServiceException('invalid_transition', 'A newer material revision makes this approval request stale.');
+        }
+    }
+
+    public static function systemActor(): array
+    {
+        return ['acting_user_id' => null, 'actor_type' => 'system'];
+    }
+
     public static function correlationId(?string $correlationId): string
     {
         $correlationId = trim((string) $correlationId);
@@ -166,7 +242,7 @@ final class SiteServiceSupport
         $statement->execute([
             'site_id' => $siteId,
             'revision_id' => $revisionId,
-            'actor_user_id' => (int) $actor['acting_user_id'],
+            'actor_user_id' => isset($actor['acting_user_id']) ? (int) $actor['acting_user_id'] : null,
             'actor_type' => (string) $actor['actor_type'],
             'event_type' => $eventType,
             'result' => $result,

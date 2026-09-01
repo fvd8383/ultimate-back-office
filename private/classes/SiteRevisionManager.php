@@ -31,7 +31,8 @@ final class SiteRevisionManager
         return SiteServiceSupport::transaction(static function (object $connection) use (
             $actingUserId, $actor, $siteId, $correlationId, $snapshot, $basedOn
         ): array {
-            SiteManager::lockSite($connection, $siteId);
+            $site = SiteManager::lockSite($connection, $siteId);
+            SiteServiceSupport::assertSiteOperational($site);
             self::assertSameSiteRevision($connection, $siteId, $basedOn, 'The based-on revision is not part of this site.');
             self::assertSameSiteBrief($connection, $siteId, $snapshot['generation_brief_id']);
             $revisionNumber = self::nextRevisionNumber($connection, $siteId);
@@ -99,10 +100,7 @@ final class SiteRevisionManager
         return SiteServiceSupport::transaction(static function (object $connection) use (
             $revisionId, $changes, $actor, $correlationId, $siteId
         ): array {
-            SiteManager::lockSite($connection, $siteId);
-            $revision = self::lockRevision($connection, $revisionId);
-            self::assertLockedRevisionSite($revision, $siteId);
-            self::assertRevisionMutableForCompositionRow($revision);
+            $revision = self::lockMutableRevisionForComposition($connection, $siteId, $revisionId);
 
             $values = [
                 'generation_brief_id' => $revision['generation_brief_id'] === null ? null : (int) $revision['generation_brief_id'],
@@ -169,7 +167,8 @@ final class SiteRevisionManager
         return SiteServiceSupport::transaction(static function (object $connection) use (
             $revisionId, $actor, $reason, $correlationId, $siteId
         ): array {
-            SiteManager::lockSite($connection, $siteId);
+            $site = SiteManager::lockSite($connection, $siteId);
+            SiteServiceSupport::assertSiteOperational($site);
             $revision = self::lockRevision($connection, $revisionId);
             self::assertLockedRevisionSite($revision, $siteId);
             $updated = self::applyLifecycleTransition($connection, $revision, 'validation_failed');
@@ -194,7 +193,8 @@ final class SiteRevisionManager
         return SiteServiceSupport::transaction(static function (object $connection) use (
             $revisionId, $actor, $reason, $correlationId, $siteId
         ): array {
-            SiteManager::lockSite($connection, $siteId);
+            $site = SiteManager::lockSite($connection, $siteId);
+            SiteServiceSupport::assertSiteOperational($site);
             $revision = self::lockRevision($connection, $revisionId);
             self::assertLockedRevisionSite($revision, $siteId);
             $updated = self::applyLifecycleTransition($connection, $revision, 'draft');
@@ -223,7 +223,8 @@ final class SiteRevisionManager
         return SiteServiceSupport::transaction(static function (object $connection) use (
             $revisionId, $materiality, $reason, $actor, $correlationId, $siteId
         ): array {
-            SiteManager::lockSite($connection, $siteId);
+            $site = SiteManager::lockSite($connection, $siteId);
+            SiteServiceSupport::assertSiteOperational($site);
             $revision = self::lockRevision($connection, $revisionId);
             self::assertLockedRevisionSite($revision, $siteId);
             if ((string) $revision['materiality'] !== 'undetermined') {
@@ -259,12 +260,12 @@ final class SiteRevisionManager
             SiteServiceSupport::event(
                 $connection, (int) $revision['site_id'], $revisionId, $actor,
                 'site_revision_materiality_classified', $correlationId, $reason,
-                ['materiality' => $materiality, 'superseded_customer_approval_ids' => $superseded]
+                ['materiality' => $materiality, 'superseded_approval_ids' => $superseded]
             );
             return [
                 'revision_id' => $revisionId,
                 'materiality' => $materiality,
-                'superseded_customer_approval_ids' => $superseded,
+                'superseded_approval_ids' => $superseded,
                 'correlation_id' => $correlationId,
             ];
         });
@@ -281,7 +282,8 @@ final class SiteRevisionManager
         return SiteServiceSupport::transaction(static function (object $connection) use (
             $revisionId, $actor, $correlationId, $siteId
         ): array {
-            SiteManager::lockSite($connection, $siteId);
+            $site = SiteManager::lockSite($connection, $siteId);
+            SiteServiceSupport::assertSiteOperational($site);
             $revision = self::lockRevision($connection, $revisionId);
             self::assertLockedRevisionSite($revision, $siteId);
             if ((string) $revision['materiality'] === 'undetermined') {
@@ -312,7 +314,8 @@ final class SiteRevisionManager
         return SiteServiceSupport::transaction(static function (object $connection) use (
             $actingUserId, $actor, $siteId, $sourceRevisionId, $correlationId
         ): array {
-            SiteManager::lockSite($connection, $siteId);
+            $site = SiteManager::lockSite($connection, $siteId);
+            SiteServiceSupport::assertSiteOperational($site);
             $source = self::lockRevision($connection, $sourceRevisionId);
             if ((int) $source['site_id'] !== $siteId) {
                 throw new SiteServiceException('not_found', 'The source revision is not part of this site.');
@@ -371,7 +374,7 @@ final class SiteRevisionManager
                 [
                     'source_revision_id' => $sourceRevisionId,
                     'revision_number' => $revisionNumber,
-                    'superseded_customer_approval_ids' => $superseded,
+                    'superseded_approval_ids' => $superseded,
                 ]
             );
             return [
@@ -441,6 +444,69 @@ final class SiteRevisionManager
             throw new SiteServiceException('not_found', 'The revision was not found.');
         }
         return $revision;
+    }
+
+    /**
+     * @internal M3 composition writers must call this inside their own write transaction
+     * before changing composition so mutability is checked under the same site/revision locks.
+     */
+    public static function lockMutableRevisionForComposition(
+        object $connection,
+        int $siteId,
+        int $revisionId
+    ): array {
+        if (!method_exists($connection, 'inTransaction') || !$connection->inTransaction()) {
+            throw new SiteServiceException('conflict', 'Composition mutability must be checked inside the writing transaction.');
+        }
+        $site = SiteManager::lockSite($connection, $siteId);
+        SiteServiceSupport::assertSiteOperational($site);
+        $revision = self::lockRevision($connection, $revisionId);
+        self::assertLockedRevisionSite($revision, $siteId);
+        self::assertRevisionMutableForCompositionRow($revision);
+        return $revision;
+    }
+
+    /** @internal Narrow approval-invalidation fallback; it never makes composition mutable. */
+    public static function applyApprovalInvalidationFallback(
+        object $connection,
+        array $revision,
+        string $targetStatus,
+        string $cause
+    ): array {
+        $current = (string) $revision['lifecycle_status'];
+        $allowed = [
+            'customer_approval_revoked' => [
+                'customer_approved' => ['ready_for_review'],
+                'internally_approved' => ['ready_for_review'],
+            ],
+            'internal_approval_revoked' => [
+                'internally_approved' => ['customer_approved', 'ready_for_review'],
+            ],
+        ];
+        if (!isset($allowed[$cause][$current])
+            || !in_array($targetStatus, $allowed[$cause][$current], true)) {
+            throw new SiteServiceException('invalid_transition', 'The approval invalidation fallback is not allowed.');
+        }
+        $statement = $connection->prepare(
+            '/* site-m2:approval-invalidation-fallback */
+             UPDATE site_revisions
+             SET lifecycle_status = :target_status, updated_at = NOW()
+             WHERE id = :revision_id AND lifecycle_status = :current_status'
+        );
+        $statement->execute([
+            'target_status' => $targetStatus,
+            'revision_id' => (int) $revision['id'],
+            'current_status' => $current,
+        ]);
+        if ($statement->rowCount() !== 1) {
+            throw new SiteServiceException('conflict', 'The revision lifecycle changed concurrently.');
+        }
+        return [
+            'revision_id' => (int) $revision['id'],
+            'site_id' => (int) $revision['site_id'],
+            'lifecycle_status' => $targetStatus,
+            'invalidation_cause' => $cause,
+        ];
     }
 
     public static function revisionForActor(int $actingUserId, int $revisionId): array
@@ -651,39 +717,82 @@ final class SiteRevisionManager
         array $actor,
         string $correlationId
     ): array {
-        $prior = $connection->prepare(
-            'SELECT sa.id, sa.revision_id
-             FROM site_approvals sa
-             INNER JOIN site_revisions sr ON sr.id = sa.revision_id AND sr.site_id = sa.site_id
-             WHERE sa.site_id = :site_id
-               AND sr.revision_number < :revision_number
-               AND sa.approval_type = :approval_type
-               AND sa.state = :state
-               AND sa.revoked_at IS NULL
-             FOR UPDATE'
+        $olderRevisionStatement = $connection->prepare(
+            '/* site-m2:material-successor-older-revisions */
+             SELECT id
+             FROM site_revisions
+             WHERE site_id = :site_id AND revision_number < :revision_number
+             ORDER BY revision_number ASC'
         );
-        $prior->execute([
+        $olderRevisionStatement->execute([
             'site_id' => $siteId,
             'revision_number' => $successorRevisionNumber,
-            'approval_type' => 'customer',
-            'state' => 'approved',
         ]);
+        $olderRevisionIds = array_map('intval', array_column($olderRevisionStatement->fetchAll(), 'id'));
+        if ($olderRevisionIds === []) {
+            return [];
+        }
+        $parameters = [
+            'site_id' => $siteId,
+            'customer_type' => 'customer',
+            'approved_state' => 'approved',
+            'requested_state' => 'requested',
+            'internal_type' => 'internal',
+            'requested_internal_state' => 'requested',
+        ];
+        $revisionPlaceholders = [];
+        foreach ($olderRevisionIds as $index => $olderRevisionId) {
+            $name = 'older_revision_id_' . $index;
+            $revisionPlaceholders[] = ':' . $name;
+            $parameters[$name] = $olderRevisionId;
+        }
+        $prior = $connection->prepare(
+            '/* site-m2:material-successor-invalidation */
+             SELECT sa.id, sa.revision_id, sa.approval_type, sa.state
+             FROM site_approvals sa
+             WHERE sa.site_id = :site_id
+               AND sa.revision_id IN (' . implode(', ', $revisionPlaceholders) . ')
+               AND (
+                    (sa.approval_type = :customer_type
+                     AND sa.state IN (:approved_state, :requested_state))
+                 OR (sa.approval_type = :internal_type
+                     AND sa.state = :requested_internal_state)
+               )
+             FOR UPDATE'
+        );
+        $prior->execute($parameters);
         $rows = $prior->fetchAll();
         if ($rows === []) {
             return [];
         }
-        $ids = array_map('intval', array_column($rows, 'id'));
-        $placeholders = implode(',', array_fill(0, count($ids), '?'));
-        $supersede = $connection->prepare(
-            "UPDATE site_approvals SET state = 'superseded', reason = 'material_successor_revision'
-             WHERE id IN ({$placeholders}) AND state = 'approved'"
-        );
-        $supersede->execute($ids);
+        $ids = [];
         foreach ($rows as $row) {
+            $supersede = $connection->prepare(
+                'UPDATE site_approvals
+                 SET state = :superseded_state,
+                     reason = :reason,
+                     decided_at = CASE WHEN state = :requested_state THEN NOW() ELSE decided_at END
+                 WHERE id = :approval_id AND state = :previous_state'
+            );
+            $supersede->execute([
+                'superseded_state' => 'superseded',
+                'reason' => 'material_successor_revision',
+                'requested_state' => 'requested',
+                'approval_id' => (int) $row['id'],
+                'previous_state' => (string) $row['state'],
+            ]);
+            if ($supersede->rowCount() !== 1) {
+                throw new SiteServiceException('conflict', 'An older approval workflow changed concurrently.');
+            }
+            $ids[] = (int) $row['id'];
             SiteServiceSupport::event(
                 $connection, $siteId, (int) $row['revision_id'], $actor,
                 'site_approval_superseded', $correlationId, 'material_successor_revision',
-                ['approval_id' => (int) $row['id'], 'successor_revision_id' => $successorRevisionId]
+                [
+                    'approval_id' => (int) $row['id'],
+                    'approval_type' => (string) $row['approval_type'],
+                    'successor_revision_id' => $successorRevisionId,
+                ]
             );
         }
         return $ids;

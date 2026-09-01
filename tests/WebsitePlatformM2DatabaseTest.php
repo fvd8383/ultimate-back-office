@@ -61,8 +61,12 @@ foreach ([
 
 assertM2Database(str_contains($migration, 'CASE WHEN state = \'approved\' AND revoked_at IS NULL THEN revision_id ELSE NULL END'), 'Current approval uniqueness must be revision-specific.');
 assertM2Database(!str_contains($migration, 'current_approved_site_id'), 'Approval uniqueness must not become global per site/type.');
-assertM2Database(str_contains($revisions, 'sr.revision_number < :revision_number'), 'Material successor logic must explicitly target older revisions.');
+assertM2Database(str_contains($revisions, 'revision_number < :revision_number'), 'Material successor logic must explicitly target older revisions.');
 assertM2Database(str_contains($revisions, "\$materiality === 'material'"), 'Only material successors may supersede prior customer approval.');
+assertM2Database(str_contains($revisions, 'decided_at = CASE WHEN state = :requested_state THEN NOW() ELSE decided_at END'), 'Material successors must close requested workflows without replacing approved decision times.');
+assertM2Database(str_contains($revisions, 'sa.approval_type = :internal_type') && str_contains($revisions, 'requested_internal_state'), 'Material successors must close dependent internal requests.');
+assertM2Database(str_contains($support, 'sr.revision_number < :target_revision_number'), 'Non-material effective approval must come from an earlier revision.');
+assertM2Database(str_contains($approvals, 'sr.revision_number < :current_revision_number'), 'Approval linkage must never point backward from an older revision to a newer decision.');
 
 assertM2Database(str_contains($support, '$connection->beginTransaction()'), 'Every mutation wrapper must begin one transaction.');
 assertM2Database(str_contains($support, '$connection->commit()'), 'Successful mutations must commit.');
@@ -83,6 +87,7 @@ assertM2Database(str_contains($approvals, 'LIMIT 1 FOR UPDATE'), 'Approval reque
 assertM2Database(str_contains($approvals, 'WHERE id = :approval_id FOR UPDATE'), 'Approval decisions must lock the request row.');
 assertM2Database(str_contains($approvals, "AND state = :requested_state"), 'Approval decisions must compare requested state.');
 assertM2Database(str_contains($sites, 'WHERE id = :site_id AND lock_version = :lock_version'), 'Site lifecycle update must compare lock_version atomically.');
+assertM2Database(str_contains($revisions, 'Composition mutability must be checked inside the writing transaction.'), 'M3 mutability must be asserted inside the caller transaction.');
 
 assertM2Database(str_contains($policy, "roles r ON r.id = ur.role_id AND r.scope = :internal_scope"), 'Internal roles must be scope-limited.');
 assertM2Database(str_contains($policy, "'Super Admin'") && str_contains($policy, "'Admin'"), 'Admin and Super Admin must be recognized explicitly.');

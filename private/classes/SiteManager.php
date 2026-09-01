@@ -160,7 +160,8 @@ final class SiteManager
         ?int $expectedLockVersion,
         array $actor,
         string $correlationId,
-        string $reason
+        string $reason,
+        bool $preserveSuspended = false
     ): array {
         $siteId = (int) $site['id'];
         $current = (string) $site['lifecycle_status'];
@@ -170,6 +171,14 @@ final class SiteManager
         }
         if ($expectedLockVersion !== null && (int) $site['lock_version'] !== $expectedLockVersion) {
             throw new SiteServiceException('stale_write', 'The site changed after it was loaded.');
+        }
+        if ($preserveSuspended && $current === 'suspended') {
+            return [
+                'site_id' => $siteId,
+                'lifecycle_status' => 'suspended',
+                'lock_version' => (int) $site['lock_version'],
+                'suspension_preserved' => true,
+            ];
         }
         if ($targetStatus === $current && in_array($targetStatus, ['pending_customer', 'pending_internal_review'], true)) {
             if ($targetStatus === 'pending_customer') {
@@ -360,17 +369,12 @@ final class SiteManager
     private static function assertApprovalGate(object $connection, int $siteId): void
     {
         $statement = $connection->prepare(
-            'SELECT sr.id, sr.materiality,
+            'SELECT sr.id, sr.site_id, sr.revision_number, sr.materiality,
                     EXISTS (
                         SELECT 1 FROM site_approvals ia
                         WHERE ia.revision_id = sr.id AND ia.approval_type = :internal_type
                           AND ia.state = :approved_state AND ia.revoked_at IS NULL
-                    ) AS internal_ok,
-                    EXISTS (
-                        SELECT 1 FROM site_approvals ca
-                        WHERE ca.revision_id = sr.id AND ca.approval_type = :customer_type
-                          AND ca.state = :approved_state_2 AND ca.revoked_at IS NULL
-                    ) AS customer_ok
+                    ) AS internal_ok
              FROM site_revisions sr
              WHERE sr.site_id = :site_id AND sr.lifecycle_status = :revision_status
              ORDER BY sr.revision_number DESC LIMIT 1'
@@ -378,14 +382,12 @@ final class SiteManager
         $statement->execute([
             'internal_type' => 'internal',
             'approved_state' => 'approved',
-            'customer_type' => 'customer',
-            'approved_state_2' => 'approved',
             'site_id' => $siteId,
             'revision_status' => 'internally_approved',
         ]);
         $revision = $statement->fetch();
         if (!$revision || (int) $revision['internal_ok'] !== 1
-            || ((string) $revision['materiality'] === 'material' && (int) $revision['customer_ok'] !== 1)) {
+            || SiteServiceSupport::effectiveCustomerApproval($connection, $revision) === null) {
             throw new SiteServiceException('invalid_transition', 'An eligible internally approved revision is required.');
         }
     }
@@ -413,7 +415,7 @@ final class SiteManager
     private static function assertPendingInternalGate(object $connection, int $siteId): void
     {
         $statement = $connection->prepare(
-            'SELECT 1
+            'SELECT sr.id, sr.site_id, sr.revision_number, sr.materiality, sr.lifecycle_status
              FROM site_revisions sr
              WHERE sr.site_id = :site_id
                AND (
@@ -431,7 +433,8 @@ final class SiteManager
             'non_material' => 'non_material',
             'ready_for_review' => 'ready_for_review',
         ]);
-        if (!$statement->fetchColumn()) {
+        $revision = $statement->fetch();
+        if (!$revision || SiteServiceSupport::effectiveCustomerApproval($connection, $revision) === null) {
             throw new SiteServiceException('invalid_transition', 'An eligible revision awaiting internal review is required.');
         }
     }
