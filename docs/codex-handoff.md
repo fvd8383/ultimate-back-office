@@ -4,15 +4,21 @@ You are building Ultimate Back Office.
 
 ## Current Handoff
 
-Sprint 8.8 M1 is **IMPLEMENTED LOCALLY / REVIEW REQUIRED / STAGING VALIDATION
-PENDING** on branch `codex/sprint-8.8-m1-website-platform-foundation`. The branch adds
-`023_website_platform_foundation.sql`, a bounded and idempotent legacy 247SP import and
-reconciliation CLI/service, explicit quarantine and source/imported hashes, focused
-tests, and the current-schema audit. Migration 023 has not been applied. The legacy
-website runtime remains authoritative, generic records remain dormant, M1 is not
-COMPLETE, and M2 has not begun. Review/merge and separately approved staging
-migration/backfill validation are the next gates; do not deploy or merge from this
-handoff text alone.
+Sprint 8.8 M1 is **COMPLETE / STAGING PASS** on validated and deployed SHA
+`2a545a056f650122a3d9ccbf077f35cef83f6065`. Migration
+`023_website_platform_foundation.sql` is applied and reconciled on staging. The final
+six-site validation imported and reconciled all 6 legacy websites and 37 pages,
+including normalized legacy duplicate ordering, hash/idempotence, and executable
+real-MySQL contracts. Cleanup restored the zero generic baseline with the expected
+1 component definition and 4 variants. The generic model remains dormant and the
+legacy website runtime remains authoritative. Sprint 8.8 overall is **IN PROGRESS**;
+M2 is **NEXT / NOT STARTED**. Production remains **UNAUTHORIZED / NOT DEPLOYED**.
+
+The authoritative final report is
+`ubo-sprint-8.8-m1-final-validation-20260901T001402Z/SPRINT-8.8-M1-STAGING-FINAL-VALIDATION.md`,
+SHA-256 `db9dcf37aaac700b12604555f32c01d974c28a6a520c6bf1a8a28a97152f6daf`.
+See `docs/sprint-8.8-m1-closeout.md` for the implementation, correction, deployment,
+validation, and clean-baseline record.
 
 Sprint 8.7 Milestone 4 is complete and staging validated as PASS on deployed commit
 `d11bd0e7d14b9d9dd432f3ce244a9b2bbebfafb7`. Cleanup and repository/database
@@ -49,14 +55,15 @@ customer/admin presentation, and MRR changes are included. The CLI-only
 `scripts/configure-247sp-stripe-prices.php` populates the current environment catalog
 from separate TEST/LIVE configuration and refuses unsafe replacement. P2 required no
 new migration. Migration 023 was absent at the pricing closeout and reserved for
-Sprint 8.8; it is now implemented only on the M1 local review branch and remains
-unapplied. The pricing
-first-customer technical gate is CLEARED; its evidence is retained in
+Sprint 8.8; it was subsequently implemented, applied, reconciled, and staging
+validated as part of the completed M1 gate. The pricing first-customer technical gate
+is CLEARED; its evidence is retained in
 `docs/247sp-pricing-p1-p2-closeout.md`.
 
-The next authorized roadmap work is Sprint 8.8 — Website Platform And Component CMS in
-`docs/sprint-8.8.md`. The later executable plan is `docs/sprint-8.9.md` for the
-Communications Core Foundation.
+The next roadmap milestone is Sprint 8.8 M2 — `SiteManager` and
+revision/lifecycle/approval services — in `docs/sprint-8.8.md`; it is **NEXT / NOT
+STARTED** and requires separate authorization. The later executable plan is
+`docs/sprint-8.9.md` for the Communications Core Foundation.
 Vendasta professional email is first-customer critical in Sprint 8.9 M1; Twilio's
 shared provider/webhook foundation is Sprint 8.9; Retell voice runtime remains Sprint
 8.10.

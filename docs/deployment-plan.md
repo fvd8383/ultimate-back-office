@@ -127,18 +127,82 @@ exceptions require explicit approval.
 
 ---
 
-# Staging Deployment Commands
+# Current Codex Staging Deployment Model
 
-Run on staging server:
+Routine Codex staging deployment uses separated restricted identities and fixed
+wrappers. It does not grant a general staging shell permission to mutate the
+repository, run migrations, restart services, or use broad `sudo`.
+
+## Deployment identity and wrappers
+
+- `ubo-deploy` performs only an explicitly approved deployment or configuration action
+  through `/usr/local/sbin/ubo-stage-deploy`.
+- An explicitly approved migration is run through
+  `/usr/local/sbin/ubo-stage-migrate`; deployment approval alone does not authorize a
+  migration.
+- The approved deployment wrapper owns repository-mutating Git operations needed to
+  move the staging checkout to the authorized revision.
+- Routine Codex must not use broad `sudo` or bypass a wrapper with direct service,
+  repository, or database mutation.
+
+Before deployment, `ubo-deploy` verifies the authorized remote `main` SHA without
+updating local Git metadata:
+
+```bash
+git ls-remote origin refs/heads/main
+```
+
+Compare the returned SHA to the explicitly authorized deployment SHA. Do **not** run
+direct `git fetch origin --prune` as `ubo-deploy` merely to refresh `origin/main`; the
+restricted identity may intentionally lack write access to `.git/FETCH_HEAD`. Invoke
+the approved deployment wrapper for the authorized deployment instead.
+
+After the wrapper completes, verify:
+
+```bash
+git rev-parse HEAD
+git status --short
+```
+
+Verify `origin/main` only when the wrapper contract updates that local reference. The
+deployed `HEAD` must equal the authorized SHA and the worktree must be clean.
+
+Do not `chmod` or `chown` the repository to make direct Git mutation succeed. Do not
+change repository permissions or ownership as a deployment workaround. A
+command-scoped `safe.directory` setting may be used when needed for a read-only Git
+validation command; routine validation must not create persistent `safe.directory`
+configuration.
+
+## Staging roles
+
+- `ubo-deploy`: approved deployment/configuration through fixed wrappers only.
+- `codex-validation`: validation and evidence collection; no routine `sudo`,
+  deployment, migration, or repository mutation.
+- root/admin operator: emergency or explicitly approved manual infrastructure work
+  only.
+
+No role may expose credentials in commands, logs, evidence, or repository files.
+
+---
+
+# Historical / Emergency Staging Deployment Context
+
+The direct commands below are retained as historical and root/admin emergency context.
+They are superseded for routine Codex deployment by the restricted wrapper model above
+and must not be run directly as `ubo-deploy` or `codex-validation`.
+
+Historical script invocation:
 
 ```bash
 cd /var/www/ubo-repo
 bash scripts/deploy-staging.sh
 ```
 
-The script checks out `main`, pulls with `--ff-only`, runs PHP lint, and reloads `apache2` only after lint passes.
+The historical script checks out `main`, pulls with `--ff-only`, runs PHP lint, and
+reloads `apache2` only after lint passes. Routine Codex reaches this behavior only
+through `/usr/local/sbin/ubo-stage-deploy`.
 
-Manual equivalent:
+Root/admin emergency manual equivalent:
 
 ```bash
 cd /var/www/ubo-repo
@@ -148,7 +212,9 @@ find private public shared -name "*.php" -print0 | xargs -0 -n1 php -l
 systemctl reload apache2
 ```
 
-If a migration exists for the sprint, run it manually.
+The direct MySQL examples below are retained for root/admin emergency reference.
+Routine Codex migration execution requires explicit migration approval and
+`/usr/local/sbin/ubo-stage-migrate`.
 
 Example:
 
@@ -704,12 +770,12 @@ Create a new migration for each sprint that changes database structure.
 Migration `021_shared_business_profile.sql` is complete and staging validated. Do not
 rewrite migration 021 or historical repair migrations 019 and 020. Migration
 `022_247sp_pricing_cohorts.sql` is complete and staging validated PASS. Pricing P2 uses
-its existing durable tables and requires no new migration. The initial Sprint 8.8 M1
-migration `023_website_platform_foundation.sql` is implemented locally for review but
-has not been applied or staging validated. P2 did not create or repurpose it. Applying
-migration 023 and running its bounded legacy import/reconciliation require separate
-approved staging validation after review and merge. Later additive migrations use the
-next available numbers in implementation order.
+its existing durable tables and requires no new migration. The Sprint 8.8 M1 migration
+`023_website_platform_foundation.sql` is applied and reconciled on staging and passed
+its final six-site validation on SHA
+`2a545a056f650122a3d9ccbf077f35cef83f6065`. P2 did not create or repurpose it.
+Production application remains unauthorized. Later additive migrations use the next
+available numbers in implementation order.
 
 Sprint 8.7 Milestone 4 also passed staging runtime validation on deployed commit
 `d11bd0e7d14b9d9dd432f3ce244a9b2bbebfafb7` without a migration or schema change.

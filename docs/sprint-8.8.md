@@ -2,10 +2,11 @@
 
 ## Status And Objective
 
-**M1 IMPLEMENTED LOCALLY / REVIEW REQUIRED / STAGING VALIDATION PENDING.** Sprint 8.7
-is closed and the dedicated 247SP first-customer pricing implementation and staging
-gate are COMPLETE / PASS. Sprint 8.8 M1 now has a local review implementation; no
-Sprint 8.8 migration has been applied and M2 has not begun.
+Sprint 8.8 overall is **IN PROGRESS**. M1 is **COMPLETE / STAGING PASS** on validated
+and deployed SHA `2a545a056f650122a3d9ccbf077f35cef83f6065`; migration
+`023_website_platform_foundation.sql` is applied and reconciled on staging. M2 is
+**NEXT / NOT STARTED**. Production is **UNAUTHORIZED / NOT DEPLOYED**. The detailed M1
+completion record is `docs/sprint-8.8-m1-closeout.md`.
 
 The sprint implements the approved generic 247SP/EMD website platform in eight focused
 milestones. It replaces no historical migration and does not treat the customer
@@ -15,8 +16,8 @@ Website Manager as a drag-and-drop builder. The authoritative architecture is
 ## Entry Gates
 
 - pricing P1/P2 and their staging validation are complete;
-- planned `022_247sp_pricing_cohorts.sql` is the latest applied migration and schema is
-  reconciled;
+- pricing migration `022_247sp_pricing_cohorts.sql` and website foundation migration
+  `023_website_platform_foundation.sql` are applied and reconciled on staging;
 - current legacy website, Shared Business Profile, domain, LeadHub, and deployment
   baselines are captured;
 - Milestone 6 source-of-truth, rights, approval, EMD, conversion, security, and
@@ -66,12 +67,14 @@ forward-repairable, and staging reconciled.
 
 ## M1 — Generic Schema + Legacy Compatibility/Backfill
 
-### Local implementation status
+### Completion status
 
 Migration `023_website_platform_foundation.sql`, the dormant generic schema, the
 bounded/idempotent legacy importer, compatibility comparison/reconciliation reporting,
-and focused standalone tests are implemented on the M1 branch for review. The actual
-schema dependencies discovered before implementation are recorded in
+and focused standalone tests are merged, applied, and validated on staging. M1 is
+**COMPLETE / STAGING PASS** on SHA
+`2a545a056f650122a3d9ccbf077f35cef83f6065`. The actual schema dependencies
+discovered before implementation are recorded in
 `docs/sprint-8.8-m1-current-schema-audit.md`.
 
 The importer uses a filesystem preflight followed by one short transaction and locked
@@ -103,10 +106,18 @@ Reconciliation reports `candidate_legacy_count`, not an overstated exact eligibi
 count, plus imported, quarantined, and unmapped-candidate counts. Full eligibility still
 requires importer validation of page content and local asset evidence.
 
-The migration is not applied locally, on staging, or in production by this status.
-The existing 247SP generated website reader remains authoritative, generic data remains
-dormant/read-compatible, staging migration/backfill/reconciliation validation remains
-required, and M1 is not COMPLETE.
+Legacy presentation compatibility uses the existing runtime's effective page order:
+`sort_order ASC, id ASC`. Import assigns that sequence unique ordinal generic sort
+orders `10, 20, 30, ...`, while preserving each raw legacy `sort_order` in
+`presentation_json.legacy_sort_order`. This permits deterministic legacy ties without
+relaxing the generic unique revision-order constraint.
+
+Migration 023 is applied and reconciled on staging. The final six-site validation
+passed for all 6 legacy websites and 37 pages, then cleanup restored the exact zero
+generic baseline with 1 seeded component definition and 4 variants. The existing
+247SP generated website reader remains authoritative and generic data remains dormant.
+Production is unauthorized and M2 has not begun. See
+`docs/sprint-8.8-m1-closeout.md` for the evidence timeline and full results.
 
 ### Deliverables
 
@@ -138,14 +149,19 @@ write retirement is a later explicit cutover.
 
 ### Tests and exit gate
 
-Validate MySQL syntax, columns/types/nullability, FK/delete behavior, indexes and
-uniqueness, seed allowlists, empty-database behavior, eligible/ineligible fixtures,
-rerun idempotency, collisions, quarantine/repair, counts/hashes/slugs/ownership,
-preview-equivalent imported content, no legacy mutation, and full schema
-reconciliation. M1 exits with generic data dormant/read-compatible and a documented
-rollback-to-legacy-reader path.
+The M1 exit gate passed on staging: PHP lint passed 115 files; all 18 standalone suites
+passed; importer unit/database, `SiteGenerator`, migration, M1 scope/static, and pricing
+regressions passed. The first six-site pass imported 6/6 sites and matched 37/37 pages;
+source, import, and revision hashes reconciled 6/6; the second pass reconciled 6/6
+without duplicates. Executable same-site FK cases rejected 8/8 invalid relationships,
+and executable `CHECK` cases rejected 7/7 invalid values. Legacy counts/hashes remained
+unchanged and cleanup returned generic tables to zero. The authoritative report is
+`ubo-sprint-8.8-m1-final-validation-20260901T001402Z/SPRINT-8.8-M1-STAGING-FINAL-VALIDATION.md`,
+SHA-256 `db9dcf37aaac700b12604555f32c01d974c28a6a520c6bf1a8a28a97152f6daf`.
 
 ## M2 — `SiteManager` + Revision/Lifecycle/Approval Services
+
+Status: **NEXT / NOT STARTED**.
 
 ### Deliverables
 
