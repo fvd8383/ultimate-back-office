@@ -13,10 +13,10 @@ real-MySQL contracts. Cleanup restored the zero generic baseline with the expect
 1 component definition and 4 variants. The generic model remains dormant and the
 legacy website runtime remains authoritative. Sprint 8.8 overall is **IN PROGRESS**.
 Sprint 8.8 M2 is **COMPLETE / STAGING PASS** on merged, deployed, and validated SHA
-`31d5f64ba6fdf9005fe839c9d3bae4e996ce3bd4`. M3 is **IMPLEMENTED LOCALLY /
-REVIEW REQUIRED / STAGING MIGRATION AND VALIDATION PENDING** on branch
-`codex/sprint-8.8-m3-component-composition`; draft PR #105 is
-`https://github.com/fvd8383/ultimate-back-office/pull/105`.
+`31d5f64ba6fdf9005fe839c9d3bae4e996ce3bd4`. M3 is **COMPLETE / STAGING PASS** on
+final deployed and validated SHA `a431f6fc06e24f2252a9a282954d5541551c9000`.
+Migration 024 was applied exactly once; the final registry contains 16 definitions and
+22 variants with zero verifier drift. M4 is **NEXT / NOT STARTED**.
 Production remains **UNAUTHORIZED / NOT DEPLOYED**.
 
 The authoritative final report is
@@ -71,22 +71,25 @@ Sprint 8.8 M2 — `SiteManager` and revision/lifecycle/approval services — is
 SHA-256 `fa4c3f10796ee0f9c0a9dbf69bbc7d2cbaaa82036cbdbdc0839b5c415314e824`.
 The authoritative completion record is `docs/sprint-8.8-m2-closeout.md`, and the
 service contract is `docs/sprint-8.8-m2-service-contract.md`. M3 — Component Registry +
-Composition — is **IMPLEMENTED LOCALLY / REVIEW REQUIRED / STAGING MIGRATION AND
-VALIDATION PENDING**. Its contract is `docs/sprint-8.8-m3-service-contract.md`.
-Migration 024 versions component registry identity and seeds repository metadata;
-migration 023 remains unchanged. The repository owns executable schemas and fixed
-rendering, while M3 adds atomic full-revision composition, same-site ready/rights
-asset checks, deterministic stored-row hashes, and M2 review-gate validation. It adds
-no routes/UI, upload, build/deployment, LeadHub routing, provider work, or public
-runtime cutover. M4 is **NOT STARTED**. The later executable plan is
+Composition — is **COMPLETE / STAGING PASS**. Its contract is
+`docs/sprint-8.8-m3-service-contract.md`, and its authoritative completion record is
+`docs/sprint-8.8-m3-closeout.md`. Migration 024 versions component registry identity
+and was applied once; migration 023 remains unchanged. The final real-MySQL report is
+`ubo-sprint-8.8-m3-final-validation-20260902T221631Z/SPRINT-8.8-M3-STAGING-FINAL-VALIDATION.md`,
+SHA-256 `5fdfd9ca6b2118ad82b23b97e81a651990b47f9a7140d62a5cef0e857038df70`.
+The repository owns executable schemas and fixed rendering, while M3 adds atomic
+full-revision composition, same-site ready/rights asset checks, deterministic
+stored-row hashes, and M2 review-gate validation. It adds no routes/UI, upload,
+build/deployment, LeadHub routing, provider work, or public runtime cutover. M4 is
+**NEXT / NOT STARTED**. The later executable plan is
 `docs/sprint-8.9.md` for the Communications Core Foundation.
 Vendasta professional email is first-customer critical in Sprint 8.9 M1; Twilio's
 shared provider/webhook foundation is Sprint 8.9; Retell voice runtime remains Sprint
 8.10.
 
 Production pricing migration/deployment is NOT authorized and has not been performed.
-The pricing staging PASS does not make the entire 247SP product first-customer or
-production ready.
+The pricing staging PASS does not authorize production or establish first-customer
+readiness for the entire 247SP product.
 
 Use the execution model in `docs/codex-rules.md` and `docs/deployment-plan.md`:
 local branch/test/PR work first, then review and merge, approved staging deployment,

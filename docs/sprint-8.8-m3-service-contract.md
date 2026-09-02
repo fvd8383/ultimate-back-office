@@ -2,13 +2,13 @@
 
 ## Status And Boundary
 
-M3 is **IMPLEMENTED LOCALLY / REVIEW REQUIRED / STAGING MIGRATION AND VALIDATION
-PENDING** on branch `codex/sprint-8.8-m3-component-composition`. M1 and M2 remain
-**COMPLETE / STAGING PASS**. Sprint 8.8 remains **IN PROGRESS**; production is
-**UNAUTHORIZED / NOT DEPLOYED**. This milestone adds service code and migration 024
-only. It adds no route, browser UI, public runtime cutover, upload pipeline, build,
-deployment, domain, routing, publication, conversion, or provider behavior. M4 has not
-started.
+M3 is **COMPLETE / STAGING PASS** on final deployed and validated SHA
+`a431f6fc06e24f2252a9a282954d5541551c9000`. M1 and M2 remain **COMPLETE /
+STAGING PASS**. Sprint 8.8 remains **IN PROGRESS**; M4 is **NEXT / NOT STARTED**;
+production is **UNAUTHORIZED / NOT DEPLOYED**. This milestone adds service code and
+migration 024 only. It adds no route, browser UI, public runtime cutover, upload
+pipeline, build, deployment, domain, routing, publication, conversion, or provider
+behavior.
 
 ## Registry Ownership And Versioning
 
@@ -252,11 +252,30 @@ reuse, stale writers, rollback after deletion, event atomicity, stored hashes,
 read-model authorization/validation, legacy compatibility, tamper rejection,
 immutability, and the future publication gate.
 
+## Final Staging Validation
+
+Migration `024_component_registry_versioning.sql` was applied to staging exactly once.
+It preserved the legacy definition and variant IDs and produced the expected registry
+of 16 definitions and 22 variants. A platform-dependent migration-023 integrity test
+stopped the first automated gate after deployment, migration, and registry
+reconciliation had already passed. PR #106 corrected only that test guard by hashing
+canonical LF content; migration 023 itself remained unchanged and migration 024 was
+not rerun.
+
+The code-only deployment retry passed all 32 standalone suites. Final real-MySQL
+behavioral validation on MySQL 8.4.8 with native PDO prepares passed composition,
+stable-page, hashing, concurrency, rollback, review, historical-version, asset,
+tenant, and restored-legacy scenarios. The selected real legacy source had zero asset
+references, so the real unknown-rights legacy-asset subcase was not executable; this
+is a documented non-blocking limitation, with deployed automated coverage retained.
+
+Evidence and the complete implementation history are recorded in
+`docs/sprint-8.8-m3-closeout.md`.
+
 ## Explicit Exclusions
 
 M3 includes no browser routes, admin composer, customer Website Manager UI, preview
 route cutover, POST/CSRF handler, asset upload/storage finalization, builds,
 deployment, publication, domains, routing, public LeadHub ingestion, conversion,
 provider integration, or M4+ work. `SiteGenerator` and `AdminPortal` legacy reads
-remain authoritative. No staging or production access, migration execution, merge,
-or deployment is part of this local implementation.
+remain authoritative. Production activation remains unauthorized and outside M3.
