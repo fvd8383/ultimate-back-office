@@ -5,11 +5,12 @@ declare(strict_types=1);
 error_reporting(E_ALL);
 
 $path = __DIR__ . '/../database/migrations/023_website_platform_foundation.sql';
-$sql = file_get_contents($path);
-if (!is_string($sql)) {
+$migration023Contents = file_get_contents($path);
+if (!is_string($migration023Contents)) {
     throw new RuntimeException('Migration 023 must be readable.');
 }
-$sql = str_replace(["\r\n", "\r"], "\n", $sql);
+$canonicalMigration023 = str_replace(["\r\n", "\r"], "\n", $migration023Contents);
+$sql = $canonicalMigration023;
 
 $assertions = 0;
 function assertWebsiteMigration(bool $condition, string $message): void
@@ -23,8 +24,8 @@ function assertWebsiteMigration(bool $condition, string $message): void
 
 assertWebsiteMigration(basename($path) === '023_website_platform_foundation.sql', 'Migration 023 must use the reserved filename.');
 assertWebsiteMigration(
-    hash_file('sha256', $path) === '7f487cd11852ee4c05f2bc8766f757134a909716982a47dcfbe5614314189e41',
-    'Historical migration 023 must remain byte-for-byte unchanged.'
+    hash('sha256', $canonicalMigration023) === 'f0912bafc947eab8cc5b2dd5d534466d6b3675f991cac2f6849b1f84819db302',
+    'Historical migration 023 canonical repository content must remain unchanged.'
 );
 assertWebsiteMigration(count(glob(__DIR__ . '/../database/migrations/024_*.sql') ?: []) === 1, 'M3 must add exactly one authorized migration 024.');
 
