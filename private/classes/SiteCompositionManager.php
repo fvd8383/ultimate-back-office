@@ -143,7 +143,12 @@ final class SiteCompositionManager
                 'id' => (int) $revision['site_id'],
                 'purpose' => self::sitePurpose($connection, (int) $revision['site_id']),
             ];
-            $validated = SiteCompositionValidator::validateStoredRevision($connection, $site, $revision);
+            $validated = SiteCompositionValidator::validateStoredRevision(
+                $connection,
+                $site,
+                $revision,
+                SiteCompositionValidator::MODE_RENDER_READ
+            );
             return [
                 'revision_id' => (int) $revision['id'],
                 'site_id' => (int) $revision['site_id'],
@@ -151,6 +156,7 @@ final class SiteCompositionManager
                 'composition_state' => 'composed',
                 'validated_for_rendering' => true,
                 'historical' => ($validated['historical'] ?? false) === true,
+                'legacy_compatibility' => ($validated['legacy_compatibility'] ?? false) === true,
                 'pages' => array_map([self::class, 'renderPage'], $validated['pages']),
                 'theme' => self::renderTheme($validated['theme']),
                 'assets' => array_map(static fn (array $asset): array => [

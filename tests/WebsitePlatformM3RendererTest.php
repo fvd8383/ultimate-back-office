@@ -152,6 +152,34 @@ try {
     assertM3Renderer($exception->classification() === 'invalid_request', 'Renderer must reject models outside the validated read boundary.');
 }
 
+$legacySectionWithoutCompatibility = $composition;
+$legacySectionWithoutCompatibility['historical'] = true;
+$legacySectionWithoutCompatibility['legacy_compatibility'] = false;
+$legacySectionWithoutCompatibility['pages'][0]['sections'] = [[
+    'component_key' => 'legacy_247sp_page', 'implementation_version' => 'legacy-preview-v1',
+    'variant_key' => 'home', 'sort_order' => 10, 'configuration' => ['headline' => 'Legacy'],
+]];
+try {
+    SiteCompositionRenderer::render($legacySectionWithoutCompatibility);
+    throw new RuntimeException('Legacy scope leaked into an ordinary page-section render.');
+} catch (SiteServiceException $exception) {
+    assertM3Renderer($exception->classification() === 'conflict', 'Legacy page-section scope requires the validated compatibility marker.');
+}
+
+$legacyLayout = $composition;
+$legacyLayout['historical'] = true;
+$legacyLayout['legacy_compatibility'] = true;
+$legacyLayout['theme']['configuration']['layouts']['site_header'] = [
+    'component_key' => 'legacy_247sp_page', 'implementation_version' => 'legacy-preview-v1',
+    'variant_key' => 'home', 'configuration' => ['headline' => 'Legacy'],
+];
+try {
+    SiteCompositionRenderer::render($legacyLayout);
+    throw new RuntimeException('Legacy scope leaked into a layout render.');
+} catch (SiteServiceException $exception) {
+    assertM3Renderer($exception->classification() === 'conflict', 'Legacy compatibility must never permit legacy components as layouts.');
+}
+
 $rendererSource = file_get_contents(__DIR__ . '/../private/classes/SiteComponentRenderers.php');
 assertM3Renderer(str_contains((string) $rendererSource, 'return match ($renderer)'), 'Renderer dispatch must be a repository-owned fixed match.');
 assertM3Renderer(!preg_match('/include\s+\$|require\s+\$|call_user_func|\beval\s*\(/i', (string) $rendererSource), 'Renderer must not dynamically execute DB values.');

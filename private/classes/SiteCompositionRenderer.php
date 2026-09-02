@@ -12,6 +12,8 @@ final class SiteCompositionRenderer
         if (($composition['validated_for_rendering'] ?? false) !== true) {
             throw new SiteServiceException('invalid_request', 'A validated composition render model is required.');
         }
+        $legacyCompatibility = ($composition['historical'] ?? false) === true
+            && ($composition['legacy_compatibility'] ?? false) === true;
         $pages = $composition['pages'] ?? [];
         if (!is_array($pages) || !array_is_list($pages)) {
             throw new SiteServiceException('invalid_request', 'Validated composition pages are required.');
@@ -35,33 +37,35 @@ final class SiteCompositionRenderer
         $layouts = $theme['configuration']['layouts'] ?? [];
         $html = '<div class="site-composition" data-theme="' . SiteComponentRenderers::escape($theme['theme_key']) . '">';
         if (isset($layouts['site_header'])) {
-            $html .= self::renderSelection($layouts['site_header'], $context, 'layout');
+            $html .= self::renderSelection($layouts['site_header'], $context, 'layout', false);
         }
         foreach ($pages as $page) {
             $html .= '<main data-page-key="' . SiteComponentRenderers::escape($page['page_key']) . '">';
             $sections = $page['sections'];
             usort($sections, static fn (array $a, array $b): int => ((int) $a['sort_order']) <=> ((int) $b['sort_order']));
             foreach ($sections as $section) {
-                $html .= self::renderSelection($section, $context, 'section');
+                $html .= self::renderSelection($section, $context, 'section', $legacyCompatibility);
             }
             $html .= '</main>';
         }
         if (isset($layouts['site_footer'])) {
-            $html .= self::renderSelection($layouts['site_footer'], $context, 'layout');
+            $html .= self::renderSelection($layouts['site_footer'], $context, 'layout', false);
         }
         if (isset($layouts['mobile_cta'])) {
-            $html .= self::renderSelection($layouts['mobile_cta'], $context, 'layout');
+            $html .= self::renderSelection($layouts['mobile_cta'], $context, 'layout', false);
         }
         return $html . '</div>';
     }
 
-    private static function renderSelection(array $selection, array $context, string $scope): string
+    private static function renderSelection(array $selection, array $context, string $scope, bool $legacyCompatibility): string
     {
         $definition = ComponentRegistry::definition(
             (string) $selection['component_key'],
             (string) $selection['implementation_version']
         );
-        if ($definition['scope'] !== $scope || !$definition['renderable']) {
+        $scopeAllowed = $definition['scope'] === $scope
+            || ($scope === 'section' && $legacyCompatibility && $definition['scope'] === 'legacy');
+        if (!$scopeAllowed || !$definition['renderable']) {
             throw new SiteServiceException('conflict', 'Component is unavailable in the rendering scope.');
         }
         $variant = (string) $selection['variant_key'];

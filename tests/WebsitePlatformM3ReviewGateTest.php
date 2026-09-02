@@ -5,6 +5,7 @@ declare(strict_types=1);
 error_reporting(E_ALL);
 
 require_once __DIR__ . '/support/WebsitePlatformM3ServiceDatabase.php';
+require_once __DIR__ . '/../private/classes/SiteCompositionRenderer.php';
 
 $assertions = 0;
 function assertM3Review(bool $condition, string $message): void
@@ -77,7 +78,7 @@ function legacyM3ReviewDatabase(bool $withUnknownAsset = true): WebsitePlatformM
 {
     $database = WebsitePlatformM3ServiceDatabase::fixture();
     useWebsitePlatformM3ServiceDatabase($database);
-    $configuration = ['headline' => 'Legacy home'];
+    $configuration = ['headline' => 'Legacy <home>'];
     $contentHash = CanonicalJson::hash($configuration);
     $legacyVariant = $database->definitions['legacy_247sp_page@legacy-preview-v1']['variants']['home']['variant_id'];
     $database->sitePages[2001] = ['id' => 2001, 'site_id' => 10, 'page_key' => 'home', 'retired_at' => null];
@@ -116,6 +117,7 @@ function legacyM3ReviewDatabase(bool $withUnknownAsset = true): WebsitePlatformM
         ];
     }
     $database->revisions[100]['lifecycle_status'] = 'restored';
+    $database->revisions[100]['restored_from_revision_id'] = 99;
     $database->revisions[100]['snapshot_hash'] = SiteRevisionSnapshotHasher::hashStoredRevision($database, 100, SiteRevisionSnapshotHasher::MODE_LEGACY_M1);
     return $database;
 }
@@ -188,12 +190,14 @@ rejectM3Review($database, 'Stored cardinality violation');
 
 $database = composedM3ReviewDatabase();
 $database->revisions[100]['lifecycle_status'] = 'restored';
+$database->revisions[100]['restored_from_revision_id'] = 99;
 useWebsitePlatformM3ServiceDatabase($database);
 $restoredAuthored = SiteRevisionManager::markReadyForReview(1, 100);
 assertM3Review($restoredAuthored['lifecycle_status'] === 'ready_for_review', 'A restored known renderable authored version must pass exact stored validation.');
 
 $database = composedM3ReviewDatabase(true);
 $database->revisions[100]['lifecycle_status'] = 'restored';
+$database->revisions[100]['restored_from_revision_id'] = 99;
 $database->siteAssets[1]['rights_classification'] = 'unknown';
 rejectM3Review($database, 'Unknown rights on a nonlegacy restore');
 
@@ -202,6 +206,13 @@ useWebsitePlatformM3ServiceDatabase($database);
 $accepted = SiteRevisionManager::markReadyForReview(1, 100);
 assertM3Review($accepted['lifecycle_status'] === 'ready_for_review', 'Exact restored M1 legacy snapshot with evidenced unknown rights must pass review.');
 assertM3Review(count($database->events) === 1, 'Accepted restored legacy review must emit one event.');
+$legacyRead = SiteCompositionManager::validatedCompositionForActor(1, 100);
+assertM3Review($legacyRead['historical'] === true && $legacyRead['legacy_compatibility'] === true, 'Validated legacy read must carry the narrow server-produced compatibility marker after review transition.');
+$legacyHtml = SiteCompositionRenderer::render($legacyRead);
+assertM3Review(str_contains($legacyHtml, 'legacy-snapshot--home') && str_contains($legacyHtml, 'Legacy &lt;home&gt;'), 'Reviewed legacy restore must render meaningful escaped content through the top-level renderer.');
+$database->revisions[100]['lifecycle_status'] = 'customer_approved';
+$laterLegacyRead = SiteCompositionManager::validatedCompositionForActor(1, 100);
+assertM3Review($laterLegacyRead['legacy_compatibility'] === true && str_contains(SiteCompositionRenderer::render($laterLegacyRead), 'Legacy &lt;home&gt;'), 'Durable restore provenance must preserve legacy rendering after later lifecycle transitions.');
 
 $database = legacyM3ReviewDatabase(false);
 useWebsitePlatformM3ServiceDatabase($database);
@@ -210,8 +221,35 @@ assertM3Review($exactLegacy['lifecycle_status'] === 'ready_for_review', 'An exac
 
 $database = legacyM3ReviewDatabase(false);
 $database->revisions[100]['lifecycle_status'] = 'draft';
+$database->revisions[100]['restored_from_revision_id'] = null;
 $database->revisions[100]['snapshot_hash'] = SiteRevisionSnapshotHasher::hashStoredRevision($database, 100, SiteRevisionSnapshotHasher::MODE_LEGACY_M1);
 rejectM3Review($database, 'Legacy component in a draft');
+
+$database = legacyM3ReviewDatabase(false);
+$database->revisions[100]['restored_from_revision_id'] = null;
+rejectM3Review($database, 'Original imported legacy baseline');
+try {
+    SiteCompositionManager::validatedCompositionForActor(1, 100);
+    throw new RuntimeException('Original imported baseline rendered through M3.');
+} catch (SiteServiceException $exception) {
+    assertM3Review($exception->classification() === 'conflict', 'Original imported baseline must be ineligible for validated M3 rendering.');
+}
+
+$database = composedM3ReviewDatabase();
+useWebsitePlatformM3ServiceDatabase($database);
+SiteRevisionManager::markReadyForReview(1, 100);
+$database->definitions['text_block@1.0.0']['definition_status'] = 'inactive';
+$database->definitions['text_block@1.0.0']['variants']['default']['variant_status'] = 'inactive';
+$historicalAuthoredRead = SiteCompositionManager::validatedCompositionForActor(1, 100);
+assertM3Review($historicalAuthoredRead['legacy_compatibility'] === false, 'Ordinary historical authored reads must never receive legacy compatibility.');
+assertM3Review(str_contains(SiteCompositionRenderer::render($historicalAuthoredRead), 'Home'), 'Inactive exact authored versions must remain renderable after review.');
+
+$database = composedM3ReviewDatabase();
+$database->definitions['text_block@1.0.0']['definition_status'] = 'inactive';
+$database->definitions['text_block@1.0.0']['variants']['default']['variant_status'] = 'inactive';
+$inactiveDraftRead = SiteCompositionManager::validatedCompositionForActor(1, 100);
+assertM3Review(str_contains(SiteCompositionRenderer::render($inactiveDraftRead), 'Home'), 'An already-stored draft may preview its inactive exact known version.');
+rejectM3Review($database, 'Inactive authored version entering ordinary review');
 
 foreach ([
     'wrong section key' => static function (WebsitePlatformM3ServiceDatabase $db): void {

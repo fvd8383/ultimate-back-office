@@ -185,18 +185,25 @@ regressions pass.
 ## M2 Review Gate Integration
 
 `SiteRevisionManager::markReadyForReview()` invokes the M3 stored-composition validator
-inside its existing site/revision transaction before lifecycle transition. The gate
+in explicit `review_gate` mode inside its existing site/revision transaction before
+lifecycle transition. The gate
 re-resolves exact repository/DB component identities, validates authorability for
 normal drafts and historical renderability for restored snapshots, schemas,
 placement/cardinality, page/theme metadata, asset ownership/lifecycle/rights/targets,
 and every stored section/page/theme/revision hash. Drift or mismatch blocks review.
 
-A restored revision may retain an exact known renderable historical version even when
-that version is no longer authorable. It is never silently upgraded. Restored M1
-legacy snapshots retain their M1-compatible section/page/theme hashing rules.
+A restore is identified durably by non-null `restored_from_revision_id`; `restored` is
+only a transient lifecycle state. A genuine restore may retain an exact known
+renderable historical version even when that version is no longer authorable. It is
+never silently upgraded. An ordinary draft without restore provenance must still use
+active, authorable repository/DB metadata to enter review. Restored M1 legacy
+snapshots retain their M1-compatible section/page/theme hashing rules after advancing
+to `ready_for_review` or a later lifecycle state.
 Each M1 page must contain exactly one `legacy-page-snapshot` section at sort order 10,
 with exact legacy component/version identity and a variant matching its page type;
-mixed, duplicate, or malformed compatibility structures fail closed.
+mixed, duplicate, or malformed compatibility structures fail closed. The original
+imported baseline has no restore provenance and is not eligible for M3 legacy
+compatibility.
 
 ## Rendering And Read Boundaries
 
@@ -207,10 +214,15 @@ sections, theme, safe asset usage metadata, and authorized `asset_id` values for
 editing. Database IDs remain excluded from canonical hashes. Credentials, provider
 secrets, absolute filesystem paths, and rights-private metadata are never exposed.
 
-`validatedCompositionForActor()` is the separate preview/render read. It authorizes
-the actor, loads site purpose, validates the complete stored revision, verifies all
-content and canonical snapshot hashes, and returns a normalized safe render model.
-An empty editor draft is readable but is not render-ready.
+`validatedCompositionForActor()` is the separate preview/render read and invokes
+explicit `render_read` validation. It authorizes the actor, loads site purpose,
+validates the complete stored revision, verifies all content and canonical snapshot
+hashes, and returns a normalized safe render model. An empty editor draft is readable
+but is not render-ready. Render-read validation requires the exact stored repository
+implementation to remain known and renderable, but it does not require that
+implementation to remain active for new authoring. Thus reviewed revisions and
+already-stored drafts remain previewable after an exact version is retired, while an
+ordinary draft using that inactive version cannot pass the review gate.
 
 The pure renderer enforces its already authorized and validated read-model marker. Repository
 identity resolves to a fixed renderer identifier and a fixed PHP `match`; DB metadata
@@ -218,6 +230,12 @@ cannot choose code. Text and attributes use `htmlspecialchars` with
 `ENT_QUOTES | ENT_SUBSTITUTE` and UTF-8. No configuration renders as raw markup.
 CTA hrefs come only from semantic action plus validated render context. Asset URLs
 come only from validated render context. Missing context fails safely.
+
+Legacy component scope remains distinct from ordinary section scope. The top-level
+renderer permits a legacy definition in a page-section position only when the
+server-produced validated model carries both historical and exact
+`legacy_compatibility` markers. That exception never permits legacy components as
+layouts or as ordinary authored sections.
 
 Legacy `home`, `service`, `about`, and `contact` snapshots render meaningful known
 structured fields through fixed repository code. Text is escaped, unknown fields and

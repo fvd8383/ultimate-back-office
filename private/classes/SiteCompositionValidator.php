@@ -8,6 +8,8 @@ require_once __DIR__ . '/SiteRevisionSnapshotHasher.php';
 final class SiteCompositionValidator
 {
     public const PAGE_TYPES = ['home', 'service', 'about', 'contact', 'landing', 'standard', 'legal'];
+    public const MODE_REVIEW_GATE = 'review_gate';
+    public const MODE_RENDER_READ = 'render_read';
     private const RIGHTS_ALLOWED = ['platform_owned', 'customer_owned', 'customer_licensed_for_site', 'third_party_licensed'];
 
     public static function normalizeForAuthoring(object $connection, array $site, array $input): array
@@ -25,13 +27,17 @@ final class SiteCompositionValidator
         return self::normalize($connection, $site, $input['pages'], $input['theme'], true);
     }
 
-    public static function validateStoredRevision(object $connection, array $site, array $revision): array
+    public static function validateStoredRevision(object $connection, array $site, array $revision, string $validationMode): array
     {
+        if (!in_array($validationMode, [self::MODE_REVIEW_GATE, self::MODE_RENDER_READ], true)) {
+            throw new InvalidArgumentException('Unknown stored composition validation mode.');
+        }
         $loaded = self::loadStoredInput($connection, (int) $site['id'], (int) $revision['id']);
         if (self::isLegacySnapshot($loaded['pages'])) {
             return self::validateLegacyStoredRevision($connection, $site, $revision, $loaded);
         }
-        $forAuthoring = (string) $revision['lifecycle_status'] !== 'restored';
+        $hasRestoreProvenance = $revision['restored_from_revision_id'] !== null;
+        $forAuthoring = $validationMode === self::MODE_REVIEW_GATE && !$hasRestoreProvenance;
         $normalized = self::normalize($connection, $site, $loaded['pages'], $loaded['theme'], $forAuthoring);
 
         foreach ($normalized['pages'] as $page) {
@@ -53,7 +59,11 @@ final class SiteCompositionValidator
         if (!hash_equals((string) $revision['snapshot_hash'], $actual)) {
             throw new SiteServiceException('conflict', 'Stored revision snapshot hash does not match its canonical composition.');
         }
-        return $normalized + ['snapshot_hash' => $actual];
+        return $normalized + [
+            'snapshot_hash' => $actual,
+            'historical' => $hasRestoreProvenance,
+            'legacy_compatibility' => false,
+        ];
     }
 
     private static function normalize(object $connection, array $site, array $pagesInput, array $themeInput, bool $forAuthoring): array
@@ -495,8 +505,8 @@ final class SiteCompositionValidator
 
     private static function validateLegacyStoredRevision(object $connection, array $site, array $revision, array $loaded): array
     {
-        if ((string) $revision['lifecycle_status'] !== 'restored') {
-            throw new SiteServiceException('conflict', 'Legacy snapshot components are compatibility-only.');
+        if ($revision['restored_from_revision_id'] === null) {
+            throw new SiteServiceException('conflict', 'Legacy snapshot compatibility requires durable restore provenance.');
         }
         if ($loaded['pages'] === []) {
             throw new SiteServiceException('conflict', 'A restored revision requires at least one page.');
@@ -561,7 +571,7 @@ final class SiteCompositionValidator
         }
         return [
             'pages' => $loaded['pages'], 'theme' => $loaded['theme'], 'assets' => $validatedAssets,
-            'snapshot_hash' => $actual, 'historical' => true,
+            'snapshot_hash' => $actual, 'historical' => true, 'legacy_compatibility' => true,
         ];
     }
 

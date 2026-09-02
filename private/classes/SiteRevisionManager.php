@@ -291,7 +291,12 @@ final class SiteRevisionManager
             }
             SiteServiceSupport::assertSnapshotHash((string) $revision['snapshot_hash']);
             self::assertReviewStructure($connection, $revision);
-            SiteCompositionValidator::validateStoredRevision($connection, $site, $revision);
+            SiteCompositionValidator::validateStoredRevision(
+                $connection,
+                $site,
+                $revision,
+                SiteCompositionValidator::MODE_REVIEW_GATE
+            );
             $updated = self::applyLifecycleTransition($connection, $revision, 'ready_for_review', true);
             SiteServiceSupport::event(
                 $connection, (int) $revision['site_id'], $revisionId, $actor,
