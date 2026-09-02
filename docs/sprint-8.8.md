@@ -6,7 +6,8 @@ Sprint 8.8 overall is **IN PROGRESS**. M1 is **COMPLETE / STAGING PASS** on vali
 and deployed SHA `2a545a056f650122a3d9ccbf077f35cef83f6065`; migration
 `023_website_platform_foundation.sql` is applied and reconciled on staging. M2 is
 **COMPLETE / STAGING PASS** on validated and deployed SHA
-`31d5f64ba6fdf9005fe839c9d3bae4e996ce3bd4`. M3 is **NEXT / NOT STARTED**.
+`31d5f64ba6fdf9005fe839c9d3bae4e996ce3bd4`. M3 is **IMPLEMENTED LOCALLY /
+REVIEW REQUIRED / STAGING MIGRATION AND VALIDATION PENDING**.
 Production is **UNAUTHORIZED / NOT DEPLOYED**. The detailed completion records are
 `docs/sprint-8.8-m1-closeout.md` and `docs/sprint-8.8-m2-closeout.md`.
 
@@ -207,7 +208,20 @@ approval, cross-tenant denial, or Internal/Super Admin coverage.
 
 ## M3 — Component Registry + Composition
 
-Status: **NEXT / NOT STARTED**.
+Status: **IMPLEMENTED LOCALLY / REVIEW REQUIRED / STAGING MIGRATION AND VALIDATION
+PENDING**.
+
+The local M3 implementation is on branch
+`codex/sprint-8.8-m3-component-composition`. Migration 024 narrowly changes component
+identity uniqueness from component key to immutable component key/version and seeds
+the repository-backed authored catalog; migration 023 is unchanged. The service adds
+repository-owned schemas/rendering, atomic draft composition replacement with stale
+hash protection, existing same-site asset validation, deterministic content/revision
+hashing, authorized reads, and M2 review-gate validation. The detailed local contract
+is `docs/sprint-8.8-m3-service-contract.md`. No route, UI, upload, publication,
+build/deployment, domain/routing, LeadHub ingestion, provider behavior, or legacy
+runtime cutover is included. M3 is not complete until review, migration application,
+and staging validation pass.
 
 ### Deliverables
 
@@ -232,6 +246,8 @@ serialization/hash, and no-executable-code constraints. Static checks confirm ro
 and database content cannot select arbitrary filesystem code.
 
 ## M4 — Admin Composition / Revision Workflow
+
+Status: **NOT STARTED**.
 
 ### Deliverables
 

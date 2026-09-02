@@ -3,6 +3,8 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/Database.php';
+require_once __DIR__ . '/CanonicalJson.php';
+require_once __DIR__ . '/SiteRevisionSnapshotHasher.php';
 
 final class LegacyWebsiteImportException extends RuntimeException
 {
@@ -959,6 +961,38 @@ final class LegacyWebsitePlatformImporter
         if ($brief === null) {
             throw new LegacyWebsiteImportException('missing_import_brief', 'The imported baseline generation brief is missing.');
         }
+        try {
+            return SiteRevisionSnapshotHasher::hashStoredRevision(
+                Database::connection(),
+                $revisionId,
+                SiteRevisionSnapshotHasher::MODE_LEGACY_M1
+            );
+        } catch (SiteServiceException $exception) {
+            $code = $exception->classification() === 'not_found'
+                ? 'missing_import_revision'
+                : 'revision_hash_mismatch';
+            throw new LegacyWebsiteImportException($code, $exception->getMessage());
+        }
+        /* M1's canonical representation now lives in SiteRevisionSnapshotHasher. */
+        /* @codeCoverageIgnoreStart */
+        $revision = self::fetchOne(
+            '/* legacy-import:hash-revision */ SELECT snapshot_schema_version, facts_snapshot_json,
+                    source_references_json, generation_brief_id
+             FROM site_revisions WHERE id = :revision_id LIMIT 1',
+            ['revision_id' => $revisionId]
+        );
+        if ($revision === null || $revision['generation_brief_id'] === null) {
+            throw new LegacyWebsiteImportException('missing_import_revision', 'The imported baseline revision or generation brief is missing.');
+        }
+        $brief = self::fetchOne(
+            '/* legacy-import:hash-brief */ SELECT brief_version, state, brief_json, source_type,
+                    source_reference, content_hash
+             FROM site_generation_briefs WHERE id = :brief_id LIMIT 1',
+            ['brief_id' => (int) $revision['generation_brief_id']]
+        );
+        if ($brief === null) {
+            throw new LegacyWebsiteImportException('missing_import_brief', 'The imported baseline generation brief is missing.');
+        }
 
         $pages = self::fetchAll(
             '/* legacy-import:hash-pages */ SELECT rp.id, p.page_key, rp.title, rp.slug, rp.page_type,
@@ -1069,6 +1103,7 @@ final class LegacyWebsitePlatformImporter
             'theme' => $theme,
             'assets' => $assets,
         ]);
+        /* @codeCoverageIgnoreEnd */
     }
 
     private static function storedRevisionHash(int $revisionId): ?string
@@ -1445,22 +1480,7 @@ final class LegacyWebsitePlatformImporter
 
     private static function hashValue(mixed $value): string
     {
-        return hash('sha256', self::encode(self::canonicalize($value)));
-    }
-
-    private static function canonicalize(mixed $value): mixed
-    {
-        if (!is_array($value)) {
-            return $value;
-        }
-        if (array_is_list($value)) {
-            return array_map([self::class, 'canonicalize'], $value);
-        }
-        ksort($value, SORT_STRING);
-        foreach ($value as $key => $item) {
-            $value[$key] = self::canonicalize($item);
-        }
-        return $value;
+        return CanonicalJson::hash($value);
     }
 
     private static function encode(mixed $value): string
