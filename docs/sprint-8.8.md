@@ -6,10 +6,11 @@ Sprint 8.8 overall is **IN PROGRESS**. M1 is **COMPLETE / STAGING PASS** on vali
 and deployed SHA `2a545a056f650122a3d9ccbf077f35cef83f6065`; migration
 `023_website_platform_foundation.sql` is applied and reconciled on staging. M2 is
 **COMPLETE / STAGING PASS** on validated and deployed SHA
-`31d5f64ba6fdf9005fe839c9d3bae4e996ce3bd4`. M3 is **IMPLEMENTED LOCALLY /
-REVIEW REQUIRED / STAGING MIGRATION AND VALIDATION PENDING**.
-Production is **UNAUTHORIZED / NOT DEPLOYED**. The detailed completion records are
-`docs/sprint-8.8-m1-closeout.md` and `docs/sprint-8.8-m2-closeout.md`.
+`31d5f64ba6fdf9005fe839c9d3bae4e996ce3bd4`. M3 is **COMPLETE / STAGING PASS** on
+validated and deployed SHA `a431f6fc06e24f2252a9a282954d5541551c9000`. M4 is
+**NEXT / NOT STARTED**. Production is **UNAUTHORIZED / NOT DEPLOYED**. The detailed
+completion records are `docs/sprint-8.8-m1-closeout.md`,
+`docs/sprint-8.8-m2-closeout.md`, and `docs/sprint-8.8-m3-closeout.md`.
 
 The sprint implements the approved generic 247SP/EMD website platform in eight focused
 milestones. It replaces no historical migration and does not treat the customer
@@ -208,20 +209,21 @@ approval, cross-tenant denial, or Internal/Super Admin coverage.
 
 ## M3 — Component Registry + Composition
 
-Status: **IMPLEMENTED LOCALLY / REVIEW REQUIRED / STAGING MIGRATION AND VALIDATION
-PENDING**.
+Status: **COMPLETE / STAGING PASS** on merged, deployed, and validated SHA
+`a431f6fc06e24f2252a9a282954d5541551c9000`.
 
-The local M3 implementation is on branch
-`codex/sprint-8.8-m3-component-composition`. Migration 024 narrowly changes component
-identity uniqueness from component key to immutable component key/version and seeds
-the repository-backed authored catalog; migration 023 is unchanged. The service adds
-repository-owned schemas/rendering, atomic draft composition replacement with stale
-hash protection, existing same-site asset validation, deterministic content/revision
-hashing, authorized reads, and M2 review-gate validation. The detailed local contract
-is `docs/sprint-8.8-m3-service-contract.md`. No route, UI, upload, publication,
+PR #105 delivered the repository-backed component catalog, versioned identity,
+schemas/rendering, atomic draft composition replacement with stale-hash protection,
+stable logical-page reuse, existing same-site asset validation, deterministic
+content/revision hashing, authorized editor/render reads, and M2 review-gate
+validation. Migration 024 was applied to staging exactly once and produced 16
+definitions and 22 variants while preserving the legacy IDs. Migration 023 remained
+unchanged. PR #106 corrected a cross-platform test-only hash guard; its code-only retry
+did not rerun migration 024. The detailed behavioral contract is
+`docs/sprint-8.8-m3-service-contract.md`, and the authoritative completion record is
+`docs/sprint-8.8-m3-closeout.md`. No route, UI, upload, publication,
 build/deployment, domain/routing, LeadHub ingestion, provider behavior, or legacy
-runtime cutover is included. M3 is not complete until review, migration application,
-and staging validation pass.
+runtime cutover is included.
 
 ### Deliverables
 
@@ -240,14 +242,22 @@ can become reviewable.
 
 ### Tests and exit gate
 
-Test every component schema/variant, invalid keys/config, cross-site asset references,
-section ordering/cardinality, theme validation, legacy mapping, escaping, deterministic
-serialization/hash, and no-executable-code constraints. Static checks confirm routes
-and database content cannot select arbitrary filesystem code.
+The M3 staging gate passed. The code-only retry passed PHP lint for 141 files, HTTP
+smoke without 5xx responses, and all 32 standalone suites. Final real-MySQL validation
+passed actual composition replacement, stored hashing, editor and validated-render
+reads, top-level escaping and inert forms, stable-page reuse, variant rendering/hash
+changes, one-winner/one-`stale_write` concurrency, transaction rollback, review tamper
+rejection, post-review immutability, inactive historical-version rendering, asset
+rights/MIME/business/tenant boundaries, and the import/restore/review/render legacy
+path. Cleanup restored every generic/import/audit table to zero while retaining the
+16/22 registry and the authoritative legacy runtime's 6 websites / 37 pages. The real
+legacy unknown-rights asset subcase was not executable because the selected source had
+zero asset references; deployed automated coverage passed and the limitation is
+recorded in `docs/sprint-8.8-m3-closeout.md`.
 
 ## M4 — Admin Composition / Revision Workflow
 
-Status: **NOT STARTED**.
+Status: **NEXT / NOT STARTED**.
 
 ### Deliverables
 
