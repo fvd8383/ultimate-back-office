@@ -32,7 +32,11 @@ assertM2Scope($status === 0 && trim(implode("\n", $output)) === $baseline, 'The 
 $output = [];
 exec('git -C ' . escapeshellarg($root) . ' diff --quiet ' . escapeshellarg($baseline) . ' -- database/migrations/023_website_platform_foundation.sql', $output, $status);
 assertM2Scope($status === 0, 'Migration 023 must remain unchanged.');
-assertM2Scope(count(glob($root . '/database/migrations/024_*.sql') ?: []) === 0, 'Migration 024 must remain absent.');
+assertM2Scope(
+    count(glob($root . '/database/migrations/024_*.sql') ?: []) === 1
+        && is_file($root . '/database/migrations/024_component_registry_versioning.sql'),
+    'The later M3 milestone must add only its authorized migration 024.'
+);
 
 foreach ([
     'private/classes/SiteAuthorizationPolicy.php',

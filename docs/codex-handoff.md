@@ -13,7 +13,9 @@ real-MySQL contracts. Cleanup restored the zero generic baseline with the expect
 1 component definition and 4 variants. The generic model remains dormant and the
 legacy website runtime remains authoritative. Sprint 8.8 overall is **IN PROGRESS**.
 Sprint 8.8 M2 is **COMPLETE / STAGING PASS** on merged, deployed, and validated SHA
-`31d5f64ba6fdf9005fe839c9d3bae4e996ce3bd4`. M3 is **NEXT / NOT STARTED**.
+`31d5f64ba6fdf9005fe839c9d3bae4e996ce3bd4`. M3 is **IMPLEMENTED LOCALLY /
+REVIEW REQUIRED / STAGING MIGRATION AND VALIDATION PENDING** on branch
+`codex/sprint-8.8-m3-component-composition`; the draft PR is pending local finalization.
 Production remains **UNAUTHORIZED / NOT DEPLOYED**.
 
 The authoritative final report is
@@ -68,7 +70,14 @@ Sprint 8.8 M2 — `SiteManager` and revision/lifecycle/approval services — is
 SHA-256 `fa4c3f10796ee0f9c0a9dbf69bbc7d2cbaaa82036cbdbdc0839b5c415314e824`.
 The authoritative completion record is `docs/sprint-8.8-m2-closeout.md`, and the
 service contract is `docs/sprint-8.8-m2-service-contract.md`. M3 — Component Registry +
-Composition — is **NEXT / NOT STARTED**. The later executable plan is
+Composition — is **IMPLEMENTED LOCALLY / REVIEW REQUIRED / STAGING MIGRATION AND
+VALIDATION PENDING**. Its contract is `docs/sprint-8.8-m3-service-contract.md`.
+Migration 024 versions component registry identity and seeds repository metadata;
+migration 023 remains unchanged. The repository owns executable schemas and fixed
+rendering, while M3 adds atomic full-revision composition, same-site ready/rights
+asset checks, deterministic stored-row hashes, and M2 review-gate validation. It adds
+no routes/UI, upload, build/deployment, LeadHub routing, provider work, or public
+runtime cutover. M4 is **NOT STARTED**. The later executable plan is
 `docs/sprint-8.9.md` for the Communications Core Foundation.
 Vendasta professional email is first-customer critical in Sprint 8.9 M1; Twilio's
 shared provider/webhook foundation is Sprint 8.9; Retell voice runtime remains Sprint

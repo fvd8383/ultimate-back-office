@@ -22,7 +22,11 @@ function assertWebsiteMigration(bool $condition, string $message): void
 }
 
 assertWebsiteMigration(basename($path) === '023_website_platform_foundation.sql', 'Migration 023 must use the reserved filename.');
-assertWebsiteMigration(count(glob(__DIR__ . '/../database/migrations/024_*.sql') ?: []) === 0, 'M1 must not create migration 024.');
+assertWebsiteMigration(
+    hash_file('sha256', $path) === '7f487cd11852ee4c05f2bc8766f757134a909716982a47dcfbe5614314189e41',
+    'Historical migration 023 must remain byte-for-byte unchanged.'
+);
+assertWebsiteMigration(count(glob(__DIR__ . '/../database/migrations/024_*.sql') ?: []) === 1, 'M3 must add exactly one authorized migration 024.');
 
 $tables = [
     'sites', 'site_business_associations', 'site_pages', 'site_generation_briefs',

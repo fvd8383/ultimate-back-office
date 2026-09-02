@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/SiteManager.php';
+require_once __DIR__ . '/SiteCompositionValidator.php';
 
 final class SiteRevisionManager
 {
@@ -290,6 +291,7 @@ final class SiteRevisionManager
             }
             SiteServiceSupport::assertSnapshotHash((string) $revision['snapshot_hash']);
             self::assertReviewStructure($connection, $revision);
+            SiteCompositionValidator::validateStoredRevision($connection, $site, $revision);
             $updated = self::applyLifecycleTransition($connection, $revision, 'ready_for_review', true);
             SiteServiceSupport::event(
                 $connection, (int) $revision['site_id'], $revisionId, $actor,
@@ -464,6 +466,30 @@ final class SiteRevisionManager
         self::assertLockedRevisionSite($revision, $siteId);
         self::assertRevisionMutableForCompositionRow($revision);
         return $revision;
+    }
+
+    /** @internal Caller owns the transaction and already holds the mutable revision lock. */
+    public static function applyCompositionSnapshotHash(
+        object $connection,
+        array $lockedRevision,
+        string $snapshotHash
+    ): void {
+        if (!method_exists($connection, 'inTransaction') || !$connection->inTransaction()) {
+            throw new SiteServiceException('conflict', 'Composition snapshot hash requires the writing transaction.');
+        }
+        self::assertRevisionMutableForCompositionRow($lockedRevision);
+        $snapshotHash = SiteServiceSupport::assertSnapshotHash($snapshotHash);
+        $statement = $connection->prepare(
+            'UPDATE site_revisions SET snapshot_hash = :snapshot_hash, updated_at = NOW()
+             WHERE id = :revision_id AND lifecycle_status = :lifecycle_status'
+        );
+        $statement->execute([
+            'snapshot_hash' => $snapshotHash,
+            'revision_id' => (int) $lockedRevision['id'],
+            'lifecycle_status' => (string) $lockedRevision['lifecycle_status'],
+        ]);
+        // The row lock and expected-hash check serialize writers. MySQL may report zero
+        // changed rows when a deterministic replacement recreates the same snapshot.
     }
 
     /** @internal Narrow approval-invalidation fallback; it never makes composition mutable. */
