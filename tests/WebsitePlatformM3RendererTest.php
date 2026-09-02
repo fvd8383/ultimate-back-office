@@ -17,33 +17,69 @@ function assertM3Renderer(bool $condition, string $message): void
 }
 
 assertM3Renderer(SiteComponentRenderers::escape('<script>"x" & y') === '&lt;script&gt;&quot;x&quot; &amp; y', 'Text and attribute escaping must use ENT_QUOTES.');
-$text = SiteComponentRenderers::render('text_block', [
+$text = SiteComponentRenderers::render('text_block', 'default', [
     'heading' => 'A < B', 'body' => '<script>alert("x")</script>', 'alignment' => 'left',
 ]);
 assertM3Renderer(!str_contains($text, '<script>') && str_contains($text, '&lt;script&gt;'), 'Script-like text must never render raw.');
 
-$cta = SiteComponentRenderers::render('cta', ['heading' => null, 'body' => null, 'label' => 'Call "now"', 'action' => 'call'], [
+$cta = SiteComponentRenderers::render('cta', 'banner', ['heading' => null, 'body' => null, 'label' => 'Call "now"', 'action' => 'call'], [
     'call_href' => 'tel:+15551234567',
 ]);
 assertM3Renderer(str_contains($cta, 'href="tel:+15551234567"'), 'Semantic call action must resolve from safe context.');
 assertM3Renderer(str_contains($cta, 'Call &quot;now&quot;'), 'CTA labels must escape quotes.');
-$unsafeCta = SiteComponentRenderers::render('cta', ['heading' => null, 'body' => null, 'label' => 'Bad', 'action' => 'contact'], [
+$unsafeCta = SiteComponentRenderers::render('cta', 'inline', ['heading' => null, 'body' => null, 'label' => 'Bad', 'action' => 'contact'], [
     'contact_href' => 'javascript:alert(1)',
 ]);
 assertM3Renderer(!str_contains($unsafeCta, 'javascript:') && str_contains($unsafeCta, 'action-unavailable'), 'Unsafe action context must fail closed.');
 
-$form = SiteComponentRenderers::render('lead_form', [
+$form = SiteComponentRenderers::render('lead_form', 'default', [
     'heading' => 'Contact', 'body' => null, 'submit_label' => 'Send',
     'fields' => ['name', 'email'], 'required_fields' => ['email'],
 ]);
-assertM3Renderer(str_contains($form, 'action="" data-preview="inert"'), 'Lead form without registered routing must be inert.');
+assertM3Renderer(!str_contains($form, '<form') && str_contains($form, 'data-preview="inert"'), 'Lead form without registered routing must not emit a form element.');
+assertM3Renderer(str_contains($form, 'disabled') && str_contains($form, 'type="button"'), 'Inert lead controls must be disabled and non-submitting.');
 assertM3Renderer(!str_contains($form, 'business_id') && !str_contains($form, 'site_id'), 'Lead form must not expose routing identifiers.');
-$badAction = SiteComponentRenderers::render('lead_form', [
+$badAction = SiteComponentRenderers::render('lead_form', 'default', [
     'heading' => 'Contact', 'body' => null, 'submit_label' => 'Send', 'fields' => ['name'], 'required_fields' => [],
 ], ['lead_form_action' => 'https://evil.example/collect']);
-assertM3Renderer(str_contains($badAction, 'action="" data-preview="inert"'), 'External form actions must be rejected.');
+assertM3Renderer(!str_contains($badAction, '<form') && str_contains($badAction, 'data-preview="inert"'), 'External form actions must be rejected without emitting a form.');
+$safeForm = SiteComponentRenderers::render('lead_form', 'default', [
+    'heading' => 'Contact', 'body' => null, 'submit_label' => 'Send', 'fields' => ['name'], 'required_fields' => [],
+], ['lead_form_action' => '/internal/leads']);
+assertM3Renderer(str_contains($safeForm, '<form method="post" action="/internal/leads">') && str_contains($safeForm, 'type="submit"'), 'A safe relative action may emit the POST form.');
+
+$heroDefault = SiteComponentRenderers::render('hero', 'default', ['headline' => 'Hero']);
+$heroSplit = SiteComponentRenderers::render('hero', 'split_media', ['headline' => 'Hero']);
+assertM3Renderer($heroDefault !== $heroSplit && str_contains($heroSplit, 'hero--split-media'), 'Hero variant identity must change repository rendering semantics.');
+$ctaBanner = SiteComponentRenderers::render('cta', 'banner', ['heading' => null, 'body' => null, 'label' => 'Go', 'action' => 'contact']);
+$ctaInline = SiteComponentRenderers::render('cta', 'inline', ['heading' => null, 'body' => null, 'label' => 'Go', 'action' => 'contact']);
+assertM3Renderer($ctaBanner !== $ctaInline && str_contains($ctaInline, 'cta--inline'), 'CTA variant identity must change repository rendering semantics.');
+$headerStandard = SiteComponentRenderers::render('site_header', 'standard', ['show_phone' => false]);
+$headerCentered = SiteComponentRenderers::render('site_header', 'centered', ['show_phone' => false]);
+assertM3Renderer($headerStandard !== $headerCentered && str_contains($headerCentered, 'site-header--centered'), 'Header variant identity must change repository rendering semantics.');
+
+$visibleHeader = SiteComponentRenderers::render('site_header', 'standard', ['show_phone' => true], ['call_href' => 'tel:+15551234567', 'phone_label' => '555-1234']);
+$hiddenHeader = SiteComponentRenderers::render('site_header', 'standard', ['show_phone' => false], ['call_href' => 'tel:+15551234567']);
+assertM3Renderer(str_contains($visibleHeader, '555-1234') && !str_contains($hiddenHeader, 'tel:'), 'show_phone must truthfully control the safe phone action.');
+$visibleFooter = SiteComponentRenderers::render('site_footer', 'default', ['copyright_text' => 'C', 'show_navigation' => false, 'show_contact' => true], ['email_href' => 'mailto:hello@example.com']);
+$hiddenFooter = SiteComponentRenderers::render('site_footer', 'default', ['copyright_text' => 'C', 'show_navigation' => false, 'show_contact' => false], ['email_href' => 'mailto:hello@example.com']);
+assertM3Renderer(str_contains($visibleFooter, 'mailto:hello@example.com') && !str_contains($hiddenFooter, 'mailto:'), 'show_contact must truthfully control safe contact actions.');
+
+foreach (['home', 'service', 'about', 'contact'] as $legacyVariant) {
+    $legacyConfig = match ($legacyVariant) {
+        'home' => ['headline' => 'Home <unsafe>', 'business_description' => 'Known body', 'hero_image_path' => 'javascript:bad'],
+        'service' => ['service_name' => 'Service <unsafe>', 'service_description' => 'Known body', 'included_items' => ['One']],
+        'about' => ['about_heading' => 'About <unsafe>', 'company_description' => 'Known body'],
+        'contact' => ['contact_heading' => 'Contact <unsafe>', 'contact_description' => 'Known body'],
+    };
+    $legacyConfig['unknown_markup'] = '<script>alert(1)</script>';
+    $legacy = SiteComponentRenderers::render('legacy_snapshot', $legacyVariant, $legacyConfig);
+    assertM3Renderer(str_contains($legacy, 'Known body') && str_contains($legacy, '&lt;unsafe&gt;'), "Legacy {$legacyVariant} must render meaningful escaped known fields.");
+    assertM3Renderer(!str_contains($legacy, '<script>') && !str_contains($legacy, 'javascript:bad'), "Legacy {$legacyVariant} must ignore unknown fields and raw asset paths.");
+}
 
 $composition = [
+    'validated_for_rendering' => true,
     'theme' => [
         'theme_key' => 'local_service',
         'configuration' => ['layouts' => [
@@ -91,6 +127,7 @@ assertM3Renderer(str_contains($first, 'Welcome &lt;home&gt;') && str_contains($f
 
 try {
     SiteCompositionRenderer::render([
+        'validated_for_rendering' => true,
         'theme' => $composition['theme'],
         'pages' => [[
             'page_key' => 'bad', 'title' => 'Bad', 'slug' => 'bad', 'navigation_label' => 'Bad', 'sort_order' => 1,
@@ -104,6 +141,15 @@ try {
     throw new RuntimeException('Arbitrary component path rendered.');
 } catch (SiteServiceException $exception) {
     assertM3Renderer($exception->classification() === 'invalid_request', 'Unknown executable identities must fail closed.');
+}
+
+try {
+    $unvalidated = $composition;
+    unset($unvalidated['validated_for_rendering']);
+    SiteCompositionRenderer::render($unvalidated);
+    throw new RuntimeException('Unvalidated composition rendered.');
+} catch (SiteServiceException $exception) {
+    assertM3Renderer($exception->classification() === 'invalid_request', 'Renderer must reject models outside the validated read boundary.');
 }
 
 $rendererSource = file_get_contents(__DIR__ . '/../private/classes/SiteComponentRenderers.php');

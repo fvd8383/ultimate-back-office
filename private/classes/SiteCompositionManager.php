@@ -86,14 +86,46 @@ final class SiteCompositionManager
     {
         $revision = SiteRevisionManager::revisionForActor($actingUserId, $revisionId);
         return SiteServiceSupport::read(static function (object $connection) use ($revision): array {
-            $representation = SiteRevisionSnapshotHasher::storedRepresentation($connection, (int) $revision['id']);
-            return [
+            $state = $connection->prepare(
+                '/* site-m3:composition-state */
+                 SELECT
+                   (SELECT COUNT(*) FROM site_revision_pages WHERE revision_id = :page_revision_id) AS page_count,
+                   (SELECT COUNT(*) FROM site_themes WHERE revision_id = :theme_revision_id) AS theme_count,
+                   (SELECT COUNT(*) FROM site_revision_assets WHERE revision_id = :asset_revision_id) AS asset_count'
+            );
+            $state->execute([
+                'page_revision_id' => (int) $revision['id'],
+                'theme_revision_id' => (int) $revision['id'],
+                'asset_revision_id' => (int) $revision['id'],
+            ]);
+            $counts = $state->fetch();
+            $base = [
                 'revision_id' => (int) $revision['id'], 'site_id' => (int) $revision['site_id'],
                 'revision_number' => (int) $revision['revision_number'],
                 'lifecycle_status' => (string) $revision['lifecycle_status'],
                 'snapshot_hash' => (string) $revision['snapshot_hash'],
+            ];
+            if ((int) ($counts['page_count'] ?? 0) === 0
+                && (int) ($counts['theme_count'] ?? 0) === 0
+                && (int) ($counts['asset_count'] ?? 0) === 0) {
+                return $base + ['composition_state' => 'empty', 'pages' => [], 'theme' => null, 'assets' => []];
+            }
+            $representation = SiteRevisionSnapshotHasher::storedRepresentation($connection, (int) $revision['id']);
+            $assetIds = [];
+            $assetStatement = $connection->prepare(
+                '/* site-m3:composition-editor-assets */
+                 SELECT asset_id, usage_key FROM site_revision_assets
+                 WHERE revision_id = :revision_id ORDER BY usage_key'
+            );
+            $assetStatement->execute(['revision_id' => (int) $revision['id']]);
+            foreach ($assetStatement->fetchAll() as $assetRow) {
+                $assetIds[(string) $assetRow['usage_key']] = (int) $assetRow['asset_id'];
+            }
+            return $base + [
+                'composition_state' => 'composed',
                 'pages' => $representation['pages'], 'theme' => $representation['theme'],
                 'assets' => array_map(static fn (array $asset): array => [
+                    'asset_id' => $assetIds[$asset['usage_key']],
                     'asset_type' => $asset['asset_type'], 'checksum_sha256' => $asset['checksum_sha256'],
                     'mime_type' => $asset['mime_type'], 'byte_size' => $asset['byte_size'],
                     'usage_key' => $asset['usage_key'], 'page_key' => $asset['page_key'],
@@ -101,6 +133,76 @@ final class SiteCompositionManager
                 ], $representation['assets']),
             ];
         });
+    }
+
+    public static function validatedCompositionForActor(int $actingUserId, int $revisionId): array
+    {
+        $revision = SiteRevisionManager::revisionForActor($actingUserId, $revisionId);
+        return SiteServiceSupport::read(static function (object $connection) use ($revision): array {
+            $site = [
+                'id' => (int) $revision['site_id'],
+                'purpose' => self::sitePurpose($connection, (int) $revision['site_id']),
+            ];
+            $validated = SiteCompositionValidator::validateStoredRevision($connection, $site, $revision);
+            return [
+                'revision_id' => (int) $revision['id'],
+                'site_id' => (int) $revision['site_id'],
+                'snapshot_hash' => (string) $validated['snapshot_hash'],
+                'composition_state' => 'composed',
+                'validated_for_rendering' => true,
+                'historical' => ($validated['historical'] ?? false) === true,
+                'pages' => array_map([self::class, 'renderPage'], $validated['pages']),
+                'theme' => self::renderTheme($validated['theme']),
+                'assets' => array_map(static fn (array $asset): array => [
+                    'usage_key' => (string) $asset['usage_key'],
+                    'asset_type' => (string) $asset['asset_type'],
+                    'mime_type' => (string) $asset['mime_type'],
+                    'checksum_sha256' => (string) $asset['checksum_sha256'],
+                    'byte_size' => (int) $asset['byte_size'],
+                    'page_key' => $asset['page_key'],
+                    'section_key' => $asset['section_key'],
+                ], $validated['assets']),
+            ];
+        });
+    }
+
+    private static function renderPage(array $page): array
+    {
+        return [
+            'page_key' => (string) $page['page_key'], 'title' => (string) $page['title'],
+            'slug' => (string) $page['slug'], 'page_type' => (string) $page['page_type'],
+            'navigation_label' => $page['navigation_label'], 'sort_order' => (int) $page['sort_order'],
+            'seo' => $page['seo'], 'presentation' => $page['presentation'],
+            'sections' => array_map([self::class, 'renderSelection'], $page['sections']),
+        ];
+    }
+
+    private static function renderTheme(array $theme): array
+    {
+        $configuration = $theme['configuration'];
+        foreach (['site_header', 'site_footer', 'mobile_cta'] as $layoutKey) {
+            if (isset($configuration['layouts'][$layoutKey])) {
+                $configuration['layouts'][$layoutKey] = self::renderSelection($configuration['layouts'][$layoutKey]);
+            }
+        }
+        return [
+            'theme_key' => (string) $theme['theme_key'], 'theme_version' => (int) $theme['theme_version'],
+            'primary_color' => $theme['primary_color'], 'secondary_color' => $theme['secondary_color'],
+            'typography' => $theme['typography'], 'configuration' => $configuration,
+        ];
+    }
+
+    private static function renderSelection(array $selection): array
+    {
+        return [
+            'section_key' => $selection['section_key'] ?? null,
+            'component_key' => (string) $selection['component_key'],
+            'implementation_version' => (string) $selection['implementation_version'],
+            'variant_key' => (string) $selection['variant_key'],
+            'configuration_schema_version' => (int) $selection['configuration_schema_version'],
+            'sort_order' => isset($selection['sort_order']) ? (int) $selection['sort_order'] : null,
+            'configuration' => $selection['configuration'],
+        ];
     }
 
     private static function sitePurpose(object $connection, int $siteId): string

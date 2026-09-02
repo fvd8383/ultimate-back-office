@@ -42,6 +42,22 @@ ComponentRegistry::validateManifest([
     ['component_key' => 'hero', 'implementation_version' => '2.0.0', 'scope' => 'section'],
 ]);
 assertM3Registry(true, 'A second immutable implementation version is structurally supported.');
+try {
+    ComponentRegistry::validateManifest([
+        ['component_key' => 'hero', 'implementation_version' => '1.0.0', 'scope' => 'section'],
+        ['component_key' => 'hero', 'implementation_version' => '1.0.0', 'scope' => 'section'],
+    ]);
+    throw new RuntimeException('Duplicate definition declaration was accepted.');
+} catch (LogicException $exception) {
+    assertM3Registry(str_contains($exception->getMessage(), 'Duplicate repository component identity'), 'Duplicate definition declarations must fail before associative overwrite.');
+}
+$componentFactory = new ReflectionMethod(ComponentRegistry::class, 'component');
+try {
+    $componentFactory->invoke(null, 'duplicate_test', 'Duplicate', 'test', 'section', 'text_block', ['same', 'same'], [], [], 1, []);
+    throw new RuntimeException('Duplicate variant declaration was accepted.');
+} catch (LogicException $exception) {
+    assertM3Registry(str_contains($exception->getMessage(), 'Duplicate repository component variant'), 'Duplicate variant declarations must fail before associative overwrite.');
+}
 expectM3Registry(static fn () => ComponentRegistry::definition('unknown', '1.0.0'), 'invalid_request');
 expectM3Registry(static fn () => ComponentRegistry::definition('hero', '9.0.0'), 'invalid_request');
 

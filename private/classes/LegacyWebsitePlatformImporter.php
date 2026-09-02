@@ -962,7 +962,11 @@ final class LegacyWebsitePlatformImporter
             throw new LegacyWebsiteImportException('missing_import_brief', 'The imported baseline generation brief is missing.');
         }
         try {
-            return SiteRevisionSnapshotHasher::hashStoredRevision(Database::connection(), $revisionId);
+            return SiteRevisionSnapshotHasher::hashStoredRevision(
+                Database::connection(),
+                $revisionId,
+                SiteRevisionSnapshotHasher::MODE_LEGACY_M1
+            );
         } catch (SiteServiceException $exception) {
             $code = $exception->classification() === 'not_found'
                 ? 'missing_import_revision'

@@ -7,13 +7,19 @@ require_once __DIR__ . '/SiteServiceSupport.php';
 
 final class SiteRevisionSnapshotHasher
 {
-    public static function hashStoredRevision(object $connection, int $revisionId): string
+    public const MODE_GENERIC = 'generic';
+    public const MODE_LEGACY_M1 = 'legacy_m1';
+
+    public static function hashStoredRevision(object $connection, int $revisionId, string $mode = self::MODE_GENERIC): string
     {
-        return CanonicalJson::hash(self::storedRepresentation($connection, $revisionId));
+        return CanonicalJson::hash(self::storedRepresentation($connection, $revisionId, $mode));
     }
 
-    public static function storedRepresentation(object $connection, int $revisionId): array
+    public static function storedRepresentation(object $connection, int $revisionId, string $mode = self::MODE_GENERIC): array
     {
+        if (!in_array($mode, [self::MODE_GENERIC, self::MODE_LEGACY_M1], true)) {
+            throw new InvalidArgumentException('Unknown revision snapshot hash mode.');
+        }
         $revision = self::one($connection,
             '/* legacy-import:hash-revision */ SELECT snapshot_schema_version, facts_snapshot_json,
                     source_references_json, generation_brief_id
@@ -40,7 +46,7 @@ final class SiteRevisionSnapshotHasher
                 'state' => (string) $brief['state'],
                 'brief' => self::json($brief['brief_json']),
                 'source_type' => (string) $brief['source_type'],
-                'source_reference' => self::nullableString($brief['source_reference']),
+                'source_reference' => self::nullableString($brief['source_reference'], $mode),
                 'content_hash' => (string) $brief['content_hash'],
             ];
         }
@@ -84,7 +90,7 @@ final class SiteRevisionSnapshotHasher
                 'title' => (string) $page['title'],
                 'slug' => (string) $page['slug'],
                 'page_type' => (string) $page['page_type'],
-                'navigation_label' => self::nullableString($page['navigation_label']),
+                'navigation_label' => self::nullableString($page['navigation_label'], $mode),
                 'sort_order' => (int) $page['sort_order'],
                 'seo' => self::json($page['seo_json']),
                 'presentation' => self::json($page['presentation_json']),
@@ -106,8 +112,8 @@ final class SiteRevisionSnapshotHasher
         $theme = [
             'theme_key' => (string) $themeRow['theme_key'],
             'theme_version' => (int) $themeRow['theme_version'],
-            'primary_color' => self::nullableString($themeRow['primary_color']),
-            'secondary_color' => self::nullableString($themeRow['secondary_color']),
+            'primary_color' => self::nullableString($themeRow['primary_color'], $mode),
+            'secondary_color' => self::nullableString($themeRow['secondary_color'], $mode),
             'typography' => self::json($themeRow['typography_json']),
             'configuration' => self::json($themeRow['configuration_json']),
             'content_hash' => (string) $themeRow['content_hash'],
@@ -133,9 +139,9 @@ final class SiteRevisionSnapshotHasher
                 'mime_type' => (string) $asset['mime_type'],
                 'byte_size' => (int) $asset['byte_size'],
                 'usage_key' => (string) $asset['usage_key'],
-                'source_reference' => self::nullableString($asset['source_reference']),
-                'page_key' => self::nullableString($asset['page_key']),
-                'section_key' => self::nullableString($asset['section_key']),
+                'source_reference' => self::nullableString($asset['source_reference'], $mode),
+                'page_key' => self::nullableString($asset['page_key'], $mode),
+                'section_key' => self::nullableString($asset['section_key'], $mode),
             ];
         }
         unset($asset);
@@ -176,8 +182,16 @@ final class SiteRevisionSnapshotHasher
         return json_decode((string) $value, true, 512, JSON_THROW_ON_ERROR);
     }
 
-    private static function nullableString(mixed $value): ?string
+    private static function nullableString(mixed $value, string $mode): ?string
     {
-        return $value === null ? null : (string) $value;
+        if ($value === null) {
+            return null;
+        }
+        $string = (string) $value;
+        if ($mode === self::MODE_LEGACY_M1) {
+            $string = trim($string);
+            return $string === '' ? null : $string;
+        }
+        return $string;
     }
 }

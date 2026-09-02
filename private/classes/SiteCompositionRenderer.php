@@ -9,6 +9,9 @@ final class SiteCompositionRenderer
 {
     public static function render(array $composition, array $context = []): string
     {
+        if (($composition['validated_for_rendering'] ?? false) !== true) {
+            throw new SiteServiceException('invalid_request', 'A validated composition render model is required.');
+        }
         $pages = $composition['pages'] ?? [];
         if (!is_array($pages) || !array_is_list($pages)) {
             throw new SiteServiceException('invalid_request', 'Validated composition pages are required.');
@@ -67,6 +70,7 @@ final class SiteCompositionRenderer
         }
         return SiteComponentRenderers::render(
             (string) $definition['renderer'],
+            $variant,
             (array) $selection['configuration'],
             $context
         );

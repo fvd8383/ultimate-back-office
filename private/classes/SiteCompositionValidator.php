@@ -208,13 +208,13 @@ final class SiteCompositionValidator
         return $page;
     }
 
-    private static function validateAsset(object $connection, array $site, array $input): array
+    private static function validateAsset(object $connection, array $site, array $input, bool $legacyHistorical = false): array
     {
         $statement = $connection->prepare(
             '/* site-m3:resolve-asset */
              SELECT a.id, a.site_id, a.business_id, a.asset_type, a.storage_key,
                     a.checksum_sha256, a.mime_type, a.byte_size, a.rights_classification,
-                    a.rights_expires_at, a.lifecycle_status,
+                    a.rights_expires_at, a.lifecycle_status, a.source, a.rights_metadata_json,
                     sba.business_id AS active_business_id
              FROM site_assets a
              LEFT JOIN site_business_associations sba
@@ -234,8 +234,27 @@ final class SiteCompositionValidator
         if ((string) $asset['lifecycle_status'] !== 'ready') {
             throw new SiteServiceException('conflict', 'Referenced asset is not ready.');
         }
-        if (!in_array((string) $asset['rights_classification'], self::RIGHTS_ALLOWED, true)) {
+        $rights = (string) $asset['rights_classification'];
+        if ($rights === 'prohibited') {
             throw new SiteServiceException('conflict', 'Referenced asset rights do not permit composition.');
+        }
+        if (!in_array($rights, self::RIGHTS_ALLOWED, true)) {
+            $metadata = self::decodeJson($asset['rights_metadata_json'] ?? null);
+            $legacyUnknownAllowed = $legacyHistorical
+                && $rights === 'unknown'
+                && (string) ($asset['source'] ?? '') === 'legacy_247sp'
+                && is_array($metadata)
+                && ($metadata['legacy_reference'] ?? false) === true
+                && ($metadata['review_required'] ?? false) === true
+                && is_string($input['source_reference'] ?? null)
+                && trim((string) $input['source_reference']) !== ''
+                && preg_match('/^[a-f0-9]{64}$/', (string) $asset['checksum_sha256']) === 1
+                && trim((string) $asset['mime_type']) !== ''
+                && trim((string) $asset['storage_key']) !== ''
+                && (int) $asset['byte_size'] >= 0;
+            if (!$legacyUnknownAllowed) {
+                throw new SiteServiceException('conflict', 'Referenced asset rights do not permit composition.');
+            }
         }
         if ($asset['rights_expires_at'] !== null && strtotime((string) $asset['rights_expires_at']) <= time()) {
             throw new SiteServiceException('conflict', 'Referenced asset rights have expired.');
@@ -482,11 +501,24 @@ final class SiteCompositionValidator
         if ($loaded['pages'] === []) {
             throw new SiteServiceException('conflict', 'A restored revision requires at least one page.');
         }
+        if ($loaded['theme']['theme_key'] !== 'legacy_247sp_starter' || (int) $loaded['theme']['theme_version'] !== 1) {
+            throw new SiteServiceException('conflict', 'Restored legacy snapshot requires the exact legacy theme identity.');
+        }
+        $validatedAssets = [];
         foreach ($loaded['pages'] as $page) {
-            if ($page['sections'] === []) {
-                throw new SiteServiceException('conflict', 'Every restored legacy page requires a snapshot section.');
+            if (count($page['sections']) !== 1) {
+                throw new SiteServiceException('conflict', 'Every restored legacy page requires exactly one snapshot section.');
             }
             foreach ($page['sections'] as $section) {
+                if ($section['section_key'] !== 'legacy-page-snapshot'
+                    || (int) $section['sort_order'] !== 10
+                    || $section['component_key'] !== 'legacy_247sp_page'
+                    || $section['implementation_version'] !== 'legacy-preview-v1'
+                    || (int) $section['configuration_schema_version'] !== 1
+                    || $section['variant_key'] !== $page['page_type']
+                    || !in_array($page['page_type'], ['home', 'service', 'about', 'contact'], true)) {
+                    throw new SiteServiceException('conflict', 'Stored legacy page does not match the exact M1 snapshot structure.');
+                }
                 $definition = ComponentRegistry::resolve(
                     $connection, $section['component_key'], $section['implementation_version'],
                     $section['variant_key'], $section['configuration_schema_version'], 'legacy', false
@@ -502,12 +534,14 @@ final class SiteCompositionValidator
                     throw new SiteServiceException('conflict', 'Stored legacy page hash does not match its snapshot.');
                 }
                 foreach ($section['assets'] as $assetInput) {
-                    self::validateAsset($connection, $site, $assetInput);
+                    $validatedAssets[] = self::validateAsset($connection, $site, $assetInput, true)
+                        + ['page_key' => $page['page_key'], 'section_key' => $section['section_key']];
                 }
             }
         }
         foreach ($loaded['theme']['assets'] as $assetInput) {
-            self::validateAsset($connection, $site, $assetInput);
+            $validatedAssets[] = self::validateAsset($connection, $site, $assetInput, true)
+                + ['page_key' => null, 'section_key' => null];
         }
         $themeHash = CanonicalJson::hash([
             'primary_color' => $loaded['theme']['primary_color'],
@@ -517,11 +551,18 @@ final class SiteCompositionValidator
         if (!hash_equals((string) $loaded['stored_theme_hash'], $themeHash)) {
             throw new SiteServiceException('conflict', 'Stored legacy theme hash does not match its snapshot.');
         }
-        $actual = SiteRevisionSnapshotHasher::hashStoredRevision($connection, (int) $revision['id']);
+        $actual = SiteRevisionSnapshotHasher::hashStoredRevision(
+            $connection,
+            (int) $revision['id'],
+            SiteRevisionSnapshotHasher::MODE_LEGACY_M1
+        );
         if (!hash_equals((string) $revision['snapshot_hash'], $actual)) {
             throw new SiteServiceException('conflict', 'Stored revision snapshot hash does not match its canonical composition.');
         }
-        return ['pages' => $loaded['pages'], 'theme' => $loaded['theme'], 'snapshot_hash' => $actual, 'historical' => true];
+        return [
+            'pages' => $loaded['pages'], 'theme' => $loaded['theme'], 'assets' => $validatedAssets,
+            'snapshot_hash' => $actual, 'historical' => true,
+        ];
     }
 
     private static function decodeJson(mixed $value): mixed

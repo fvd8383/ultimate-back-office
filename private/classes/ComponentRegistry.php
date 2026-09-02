@@ -102,11 +102,15 @@ final class ComponentRegistry
                 'asset_requirements' => [], 'renderer' => 'legacy_snapshot',
             ],
         ];
+        self::validateManifest($definitions);
         $manifest = [];
         foreach ($definitions as $definition) {
-            $manifest[self::identity($definition['component_key'], $definition['implementation_version'])] = $definition;
+            $identity = self::identity($definition['component_key'], $definition['implementation_version']);
+            if (isset($manifest[$identity])) {
+                throw new LogicException("Duplicate repository component identity: {$identity}.");
+            }
+            $manifest[$identity] = $definition;
         }
-        self::validateManifest($manifest);
         return $manifest;
     }
 
@@ -294,6 +298,9 @@ final class ComponentRegistry
     {
         $variantRows = [];
         foreach ($variants as $variant) {
+            if (isset($variantRows[$variant])) {
+                throw new LogicException("Duplicate repository component variant: {$key}@" . self::AUTHORED_VERSION . ":{$variant}.");
+            }
             $variantRows[$variant] = ['label' => ucwords(str_replace('_', ' ', $variant)), 'schema_version' => 1];
         }
         return [

@@ -18,6 +18,12 @@ store durable, reviewable metadata only. A database value cannot select a PHP fi
 class, method, include path, template, JavaScript file, or CSS file. An unknown exact
 repository identity fails closed.
 
+The selected repository variant is part of that executable contract and is passed to
+fixed renderer code. Repository-owned classes give `hero/default` and
+`hero/split_media`, `cta/banner` and `cta/inline`, and `site_header/standard` and
+`site_header/centered` distinct deterministic output semantics. Database metadata
+cannot supply a callback, class, template, or variant implementation.
+
 A component definition row represents one immutable executable identity:
 `component_key + implementation_version`. Migration
 `024_component_registry_versioning.sql` replaces migration 023's unique component-key
@@ -119,6 +125,14 @@ revision. Section references must target their page and section; theme reference
 have null page/section targets. Repository requirements enforce image usage where
 required and an existing document with `application/pdf` for pricing lists.
 
+The sole historical exception is validation of an exact restored M1 snapshot. An
+already-copied same-site, ready asset classified `unknown` may preserve that snapshot
+only when its source is `legacy_247sp`, its metadata has both `legacy_reference` and
+`review_required`, its historical revision reference remains present, and its stored
+checksum/MIME/size evidence is intact. This does not approve the asset or permit its
+reuse in authored M3, non-legacy restores, conversions, or new selection.
+`prohibited` remains rejected everywhere.
+
 ## Atomic Full-Composition Replacement
 
 `SiteCompositionManager::replaceDraftComposition()` is Internal Admin/Super Admin
@@ -160,9 +174,13 @@ theme identity/configuration/hash, and ordered asset type/storage/checksum/MIME/
 usage, page/section, and source reference. This becomes the revision's optimistic
 concurrency token.
 
-The legacy importer now uses the shared canonical utility and stored-revision hasher.
-Its representation, ordering, component identity, asset evidence, and baseline hashes
-are unchanged; the mandatory M1 importer and database hash regressions pass.
+The legacy importer now uses the shared canonical utility and stored-revision hasher
+through explicit `legacy_m1` compatibility mode. That mode retains M1's historical
+nullable-string rule: trim non-null values and convert a normalized empty string to
+null. Generic authored M3 hashing remains raw and exact. M1 representation, ordering,
+component identity, asset evidence, and baseline hashes are unchanged; focused empty,
+whitespace, null, and populated-value compatibility cases and the mandatory M1
+regressions pass.
 
 ## M2 Review Gate Integration
 
@@ -176,23 +194,45 @@ and every stored section/page/theme/revision hash. Drift or mismatch blocks revi
 A restored revision may retain an exact known renderable historical version even when
 that version is no longer authorable. It is never silently upgraded. Restored M1
 legacy snapshots retain their M1-compatible section/page/theme hashing rules.
+Each M1 page must contain exactly one `legacy-page-snapshot` section at sort order 10,
+with exact legacy component/version identity and a variant matching its page type;
+mixed, duplicate, or malformed compatibility structures fail closed.
 
 ## Rendering And Read Boundaries
 
-`compositionForActor()` uses existing M2 site authorization and returns deterministic
-page/section/theme composition, safe asset metadata, and the snapshot hash. It omits
-credentials, provider secrets, absolute filesystem paths, and rights-private metadata.
+`compositionForActor()` is the authorized editor read. A fresh mutable draft is
+returned deterministically as `composition_state=empty`, empty pages/assets, a null
+theme, and its current snapshot hash. A composed editor model includes pages,
+sections, theme, safe asset usage metadata, and authorized `asset_id` values for future
+editing. Database IDs remain excluded from canonical hashes. Credentials, provider
+secrets, absolute filesystem paths, and rights-private metadata are never exposed.
 
-The pure renderer accepts an already authorized and validated read model. Repository
+`validatedCompositionForActor()` is the separate preview/render read. It authorizes
+the actor, loads site purpose, validates the complete stored revision, verifies all
+content and canonical snapshot hashes, and returns a normalized safe render model.
+An empty editor draft is readable but is not render-ready.
+
+The pure renderer enforces its already authorized and validated read-model marker. Repository
 identity resolves to a fixed renderer identifier and a fixed PHP `match`; DB metadata
 cannot choose code. Text and attributes use `htmlspecialchars` with
 `ENT_QUOTES | ENT_SUBSTITUTE` and UTF-8. No configuration renders as raw markup.
 CTA hrefs come only from semantic action plus validated render context. Asset URLs
 come only from validated render context. Missing context fails safely.
 
+Legacy `home`, `service`, `about`, and `contact` snapshots render meaningful known
+structured fields through fixed repository code. Text is escaped, unknown fields and
+stored paths are ignored, and any asset URL must come from safe render context.
+
 Lead form rendering is presentation-only. Without a future registered-site action it
-renders inert preview behavior. M3 creates no public submit route and no LeadHub
-routing.
+uses a non-form container with disabled inputs and a disabled non-submit button. Only
+an allowlisted relative action may produce a POST form. M3 creates no public submit
+route and no LeadHub routing.
+
+Focused transaction-aware tests inject a PDO-compatible local database and invoke the
+actual full-composition replacement and review-gate services. They cover stable-page
+reuse, stale writers, rollback after deletion, event atomicity, stored hashes,
+read-model authorization/validation, legacy compatibility, tamper rejection,
+immutability, and the future publication gate.
 
 ## Explicit Exclusions
 
