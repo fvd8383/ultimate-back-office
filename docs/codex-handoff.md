@@ -15,7 +15,8 @@ legacy website runtime remains authoritative. Sprint 8.8 overall is **IN PROGRES
 Sprint 8.8 M2 is **COMPLETE / STAGING PASS** on merged, deployed, and validated SHA
 `31d5f64ba6fdf9005fe839c9d3bae4e996ce3bd4`. M3 is **IMPLEMENTED LOCALLY /
 REVIEW REQUIRED / STAGING MIGRATION AND VALIDATION PENDING** on branch
-`codex/sprint-8.8-m3-component-composition`; the draft PR is pending local finalization.
+`codex/sprint-8.8-m3-component-composition`; draft PR #105 is
+`https://github.com/fvd8383/ultimate-back-office/pull/105`.
 Production remains **UNAUTHORIZED / NOT DEPLOYED**.
 
 The authoritative final report is
