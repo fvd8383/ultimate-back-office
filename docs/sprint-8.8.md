@@ -5,9 +5,10 @@
 Sprint 8.8 overall is **IN PROGRESS**. M1 is **COMPLETE / STAGING PASS** on validated
 and deployed SHA `2a545a056f650122a3d9ccbf077f35cef83f6065`; migration
 `023_website_platform_foundation.sql` is applied and reconciled on staging. M2 is
-**IMPLEMENTED LOCALLY / REVIEW REQUIRED / STAGING VALIDATION PENDING**. Production is
-**UNAUTHORIZED / NOT DEPLOYED**. The detailed M1
-completion record is `docs/sprint-8.8-m1-closeout.md`.
+**COMPLETE / STAGING PASS** on validated and deployed SHA
+`31d5f64ba6fdf9005fe839c9d3bae4e996ce3bd4`. M3 is **NEXT / NOT STARTED**.
+Production is **UNAUTHORIZED / NOT DEPLOYED**. The detailed completion records are
+`docs/sprint-8.8-m1-closeout.md` and `docs/sprint-8.8-m2-closeout.md`.
 
 The sprint implements the approved generic 247SP/EMD website platform in eight focused
 milestones. It replaces no historical migration and does not treat the customer
@@ -117,8 +118,9 @@ Migration 023 is applied and reconciled on staging. The final six-site validatio
 passed for all 6 legacy websites and 37 pages, then cleanup restored the exact zero
 generic baseline with 1 seeded component definition and 4 variants. The existing
 247SP generated website reader remains authoritative and generic data remains dormant.
-Production is unauthorized and M2 has not begun. See
-`docs/sprint-8.8-m1-closeout.md` for the evidence timeline and full results.
+Production is unauthorized. At the M1 closeout, M2 had not yet begun; M2 has since
+completed its separate staging gate. See `docs/sprint-8.8-m1-closeout.md` for the M1
+evidence and `docs/sprint-8.8-m2-closeout.md` for the M2 completion record.
 
 ### Deliverables
 
@@ -162,16 +164,17 @@ SHA-256 `db9dcf37aaac700b12604555f32c01d974c28a6a520c6bf1a8a28a97152f6daf`.
 
 ## M2 — `SiteManager` + Revision/Lifecycle/Approval Services
 
-Status: **IMPLEMENTED LOCALLY / REVIEW REQUIRED / STAGING VALIDATION PENDING**.
+Status: **COMPLETE / STAGING PASS** on merged, deployed, and validated SHA
+`31d5f64ba6fdf9005fe839c9d3bae4e996ce3bd4`.
 
-The local M2 implementation adds the reusable authorization policy and focused site,
+M2 adds the reusable authorization policy and focused site,
 revision, and approval managers without route/UI integration or schema changes. It
 keeps site activation and revision publication future-gated, applies revision-specific
 customer approval supersession only to material successors, preserves prior customer
 approval for non-material successors, creates restores as new unpublished revisions,
 and records success audit inside each mutation transaction. The detailed contract is
-`docs/sprint-8.8-m2-service-contract.md`. M2 is not complete until review, merge,
-approved staging deployment, and staging validation succeed.
+`docs/sprint-8.8-m2-service-contract.md`; the authoritative staging completion record
+is `docs/sprint-8.8-m2-closeout.md`.
 
 ### Deliverables
 
@@ -190,13 +193,21 @@ creates/marks an auditable restoration candidate and never erases history.
 
 ### Tests and exit gate
 
-Implement standalone authorization, tenant isolation, lifecycle, invalid-transition,
-revision immutability, materiality, approval supersession, restoration, transaction
-rollback, concurrent update, and success/failure audit tests. No route integration
-begins until services reject cross-business site/revision/page/asset IDs and write
-success activity only after commit.
+The M2 exit gate passed: PHP lint passed; 22/22 standalone suites passed; the M2
+service suite passed 103 assertions, database contract 69 assertions, scope 23
+assertions, and approval invariants 22 tests / 95 assertions. M1 and pricing regressions
+passed. Real MySQL validated site, revision, and approval concurrency; two-tenant
+authorization and cross-tenant denial; stale lock rejection; rejection of the initial
+non-material approval bypass; material and inherited non-material approval behavior;
+restore; customer withdrawal; suspension dominance; terminal archive; transactional
+rollback; ownership integrity; audit safety; and exact cleanup. The optional real
+lower-customer-role denial was not executable because no safe fixture existed; this
+non-blocking limitation does not replace deployed authorization coverage, real Owner
+approval, cross-tenant denial, or Internal/Super Admin coverage.
 
 ## M3 — Component Registry + Composition
+
+Status: **NEXT / NOT STARTED**.
 
 ### Deliverables
 
