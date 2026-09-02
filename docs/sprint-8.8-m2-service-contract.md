@@ -2,10 +2,22 @@
 
 ## Status
 
-M2 is **IMPLEMENTED LOCALLY / REVIEW REQUIRED / STAGING VALIDATION PENDING** on branch
-`codex/sprint-8.8-m2-site-lifecycle-services`. M1 remains **COMPLETE / STAGING PASS**.
-Sprint 8.8 remains **IN PROGRESS**. This implementation is service/domain logic only;
-it has not been deployed or validated against staging and is not production-authorized.
+M2 is **COMPLETE / STAGING PASS** on merged, deployed, and validated SHA
+`31d5f64ba6fdf9005fe839c9d3bae4e996ce3bd4`. M1 remains **COMPLETE / STAGING PASS**,
+M3 is **NEXT / NOT STARTED**, and Sprint 8.8 remains **IN PROGRESS**. This is
+service/domain logic only and is not production-authorized.
+
+The code-only deployment report is
+`evidence/SPRINT-8.8-M2-STAGING-DEPLOYMENT.md`, SHA-256
+`39aca5d5c2df8e9acd633c1d6f4e6d9709f66c3f813a18133a3d48778943e85d`. The final
+real-MySQL report is
+`ubo-sprint-8.8-m2-final-validation-20260902T024225Z/SPRINT-8.8-M2-STAGING-FINAL-VALIDATION.md`,
+SHA-256 `fa4c3f10796ee0f9c0a9dbf69bbc7d2cbaaa82036cbdbdc0839b5c415314e824`.
+Real service behavior, concurrency, tenant isolation, and rollback passed, and cleanup
+restored the zero generic baseline. The optional real lower-customer-role test was not
+executable because no safe staging fixture existed; this was a non-blocking validation
+limitation, not a PASS claim. See `docs/sprint-8.8-m2-closeout.md` for the detailed
+completion evidence while this document remains the authoritative service contract.
 
 ## Service Boundary
 

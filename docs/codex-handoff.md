@@ -12,11 +12,9 @@ including normalized legacy duplicate ordering, hash/idempotence, and executable
 real-MySQL contracts. Cleanup restored the zero generic baseline with the expected
 1 component definition and 4 variants. The generic model remains dormant and the
 legacy website runtime remains authoritative. Sprint 8.8 overall is **IN PROGRESS**.
-M2 service/domain implementation is locally complete on branch
-`codex/sprint-8.8-m2-site-lifecycle-services`; it is **IMPLEMENTED LOCALLY / REVIEW
-REQUIRED / STAGING VALIDATION PENDING** in draft PR
-`https://github.com/fvd8383/ultimate-back-office/pull/103`. Production remains
-**UNAUTHORIZED / NOT DEPLOYED**.
+Sprint 8.8 M2 is **COMPLETE / STAGING PASS** on merged, deployed, and validated SHA
+`31d5f64ba6fdf9005fe839c9d3bae4e996ce3bd4`. M3 is **NEXT / NOT STARTED**.
+Production remains **UNAUTHORIZED / NOT DEPLOYED**.
 
 The authoritative final report is
 `ubo-sprint-8.8-m1-final-validation-20260901T001402Z/SPRINT-8.8-M1-STAGING-FINAL-VALIDATION.md`,
@@ -64,15 +62,13 @@ validated as part of the completed M1 gate. The pricing first-customer technical
 is CLEARED; its evidence is retained in
 `docs/247sp-pricing-p1-p2-closeout.md`.
 
-The current roadmap milestone is Sprint 8.8 M2 — `SiteManager` and
-revision/lifecycle/approval services — in `docs/sprint-8.8.md`; its local implementation
-is complete, review is required, and staging validation is pending. M3 has not started.
-Review corrections now require an inherited current customer-approved baseline for
-non-material internal approval, close stale older workflows on material successors,
-reset material-successor pre-publication approval state to draft, allow pre-publication
-customer withdrawal, preserve suspension, and make archive operationally terminal. The
-detailed local contract is
-`docs/sprint-8.8-m2-service-contract.md`. The later executable plan is
+Sprint 8.8 M2 — `SiteManager` and revision/lifecycle/approval services — is
+**COMPLETE / STAGING PASS**. Its final real-MySQL staging report is
+`ubo-sprint-8.8-m2-final-validation-20260902T024225Z/SPRINT-8.8-M2-STAGING-FINAL-VALIDATION.md`,
+SHA-256 `fa4c3f10796ee0f9c0a9dbf69bbc7d2cbaaa82036cbdbdc0839b5c415314e824`.
+The authoritative completion record is `docs/sprint-8.8-m2-closeout.md`, and the
+service contract is `docs/sprint-8.8-m2-service-contract.md`. M3 — Component Registry +
+Composition — is **NEXT / NOT STARTED**. The later executable plan is
 `docs/sprint-8.9.md` for the Communications Core Foundation.
 Vendasta professional email is first-customer critical in Sprint 8.9 M1; Twilio's
 shared provider/webhook foundation is Sprint 8.9; Retell voice runtime remains Sprint
