@@ -8,7 +8,8 @@ and deployed SHA `2a545a056f650122a3d9ccbf077f35cef83f6065`; migration
 **COMPLETE / STAGING PASS** on validated and deployed SHA
 `31d5f64ba6fdf9005fe839c9d3bae4e996ce3bd4`. M3 is **COMPLETE / STAGING PASS** on
 validated and deployed SHA `a431f6fc06e24f2252a9a282954d5541551c9000`. M4 is
-**NEXT / NOT STARTED**. Production is **UNAUTHORIZED / NOT DEPLOYED**. The detailed
+**IN PROGRESS — M4A IMPLEMENTED LOCALLY / REVIEW REQUIRED**. M4B and M4C are
+**NOT STARTED**. Production is **UNAUTHORIZED / NOT DEPLOYED**. The detailed
 completion records are `docs/sprint-8.8-m1-closeout.md`,
 `docs/sprint-8.8-m2-closeout.md`, and `docs/sprint-8.8-m3-closeout.md`.
 
@@ -257,13 +258,28 @@ recorded in `docs/sprint-8.8-m3-closeout.md`.
 
 ## M4 — Admin Composition / Revision Workflow
 
-Status: **NEXT / NOT STARTED**.
+Status: **IN PROGRESS — M4A IMPLEMENTED LOCALLY / REVIEW REQUIRED**.
+
+- M4A — Admin Workflow Foundation: **IMPLEMENTED LOCALLY / REVIEW REQUIRED**;
+- M4B — Composition Editor + Generic Admin Preview: **NOT STARTED**;
+- M4C — Review Submission + Internal Approval + Final M4 Validation: **NOT STARTED**.
+
+M4A adds the parallel, internal-only **Site Platform** workspace without changing the
+legacy **Websites** administration or customer Website Manager. It includes generic
+site list/creation/detail, prepared read models, versioned canonical generation briefs,
+server-side authoritative fact snapshots, deterministic empty-draft hashing, and normal
+authored draft revision creation with one mutable Site Platform draft per site. Every
+POST uses the dedicated CSRF scope, rotates after success, and redirects with PRG.
+Routes contain no lifecycle SQL. Migrations 023/024 remain unchanged and no migration
+025 is added. See `docs/sprint-8.8-m4-service-contract.md`.
 
 ### Deliverables
 
-Admin/Super Admin surfaces provide site list/detail, generation brief, page composition,
-approved component/variant selection, permitted asset selection, revision creation,
-validation feedback, customer-review submission, and internal approval.
+Across all three passes, Admin/Super Admin surfaces provide site list/detail,
+generation brief, page composition, approved component/variant selection, permitted
+asset selection, revision creation, validation feedback, customer-review submission,
+and internal approval. Only the list/detail/brief/draft foundation is implemented in
+M4A; composition/preview belongs to M4B and review/approval belongs to M4C.
 
 Routes use M2/M3 services, prepared statements inside those boundaries, CSRF,
 post/redirect/get, safe errors, correlation IDs, and role checks. No customer

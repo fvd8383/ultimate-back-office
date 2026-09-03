@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/SiteManager.php';
 require_once __DIR__ . '/SiteCompositionValidator.php';
+require_once __DIR__ . '/SiteRevisionSnapshotBuilder.php';
 
 final class SiteRevisionManager
 {
@@ -20,6 +21,150 @@ final class SiteRevisionManager
     ];
     public const MUTABLE_COMPOSITION_STATES = ['draft', 'validation_failed'];
     private const RESTORABLE_STATES = ['published', 'superseded', 'internally_approved'];
+
+    public static function createAuthoredDraftRevision(
+        int $actingUserId,
+        int $siteId,
+        int $generationBriefId,
+        ?int $basedOnRevisionId = null
+    ): array {
+        $actor = SiteAuthorizationPolicy::requireInternalAdmin($actingUserId);
+        SiteServiceSupport::positiveId($siteId, 'Site ID');
+        SiteServiceSupport::positiveId($generationBriefId, 'Generation brief ID');
+        if ($basedOnRevisionId !== null) {
+            SiteServiceSupport::positiveId($basedOnRevisionId, 'Based-on revision ID');
+        }
+
+        $snapshot = SiteRevisionSnapshotBuilder::buildForSite($actingUserId, $siteId);
+        $correlationId = SiteServiceSupport::correlationId(null);
+
+        return SiteServiceSupport::transaction(static function (object $connection) use (
+            $actingUserId,
+            $actor,
+            $siteId,
+            $generationBriefId,
+            $basedOnRevisionId,
+            $snapshot,
+            $correlationId
+        ): array {
+            $site = SiteManager::lockSite($connection, $siteId);
+            SiteServiceSupport::assertSiteOperational($site);
+            if ((string) $site['site_key'] !== (string) $snapshot['site_key']
+                || (string) $site['purpose'] !== (string) $snapshot['purpose']) {
+                throw new SiteServiceException('conflict', 'The site changed while its authoritative snapshot was being prepared.');
+            }
+
+            $mutable = $connection->prepare(
+                'SELECT id FROM site_revisions
+                 WHERE site_id = :site_id
+                   AND lifecycle_status IN (:draft_status, :validation_failed_status)
+                 ORDER BY revision_number DESC LIMIT 1 FOR UPDATE'
+            );
+            $mutable->execute([
+                'site_id' => $siteId,
+                'draft_status' => 'draft',
+                'validation_failed_status' => 'validation_failed',
+            ]);
+            $mutableRevisionId = $mutable->fetchColumn();
+            if ($mutableRevisionId !== false) {
+                throw new SiteServiceException(
+                    'conflict',
+                    'An existing mutable revision (ID ' . (int) $mutableRevisionId . ') must be used before another draft is created.'
+                );
+            }
+
+            $briefStatement = $connection->prepare(
+                'SELECT id, site_id, brief_version, source_type, content_hash
+                 FROM site_generation_briefs
+                 WHERE id = :brief_id AND site_id = :site_id LIMIT 1 FOR UPDATE'
+            );
+            $briefStatement->execute(['brief_id' => $generationBriefId, 'site_id' => $siteId]);
+            $brief = $briefStatement->fetch();
+            if (!$brief) {
+                throw new SiteServiceException('invalid_request', 'The generation brief is not part of this site.');
+            }
+
+            $basedOn = null;
+            if ($basedOnRevisionId !== null) {
+                $basedOnStatement = $connection->prepare(
+                    'SELECT id, site_id, revision_number, lifecycle_status, snapshot_hash
+                     FROM site_revisions
+                     WHERE id = :revision_id AND site_id = :site_id LIMIT 1 FOR UPDATE'
+                );
+                $basedOnStatement->execute(['revision_id' => $basedOnRevisionId, 'site_id' => $siteId]);
+                $basedOn = $basedOnStatement->fetch();
+                if (!$basedOn) {
+                    throw new SiteServiceException('invalid_request', 'The based-on revision is not part of this site.');
+                }
+                if (in_array((string) $basedOn['lifecycle_status'], self::MUTABLE_COMPOSITION_STATES, true)) {
+                    throw new SiteServiceException('invalid_request', 'The based-on revision must be immutable.');
+                }
+            }
+
+            self::assertSnapshotBusinessAssociation($connection, $site, $snapshot);
+            $snapshotHash = SiteRevisionSnapshotBuilder::seedHash($snapshot, $brief, $basedOn ?: null);
+            $revisionNumber = self::nextRevisionNumber($connection, $siteId);
+
+            $insert = $connection->prepare(
+                'INSERT INTO site_revisions (
+                    site_id, revision_number, lifecycle_status, based_on_revision_id,
+                    restored_from_revision_id, generation_brief_id, materiality,
+                    snapshot_schema_version, facts_snapshot_json, source_references_json,
+                    snapshot_hash, created_by_user_id, correlation_id, created_at, updated_at
+                 ) VALUES (
+                    :site_id, :revision_number, :status, :based_on_revision_id,
+                    NULL, :generation_brief_id, :materiality,
+                    :snapshot_schema_version, :facts_snapshot_json, :source_references_json,
+                    :snapshot_hash, :actor_id, :correlation_id, NOW(), NOW()
+                 )'
+            );
+            $insert->execute([
+                'site_id' => $siteId,
+                'revision_number' => $revisionNumber,
+                'status' => 'draft',
+                'based_on_revision_id' => $basedOnRevisionId,
+                'generation_brief_id' => $generationBriefId,
+                'materiality' => 'undetermined',
+                'snapshot_schema_version' => SiteRevisionSnapshotBuilder::SNAPSHOT_SCHEMA_VERSION,
+                'facts_snapshot_json' => CanonicalJson::encode($snapshot['facts_snapshot']),
+                'source_references_json' => CanonicalJson::encode($snapshot['source_references']),
+                'snapshot_hash' => $snapshotHash,
+                'actor_id' => $actingUserId,
+                'correlation_id' => $correlationId,
+            ]);
+            $revisionId = (int) $connection->lastInsertId();
+
+            SiteServiceSupport::event(
+                $connection,
+                $siteId,
+                $revisionId,
+                $actor,
+                'site_authored_draft_created',
+                $correlationId,
+                null,
+                [
+                    'revision_number' => $revisionNumber,
+                    'generation_brief_id' => $generationBriefId,
+                    'based_on_revision_id' => $basedOnRevisionId,
+                    'composition_state' => 'empty',
+                ]
+            );
+
+            return [
+                'revision_id' => $revisionId,
+                'site_id' => $siteId,
+                'revision_number' => $revisionNumber,
+                'lifecycle_status' => 'draft',
+                'materiality' => 'undetermined',
+                'restored_from_revision_id' => null,
+                'based_on_revision_id' => $basedOnRevisionId,
+                'generation_brief_id' => $generationBriefId,
+                'snapshot_hash' => $snapshotHash,
+                'composition_state' => 'empty',
+                'correlation_id' => $correlationId,
+            ];
+        });
+    }
 
     public static function createRevision(int $actingUserId, array $input): array
     {
@@ -606,6 +751,33 @@ final class SiteRevisionManager
             'source_references_json' => SiteServiceSupport::snapshotJson($input['source_references_json'], 'Source references'),
             'snapshot_hash' => SiteServiceSupport::assertSnapshotHash((string) ($input['snapshot_hash'] ?? '')),
         ];
+    }
+
+    private static function assertSnapshotBusinessAssociation(object $connection, array $site, array $snapshot): void
+    {
+        if ((string) $site['purpose'] !== '247sp') {
+            if ($snapshot['business_id'] !== null) {
+                throw new SiteServiceException('conflict', 'This site purpose cannot use a customer business snapshot.');
+            }
+            return;
+        }
+
+        $association = $connection->prepare(
+            'SELECT business_id FROM site_business_associations
+             WHERE site_id = :site_id
+               AND association_role = :association_role
+               AND status = :association_status
+             LIMIT 1 FOR UPDATE'
+        );
+        $association->execute([
+            'site_id' => (int) $site['id'],
+            'association_role' => 'customer',
+            'association_status' => 'active',
+        ]);
+        $businessId = $association->fetchColumn();
+        if ($businessId === false || (int) $businessId !== (int) $snapshot['business_id']) {
+            throw new SiteServiceException('conflict', 'The active customer business association changed during snapshot creation.');
+        }
     }
 
     private static function revisionSiteId(int $revisionId): int

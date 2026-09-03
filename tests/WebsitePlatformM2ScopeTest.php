@@ -49,7 +49,7 @@ foreach ([
 }
 
 foreach ([
-    'public/accounts', 'public/app',
+    'public/accounts',
     'private/classes/domains/DomainManager.php',
     'private/classes/LeadHub.php',
     'private/classes/StripeBilling.php',
@@ -65,6 +65,22 @@ foreach ([
     );
     assertM2Scope($status === 0, "M2 must not change {$protectedPath}.");
 }
+
+$output = [];
+exec(
+    'git -C ' . escapeshellarg($root) . ' diff --name-only ' . escapeshellarg($baseline) . ' -- public/app',
+    $output,
+    $status
+);
+$allowedLaterPublicAppChanges = [
+    'public/app/admin/_common.php',
+    'public/app/admin/site.php',
+    'public/app/admin/sites.php',
+];
+assertM2Scope(
+    $status === 0 && array_diff($output, $allowedLaterPublicAppChanges) === [],
+    'M2 protected public/app paths must remain unchanged outside the authorized later M4A admin workspace.'
+);
 
 $serviceSources = '';
 foreach (glob($root . '/private/classes/Site*.php') ?: [] as $path) {

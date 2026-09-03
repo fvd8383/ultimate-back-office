@@ -50,6 +50,7 @@ function admin_begin(string $title, string $current, array $context): void
             ['label' => 'Users', 'href' => 'users.php', 'current' => $current === 'users'],
             ['label' => 'Businesses', 'href' => 'businesses.php', 'current' => $current === 'businesses'],
             ['label' => 'Websites', 'href' => 'websites.php', 'current' => $current === 'websites'],
+            ['label' => 'Site Platform', 'href' => 'sites.php', 'current' => $current === 'sites'],
             ['label' => 'Billing', 'href' => 'billing.php', 'current' => $current === 'billing'],
             ['label' => 'Domains', 'href' => 'domains.php', 'current' => $current === 'domains'],
             ['label' => 'Email', 'href' => 'email.php', 'current' => $current === 'email'],
