@@ -2,16 +2,18 @@
 
 ## Status And Objective
 
-Sprint 8.8 overall is **IN PROGRESS**. M1 is **COMPLETE / STAGING PASS** on validated
-and deployed SHA `2a545a056f650122a3d9ccbf077f35cef83f6065`; migration
+Sprint 8.8 overall is **IN PROGRESS**. M1 is **COMPLETE / STAGING PASS / FORMALLY
+CLOSED** on validated and deployed SHA `2a545a056f650122a3d9ccbf077f35cef83f6065`; migration
 `023_website_platform_foundation.sql` is applied and reconciled on staging. M2 is
-**COMPLETE / STAGING PASS** on validated and deployed SHA
+**COMPLETE / STAGING PASS / FORMALLY CLOSED** on validated and deployed SHA
 `31d5f64ba6fdf9005fe839c9d3bae4e996ce3bd4`. M3 is **COMPLETE / STAGING PASS** on
-validated and deployed SHA `a431f6fc06e24f2252a9a282954d5541551c9000`. M4 is
-**IN PROGRESS — M4A IMPLEMENTED LOCALLY / REVIEW REQUIRED**. M4B and M4C are
-**NOT STARTED**. Production is **UNAUTHORIZED / NOT DEPLOYED**. The detailed
+validated and deployed SHA `a431f6fc06e24f2252a9a282954d5541551c9000` and is
+**FORMALLY CLOSED**. M4 is **IN PROGRESS**: M4A is **COMPLETE / STAGING PASS /
+FORMALLY CLOSED**, M4B is **NEXT / NOT STARTED**, and M4C is **NOT STARTED**.
+Production is **UNAUTHORIZED / NOT DEPLOYED**. The detailed
 completion records are `docs/sprint-8.8-m1-closeout.md`,
-`docs/sprint-8.8-m2-closeout.md`, and `docs/sprint-8.8-m3-closeout.md`.
+`docs/sprint-8.8-m2-closeout.md`, `docs/sprint-8.8-m3-closeout.md`, and
+`docs/sprint-8.8-m4a-closeout.md`.
 
 The sprint implements the approved generic 247SP/EMD website platform in eight focused
 milestones. It replaces no historical migration and does not treat the customer
@@ -258,10 +260,10 @@ recorded in `docs/sprint-8.8-m3-closeout.md`.
 
 ## M4 — Admin Composition / Revision Workflow
 
-Status: **IN PROGRESS — M4A IMPLEMENTED LOCALLY / REVIEW REQUIRED**.
+Status: **IN PROGRESS**.
 
-- M4A — Admin Workflow Foundation: **IMPLEMENTED LOCALLY / REVIEW REQUIRED**;
-- M4B — Composition Editor + Generic Admin Preview: **NOT STARTED**;
+- M4A — Admin Workflow Foundation: **COMPLETE / STAGING PASS / FORMALLY CLOSED**;
+- M4B — Composition Editor + Generic Admin Preview: **NEXT / NOT STARTED**;
 - M4C — Review Submission + Internal Approval + Final M4 Validation: **NOT STARTED**.
 
 M4A adds the parallel, internal-only **Site Platform** workspace without changing the
@@ -271,7 +273,20 @@ server-side authoritative fact snapshots, deterministic empty-draft hashing, and
 authored draft revision creation with one mutable Site Platform draft per site. Every
 POST uses the dedicated CSRF scope, rotates after success, and redirects with PRG.
 Routes contain no lifecycle SQL. Migrations 023/024 remain unchanged and no migration
-025 is added. See `docs/sprint-8.8-m4-service-contract.md`.
+025 is added. See `docs/sprint-8.8-m4-service-contract.md` and the authoritative M4A
+completion record, `docs/sprint-8.8-m4a-closeout.md`.
+
+M4A's final deployed and real-MySQL-validated SHA is
+`8805eeeae704f130ddda357e82c4dd936fde5b4c`. The deployment gate and all 36
+standalone suites passed; focused M4A suites passed 31, 35, 51, and 87 assertions.
+Actual site, workspace, generation-brief, snapshot, authored-revision, rollback, and
+concurrency behavior passed. Real association and suspension races passed. Real
+business-status and module-status race variants were not executable because no safe
+reversible non-active staging values were available, and authenticated admin/browser
+form cases were not executable because no safe established test-session mechanism was
+available; none are mislabeled PASS. Cleanup restored the generic/import baseline to
+zero, the registry remained 16/22 with zero drift, and the legacy runtime remained
+authoritative. Production remains unauthorized.
 
 ### Deliverables
 
@@ -287,9 +302,18 @@ impersonation dependency is introduced. Super Admin remains the authority for
 ownership/routing/domain-rights conversion operations; ordinary composition does not
 silently perform those operations.
 
-### Tests and exit gate
+### M4A staging gate and remaining exit gate
 
-Cover role matrices, CSRF, cross-business and forged IDs, invalid composition,
+M4A required no migration. Its deployment evidence is
+`evidence/SPRINT-8.8-M4A-STAGING-DEPLOYMENT.md`, recorded SHA-256
+`45725a494bf415ad3adec8b113ca2ae5a72155f9f44efbf27385f6ed8af2bffd`. Its final
+real-MySQL report is
+`ubo-sprint-8.8-m4a-final-validation-20260903T030735Z/SPRINT-8.8-M4A-STAGING-FINAL-VALIDATION.md`,
+recorded SHA-256
+`9fe38af06fa13c8196d0e106cc207aa80391c8bc7ae1ab53f403c4792f0b2de8`.
+
+The remaining M4B/M4C gate must cover role matrices, CSRF, cross-business and forged
+IDs, invalid composition,
 concurrent edits, draft creation without published revision loss, review submission,
 internal approval, safe failure activity, and static no-direct-lifecycle-SQL checks.
 Browser smoke covers list/detail/composition/review at responsive widths with a clean
