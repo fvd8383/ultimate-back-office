@@ -4,13 +4,15 @@
 
 Sprint 8.8 M4 is delivered in three internal passes:
 
-- **M4A — Admin Workflow Foundation:** implemented locally / review required;
-- **M4B — Composition Editor + Generic Admin Preview:** planned / not started;
-- **M4C — Review Submission + Internal Approval + Final M4 Validation:** planned / not started.
+- **M4A — Admin Workflow Foundation:** **COMPLETE / STAGING PASS**;
+- **M4B — Composition Editor + Generic Admin Preview:** **NEXT / NOT STARTED**;
+- **M4C — Review Submission + Internal Approval + Final M4 Validation:** **NOT STARTED**;
+- **M4 overall:** **IN PROGRESS**.
 
-This contract describes the complete M4 boundary and the implemented M4A subset. M4
-is not complete. Sprint 8.8 remains in progress, and production remains unauthorized
-and not deployed.
+This contract describes the complete M4 boundary and the completed M4A subset. M4
+remains in progress. Sprint 8.8 remains in progress, and production remains
+unauthorized and not deployed. The authoritative M4A completion record is
+`docs/sprint-8.8-m4a-closeout.md`.
 
 ## Parallel Admin Workspace And Legacy Boundary
 
@@ -132,8 +134,10 @@ and optional based-on revision identifiers. It requires Internal Admin authority
 builds authoritative facts/references server-side, generates a server correlation ID,
 locks and re-resolves the site, applies the M2 operational gate, enforces same-site
 brief and immutable ancestry ownership, re-checks the 247SP customer association,
-allocates the next revision number under lock, and writes its success event in the
-same transaction.
+active business status, suspension state, active business-module assignment, and
+active 247SP module under lock, allocates the next revision number, and writes its
+success event in the same transaction. Revision insertion occurs only after the final
+eligibility recheck.
 
 The row is a normal `draft`, with `materiality = undetermined`,
 `restored_from_revision_id = NULL`, and an empty composition. M4A never creates
@@ -153,14 +157,38 @@ concurrency model.
 based-on revision must be same-site and immutable. M4A records ancestry but deliberately
 does not copy composition; that behavior belongs to M4B.
 
-## M4B — Planned / Not Started
+## Final M4A Staging Evidence
+
+M4A was deployed and validated on SHA
+`8805eeeae704f130ddda357e82c4dd936fde5b4c`. The deployment gate report is
+`evidence/SPRINT-8.8-M4A-STAGING-DEPLOYMENT.md`, recorded SHA-256
+`45725a494bf415ad3adec8b113ca2ae5a72155f9f44efbf27385f6ed8af2bffd`. The final
+real-MySQL report is
+`ubo-sprint-8.8-m4a-final-validation-20260903T030735Z/SPRINT-8.8-M4A-STAGING-FINAL-VALIDATION.md`,
+recorded SHA-256
+`9fe38af06fa13c8196d0e106cc207aa80391c8bc7ae1ab53f403c4792f0b2de8`.
+
+M4A required no migration: migrations 023/024 remained unchanged, migration 025+
+remained absent, and deployment/final-validation migration executions were zero. The
+final generic/import baseline was zero; the registry remained 16 definitions / 22
+variants with zero drift.
+
+Real association and suspension eligibility races passed. Real business-status and
+module-status race variants were not executable because no safe reversible non-active
+staging values were available; they are not labeled PASS. Authenticated admin GET and
+browser-form cases were likewise not executable because no safe established staging
+test-session mechanism avoided credential/session forgery. Deployed unauthenticated
+HTTP, actual service authorization, and CSRF/PRG contracts passed. See the closeout for
+the exact evidence and limitations.
+
+## M4B — Next / Not Started
 
 M4B will own the composition editor and generic internal admin preview, including
 approved component/variant selection, page/section/theme composition, permitted asset
 assignment, and starting from prior composition. M4A contains only a non-actionable
 placeholder. It adds no generic preview route or rendering cutover.
 
-## M4C — Planned / Not Started
+## M4C — Not Started
 
 M4C will own materiality classification UI, validation feedback, mark-ready-for-review,
 customer-review request, internal approval request/decision, and final M4 validation.
@@ -179,6 +207,6 @@ customer Website Manager is not converted in M4A.
 M4A uses migrations 023 and 024 unchanged. It adds no migration 025 or later. It
 makes no changes to `SiteGenerator`, legacy generated websites/pages, legacy preview,
 public lead submission, DomainManager, LeadHub, Apache, build/deployment records, or
-provider integrations. Generic sites remain dormant and not publicly deployed. No
-Stripe, Twilio, Retell, Vendasta, Namecheap, DigitalOcean provider, staging, or
-production operation is part of M4A.
+provider integrations. Generic sites remain dormant and not publicly deployed. M4A
+application services perform no Stripe, Twilio, Retell, Vendasta, Namecheap,
+DigitalOcean provider, staging, or production operation.

@@ -4,7 +4,7 @@ You are building Ultimate Back Office.
 
 ## Current Handoff
 
-Sprint 8.8 M1 is **COMPLETE / STAGING PASS** on validated and deployed SHA
+Sprint 8.8 M1 is **COMPLETE / STAGING PASS / FORMALLY CLOSED** on validated and deployed SHA
 `2a545a056f650122a3d9ccbf077f35cef83f6065`. Migration
 `023_website_platform_foundation.sql` is applied and reconciled on staging. The final
 six-site validation imported and reconciled all 6 legacy websites and 37 pages,
@@ -12,13 +12,22 @@ including normalized legacy duplicate ordering, hash/idempotence, and executable
 real-MySQL contracts. Cleanup restored the zero generic baseline with the expected
 1 component definition and 4 variants. The generic model remains dormant and the
 legacy website runtime remains authoritative. Sprint 8.8 overall is **IN PROGRESS**.
-Sprint 8.8 M2 is **COMPLETE / STAGING PASS** on merged, deployed, and validated SHA
-`31d5f64ba6fdf9005fe839c9d3bae4e996ce3bd4`. M3 is **COMPLETE / STAGING PASS** on
-final deployed and validated SHA `a431f6fc06e24f2252a9a282954d5541551c9000`.
+Sprint 8.8 M2 is **COMPLETE / STAGING PASS / FORMALLY CLOSED** on merged, deployed,
+and validated SHA `31d5f64ba6fdf9005fe839c9d3bae4e996ce3bd4`. M3 is **COMPLETE /
+STAGING PASS / FORMALLY CLOSED** on final deployed and validated SHA
+`a431f6fc06e24f2252a9a282954d5541551c9000`.
 Migration 024 was applied exactly once; the final registry contains 16 definitions and
-22 variants with zero verifier drift. M4 is **IN PROGRESS — M4A IMPLEMENTED LOCALLY /
-REVIEW REQUIRED**. M4B and M4C are **NOT STARTED**.
+22 variants with zero verifier drift. M4 is **IN PROGRESS**. M4A is **COMPLETE /
+STAGING PASS / FORMALLY CLOSED** on final deployed and validated SHA
+`8805eeeae704f130ddda357e82c4dd936fde5b4c`; M4A required no migration. M4B is
+**NEXT / NOT STARTED**, and M4C is **NOT STARTED**.
 Production remains **UNAUTHORIZED / NOT DEPLOYED**.
+
+The authoritative M4A final report is
+`ubo-sprint-8.8-m4a-final-validation-20260903T030735Z/SPRINT-8.8-M4A-STAGING-FINAL-VALIDATION.md`,
+SHA-256 `9fe38af06fa13c8196d0e106cc207aa80391c8bc7ae1ab53f403c4792f0b2de8`.
+See `docs/sprint-8.8-m4a-closeout.md` for the implementation, review correction,
+deployment, real-MySQL validation, limitations, and clean-baseline record.
 
 The authoritative final report is
 `ubo-sprint-8.8-m1-final-validation-20260901T001402Z/SPRINT-8.8-M1-STAGING-FINAL-VALIDATION.md`,
@@ -81,13 +90,14 @@ SHA-256 `5fdfd9ca6b2118ad82b23b97e81a651990b47f9a7140d62a5cef0e857038df70`.
 The repository owns executable schemas and fixed rendering, while M3 adds atomic
 full-revision composition, same-site ready/rights asset checks, deterministic
 stored-row hashes, and M2 review-gate validation. It adds no routes/UI, upload,
-build/deployment, LeadHub routing, provider work, or public runtime cutover. M4A adds
+build/deployment, LeadHub routing, provider work, or public runtime cutover. M4A added
 the parallel internal Site Platform workspace, generic site creation/detail reads,
 versioned creative briefs, authoritative server-side snapshots, and deterministic
 empty authored drafts. It preserves all legacy website/customer runtime boundaries
 and adds no migration, provider action, review/approval UI, generic preview, or public
-cutover. M4 is **IN PROGRESS — M4A IMPLEMENTED LOCALLY / REVIEW REQUIRED**; M4B and
-M4C are **NOT STARTED**. The contract is `docs/sprint-8.8-m4-service-contract.md`. The
+cutover. M4A is **COMPLETE / STAGING PASS / FORMALLY CLOSED**; M4 is **IN PROGRESS**,
+M4B is **NEXT / NOT STARTED**, and M4C is **NOT STARTED**. The contract is
+`docs/sprint-8.8-m4-service-contract.md`. The
 later executable plan is
 `docs/sprint-8.9.md` for the Communications Core Foundation.
 Vendasta professional email is first-customer critical in Sprint 8.9 M1; Twilio's
