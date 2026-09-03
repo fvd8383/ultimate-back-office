@@ -763,10 +763,12 @@ final class SiteRevisionManager
         }
 
         $association = $connection->prepare(
-            'SELECT business_id FROM site_business_associations
-             WHERE site_id = :site_id
-               AND association_role = :association_role
-               AND status = :association_status
+            'SELECT sba.business_id, b.status AS business_status, b.is_suspended
+             FROM site_business_associations sba
+             INNER JOIN businesses b ON b.id = sba.business_id
+             WHERE sba.site_id = :site_id
+               AND sba.association_role = :association_role
+               AND sba.status = :association_status
              LIMIT 1 FOR UPDATE'
         );
         $association->execute([
@@ -774,9 +776,31 @@ final class SiteRevisionManager
             'association_role' => 'customer',
             'association_status' => 'active',
         ]);
-        $businessId = $association->fetchColumn();
-        if ($businessId === false || (int) $businessId !== (int) $snapshot['business_id']) {
-            throw new SiteServiceException('conflict', 'The active customer business association changed during snapshot creation.');
+        $eligibility = $association->fetch();
+        if (!$eligibility
+            || (int) $eligibility['business_id'] !== (int) $snapshot['business_id']
+            || (string) $eligibility['business_status'] !== 'active'
+            || (int) $eligibility['is_suspended'] !== 0) {
+            throw new SiteServiceException('conflict', 'The current 247SP business eligibility changed during snapshot creation.');
+        }
+
+        $module = $connection->prepare(
+            'SELECT bm.id AS business_module_id, m.id AS module_id
+             FROM business_modules bm
+             INNER JOIN modules m ON m.id = bm.module_id
+             WHERE bm.business_id = :business_id
+               AND bm.status = :module_status
+               AND m.module_key = :module_key
+               AND m.is_active = 1
+             LIMIT 1 FOR UPDATE'
+        );
+        $module->execute([
+            'business_id' => (int) $eligibility['business_id'],
+            'module_status' => 'active',
+            'module_key' => '247sp',
+        ]);
+        if (!$module->fetch()) {
+            throw new SiteServiceException('conflict', 'The current 247SP business eligibility changed during snapshot creation.');
         }
     }
 

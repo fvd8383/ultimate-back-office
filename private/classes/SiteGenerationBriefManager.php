@@ -166,7 +166,7 @@ final class SiteGenerationBriefManager
         $brief = [];
         foreach (self::FIELD_LIMITS as $field => $limit) {
             $value = str_replace(["\r\n", "\r"], "\n", trim((string) ($input[$field] ?? '')));
-            if (strlen($value) > $limit) {
+            if (self::utf8CharacterLength($value) > $limit) {
                 throw new SiteServiceException('invalid_request', self::label($field) . " must be {$limit} characters or fewer.");
             }
             if ($value !== '' && self::containsUnsafeContent($value)) {
@@ -189,6 +189,15 @@ final class SiteGenerationBriefManager
             '~(?:<\?|\?>|javascript\s*:|data\s*:\s*text/html|\{\{|\{%|\b(?:onload|onclick|onerror)\s*=|@import\b|url\s*\(|\.\./|\.\.\\\\|(?:^|[\\\\/])templates?[\\\\/]|\.(?:php|phtml|js|css|twig)\b|\b(?:api[_ -]?key|client[_ -]?secret|password|access[_ -]?token|private[_ -]?key)\s*[:=])~i',
             $value
         ) === 1;
+    }
+
+    private static function utf8CharacterLength(string $value): int
+    {
+        $length = preg_match_all('/./us', $value);
+        if ($length === false) {
+            throw new SiteServiceException('invalid_request', 'Generation brief fields must contain valid UTF-8 text.');
+        }
+        return $length;
     }
 
     private static function safeRow(array $row): array

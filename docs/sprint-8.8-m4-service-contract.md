@@ -75,6 +75,8 @@ HTML/markup, PHP, JavaScript URLs/handlers, template expressions, stylesheet imp
 file traversal, executable template/script/style paths, control characters, and
 unknown fields are rejected. The UI is structured and provides no raw JSON editor.
 Business name/address/hours/services are intentionally absent from this schema.
+Limits count valid UTF-8 characters through PCRE and do not require the optional
+`mbstring` extension.
 
 Authored rows use `source_type = admin_manual`. The manager canonicalizes the exact
 schema with `CanonicalJson`, stores its deterministic SHA-256 `content_hash`, locks the

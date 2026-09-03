@@ -48,6 +48,11 @@ assertM4ADatabase(str_contains($authored, 'The based-on revision is not part of 
 assertM4ADatabase(str_contains($authored, 'The based-on revision must be immutable.'), 'Mutable revisions must not be ancestry sources.');
 assertM4ADatabase(str_contains($authored, 'CanonicalJson::encode($snapshot['), 'Canonical facts and references must be stored.');
 assertM4ADatabase(!str_contains($authored, 'copyComposition('), 'M4A authored revision creation must not copy composition.');
+assertM4ADatabase(strpos($authored, 'SiteManager::lockSite($connection, $siteId)') < strpos($authored, 'self::assertSnapshotBusinessAssociation($connection, $site, $snapshot)'), 'The site lock must precede the final business eligibility check.');
+assertM4ADatabase(strpos($authored, 'self::assertSnapshotBusinessAssociation($connection, $site, $snapshot)') < strpos($authored, 'INSERT INTO site_revisions'), 'The final business eligibility check must precede revision insertion.');
+assertM4ADatabase(str_contains($revisions, 'INNER JOIN businesses b ON b.id = sba.business_id') && str_contains($revisions, '(string) $eligibility[\'business_status\'] !== \'active\'') && str_contains($revisions, '(int) $eligibility[\'is_suspended\'] !== 0'), 'The locking association check must revalidate current business status and suspension.');
+assertM4ADatabase(str_contains($revisions, 'INNER JOIN modules m ON m.id = bm.module_id') && str_contains($revisions, 'bm.status = :module_status') && str_contains($revisions, 'm.module_key = :module_key') && str_contains($revisions, 'm.is_active = 1'), 'The locking eligibility check must revalidate the active 247SP module assignment.');
+assertM4ADatabase(substr_count($revisions, 'LIMIT 1 FOR UPDATE') >= 2, 'Current association, business, and module eligibility must use locking reads.');
 
 assertM4ADatabase(!preg_match('/\b(?:INSERT|UPDATE|DELETE)\b/i', preg_replace('/\bSELECT\b/i', '', $workspace)), 'SiteAdminWorkspace must be read-only.');
 assertM4ADatabase(substr_count($workspace, 'SiteAuthorizationPolicy::requireInternalAdmin') >= 3, 'Every workspace entry point must require internal administration.');

@@ -71,6 +71,14 @@ final class SiteRevisionSnapshotBuilder
 
         $shared = $profile['shared_business_facts'];
         $publicAddress = (bool) ($shared['address']['is_public_physical_location'] ?? false);
+        $publicFaqs = array_values(array_filter($profile['faqs'], static fn (array $row): bool =>
+            (bool) ($row['is_active'] ?? false)
+            && in_array((string) ($row['channel_scope'] ?? ''), ['all', 'website'], true)
+        ));
+        $activePricingGuidance = array_values(array_filter(
+            $profile['pricing_guidance'],
+            static fn (array $row): bool => (bool) ($row['is_active'] ?? false)
+        ));
         $facts = [
             'purpose' => '247sp',
             'business' => [
@@ -104,8 +112,8 @@ final class SiteRevisionSnapshotBuilder
             'service_area' => self::presentationServiceArea($profile['service_area']),
             'hours' => self::withoutKeys($profile['hours'], ['id', 'updated_at']),
             'hour_exceptions' => self::withoutKeys($profile['exceptions'], ['id', 'updated_at']),
-            'faqs' => self::presentationFaqs($profile['faqs']),
-            'pricing_guidance' => self::activeRows($profile['pricing_guidance'], ['id', 'updated_at', 'is_active']),
+            'faqs' => self::withoutKeys($publicFaqs, ['id', 'updated_at', 'is_active']),
+            'pricing_guidance' => self::withoutKeys($activePricingGuidance, ['id', 'updated_at', 'is_active']),
         ];
 
         $references = [
@@ -147,11 +155,11 @@ final class SiteRevisionSnapshotBuilder
             ],
             'faqs' => [
                 'table' => 'business_profile_faqs',
-                'row_ids' => array_values(array_map('intval', array_column($profile['faqs'], 'id'))),
+                'row_ids' => array_values(array_map('intval', array_column($publicFaqs, 'id'))),
             ],
             'pricing_guidance' => [
                 'table' => 'business_profile_pricing_guidance',
-                'row_ids' => array_values(array_map('intval', array_column($profile['pricing_guidance'], 'id'))),
+                'row_ids' => array_values(array_map('intval', array_column($activePricingGuidance, 'id'))),
             ],
         ];
 
@@ -242,21 +250,6 @@ final class SiteRevisionSnapshotBuilder
             'radius_miles' => $area['radius_miles'] ?? null,
             'radius_is_custom' => (bool) ($area['radius_is_custom'] ?? false),
         ];
-    }
-
-    private static function presentationFaqs(array $rows): array
-    {
-        $rows = array_values(array_filter($rows, static fn (array $row): bool =>
-            (bool) ($row['is_active'] ?? false)
-            && in_array((string) ($row['channel_scope'] ?? ''), ['all', 'website'], true)
-        ));
-        return self::withoutKeys($rows, ['id', 'updated_at', 'is_active']);
-    }
-
-    private static function activeRows(array $rows, array $removedKeys): array
-    {
-        $rows = array_values(array_filter($rows, static fn (array $row): bool => (bool) ($row['is_active'] ?? false)));
-        return self::withoutKeys($rows, $removedKeys);
     }
 
     private static function withoutKeys(array $rows, array $keys): array

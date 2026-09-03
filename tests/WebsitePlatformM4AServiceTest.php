@@ -53,6 +53,9 @@ expectM4AServiceError(static fn () => SiteGenerationBriefManager::validateBrief(
 expectM4AServiceError(static fn () => SiteGenerationBriefManager::validateBrief(array_replace($input, ['summary' => 'api_key=do-not-store-this'])), 'invalid_request');
 expectM4AServiceError(static fn () => SiteGenerationBriefManager::validateBrief(array_replace($input, ['summary' => "unsafe\x01control"])), 'invalid_request');
 expectM4AServiceError(static fn () => SiteGenerationBriefManager::validateBrief(array_replace($input, ['summary' => str_repeat('a', 2001)])), 'invalid_request');
+$unicodeBoundary = SiteGenerationBriefManager::validateBrief(array_replace($input, ['summary' => str_repeat('é', 2000)]));
+assertM4AService($unicodeBoundary['summary'] === str_repeat('é', 2000), 'Brief limits must count UTF-8 characters rather than bytes.');
+expectM4AServiceError(static fn () => SiteGenerationBriefManager::validateBrief(array_replace($input, ['summary' => str_repeat('é', 2001)])), 'invalid_request');
 
 $snapshot = [
     'snapshot_schema_version' => 1,
