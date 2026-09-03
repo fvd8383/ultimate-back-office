@@ -148,6 +148,7 @@ final class SiteAdminWorkspace
                         restored_from_revision_id, generation_brief_id, materiality,
                         snapshot_hash, review_ready_at, published_at, superseded_at,
                         created_at, updated_at,
+                        EXISTS (SELECT 1 FROM site_revision_pages srp WHERE srp.revision_id = site_revisions.id) AS has_composition,
                         CASE WHEN lifecycle_status IN (:mutable_draft, :mutable_validation_failed)
                              THEN :composition_mutable ELSE :composition_immutable END AS composition_access
                  FROM site_revisions
@@ -271,6 +272,7 @@ final class SiteAdminWorkspace
             'materiality' => (string) $row['materiality'],
             'snapshot_hash' => (string) $row['snapshot_hash'],
             'composition_access' => (string) $row['composition_access'],
+            'has_composition' => (bool) ($row['has_composition'] ?? false),
             'review_ready_at' => $row['review_ready_at'],
             'published_at' => $row['published_at'],
             'superseded_at' => $row['superseded_at'],

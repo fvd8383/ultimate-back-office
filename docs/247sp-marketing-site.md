@@ -73,6 +73,11 @@ Placeholders are explicitly marked in configuration and markup. No fake testimon
 
 ## Local Preview
 
+The separate staging-preview attempt on 2026-09-03 is **BLOCKED** by deployment-user
+SSH public-key authentication failure. No staging URL or noindex protection was
+verified. See `docs/247sp-marketing-staging-preview.md` for evidence and the required
+access correction. Production `247salespartner.com` was not configured by this task.
+
 From the repository root:
 
 ```powershell

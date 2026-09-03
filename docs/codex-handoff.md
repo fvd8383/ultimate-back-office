@@ -20,8 +20,21 @@ Migration 024 was applied exactly once; the final registry contains 16 definitio
 22 variants with zero verifier drift. M4 is **IN PROGRESS**. M4A is **COMPLETE /
 STAGING PASS / FORMALLY CLOSED** on final deployed and validated SHA
 `8805eeeae704f130ddda357e82c4dd936fde5b4c`; M4A required no migration. M4B is
-**NEXT / NOT STARTED**, and M4C is **NOT STARTED**.
+**IMPLEMENTED LOCALLY / REVIEW REQUIRED**, and M4C is **NOT STARTED**.
 Production remains **UNAUTHORIZED / NOT DEPLOYED**.
+
+M4B is implemented locally on baseline
+`e848012415b06a4e122933e9368b905c9d7f0c44`, branch
+`codex/sprint-8.8-m4b-composition-editor`, for draft PR review. It adds the structured
+composition editor, repository-schema forms/catalog, and validated inert internal
+preview over the M3 replacement boundary. No migration or generic runtime cutover
+occurs. M4B must not be deployed before separate authorization.
+
+The separate `public/marketing` staging preview is **BLOCKED**: configured
+`ubo-deploy` SSH authentication failed with `Permission denied (publickey)` on
+2026-09-03, before any remote command ran. No preview URL, routing, HTTP QA, or
+noindex protection was verified. See `docs/247sp-marketing-staging-preview.md`.
+Production `247salespartner.com` was not configured and production DNS was untouched.
 
 The authoritative M4A final report is
 `ubo-sprint-8.8-m4a-final-validation-20260903T030735Z/SPRINT-8.8-M4A-STAGING-FINAL-VALIDATION.md`,
@@ -96,7 +109,7 @@ versioned creative briefs, authoritative server-side snapshots, and deterministi
 empty authored drafts. It preserves all legacy website/customer runtime boundaries
 and adds no migration, provider action, review/approval UI, generic preview, or public
 cutover. M4A is **COMPLETE / STAGING PASS / FORMALLY CLOSED**; M4 is **IN PROGRESS**,
-M4B is **NEXT / NOT STARTED**, and M4C is **NOT STARTED**. The contract is
+M4B is **IMPLEMENTED LOCALLY / REVIEW REQUIRED**, and M4C is **NOT STARTED**. The contract is
 `docs/sprint-8.8-m4-service-contract.md`. The
 later executable plan is
 `docs/sprint-8.9.md` for the Communications Core Foundation.

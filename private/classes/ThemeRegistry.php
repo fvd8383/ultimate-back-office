@@ -40,35 +40,11 @@ final class ThemeRegistry
         if (array_diff(array_keys($input), $allowed) !== []) {
             throw new SiteServiceException('invalid_request', 'Theme input contains an unknown field.');
         }
-        $colorSchema = ['type' => 'string', 'format' => 'color', 'minLength' => 7, 'maxLength' => 7];
-        $primary = ComponentSchemaValidator::validate($input['primary_color'] ?? null, $colorSchema, 'theme.primary_color');
-        $secondary = ComponentSchemaValidator::validate($input['secondary_color'] ?? null, $colorSchema, 'theme.secondary_color');
-        $typography = ComponentSchemaValidator::validate($input['typography'] ?? null, [
-            'type' => 'object',
-            'required' => ['heading_family', 'body_family', 'scale'],
-            'properties' => [
-                'heading_family' => ['type' => 'string', 'enum' => ['system_sans', 'system_serif']],
-                'body_family' => ['type' => 'string', 'enum' => ['system_sans', 'system_serif']],
-                'scale' => ['type' => 'string', 'enum' => ['compact', 'standard', 'large']],
-            ],
-        ], 'theme.typography');
-        $configuration = ComponentSchemaValidator::validate($input['configuration'] ?? null, [
-            'type' => 'object',
-            'required' => ['section_spacing', 'corner_style', 'button_style', 'layouts'],
-            'properties' => [
-                'section_spacing' => ['type' => 'string', 'enum' => ['compact', 'standard', 'relaxed']],
-                'corner_style' => ['type' => 'string', 'enum' => ['square', 'soft', 'rounded']],
-                'button_style' => ['type' => 'string', 'enum' => ['square', 'rounded', 'pill']],
-                'layouts' => [
-                    'type' => 'object', 'required' => ['site_header', 'site_footer', 'mobile_cta'],
-                    'properties' => [
-                        'site_header' => self::layoutSelectionSchema(),
-                        'site_footer' => self::layoutSelectionSchema(),
-                        'mobile_cta' => self::layoutSelectionSchema(),
-                    ],
-                ],
-            ],
-        ], 'theme.configuration');
+        $schemas = self::authoringSchemas();
+        $primary = ComponentSchemaValidator::validate($input['primary_color'] ?? null, $schemas['color'], 'theme.primary_color');
+        $secondary = ComponentSchemaValidator::validate($input['secondary_color'] ?? null, $schemas['color'], 'theme.secondary_color');
+        $typography = ComponentSchemaValidator::validate($input['typography'] ?? null, $schemas['typography'], 'theme.typography');
+        $configuration = ComponentSchemaValidator::validate($input['configuration'] ?? null, $schemas['configuration'], 'theme.configuration');
         foreach ($configuration['layouts'] as $slot => &$selection) {
             if ($selection['component_key'] !== $slot) {
                 throw new SiteServiceException('invalid_request', 'Theme layout selection does not match its slot.');
@@ -96,6 +72,40 @@ final class ThemeRegistry
             'primary_color' => strtoupper($primary), 'secondary_color' => strtoupper($secondary),
             'typography' => $typography, 'configuration' => $configuration,
             'assets' => self::normalizeAssetInputs($input['assets'] ?? [], 'theme.assets'),
+        ];
+    }
+
+    /** Repository schemas shared by validation and authoring forms. */
+    public static function authoringSchemas(): array
+    {
+        return [
+            'color' => ['type' => 'string', 'format' => 'color', 'minLength' => 7, 'maxLength' => 7],
+            'typography' => [
+                'type' => 'object',
+                'required' => ['heading_family', 'body_family', 'scale'],
+                'properties' => [
+                    'heading_family' => ['type' => 'string', 'enum' => ['system_sans', 'system_serif']],
+                    'body_family' => ['type' => 'string', 'enum' => ['system_sans', 'system_serif']],
+                    'scale' => ['type' => 'string', 'enum' => ['compact', 'standard', 'large']],
+                ],
+            ],
+            'configuration' => [
+                'type' => 'object',
+                'required' => ['section_spacing', 'corner_style', 'button_style', 'layouts'],
+                'properties' => [
+                    'section_spacing' => ['type' => 'string', 'enum' => ['compact', 'standard', 'relaxed']],
+                    'corner_style' => ['type' => 'string', 'enum' => ['square', 'soft', 'rounded']],
+                    'button_style' => ['type' => 'string', 'enum' => ['square', 'rounded', 'pill']],
+                    'layouts' => [
+                        'type' => 'object', 'required' => ['site_header', 'site_footer', 'mobile_cta'],
+                        'properties' => [
+                            'site_header' => self::layoutSelectionSchema(),
+                            'site_footer' => self::layoutSelectionSchema(),
+                            'mobile_cta' => self::layoutSelectionSchema(),
+                        ],
+                    ],
+                ],
+            ],
         ];
     }
 

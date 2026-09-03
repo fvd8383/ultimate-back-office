@@ -76,10 +76,12 @@ $allowedLaterPublicAppChanges = [
     'public/app/admin/_common.php',
     'public/app/admin/site.php',
     'public/app/admin/sites.php',
+    'public/app/admin/site-composer.php',
+    'public/app/admin/site-preview.php',
 ];
 assertM2Scope(
     $status === 0 && array_diff($output, $allowedLaterPublicAppChanges) === [],
-    'M2 protected public/app paths must remain unchanged outside the authorized later M4A admin workspace.'
+    'M2 protected public/app paths must remain unchanged outside the authorized later M4A/M4B admin workspace.'
 );
 
 $serviceSources = '';

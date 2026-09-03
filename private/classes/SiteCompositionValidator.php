@@ -10,7 +10,7 @@ final class SiteCompositionValidator
     public const PAGE_TYPES = ['home', 'service', 'about', 'contact', 'landing', 'standard', 'legal'];
     public const MODE_REVIEW_GATE = 'review_gate';
     public const MODE_RENDER_READ = 'render_read';
-    private const RIGHTS_ALLOWED = ['platform_owned', 'customer_owned', 'customer_licensed_for_site', 'third_party_licensed'];
+    public const RIGHTS_ALLOWED = ['platform_owned', 'customer_owned', 'customer_licensed_for_site', 'third_party_licensed'];
 
     public static function normalizeForAuthoring(object $connection, array $site, array $input): array
     {
@@ -154,19 +154,7 @@ final class SiteCompositionValidator
         if (array_diff(array_keys($input), $allowed) !== []) {
             throw new SiteServiceException('invalid_request', "pages[{$index}] contains an unknown field.");
         }
-        $schema = [
-            'type' => 'object', 'required' => ['page_key', 'title', 'slug', 'page_type', 'sort_order', 'sections'],
-            'properties' => [
-                'page_key' => ['type' => 'string', 'format' => 'token', 'minLength' => 1, 'maxLength' => 100],
-                'title' => ['type' => 'string', 'minLength' => 1, 'maxLength' => 255],
-                'slug' => ['type' => 'string', 'format' => 'slug', 'minLength' => 0, 'maxLength' => 255],
-                'page_type' => ['type' => 'string', 'enum' => self::PAGE_TYPES],
-                'navigation_label' => ['type' => 'string', 'nullable' => true, 'minLength' => 1, 'maxLength' => 150],
-                'sort_order' => ['type' => 'integer', 'minimum' => 1, 'maximum' => 1000000],
-                'seo' => self::seoSchema(), 'presentation' => self::presentationSchema(),
-                'sections' => ['type' => 'array', 'minItems' => 1, 'maxItems' => 50, 'items' => self::sectionInputSchema()],
-            ],
-        ];
+        $schema = self::pageSchema();
         $input += [
             'navigation_label' => null,
             'seo' => ['robots' => 'index_follow', 'canonical_policy' => 'self'],
@@ -433,6 +421,23 @@ final class SiteCompositionValidator
             ],
             'stored_page_hashes' => $pageHashes, 'stored_section_hashes' => $sectionHashes,
             'stored_theme_hash' => (string) $themeRow['content_hash'],
+        ];
+    }
+
+    public static function pageSchema(): array
+    {
+        return [
+            'type' => 'object', 'required' => ['page_key', 'title', 'slug', 'page_type', 'sort_order', 'sections'],
+            'properties' => [
+                'page_key' => ['type' => 'string', 'format' => 'token', 'minLength' => 1, 'maxLength' => 100],
+                'title' => ['type' => 'string', 'minLength' => 1, 'maxLength' => 255],
+                'slug' => ['type' => 'string', 'format' => 'slug', 'minLength' => 0, 'maxLength' => 255],
+                'page_type' => ['type' => 'string', 'enum' => self::PAGE_TYPES],
+                'navigation_label' => ['type' => 'string', 'nullable' => true, 'minLength' => 1, 'maxLength' => 150],
+                'sort_order' => ['type' => 'integer', 'minimum' => 1, 'maximum' => 1000000],
+                'seo' => self::seoSchema(), 'presentation' => self::presentationSchema(),
+                'sections' => ['type' => 'array', 'minItems' => 1, 'maxItems' => 50, 'items' => self::sectionInputSchema()],
+            ],
         ];
     }
 

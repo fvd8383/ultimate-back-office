@@ -187,7 +187,7 @@ admin_begin('Site Detail', 'sites', $context);
         <h2>Create authored draft revision</h2>
         <?php if ($detail['mutable_revision'] !== null): ?>
             <?= ui_alert('Mutable revision ID ' . e($detail['mutable_revision']['id']) . ' already exists. Use that revision before creating another draft.', 'warning') ?>
-            <p class="muted">Composition editing arrives in M4B and is not available in this implementation pass.</p>
+            <p class="muted">Open the mutable revision below to edit its composition.</p>
         <?php elseif ($detail['briefs'] === []): ?>
             <p class="muted">Create a structured generation brief before creating a draft revision.</p>
         <?php else: ?>
@@ -231,8 +231,11 @@ admin_begin('Site Detail', 'sites', $context);
                         · Restored from: <?= e($revision['restored_from_revision_id'] ?? 'None') ?>
                     </p>
                     <span>Hash <?= e(substr($revision['snapshot_hash'], 0, 12)) ?>… · Created <?= e($revision['created_at']) ?><?= $revision['review_ready_at'] ? ' · Review ' . e($revision['review_ready_at']) : '' ?><?= $revision['published_at'] ? ' · Published ' . e($revision['published_at']) : '' ?></span>
+                    <?php if ($revision['has_composition']): ?>
+                        <p><a href="site-preview.php?revision_id=<?= e($revision['id']) ?>">Preview</a></p>
+                    <?php endif; ?>
                     <?php if (in_array($revision['lifecycle_status'], SiteRevisionManager::MUTABLE_COMPOSITION_STATES, true)): ?>
-                        <p class="muted">Edit Composition — planned for M4B, not started.</p>
+                        <p><a href="site-composer.php?revision_id=<?= e($revision['id']) ?>">Edit Composition</a></p>
                     <?php endif; ?>
                 </article>
             <?php endforeach; ?>

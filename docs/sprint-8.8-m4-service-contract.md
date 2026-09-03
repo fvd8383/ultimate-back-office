@@ -4,12 +4,12 @@
 
 Sprint 8.8 M4 is delivered in three internal passes:
 
-- **M4A — Admin Workflow Foundation:** **COMPLETE / STAGING PASS**;
-- **M4B — Composition Editor + Generic Admin Preview:** **NEXT / NOT STARTED**;
+- **M4A — Admin Workflow Foundation:** **COMPLETE / STAGING PASS / FORMALLY CLOSED**;
+- **M4B — Composition Editor + Generic Admin Preview:** **IMPLEMENTED LOCALLY / REVIEW REQUIRED**;
 - **M4C — Review Submission + Internal Approval + Final M4 Validation:** **NOT STARTED**;
 - **M4 overall:** **IN PROGRESS**.
 
-This contract describes the complete M4 boundary and the completed M4A subset. M4
+This contract describes the complete M4 boundary, completed M4A, and locally implemented M4B. M4
 remains in progress. Sprint 8.8 remains in progress, and production remains
 unauthorized and not deployed. The authoritative M4A completion record is
 `docs/sprint-8.8-m4a-closeout.md`.
@@ -181,12 +181,97 @@ test-session mechanism avoided credential/session forgery. Deployed unauthentica
 HTTP, actual service authorization, and CSRF/PRG contracts passed. See the closeout for
 the exact evidence and limitations.
 
-## M4B — Next / Not Started
+## M4B - Implemented Locally / Review Required
 
-M4B will own the composition editor and generic internal admin preview, including
-approved component/variant selection, page/section/theme composition, permitted asset
-assignment, and starting from prior composition. M4A contains only a non-actionable
-placeholder. It adds no generic preview route or rendering cutover.
+M4B adds `/app/admin/site-composer.php` and `/app/admin/site-preview.php`.
+M4A site detail links mutable revisions to the composer and composed revisions to
+preview. Both routes use authenticated sessions and Internal Admin/Super Admin
+policy. Composer POSTs validate `admin-site-platform` CSRF, rotate only after success,
+and return HTTP 303. Preview is GET-only, private/no-store, and noindex/nofollow.
+
+`SiteAuthoringCatalog` intersects repository-authorable definitions/variants with
+active DB metadata through `ComponentRegistry::resolve()`. It excludes legacy,
+inactive, missing, and drifted identities; page type and existing cardinality filter
+new-section choices. Safe metadata includes the repository configuration schema and
+asset requirements. Theme choices derive from `ThemeRegistry`.
+
+`SiteSchemaForm` renders and parses structured controls for current authored section
+and layout schemas: strings, nullable/optional values, enums, booleans, bounded lists,
+unique enum lists, nested objects, CTA objects, and asset usage fields. Optional
+fields/list rows have explicit inclusion controls. No configuration JSON editor or
+unsupported-schema fallback exists. `ComponentSchemaValidator` remains the final
+content authority. Existing page/theme schemas were extracted into public repository
+accessors without changing their validation rules or duplicating their schemas.
+
+`SiteCompositionEditor` accepts one structured operation and the exact loaded
+`expected_snapshot_hash`. Operations are `initialize_new`,
+`initialize_from_based_on`, `add_page`, `update_page`, `remove_page`, `move_page`,
+`add_section`, `update_section`, `remove_section`, `move_section`, and `update_theme`.
+The service loads authorized composition, applies the operation in memory, rebuilds
+the complete DTO, and calls `SiteCompositionManager::replaceDraftComposition()`
+exactly once on success. M3 owns locking, stale-write rejection, full validation,
+atomic replacement, canonical hashes, rollback, and the single success event.
+There is no direct composition SQL write, silent retry, or browser-supplied
+composition graph. A failed POST shows an explicit reload/review link and does not
+silently attach a new hash to the failed operation.
+
+Page and section keys remain stable on update; logical identity changes require
+remove/add. New pages begin with a draft text section so each atomic operation can
+produce valid composition. Moves normalize all page/section orders to 10, 20, 30,
+etc. Exact component/version/schema identities come from server catalog resolution;
+unchanged stored versions are verified, never silently upgraded. Changing a stored
+component requires explicit removal/addition; variants are selectable independently.
+
+GET causes no composition mutation. An empty draft offers explicit initialization
+with `local_service@1`, authorable layouts, and a home page containing `Content
+pending review`. This satisfies all existing purpose entry-page rules without
+inventing business facts or calling AI/providers. Based-on initialization resolves
+only the target's stored ancestry, requires immutable same-site composed source,
+validates it, retains exact authorable identities and eligible same-site asset IDs,
+and rebuilds target rows through M3. Source row IDs/hash are not copied. Target facts
+and references remain its own. Source composition is unchanged.
+
+Asset selection uses existing `site_assets` only. UI candidates require same-site,
+ready lifecycle, permitted unexpired rights, and matching active customer business
+for customer-owned/licensed 247SP assets. Forms expose IDs/type/MIME/size, not storage
+keys or private rights/provider data. M3 revalidates every reference, MIME requirement,
+usage target, and collision inside replacement. Retained asset provenance is kept
+server-side. An expired asset can be explicitly removed/replaced from a draft;
+invalid resulting composition still fails. No upload or asset URL invention exists.
+
+`SiteAdminPreview` checks the empty state, then calls
+`validatedCompositionForActor()` and passes only that result to
+`SiteCompositionRenderer::render()`. Failed validation shows no composition. The
+preview is isolated in a sandboxed iframe, with no lead-form action or invented
+contact URLs. Lead forms remain disabled. It shows the repository component output
+for all pages; unresolved media URLs are omitted. This is an internal component
+preview, not a deployed website or a customer preview.
+
+Local verification includes actual service fixtures for authoring, reconstruction,
+initialization, based-on copies, pages/sections/themes/assets, stale writers,
+rollback/event atomicity, and validated inert rendering. A DOM-based view suite
+submits successful controls from the actual rendered editor forms through the real
+editor/M3 services and checks PHP input limits. Static scope tests supplement these
+behavioral suites. Local fixtures do not claim real-MySQL or authenticated staging
+browser validation.
+
+Local gate on 2026-09-03: **39/39 standalone suites PASS**, including M1, M2, M3,
+M4A, and pricing. M4B service behavior: **170 assertions PASS**; rendered forms:
+**37 assertions PASS**; scope/contract: **59 assertions PASS**. All **18** changed/new
+PHP files pass lint; `git diff --check` and the staged diff check pass. Historical
+M2/M3 scope allowlists were extended only for the two authorized M4B routes. M4A's
+obsolete composer-placeholder/no-preview assertions now check the M4B delegation;
+legacy and migration guards remain intact.
+
+M4B has not been deployed. M4C remains **NOT STARTED**. There is no materiality,
+review-submission, approval, publication, customer workflow, or generic runtime
+cutover. M4 and Sprint 8.8 remain **IN PROGRESS**.
+
+The separate existing marketing property in `public/marketing` is not a Site Platform
+site. Its staging preview publication is **BLOCKED** by deployment-user SSH access;
+no URL or noindex protection was verified. See
+`docs/247sp-marketing-staging-preview.md`. Production `247salespartner.com` is not
+configured by this task and production remains unauthorized.
 
 ## M4C — Not Started
 

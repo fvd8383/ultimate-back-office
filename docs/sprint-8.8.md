@@ -9,7 +9,7 @@ CLOSED** on validated and deployed SHA `2a545a056f650122a3d9ccbf077f35cef83f6065
 `31d5f64ba6fdf9005fe839c9d3bae4e996ce3bd4`. M3 is **COMPLETE / STAGING PASS** on
 validated and deployed SHA `a431f6fc06e24f2252a9a282954d5541551c9000` and is
 **FORMALLY CLOSED**. M4 is **IN PROGRESS**: M4A is **COMPLETE / STAGING PASS /
-FORMALLY CLOSED**, M4B is **NEXT / NOT STARTED**, and M4C is **NOT STARTED**.
+FORMALLY CLOSED**, M4B is **IMPLEMENTED LOCALLY / REVIEW REQUIRED**, and M4C is **NOT STARTED**.
 Production is **UNAUTHORIZED / NOT DEPLOYED**. The detailed
 completion records are `docs/sprint-8.8-m1-closeout.md`,
 `docs/sprint-8.8-m2-closeout.md`, `docs/sprint-8.8-m3-closeout.md`, and
@@ -263,7 +263,7 @@ recorded in `docs/sprint-8.8-m3-closeout.md`.
 Status: **IN PROGRESS**.
 
 - M4A — Admin Workflow Foundation: **COMPLETE / STAGING PASS / FORMALLY CLOSED**;
-- M4B — Composition Editor + Generic Admin Preview: **NEXT / NOT STARTED**;
+- M4B — Composition Editor + Generic Admin Preview: **IMPLEMENTED LOCALLY / REVIEW REQUIRED**;
 - M4C — Review Submission + Internal Approval + Final M4 Validation: **NOT STARTED**.
 
 M4A adds the parallel, internal-only **Site Platform** workspace without changing the
@@ -301,6 +301,22 @@ post/redirect/get, safe errors, correlation IDs, and role checks. No customer
 impersonation dependency is introduced. Super Admin remains the authority for
 ownership/routing/domain-rights conversion operations; ordinary composition does not
 silently perform those operations.
+
+### M4B local implementation
+
+M4B is **IMPLEMENTED LOCALLY / REVIEW REQUIRED**. The composer and generic admin
+preview are implemented over M3, with structured repository-schema forms, active
+catalog choices, exact-version verification, explicit new/based-on initialization,
+page/section/theme operations, permitted existing assets, stale-write protection,
+and a validated inert preview. All writes converge on one atomic M3 replacement.
+See `docs/sprint-8.8-m4-service-contract.md` for the implemented architecture.
+M4B has not been merged or deployed; M4C is **NOT STARTED**.
+
+The existing sales/marketing landing page remains the separate `public/marketing`
+property. Its staging preview publication is **BLOCKED** by `ubo-deploy` SSH
+public-key authentication failure. No preview URL or noindex protection is verified;
+see `docs/247sp-marketing-staging-preview.md`. No production DNS or
+`247salespartner.com` configuration was changed.
 
 ### M4A staging gate and remaining exit gate
 
