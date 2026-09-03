@@ -16,7 +16,8 @@ Sprint 8.8 M2 is **COMPLETE / STAGING PASS** on merged, deployed, and validated 
 `31d5f64ba6fdf9005fe839c9d3bae4e996ce3bd4`. M3 is **COMPLETE / STAGING PASS** on
 final deployed and validated SHA `a431f6fc06e24f2252a9a282954d5541551c9000`.
 Migration 024 was applied exactly once; the final registry contains 16 definitions and
-22 variants with zero verifier drift. M4 is **NEXT / NOT STARTED**.
+22 variants with zero verifier drift. M4 is **IN PROGRESS — M4A IMPLEMENTED LOCALLY /
+REVIEW REQUIRED**. M4B and M4C are **NOT STARTED**.
 Production remains **UNAUTHORIZED / NOT DEPLOYED**.
 
 The authoritative final report is
@@ -80,8 +81,14 @@ SHA-256 `5fdfd9ca6b2118ad82b23b97e81a651990b47f9a7140d62a5cef0e857038df70`.
 The repository owns executable schemas and fixed rendering, while M3 adds atomic
 full-revision composition, same-site ready/rights asset checks, deterministic
 stored-row hashes, and M2 review-gate validation. It adds no routes/UI, upload,
-build/deployment, LeadHub routing, provider work, or public runtime cutover. M4 is
-**NEXT / NOT STARTED**. The later executable plan is
+build/deployment, LeadHub routing, provider work, or public runtime cutover. M4A adds
+the parallel internal Site Platform workspace, generic site creation/detail reads,
+versioned creative briefs, authoritative server-side snapshots, and deterministic
+empty authored drafts. It preserves all legacy website/customer runtime boundaries
+and adds no migration, provider action, review/approval UI, generic preview, or public
+cutover. M4 is **IN PROGRESS — M4A IMPLEMENTED LOCALLY / REVIEW REQUIRED**; M4B and
+M4C are **NOT STARTED**. The contract is `docs/sprint-8.8-m4-service-contract.md`. The
+later executable plan is
 `docs/sprint-8.9.md` for the Communications Core Foundation.
 Vendasta professional email is first-customer critical in Sprint 8.9 M1; Twilio's
 shared provider/webhook foundation is Sprint 8.9; Retell voice runtime remains Sprint

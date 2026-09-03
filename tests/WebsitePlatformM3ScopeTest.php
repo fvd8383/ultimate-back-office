@@ -34,13 +34,29 @@ assertM3Scope(count(glob($root . '/database/migrations/024_*.sql') ?: []) === 1,
 assertM3Scope(count(glob($root . '/database/migrations/02[5-9]_*.sql') ?: []) === 0, 'Migration 025+ must remain absent.');
 
 foreach ([
-    'public/accounts', 'public/app',
+    'public/accounts',
     'private/classes/domains/DomainManager.php', 'private/classes/LeadHub.php',
     'private/classes/StripeBilling.php', 'private/classes/SiteGenerator.php',
     'private/classes/AdminPortal.php', 'infrastructure',
 ] as $protectedPath) {
     assertM3Scope(m3GitQuiet($root, $baseline, $protectedPath), "M3 must not change {$protectedPath}.");
 }
+
+$output = [];
+exec(
+    'git -C ' . escapeshellarg($root) . ' diff --name-only ' . escapeshellarg($baseline) . ' -- public/app',
+    $output,
+    $status
+);
+$allowedLaterPublicAppChanges = [
+    'public/app/admin/_common.php',
+    'public/app/admin/site.php',
+    'public/app/admin/sites.php',
+];
+assertM3Scope(
+    $status === 0 && array_diff($output, $allowedLaterPublicAppChanges) === [],
+    'M3 protected public/app paths must remain unchanged outside the authorized later M4A admin workspace.'
+);
 
 foreach ([
     'private/classes/CanonicalJson.php', 'private/classes/ComponentSchemaValidator.php',
