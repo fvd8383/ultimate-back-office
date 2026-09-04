@@ -21,7 +21,8 @@ Migration 024 was applied exactly once; the final registry contains 16 definitio
 STAGING PASS / FORMALLY CLOSED** on final deployed and validated SHA
 `8805eeeae704f130ddda357e82c4dd936fde5b4c`; M4A required no migration. M4B is
 **COMPLETE / STAGING PASS / FORMALLY CLOSED** on merged, deployed, and validated SHA
-`557cc34fe4cf3ab56cdcb59fd7c623c495fd8eaf`, and M4C is **NEXT / NOT STARTED**.
+`557cc34fe4cf3ab56cdcb59fd7c623c495fd8eaf`. M4C is **IMPLEMENTED LOCALLY /
+REVIEW REQUIRED** on branch `codex/sprint-8.8-m4c-review-approval-workflow`.
 Production remains **UNAUTHORIZED / NOT DEPLOYED**.
 
 M4B was merged through PR #110, “Sprint 8.8 M4B: add composition editor and admin
@@ -37,6 +38,20 @@ authorization, integrity, and cleanup evidence is recorded in
 
 The M4B deployment report is `evidence/SPRINT-8.8-M4B-STAGING-DEPLOYMENT.md`, SHA-256
 `fd0709031cec52c61df2b435dc16a9153ae53c855e89824b8d842f9608a038c8`.
+
+M4C local implementation adds `/app/admin/site-review.php` and
+`SiteReviewAdminWorkflow` for Internal Admin/Super Admin review work. It presents an
+authorized revision/site read model, approval timeline, deliberate write-once
+materiality, the existing M3 review gate, customer review request only, internal
+review request, and internal approve/reject. The route uses the dedicated CSRF scope,
+success rotation, and 303 PRG; services re-resolve state and own all locks,
+transactions, transitions, idempotency, supersession, and audit. Customer decisions
+remain M5. Approval does not publish the generic site. M4C adds no migration, customer
+route, provider, public runtime, staging, production, or deployment work. M4 remains
+in progress pending review, merge, deployment, and final real-MySQL validation.
+The local gate is 42/42 standalone suites PASS; focused M4C behavior/view/scope
+coverage passes 32/16/33 assertions; repository-wide PHP lint passes 171/171; and
+`git diff --check` passes. No runtime or real-MySQL validation is claimed locally.
 The final real-MySQL report is
 `ubo-sprint-8.8-m4b-final-validation-20260904T010109Z/SPRINT-8.8-M4B-STAGING-FINAL-VALIDATION.md`,
 SHA-256 `dedc82f80c61f5aadb164b2c092093368cd67477ca64421c8b54057e0355ddb8`.
@@ -135,7 +150,7 @@ versioned creative briefs, authoritative server-side snapshots, and deterministi
 empty authored drafts. It preserves all legacy website/customer runtime boundaries
 and adds no migration, provider action, review/approval UI, generic preview, or public
 cutover. M4A is **COMPLETE / STAGING PASS / FORMALLY CLOSED**; M4 is **IN PROGRESS**,
-M4B is **COMPLETE / STAGING PASS / FORMALLY CLOSED**, and M4C is **NEXT / NOT STARTED**. The contract is
+M4B is **COMPLETE / STAGING PASS / FORMALLY CLOSED**, and M4C is **IMPLEMENTED LOCALLY / REVIEW REQUIRED**. The contract is
 `docs/sprint-8.8-m4-service-contract.md`. The
 later executable plan is
 `docs/sprint-8.9.md` for the Communications Core Foundation.

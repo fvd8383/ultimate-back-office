@@ -54,6 +54,7 @@ $allowedLaterPublicAppChanges = [
     'public/app/admin/sites.php',
     'public/app/admin/site-composer.php',
     'public/app/admin/site-preview.php',
+    'public/app/admin/site-review.php',
 ];
 assertM3Scope(
     $status === 0 && array_diff($output, $allowedLaterPublicAppChanges) === [],

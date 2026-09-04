@@ -6,7 +6,7 @@ Sprint 8.8 M4 is delivered in three internal passes:
 
 - **M4A — Admin Workflow Foundation:** **COMPLETE / STAGING PASS / FORMALLY CLOSED**;
 - **M4B — Composition Editor + Generic Admin Preview:** **COMPLETE / STAGING PASS / FORMALLY CLOSED**;
-- **M4C — Review Submission + Internal Approval + Final M4 Validation:** **NEXT / NOT STARTED**;
+- **M4C — Review Submission + Internal Approval + Final M4 Validation:** **IMPLEMENTED LOCALLY / REVIEW REQUIRED**;
 - **M4 overall:** **IN PROGRESS**.
 
 This contract describes the complete M4 boundary and completed M4A/M4B. M1, M2, and M3
@@ -267,10 +267,10 @@ obsolete composer-placeholder/no-preview assertions now check the M4B delegation
 legacy and migration guards remain intact.
 
 M4B was merged through PR #110 and deployed and validated on
-`557cc34fe4cf3ab56cdcb59fd7c623c495fd8eaf`. M4C remains **NEXT / NOT STARTED**.
-There is no materiality,
-review-submission, approval, publication, customer workflow, or generic runtime
-cutover. M4 and Sprint 8.8 remain **IN PROGRESS**.
+`557cc34fe4cf3ab56cdcb59fd7c623c495fd8eaf`. At that closeout, M4C was next and not
+started; it is now **IMPLEMENTED LOCALLY / REVIEW REQUIRED**. The M4B deployment has
+no M4C materiality, review-submission, approval, customer workflow, publication, or
+generic runtime cutover. M4 and Sprint 8.8 remain **IN PROGRESS**.
 
 The separate existing marketing property in `public/marketing` is not a Site Platform
 site. Its staging preview publication is **PASS / ACTIVE** at
@@ -326,11 +326,40 @@ validation rows and fixtures, registry 16 definitions/22 variants with zero drif
 legacy 6 websites/37 pages, restored source and a clean tree at the same deployed SHA.
 See `docs/sprint-8.8-m4b-closeout.md` for the full evidence and implementation history.
 
-## M4C — Next / Not Started
+## M4C — Implemented Locally / Review Required
 
-M4C will own materiality classification UI, validation feedback, mark-ready-for-review,
-customer-review request, internal approval request/decision, and final M4 validation.
-M4A provides no such mutation or UI.
+M4C adds the internal-only `/app/admin/site-review.php?revision_id=<id>` workflow and
+`SiteReviewAdminWorkflow`. The route uses authenticated Admin bootstrap, the existing
+Internal Admin policy, `admin-site-platform` CSRF, successful-action rotation, and 303
+post/redirect/get. The read model re-resolves revision/site ownership, composition,
+approval history, open requests, effective customer approval, and advisory capability
+flags. The existing services revalidate every mutation.
+
+Each action is explicit and delegates to the M2/M3 authority: deliberate write-once
+materiality classification calls `SiteRevisionManager::classifyMateriality()`; review
+submission calls `markReadyForReview()` and therefore the stored M3 review-gate
+validator; customer and internal requests call `SiteApprovalManager::requestApproval()`;
+and only a re-resolved requested internal approval can reach `decideApproval()`.
+Validation errors are shown safely with composer and preview navigation. No action is
+automatically chained.
+
+The admin surface creates customer review requests only. It has no customer approve,
+reject, feedback, impersonation, or authentication path; those decisions remain the
+M5 boundary. Material internal review still requires current customer approval, and
+non-material review still requires the effective prior customer-approved baseline
+recognized by the M2 helper. Existing approval idempotency, locking, supersession,
+audit, approval, and changes-requested transitions remain service-owned.
+
+Internal approval leaves the generic site in an approval lifecycle state. The UI
+states that approval does not publish or deploy the site. M4C adds no migration,
+provider call, public route, build/deployment, domain, LeadHub, customer Website
+Manager, or legacy runtime change. M4 and Sprint 8.8 remain **IN PROGRESS** pending
+review, merge, staging deployment, and final real-MySQL M4 validation.
+
+The local gate is **42/42 standalone suites PASS**. Focused M4C coverage records 32
+behavior assertions, 16 rendered-view assertions, and 33 scope/contract assertions.
+Repository-wide PHP lint is 171/171 PASS, and `git diff --check` passes. These local
+fixtures do not claim staging, production, or real-MySQL validation.
 
 ## Customer Review And M5 Boundary
 
