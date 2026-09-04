@@ -71,12 +71,18 @@ The following require final approved content or assets before launch:
 
 Placeholders are explicitly marked in configuration and markup. No fake testimonial, customer count, performance metric, conversation, dashboard data, review, rating, or guarantee is included.
 
-## Local Preview
+## Staging Preview
 
-The separate staging-preview attempt on 2026-09-03 is **BLOCKED** by deployment-user
-SSH public-key authentication failure. No staging URL or noindex protection was
-verified. See `docs/247sp-marketing-staging-preview.md` for evidence and the required
-access correction. Production `247salespartner.com` was not configured by this task.
+The separate staging preview is **PASS / ACTIVE** at
+[https://staging-app.ultimatebackoffice.com/marketing/](https://staging-app.ultimatebackoffice.com/marketing/).
+Actual HTTP response headers verified `X-Robots-Tag: noindex, nofollow`. This is
+staging only, not a production launch; `247salespartner.com` was not configured.
+The user-supplied publication evidence, successful route/asset statuses, CSS/JS
+integrity matches, and remaining browser QA are recorded in
+`docs/247sp-marketing-staging-preview.md`. Viewport and interactive browser QA are
+**NOT YET RECORDED**. Existing launch placeholders remain pending.
+
+## Local Preview
 
 From the repository root:
 

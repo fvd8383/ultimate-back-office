@@ -30,11 +30,16 @@ composition editor, repository-schema forms/catalog, and validated inert interna
 preview over the M3 replacement boundary. No migration or generic runtime cutover
 occurs. M4B must not be deployed before separate authorization.
 
-The separate `public/marketing` staging preview is **BLOCKED**: configured
-`ubo-deploy` SSH authentication failed with `Permission denied (publickey)` on
-2026-09-03, before any remote command ran. No preview URL, routing, HTTP QA, or
-noindex protection was verified. See `docs/247sp-marketing-staging-preview.md`.
-Production `247salespartner.com` was not configured and production DNS was untouched.
+The separate `public/marketing` staging preview is **PASS / ACTIVE** at
+[https://staging-app.ultimatebackoffice.com/marketing/](https://staging-app.ultimatebackoffice.com/marketing/).
+User-supplied evidence on 2026-09-03 verifies 200 responses for the marketing pages
+and assets, the 302 `/marketing` redirect, actual `noindex, nofollow` response headers,
+and matching CSS/JS hashes. Staging-only administrator routing serves the existing
+marketing property; deployed application SHA remains
+`8805eeeae704f130ddda357e82c4dd936fde5b4c`. M4B/PR #110 was not deployed.
+Viewport, console, and interactive browser QA are **NOT YET RECORDED**. See
+`docs/247sp-marketing-staging-preview.md`. Production Apache, DNS, and SSL were
+unchanged; `247salespartner.com` was not configured. This is not a production launch.
 
 The authoritative M4A final report is
 `ubo-sprint-8.8-m4a-final-validation-20260903T030735Z/SPRINT-8.8-M4A-STAGING-FINAL-VALIDATION.md`,

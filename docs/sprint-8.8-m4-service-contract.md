@@ -268,10 +268,14 @@ review-submission, approval, publication, customer workflow, or generic runtime
 cutover. M4 and Sprint 8.8 remain **IN PROGRESS**.
 
 The separate existing marketing property in `public/marketing` is not a Site Platform
-site. Its staging preview publication is **BLOCKED** by deployment-user SSH access;
-no URL or noindex protection was verified. See
-`docs/247sp-marketing-staging-preview.md`. Production `247salespartner.com` is not
-configured by this task and production remains unauthorized.
+site. Its staging preview publication is **PASS / ACTIVE** at
+[https://staging-app.ultimatebackoffice.com/marketing/](https://staging-app.ultimatebackoffice.com/marketing/).
+User-supplied evidence verifies HTTP routes/assets, the canonical marketing redirect,
+actual noindex/nofollow response headers, and matching CSS/JS hashes. Browser viewport,
+console, and interaction QA are **NOT YET RECORDED**. See
+`docs/247sp-marketing-staging-preview.md`. M4B was not deployed; production Apache,
+DNS, and SSL were unchanged. `247salespartner.com` is not configured and production
+remains unauthorized.
 
 ## M4C — Not Started
 

@@ -313,10 +313,13 @@ See `docs/sprint-8.8-m4-service-contract.md` for the implemented architecture.
 M4B has not been merged or deployed; M4C is **NOT STARTED**.
 
 The existing sales/marketing landing page remains the separate `public/marketing`
-property. Its staging preview publication is **BLOCKED** by `ubo-deploy` SSH
-public-key authentication failure. No preview URL or noindex protection is verified;
-see `docs/247sp-marketing-staging-preview.md`. No production DNS or
-`247salespartner.com` configuration was changed.
+property. Its staging preview publication is **PASS / ACTIVE** at
+[https://staging-app.ultimatebackoffice.com/marketing/](https://staging-app.ultimatebackoffice.com/marketing/).
+User-supplied evidence verifies 200 routes/assets, the canonical 302 marketing
+redirect, actual noindex/nofollow response headers, and matching CSS/JS hashes.
+Browser viewport, console, and interaction QA are **NOT YET RECORDED**; see
+`docs/247sp-marketing-staging-preview.md`. M4B was not deployed. Production Apache,
+DNS, and SSL were unchanged, and `247salespartner.com` was not configured.
 
 ### M4A staging gate and remaining exit gate
 

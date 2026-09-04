@@ -1,68 +1,125 @@
 # 247SP Marketing Staging Preview
 
-Publication result on 2026-09-03: **BLOCKED**.
+Publication result on 2026-09-03: **PASS / ACTIVE**.
 
-This concerns only the existing standalone sales/marketing property at
-`public/marketing`. It is separate from Site Platform customer composition and the
-M4B internal admin preview. No site, revision, business association, or composition
-record was created for marketing.
+Exact preview URL:
+[https://staging-app.ultimatebackoffice.com/marketing/](https://staging-app.ultimatebackoffice.com/marketing/)
 
-## Access evidence
+This is **staging only**, not a production launch. It serves the existing standalone
+sales/marketing property at `public/marketing`, separate from Site Platform, M4B
+generic customer websites, `SiteCompositionManager`, `SiteGenerator`, and customer
+Website Manager. No marketing site, revision, business association, or composition
+record was created.
 
-The local SSH configuration contains deployment alias `ubo-deploy`, targeting
-`ubo-deploy@45.55.252.62` with the configured deployment identity. The authorized
-Phase B environment is Codex CLI directly on `ubo-stage-app` as `ubo-deploy`.
+## Evidence source and resolved access history
 
-The connection attempt used batch public-key authentication and a bounded connection
-timeout. The command failed (reported exit code 1) with:
+This documentation correction records the authoritative publication evidence supplied
+by the user on 2026-09-03. No staging or production access, deployment, or fresh remote
+validation was performed during this local documentation update.
+
+The earlier SSH/public-key access block is **historical and resolved**. It no longer
+describes the current publication state. The deployed staging application remained at
+`8805eeeae704f130ddda357e82c4dd936fde5b4c`; PR #110 and M4B were not deployed.
+
+## Staging Apache routing
+
+The administrator added routing in the staging-only HTTPS vhost
+`staging-app.ultimatebackoffice.com`:
+
+- Existing application document root remains `/var/www/ubo-repo/public/app`.
+- `/marketing/` maps to `/var/www/ubo-repo/public/marketing/`.
+- Exact marketing root-relative asset aliases serve the marketing CSS, JavaScript,
+  logo, favicon, and social image.
+
+No production vhost, DNS, or SSL was changed. `247salespartner.com` was **not
+configured**.
+
+## Verified HTTP evidence
+
+All paths below use `https://staging-app.ultimatebackoffice.com`.
+
+| Route or asset | Actual HTTP result |
+| --- | --- |
+| `/marketing/` | 200 |
+| `/marketing/privacy.php` | 200 |
+| `/marketing/terms.php` | 200 |
+| `/marketing/contact.php` | 200 |
+| `/assets/css/marketing.css` | 200 |
+| `/assets/js/marketing.js` | 200 |
+| `/assets/brand/247sp-logo.svg` | 200 |
+| `/assets/brand/favicon.svg` | 200 |
+| `/assets/img/og-247sp.png` | 200 |
+| `/marketing` | 302 to `https://staging-app.ultimatebackoffice.com/marketing/` |
+
+No 5xx responses were observed.
+
+## Verified search-engine protection
+
+Actual HTTP response headers verified `X-Robots-Tag: noindex, nofollow` on:
+
+- `/marketing/`;
+- `/marketing/privacy.php`;
+- `/marketing/terms.php`;
+- `/marketing/contact.php`;
+- `/assets/css/marketing.css`; and
+- the `/marketing` redirect response.
+
+This protection was verified in responses, not merely recorded as configured. It is
+preview-only and does not change eventual production marketing SEO behavior.
+
+## Asset integrity
+
+The served CSS exactly matched
+`/var/www/ubo-repo/public/marketing/assets/css/marketing.css`:
 
 ```text
-ubo-deploy@45.55.252.62: Permission denied (publickey).
+Repository file SHA-256:
+261ae78c77fadbde899a81e357afcdc0ec31955ea6c64e27f828e29987c7a41a
+Remote staging CSS SHA-256:
+261ae78c77fadbde899a81e357afcdc0ec31955ea6c64e27f828e29987c7a41a
+Result: MATCH
 ```
 
-Authentication failed before `whoami`, `hostname`, CLI discovery, or deployed Git
-state checks could run. The expected staging runtime
-`8805eeeae704f130ddda357e82c4dd936fde5b4c` was therefore **not verified**. No root,
-alternate deployment user, permission changes, or broad sudo workaround was used.
+The served JavaScript exactly matched
+`/var/www/ubo-repo/public/marketing/assets/js/marketing.js`:
 
-## Publication and QA state
+```text
+Repository file SHA-256:
+cfe0e464c9c20459ebca0aa5b3ae8d800748522bdbd49f7bce16d02f456c07f6
+Remote staging JavaScript SHA-256:
+cfe0e464c9c20459ebca0aa5b3ae8d800748522bdbd49f7bce16d02f456c07f6
+Result: MATCH
+```
 
-| Check | Result |
+The staging application's `/assets` tree is not substituting the wrong CSS or
+JavaScript for the marketing property.
+
+## Remaining browser review QA
+
+| Browser check | Result |
 | --- | --- |
-| Actual staging hostname / vhosts / document root | Not inspected; access blocked |
-| Exact browser preview URL | Not available; no URL invented |
-| Index, privacy, terms, contact HTTP statuses | Not tested |
-| CSS, JS, logo, favicon, social asset HTTP statuses | Not tested |
-| Desktop 1440px / tablet 768px / mobile 390px / narrow 320px | Not tested |
-| Navigation, mobile navigation, FAQ, CTA anchors, utility links | Not tested on staging |
-| Overflow, console, PHP errors, 5xx | Not verified on staging |
-| Preview-only noindex/nofollow | Not verified; no protection claimed |
-| M4B branch deployed | No |
-| Repository or Apache changes on staging | None |
-| Production access, DNS changes, SSL requests | None |
-| Production `247salespartner.com` configured by this task | No |
+| Desktop 1440px | NOT YET RECORDED |
+| Tablet 768px | NOT YET RECORDED |
+| Mobile 390px | NOT YET RECORDED |
+| Narrow mobile 320px | NOT YET RECORDED |
+| Browser console | NOT YET RECORDED |
+| Interactive navigation, mobile navigation, FAQ, and CTA/utility links | NOT YET RECORDED |
+| Horizontal overflow | NOT YET RECORDED |
 
-## Required next action
+These remain review QA items and are not labeled PASS. Publication remains **PASS**
+because the property is active and its HTTP, assets, integrity, and noindex contracts
+are verified. Publication does not establish browser QA completion or launch readiness.
 
-An administrator must restore access for the existing configured deployment public
-key to the `ubo-deploy` account, or open a working Codex CLI session directly as
-`ubo-deploy` on `ubo-stage-app`. Do not share a private key or broaden sudo access.
-This is the minimal known access correction; no Apache/DNS change can responsibly be
-specified until actual staging routing and approved fixed wrappers are inspected.
+## Server and implementation boundaries
 
-After access is restored, verify identity and the expected deployed SHA, then inspect
-existing staging vhosts/document roots read-only. Prefer existing staging routing.
-The marketing source uses root-relative `/assets/...` URLs, so a proposed subpath
-must be tested for the actual marketing CSS/JS/brand files, not merely an HTTP 200
-index response. Use a fixed approved staging mechanism only if routing or
-preview-only `X-Robots-Tag: noindex, nofollow` requires a change. If unavailable,
-report the exact minimal administrator configuration after discovery; do not edit
-Apache as root or alter production DNS.
+Publication required no M4B deployment, database mutation, migration, provider call,
+production access, repository modification, permission or ownership change, sudoers
+change, or Git configuration change. The only routing changes recorded above are
+staging-only administrator Apache configuration. Production Apache, DNS, and SSL
+remain unchanged, and `247salespartner.com` is not configured.
 
-Do not deploy M4B to publish this property. Preserve existing staging authentication.
-Read CTA hrefs only; they currently target production-facing Accounts and must not be
-used to create data. Complete the requested four-width and route/asset QA before
-calling publication PASS.
+M4B remains **IMPLEMENTED LOCALLY / REVIEW REQUIRED**. M4C remains **NOT STARTED**.
+PR #110 has not been deployed. Generic customer sites remain separate and dormant.
 
 ## Launch placeholders retained
 
