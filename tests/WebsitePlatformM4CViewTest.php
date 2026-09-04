@@ -25,7 +25,13 @@ checkM4CView(str_contains($html, 'Classify materiality') && str_contains($html, 
 checkM4CView(str_contains($html, 'Non-material') && str_contains($html, 'No effective customer-approved baseline'), 'Non-material semantics and missing-baseline warning render.');
 checkM4CView(str_contains($html, 'Edit Composition') && str_contains($html, 'Preview'), 'Mutable composed revision links to composer and preview.');
 checkM4CView(str_contains($html, 'Approval does not publish this site.'), 'Publication boundary is explicit.');
+checkM4CView(str_contains($html, 'Based on revision</dt><dd>None') && str_contains($html, 'Restored from revision</dt><dd>None'), 'Absent ancestry renders safe None values.');
+checkM4CView(str_contains($html, 'Review ready</dt><dd>Not yet'), 'Absent review-ready timestamp renders Not yet.');
 foreach (formsM4C($html) as $form) checkM4CView((new DOMXPath($form->ownerDocument))->query('.//input[@name="csrf_token"]', $form)->length === 1, 'Every POST form contains CSRF.');
+$db->revisions[100]['based_on_revision_id'] = 77; $db->revisions[100]['restored_from_revision_id'] = 66; $db->revisions[100]['review_ready_at'] = '2026-09-04 12:34:56';
+$html = renderM4C(SiteReviewAdminWorkflow::workspace(1, 100));
+checkM4CView(str_contains($html, 'Based on revision</dt><dd>77') && str_contains($html, 'Restored from revision</dt><dd>66'), 'Stored ancestry values render from the revision read model.');
+checkM4CView(str_contains($html, 'Review ready</dt><dd>2026-09-04 12:34:56'), 'Stored review-ready timestamp renders.');
 
 Csrf::requireValid($token, SITE_PLATFORM_CSRF_SCOPE); SiteReviewAdminWorkflow::apply(1, 100, 'classify_materiality', ['materiality' => 'material', 'reason' => 'Launch']);
 $html = renderM4C(SiteReviewAdminWorkflow::workspace(1, 100));
@@ -34,8 +40,10 @@ SiteReviewAdminWorkflow::apply(1, 100, 'submit_for_review', []); $html = renderM
 checkM4CView(str_contains($html, 'Request Customer Review') && !str_contains($html, 'Approve as Customer') && !str_contains($html, 'Reject as Customer'), 'Eligible material revision exposes only customer request action.');
 checkM4CView(!str_contains($html, 'Edit Composition'), 'Immutable review state has no composer link.');
 $customer = SiteReviewAdminWorkflow::apply(1, 100, 'request_customer_review', ['comment' => '<script>alert(1)</script>']);
+$db->approvals[$customer['approval_id']]['reason'] = '<b>escaped reason</b>';
 $html = renderM4C(SiteReviewAdminWorkflow::workspace(1, 100));
-checkM4CView(str_contains($html, 'pending customer action') && !str_contains($html, '<script>alert'), 'Customer pending state has escaped timeline and no decision controls.');
+checkM4CView(str_contains($html, 'pending customer action') && str_contains($html, '&lt;script&gt;alert(1)&lt;/script&gt;') && !str_contains($html, '<script>alert'), 'Customer pending state keeps the approval comment escaped.');
+checkM4CView(str_contains($html, 'Reason: &lt;b&gt;escaped reason&lt;/b&gt;') && !str_contains($html, '<b>escaped reason</b>'), 'Approval reason renders and remains HTML-escaped.');
 $db->approvals[$customer['approval_id']]['state'] = 'approved'; $db->revisions[100]['lifecycle_status'] = 'customer_approved'; $db->sites[10]['lifecycle_status'] = 'pending_internal_review';
 $html = renderM4C(SiteReviewAdminWorkflow::workspace(1, 100)); checkM4CView(str_contains($html, 'Request Internal Review'), 'Current customer approval enables internal request.');
 $internal = SiteReviewAdminWorkflow::apply(1, 100, 'request_internal_review', []); $html = renderM4C(SiteReviewAdminWorkflow::workspace(1, 100));

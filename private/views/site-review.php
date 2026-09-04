@@ -26,10 +26,14 @@ $postForm = static function (string $action, string $label, array $hidden = [], 
 <section class="business-switcher"><h2>Authoritative status</h2><div class="summary-list">
     <div><dt>Site</dt><dd>#<?= e($site['id']) ?> · <?= e(AdminPortal::statusLabel($site['purpose'])) ?></dd></div>
     <div><dt>Site lifecycle</dt><dd><?= e(AdminPortal::statusLabel($site['lifecycle_status'])) ?></dd></div>
+    <div><dt>Revision number</dt><dd><?= e($revision['revision_number']) ?></dd></div>
     <div><dt>Revision lifecycle</dt><dd><?= e(AdminPortal::statusLabel($revision['lifecycle_status'])) ?></dd></div>
     <div><dt>Materiality</dt><dd><?= e(AdminPortal::statusLabel($revision['materiality'])) ?></dd></div>
     <div><dt>Composition</dt><dd><?= e(AdminPortal::statusLabel($workspace['composition']['composition_state'])) ?></dd></div>
     <div><dt>Snapshot</dt><dd><?= e(substr((string) $revision['snapshot_hash'], 0, 12)) ?>…</dd></div>
+    <div><dt>Based on revision</dt><dd><?= e($revision['based_on_revision_id'] ?? 'None') ?></dd></div>
+    <div><dt>Restored from revision</dt><dd><?= e($revision['restored_from_revision_id'] ?? 'None') ?></dd></div>
+    <div><dt>Review ready</dt><dd><?= e($revision['review_ready_at'] ?? 'Not yet') ?></dd></div>
 </div></section>
 
 <?php if ($caps['can_classify_materiality']): ?>
@@ -56,6 +60,9 @@ $postForm = static function (string $action, string $label, array $hidden = [], 
 
 <section class="business-switcher"><h2>Review and approval timeline</h2><div class="activity-list">
 <?php foreach ($workspace['approvals'] as $approval): ?><article><strong><?= e(AdminPortal::statusLabel($approval['approval_type'])) ?> · <?= e(AdminPortal::statusLabel($approval['state'])) ?></strong>
-<p>Approval #<?= e($approval['id']) ?></p><span>Requested <?= e($approval['requested_at']) ?><?= $approval['decided_at'] ? ' · Decided ' . e($approval['decided_at']) : '' ?><?= $approval['comments'] ? ' · ' . e($approval['comments']) : '' ?></span></article><?php endforeach; ?>
+<p>Approval #<?= e($approval['id']) ?></p><span>Requested <?= e($approval['requested_at']) ?><?= $approval['decided_at'] ? ' · Decided ' . e($approval['decided_at']) : '' ?><?= $approval['revoked_at'] ? ' · Revoked ' . e($approval['revoked_at']) : '' ?></span>
+<?php if ($approval['comments'] !== null && trim((string) $approval['comments']) !== ''): ?><p>Comment: <?= e($approval['comments']) ?></p><?php endif; ?>
+<?php if ($approval['reason'] !== null && trim((string) $approval['reason']) !== ''): ?><p>Reason: <?= e($approval['reason']) ?></p><?php endif; ?>
+</article><?php endforeach; ?>
 <?php if ($workspace['approvals'] === []): ?><p class="muted">No approval requests or decisions exist.</p><?php endif; ?></div></section>
 <?php if ($revision['lifecycle_status'] === 'changes_requested'): ?><?= ui_alert('Changes requested. This immutable revision is not edited in place. Return to site detail to create a successor authored revision.', 'warning') ?><?php endif; ?>

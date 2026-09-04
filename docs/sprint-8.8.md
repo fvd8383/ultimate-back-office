@@ -379,9 +379,18 @@ M4 and Sprint 8.8 remain **IN PROGRESS**, M5 is **NOT STARTED**, and production 
 **UNAUTHORIZED / NOT DEPLOYED**.
 
 The local M4C gate is **42/42 standalone suites PASS**, including focused M4C behavior,
-rendered-view, and scope suites with 32, 16, and 33 assertions. Repository-wide PHP
+rendered-view, and scope suites with 37, 21, and 33 assertions. Repository-wide PHP
 lint is **171/171 PASS** and `git diff --check` passes. Real-MySQL and authenticated
 staging validation remain future gates after review, merge, and approved deployment.
+
+Local M4C executes a deterministic decision TOCTOU test through a test-only fixture
+hook: advisory approval state changes before the M2 decision lock, and the authoritative
+service rejects the stale decision with no overwrite, false lifecycle transition, or
+false success event. Local true two-connection concurrency is **NOT EXECUTABLE IN THE
+LOCAL FIXTURE**. Final staging real-MySQL M4 validation must run two-connection races
+for materiality classification, duplicate approval request, and internal decision,
+expecting one winner/one conflict or one durable idempotent request and verifying no
+partial state or false success events.
 
 ### M4A staging gate and remaining exit gate
 

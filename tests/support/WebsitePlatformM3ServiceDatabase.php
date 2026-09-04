@@ -60,6 +60,7 @@ final class WebsitePlatformM3ServiceDatabase extends PDO
     public bool $failAfterDeletion = false;
     public bool $internalAdmin = true;
     public string $internalRole = 'Admin';
+    public $afterApprovalTimelineReadHook = null;
     public int $beginCount = 0;
     public int $commitCount = 0;
     public int $rollbackCount = 0;
@@ -245,7 +246,13 @@ final class WebsitePlatformM3ServiceDatabase extends PDO
             && str_contains($n, 'where revision_id = :revision_id')) {
             $rows = array_values(array_filter($this->approvals, fn ($a) => (int) $a['revision_id'] === (int) $p['revision_id']
                 && (!isset($p['site_id']) || (int) $a['site_id'] === (int) $p['site_id'])));
-            usort($rows, fn ($a, $b) => $a['id'] <=> $b['id']); return [$rows, 0];
+            usort($rows, fn ($a, $b) => $a['id'] <=> $b['id']);
+            if (is_callable($this->afterApprovalTimelineReadHook)) {
+                $hook = $this->afterApprovalTimelineReadHook;
+                $this->afterApprovalTimelineReadHook = null;
+                $hook($this);
+            }
+            return [$rows, 0];
         }
         if (str_contains($n, 'select id, approval_type') && str_contains($n, 'from site_approvals')
             && str_contains($n, 'where revision_id = :revision_id')) {

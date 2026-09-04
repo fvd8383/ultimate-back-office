@@ -68,6 +68,21 @@ SiteReviewAdminWorkflow::apply(1, 100, 'decide_internal_approval', ['approval_id
 checkM4C($db->revisions[100]['lifecycle_status'] === 'changes_requested' && $db->sites[10]['lifecycle_status'] === 'draft', 'Internal rejection keeps existing changes-requested path.');
 checkM4C($db->approvals[$customer]['state'] === 'superseded', 'Rejection preserves approval supersession.');
 
+// Deterministic M4C TOCTOU: the orchestration pre-read sees requested/internal, then a
+// competing test writer decides it before the authoritative M2 lock/state check.
+$db = fixtureM4C(); SiteReviewAdminWorkflow::apply(1, 100, 'classify_materiality', ['materiality' => 'material', 'reason' => 'Material']); SiteReviewAdminWorkflow::apply(1, 100, 'submit_for_review', []);
+customerApprovalM4C($db); $db->revisions[100]['lifecycle_status'] = 'customer_approved'; $db->sites[10]['lifecycle_status'] = 'pending_internal_review';
+$internal = SiteReviewAdminWorkflow::apply(1, 100, 'request_internal_review', []); $events = count($db->events);
+$db->afterApprovalTimelineReadHook = static function (WebsitePlatformM3ServiceDatabase $database) use ($internal): void {
+    $database->approvals[$internal['approval_id']]['state'] = 'rejected';
+    $database->approvals[$internal['approval_id']]['decided_at'] = 'competing-writer';
+};
+rejectM4C(fn () => SiteReviewAdminWorkflow::apply(1, 100, 'decide_internal_approval', ['approval_id' => $internal['approval_id'], 'decision' => 'approved']), 'conflict');
+checkM4C($db->approvals[$internal['approval_id']]['state'] === 'rejected', 'Authoritative service does not overwrite the competing internal decision.');
+checkM4C($db->revisions[100]['lifecycle_status'] === 'customer_approved', 'Stale orchestration pre-read causes no false revision transition.');
+checkM4C($db->sites[10]['lifecycle_status'] === 'pending_internal_review', 'Stale orchestration pre-read causes no false site transition.');
+checkM4C(count($db->events) === $events, 'Stale orchestration pre-read causes no false success event.');
+
 $db = fixtureM4C(); SiteReviewAdminWorkflow::apply(1, 100, 'classify_materiality', ['materiality' => 'non_material', 'reason' => 'Technical']); SiteReviewAdminWorkflow::apply(1, 100, 'submit_for_review', []);
 rejectM4C(fn () => SiteReviewAdminWorkflow::apply(1, 100, 'request_customer_review', []), 'invalid_transition');
 rejectM4C(fn () => SiteReviewAdminWorkflow::apply(1, 100, 'request_internal_review', []), 'invalid_transition');

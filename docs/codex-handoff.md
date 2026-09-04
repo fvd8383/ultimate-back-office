@@ -50,8 +50,14 @@ remain M5. Approval does not publish the generic site. M4C adds no migration, cu
 route, provider, public runtime, staging, production, or deployment work. M4 remains
 in progress pending review, merge, deployment, and final real-MySQL validation.
 The local gate is 42/42 standalone suites PASS; focused M4C behavior/view/scope
-coverage passes 32/16/33 assertions; repository-wide PHP lint passes 171/171; and
+coverage passes 37/21/33 assertions; repository-wide PHP lint passes 171/171; and
 `git diff --check` passes. No runtime or real-MySQL validation is claimed locally.
+The review correction adds a deterministic test-only decision TOCTOU case proving a
+stale M4C pre-read cannot bypass `SiteApprovalManager` state checks. Local true
+two-connection concurrency is **NOT EXECUTABLE IN THE LOCAL FIXTURE**. Final staging
+real-MySQL M4 validation must race materiality classification, duplicate approval
+requests, and internal decisions and verify one durable outcome, no partial state,
+and no false success events.
 The final real-MySQL report is
 `ubo-sprint-8.8-m4b-final-validation-20260904T010109Z/SPRINT-8.8-M4B-STAGING-FINAL-VALIDATION.md`,
 SHA-256 `dedc82f80c61f5aadb164b2c092093368cd67477ca64421c8b54057e0355ddb8`.

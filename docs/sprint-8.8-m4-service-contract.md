@@ -356,10 +356,23 @@ provider call, public route, build/deployment, domain, LeadHub, customer Website
 Manager, or legacy runtime change. M4 and Sprint 8.8 remain **IN PROGRESS** pending
 review, merge, staging deployment, and final real-MySQL M4 validation.
 
-The local gate is **42/42 standalone suites PASS**. Focused M4C coverage records 32
-behavior assertions, 16 rendered-view assertions, and 33 scope/contract assertions.
+The local gate is **42/42 standalone suites PASS**. Focused M4C coverage records 37
+behavior assertions, 21 rendered-view assertions, and 33 scope/contract assertions.
 Repository-wide PHP lint is 171/171 PASS, and `git diff --check` passes. These local
 fixtures do not claim staging, production, or real-MySQL validation.
+
+The local fixture executes a deterministic M4C decision TOCTOU case: the workflow
+pre-read sees a requested internal approval, a test-only hook changes that approval
+before `SiteApprovalManager::decideApproval()` obtains its mutation locks, and the M2
+service rejects the stale decision without overwriting the approval, moving the site
+or revision, or recording a false success event. Local true two-connection concurrency
+is **NOT EXECUTABLE IN THE LOCAL FIXTURE** and is not labeled PASS.
+
+Final staging real-MySQL M4 validation must use two connections to verify concurrent
+materiality classification produces one winner and one conflict, duplicate approval
+requests produce one durable logical request with an idempotent or serialized second
+caller, and concurrent internal decisions produce one winner and one conflict. Every
+case must also verify no partial lifecycle/approval state and no false success events.
 
 ## Customer Review And M5 Boundary
 
