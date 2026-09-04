@@ -50,7 +50,7 @@ foreach (['facts_snapshot_json', 'source_references_json', 'snapshot_hash', 'rev
     assertM4AScope(!preg_match('/name=["\']' . preg_quote($serverOwned, '/') . '["\']/', $siteRoute), "Browser forms must not control {$serverOwned}.");
 }
 assertM4AScope(!str_contains($siteRoute, 'raw JSON') && !preg_match('/<textarea[^>]+json/i', $siteRoute), 'Generation briefs must not use a raw JSON editor.');
-assertM4AScope(str_contains($siteRoute, 'planned for M4B, not started'), 'Composer must remain an explicit M4B placeholder.');
+assertM4AScope(str_contains($siteRoute, 'site-composer.php?revision_id='), 'M4B replaces the M4A placeholder with a revision-scoped composer link.');
 assertM4AScope(!preg_match('/markReadyForReview|requestApproval|decideApproval|requireCustomerApproval\(/', $siteRoute), 'M4A routes must not submit review or make approval decisions.');
 assertM4AScope(str_contains($policy, 'Internal administrators cannot act as customer approvers.'), 'Customer impersonation denial must remain unchanged.');
 
@@ -68,7 +68,7 @@ foreach ($immutableHashes as $path => $expectedHash) {
     assertM4AScope(hash('sha256', $canonical) === $expectedHash, "{$path} must remain unchanged.");
 }
 assertM4AScope(glob($root . '/database/migrations/025*') === [], 'M4A must add no migration 025 or later.');
-assertM4AScope(!is_file($root . '/public/app/admin/site-preview.php'), 'M4A must add no generic preview route.');
+assertM4AScope(!str_contains($siteRoute, 'SiteCompositionRenderer::render'), 'M4A detail delegates preview to the separate M4B route.');
 assertM4AScope(!is_file($root . '/public/app/admin/site-editor.php'), 'M4A must add no generic composition editor route.');
 
 echo "Website platform M4A scope: {$assertions} assertions passed.\n";

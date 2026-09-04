@@ -1,0 +1,12 @@
+.composer-layout { display: grid; grid-template-columns: minmax(220px, 1fr) minmax(0, 3fr); gap: 24px; }
+.composer-outline, .composer-form { background: white; padding: 24px; border: 1px solid #dce2ea; border-radius: 12px; min-width: 0; }
+.composer-outline ul { padding-left: 20px; }
+.composer-outline li { margin: 12px 0; overflow-wrap: anywhere; }
+.schema-field { border: 1px solid #dce2ea; padding: 12px; margin: 12px 0; min-width: 0; }
+.schema-field legend { font-weight: 600; padding: 0 6px; }
+.schema-field textarea, .schema-field select, .composer-form input:not([type=hidden]):not([type=checkbox]), .composer-form select { width: 100%; max-width: 100%; box-sizing: border-box; }
+.schema-field input[type=checkbox] { width: auto; }
+.composer-form details { margin: 10px 0; }
+.composer-form summary { cursor: pointer; padding: 8px; }
+.composer-actions { display: flex; flex-wrap: wrap; gap: 10px; margin: 16px 0; }
+@media (max-width: 800px) { .composer-layout { grid-template-columns: 1fr; } .composer-form, .composer-outline { padding: 16px; } }

@@ -58,6 +58,7 @@ final class WebsitePlatformM3ServiceDatabase extends PDO
     public array $variants = [];
     public bool $failAfterDeletion = false;
     public bool $internalAdmin = true;
+    public string $internalRole = 'Admin';
     public int $beginCount = 0;
     public int $commitCount = 0;
     public int $rollbackCount = 0;
@@ -176,8 +177,20 @@ final class WebsitePlatformM3ServiceDatabase extends PDO
     public function executeSql(string $sql, array $p): array
     {
         $n = strtolower(preg_replace('/\s+/', ' ', trim($sql)) ?? $sql);
+        if (str_contains($n, 'site-m4b:asset-catalog')) {
+            $rows = [];
+            foreach ($this->siteAssets as $row) {
+                if ((int) $row['site_id'] === (int) $p['site_id']) {
+                    $rows[] = $row + ['purpose' => $this->sites[$p['site_id']]['purpose']];
+                }
+            }
+            return [$rows, 0];
+        }
+        if (str_contains($n, 'site-m4b:asset-provenance')) {
+            return [array_values(array_filter($this->revisionAssets, fn ($row) => (int) $row['revision_id'] === (int) $p['revision_id'])), 0];
+        }
         if (str_contains($n, 'from users u')) {
-            return [[[ 'id' => 1, 'status' => 'active', 'role_name' => $this->internalAdmin ? 'Admin' : null ]], 0];
+            return [[[ 'id' => 1, 'status' => 'active', 'role_name' => $this->internalAdmin ? $this->internalRole : null ]], 0];
         }
         if (str_contains($n, 'from sites s') && str_contains($n, 'inner join site_business_associations')) {
             return [[], 0];
