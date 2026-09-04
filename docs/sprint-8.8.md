@@ -11,7 +11,7 @@ validated and deployed SHA `a431f6fc06e24f2252a9a282954d5541551c9000` and is
 **FORMALLY CLOSED**. M4 is **IN PROGRESS**: M4A is **COMPLETE / STAGING PASS /
 FORMALLY CLOSED**, M4B is **COMPLETE / STAGING PASS / FORMALLY CLOSED** on merged,
 deployed, and validated SHA `557cc34fe4cf3ab56cdcb59fd7c623c495fd8eaf`, and M4C is
-**NEXT / NOT STARTED**.
+**IMPLEMENTED LOCALLY / REVIEW REQUIRED**.
 Production is **UNAUTHORIZED / NOT DEPLOYED**. The detailed
 completion records are `docs/sprint-8.8-m1-closeout.md`,
 `docs/sprint-8.8-m2-closeout.md`, `docs/sprint-8.8-m3-closeout.md`,
@@ -266,7 +266,7 @@ Status: **IN PROGRESS**.
 
 - M4A — Admin Workflow Foundation: **COMPLETE / STAGING PASS / FORMALLY CLOSED**;
 - M4B — Composition Editor + Generic Admin Preview: **COMPLETE / STAGING PASS / FORMALLY CLOSED**;
-- M4C — Review Submission + Internal Approval + Final M4 Validation: **NEXT / NOT STARTED**.
+- M4C — Review Submission + Internal Approval + Final M4 Validation: **IMPLEMENTED LOCALLY / REVIEW REQUIRED**.
 
 M4A adds the parallel, internal-only **Site Platform** workspace without changing the
 legacy **Websites** administration or customer Website Manager. It includes generic
@@ -313,7 +313,7 @@ page/section/theme operations, permitted existing assets, stale-write protection
 and a validated inert preview. All writes converge on one atomic M3 replacement.
 See `docs/sprint-8.8-m4-service-contract.md` for the implemented architecture.
 PR #110 merged at final deployed and validated SHA
-`557cc34fe4cf3ab56cdcb59fd7c623c495fd8eaf`; M4C is **NEXT / NOT STARTED**.
+`557cc34fe4cf3ab56cdcb59fd7c623c495fd8eaf`; M4C is **IMPLEMENTED LOCALLY / REVIEW REQUIRED**.
 The original implementation is `d3f0cd34397d3451921d669b29a15a2a0c4b46d4`; the
 marketing publication documentation correction is
 `a2e1917f76a32fa4cfe99b7b7347e69a0ecdff5d`.
@@ -359,6 +359,38 @@ pages/assets remained 200, `/marketing` redirected 302 to `/marketing/`, and
 `X-Robots-Tag: noindex, nofollow` remained present. Marketing launch placeholders
 remain pending and do not block M4B closeout. Production Apache, DNS, and SSL were
 unchanged, and `247salespartner.com` was not configured.
+
+### M4C local implementation
+
+M4C adds the internal `site-review.php` revision workflow with explicit materiality,
+the existing M3 stored-composition review gate, customer review request only, internal
+review request, and Internal Admin approve/reject controls. `SiteReviewAdminWorkflow`
+builds the authorized read model and delegates every write to the existing M2
+`SiteRevisionManager` and `SiteApprovalManager`. Advisory capability flags reuse the
+effective-customer-approval and internal eligibility contracts and are never mutation
+authority. Customer decisions remain M5 work.
+
+Site detail links composed revisions to Review Workflow while preserving Preview and
+mutable Edit Composition links. The review UI states that approval does not publish.
+No migration, customer route, provider integration, build/deployment, domain routing,
+LeadHub ingestion, legacy runtime cutover, staging access, or production access is
+part of this local implementation. M4C is **IMPLEMENTED LOCALLY / REVIEW REQUIRED**;
+M4 and Sprint 8.8 remain **IN PROGRESS**, M5 is **NOT STARTED**, and production is
+**UNAUTHORIZED / NOT DEPLOYED**.
+
+The local M4C gate is **42/42 standalone suites PASS**, including focused M4C behavior,
+rendered-view, and scope suites with 37, 21, and 33 assertions. Repository-wide PHP
+lint is **171/171 PASS** and `git diff --check` passes. Real-MySQL and authenticated
+staging validation remain future gates after review, merge, and approved deployment.
+
+Local M4C executes a deterministic decision TOCTOU test through a test-only fixture
+hook: advisory approval state changes before the M2 decision lock, and the authoritative
+service rejects the stale decision with no overwrite, false lifecycle transition, or
+false success event. Local true two-connection concurrency is **NOT EXECUTABLE IN THE
+LOCAL FIXTURE**. Final staging real-MySQL M4 validation must run two-connection races
+for materiality classification, duplicate approval request, and internal decision,
+expecting one winner/one conflict or one durable idempotent request and verifying no
+partial state or false success events.
 
 ### M4A staging gate and remaining exit gate
 

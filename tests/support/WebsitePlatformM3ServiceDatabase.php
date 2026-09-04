@@ -54,11 +54,13 @@ final class WebsitePlatformM3ServiceDatabase extends PDO
     public array $siteAssets = [];
     public array $revisionAssets = [];
     public array $events = [];
+    public array $approvals = [];
     public array $definitions = [];
     public array $variants = [];
     public bool $failAfterDeletion = false;
     public bool $internalAdmin = true;
     public string $internalRole = 'Admin';
+    public $afterApprovalTimelineReadHook = null;
     public int $beginCount = 0;
     public int $commitCount = 0;
     public int $rollbackCount = 0;
@@ -203,6 +205,11 @@ final class WebsitePlatformM3ServiceDatabase extends PDO
             $row = $this->sites[(int) $p['site_id']] ?? null;
             return [$row ? [$row] : [], 0];
         }
+        if (str_starts_with($n, 'select id, site_key') && str_contains($n, 'from sites where id = :site_id limit 1')) {
+            $row = $this->sites[(int) $p['site_id']] ?? null;
+            return [$row ? [$row + ['created_by_user_id' => 1, 'suspended_at' => null, 'archived_at' => null,
+                'created_at' => '2026-09-02', 'updated_at' => '2026-09-02']] : [], 0];
+        }
         if (str_contains($n, 'from site_revisions where id = :revision_id for update')) {
             $row = $this->revisions[(int) $p['revision_id']] ?? null;
             return [$row ? [$row] : [], 0];
@@ -210,6 +217,103 @@ final class WebsitePlatformM3ServiceDatabase extends PDO
         if (str_contains($n, 'from site_revisions where id = :revision_id limit 1')) {
             $row = $this->revisions[(int) $p['revision_id']] ?? null;
             return [$row ? [$row] : [], 0];
+        }
+        if (str_contains($n, 'site-m2:no-newer-material-revision')) {
+            foreach ($this->revisions as $row) if ((int) $row['site_id'] === (int) $p['site_id']
+                && (int) $row['revision_number'] > (int) $p['revision_number'] && $row['materiality'] === 'material') return [[['id' => $row['id']]], 0];
+            return [[], 0];
+        }
+        if (str_contains($n, 'site-m2:material-successor-older-revisions')) {
+            $rows = [];
+            foreach ($this->revisions as $row) if ((int) $row['site_id'] === (int) $p['site_id']
+                && (int) $row['revision_number'] < (int) $p['revision_number']) $rows[] = ['id' => $row['id']];
+            return [$rows, 0];
+        }
+        if (str_contains($n, 'site-m2:effective-customer-approval')) {
+            $rows = [];
+            foreach ($this->approvals as $approval) {
+                if ((int) $approval['site_id'] !== (int) $p['site_id'] || $approval['approval_type'] !== 'customer'
+                    || $approval['state'] !== 'approved' || $approval['revoked_at'] !== null) continue;
+                $r = $this->revisions[(int) $approval['revision_id']];
+                $match = isset($p['target_revision_id']) ? (int) $r['id'] === (int) $p['target_revision_id']
+                    : (int) $r['revision_number'] < (int) $p['target_revision_number'];
+                if ($match) $rows[] = ['id' => $approval['id'], 'number' => $r['revision_number']];
+            }
+            usort($rows, fn ($a, $b) => [$b['number'], $b['id']] <=> [$a['number'], $a['id']]);
+            return [array_map(fn ($r) => ['id' => $r['id']], $rows), 0];
+        }
+        if (str_contains($n, 'select id, site_id, revision_id, approval_type, state, actor_user_id')
+            && str_contains($n, 'where revision_id = :revision_id')) {
+            $rows = array_values(array_filter($this->approvals, fn ($a) => (int) $a['revision_id'] === (int) $p['revision_id']
+                && (!isset($p['site_id']) || (int) $a['site_id'] === (int) $p['site_id'])));
+            usort($rows, fn ($a, $b) => $a['id'] <=> $b['id']);
+            if (is_callable($this->afterApprovalTimelineReadHook)) {
+                $hook = $this->afterApprovalTimelineReadHook;
+                $this->afterApprovalTimelineReadHook = null;
+                $hook($this);
+            }
+            return [$rows, 0];
+        }
+        if (str_contains($n, 'select id, approval_type') && str_contains($n, 'from site_approvals')
+            && str_contains($n, 'where revision_id = :revision_id')) {
+            $rows = [];
+            foreach ($this->approvals as $row) if ((int) $row['revision_id'] === (int) $p['revision_id']
+                && (int) $row['site_id'] === (int) $p['site_id'] && $row['state'] === $p['state']
+                && $row['revoked_at'] === null) $rows[] = ['id' => $row['id'], 'approval_type' => $row['approval_type']];
+            return [$rows, 0];
+        }
+        if (str_contains($n, 'select id, site_id, revision_id, approval_type from site_approvals')) {
+            $row = $this->approvals[(int) $p['approval_id']] ?? null; return [$row ? [$row] : [], 0];
+        }
+        if (str_contains($n, 'from site_approvals') && str_contains($n, 'limit 1 for update')) {
+            foreach (array_reverse($this->approvals, true) as $row) if ((int) $row['revision_id'] === (int) $p['revision_id']
+                && $row['approval_type'] === $p['approval_type'] && $row['state'] === $p['state']) return [[['id' => $row['id'], 'correlation_id' => $row['correlation_id']]], 0];
+            return [[], 0];
+        }
+        if (str_contains($n, 'from site_approvals where id = :approval_id for update')) {
+            $row = $this->approvals[(int) $p['approval_id']] ?? null; return [$row ? [$row] : [], 0];
+        }
+        if (str_starts_with($n, 'insert into site_approvals')) {
+            $id = $this->newId(); $this->approvals[$id] = ['id' => $id, 'reason' => null,
+                'supersedes_approval_id' => null, 'requested_at' => '2026-09-04', 'decided_at' => null,
+                'revoked_at' => null, 'created_at' => '2026-09-04'] + $p; return [[], 1];
+        }
+        if (str_starts_with($n, 'update site_approvals')) {
+            $id = (int) $p['approval_id']; $row = $this->approvals[$id] ?? null;
+            $expected = $p['requested_state'] ?? $p['approved_state'] ?? $p['previous_state'] ?? null;
+            if (!$row || ($expected !== null && $row['state'] !== $expected)) return [[], 0];
+            $this->approvals[$id]['state'] = $p['superseded_state'] ?? $p['state'];
+            $this->approvals[$id]['comments'] = $p['comments'] ?? $row['comments'];
+            $this->approvals[$id]['reason'] = $p['reason'] ?? $row['reason'];
+            $this->approvals[$id]['actor_user_id'] = $p['actor_user_id'] ?? $row['actor_user_id'];
+            $this->approvals[$id]['actor_type'] = $p['actor_type'] ?? $row['actor_type'];
+            $this->approvals[$id]['decided_at'] = '2026-09-04'; return [[], 1];
+        }
+        if (str_contains($n, 'from site_revisions sr') && str_contains($n, 'sr.lifecycle_status = :revision_status')) {
+            foreach ($this->revisions as $row) if ((int) $row['site_id'] === (int) $p['site_id']
+                && $row['lifecycle_status'] === $p['revision_status']
+                && (!isset($p['materiality']) || $row['materiality'] === $p['materiality'])) {
+                if (str_contains($n, 'as internal_ok')) {
+                    $ok = count(array_filter($this->approvals, fn ($a) => (int) $a['revision_id'] === (int) $row['id'] && $a['approval_type'] === 'internal' && $a['state'] === 'approved')) === 1;
+                    return [[$row + ['internal_ok' => $ok ? 1 : 0]], 0];
+                }
+                return [[str_contains($n, 'select 1') ? ['1' => 1] : $row], 0];
+            }
+            return [[], 0];
+        }
+        if (str_contains($n, 'from site_revisions sr') && isset($p['material'], $p['non_material'])) {
+            foreach ($this->revisions as $row) if ((int) $row['site_id'] === (int) $p['site_id']
+                && (($row['materiality'] === 'material' && $row['lifecycle_status'] === 'customer_approved')
+                    || ($row['materiality'] === 'non_material' && $row['lifecycle_status'] === 'ready_for_review'))) return [[$row], 0];
+            return [[], 0];
+        }
+        if (str_starts_with($n, 'update sites set lifecycle_status')) {
+            $id = (int) $p['site_id']; if ($this->sites[$id]['lock_version'] !== (int) $p['lock_version']) return [[], 0];
+            $this->sites[$id]['lifecycle_status'] = $p['target_status']; $this->sites[$id]['lock_version']++; return [[], 1];
+        }
+        if (str_starts_with($n, 'update site_revisions set materiality')) {
+            $id = (int) $p['revision_id']; if ($this->revisions[$id]['materiality'] !== $p['undetermined']) return [[], 0];
+            $this->revisions[$id]['materiality'] = $p['materiality']; return [[], 1];
         }
         if ($n === 'select purpose from sites where id = :site_id limit 1') {
             $row = $this->sites[(int) $p['site_id']] ?? null;
@@ -442,7 +546,7 @@ final class WebsitePlatformM3ServiceDatabase extends PDO
 
     private function stateProperties(): array
     {
-        return ['sites', 'revisions', 'sitePages', 'revisionPages', 'sections', 'themes', 'siteAssets', 'revisionAssets', 'events'];
+        return ['sites', 'revisions', 'sitePages', 'revisionPages', 'sections', 'themes', 'siteAssets', 'revisionAssets', 'events', 'approvals'];
     }
 }
 

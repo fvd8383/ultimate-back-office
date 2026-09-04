@@ -356,6 +356,67 @@ final class SiteApprovalManager
         });
     }
 
+    /**
+     * Advisory read model for admin workflow presentation. Mutation methods still
+     * perform every authorization, lock, lifecycle, and approval check themselves.
+     */
+    public static function eligibilityForRevision(int $actingUserId, int $revisionId): array
+    {
+        SiteAuthorizationPolicy::requireInternalAdmin($actingUserId);
+        SiteServiceSupport::positiveId($revisionId, 'Revision ID');
+        $siteId = SiteRevisionManager::revisionForActor($actingUserId, $revisionId)['site_id'];
+
+        return SiteServiceSupport::transaction(static function (object $connection) use ($revisionId, $siteId): array {
+            $site = SiteManager::lockSite($connection, (int) $siteId);
+            SiteServiceSupport::assertSiteOperational($site);
+            $revision = SiteRevisionManager::lockRevision($connection, $revisionId);
+            if ((int) $revision['site_id'] !== (int) $site['id']) {
+                throw new SiteServiceException('conflict', 'Revision ownership is inconsistent.');
+            }
+
+            $stale = false;
+            try {
+                SiteServiceSupport::assertNoNewerMaterialRevision($connection, $revision);
+            } catch (SiteServiceException $exception) {
+                if ($exception->classification() !== 'invalid_transition') {
+                    throw $exception;
+                }
+                $stale = true;
+            }
+
+            $effective = null;
+            if (in_array((string) $revision['materiality'], ['material', 'non_material'], true)) {
+                $effective = SiteServiceSupport::effectiveCustomerApproval($connection, $revision);
+            } elseif ((string) $revision['materiality'] === 'undetermined') {
+                $candidate = $revision;
+                $candidate['materiality'] = 'non_material';
+                $effective = SiteServiceSupport::effectiveCustomerApproval($connection, $candidate);
+            }
+
+            $canRequestInternal = false;
+            if (!$stale) {
+                try {
+                    self::assertInternalApprovalEligible($connection, $revision);
+                    $canRequestInternal = true;
+                } catch (SiteServiceException $exception) {
+                    if (!in_array($exception->classification(), ['invalid_transition', 'conflict'], true)) {
+                        throw $exception;
+                    }
+                }
+            }
+
+            return [
+                'effective_customer_approval_id' => $effective,
+                'has_effective_customer_baseline' => $effective !== null,
+                'has_newer_material_revision' => $stale,
+                'can_request_customer_review' => !$stale
+                    && (string) $revision['materiality'] === 'material'
+                    && (string) $revision['lifecycle_status'] === 'ready_for_review',
+                'can_request_internal_review' => $canRequestInternal,
+            ];
+        });
+    }
+
     private static function assertImplementedType(string $approvalType): void
     {
         if (in_array($approvalType, self::FUTURE_GATED_TYPES, true)) {

@@ -233,6 +233,7 @@ admin_begin('Site Detail', 'sites', $context);
                     <span>Hash <?= e(substr($revision['snapshot_hash'], 0, 12)) ?>… · Created <?= e($revision['created_at']) ?><?= $revision['review_ready_at'] ? ' · Review ' . e($revision['review_ready_at']) : '' ?><?= $revision['published_at'] ? ' · Published ' . e($revision['published_at']) : '' ?></span>
                     <?php if ($revision['has_composition']): ?>
                         <p><a href="site-preview.php?revision_id=<?= e($revision['id']) ?>">Preview</a></p>
+                        <p><a href="site-review.php?revision_id=<?= e($revision['id']) ?>">Review Workflow</a></p>
                     <?php endif; ?>
                     <?php if (in_array($revision['lifecycle_status'], SiteRevisionManager::MUTABLE_COMPOSITION_STATES, true)): ?>
                         <p><a href="site-composer.php?revision_id=<?= e($revision['id']) ?>">Edit Composition</a></p>
@@ -259,7 +260,7 @@ admin_begin('Site Detail', 'sites', $context);
                 <p class="muted">No approval requests or decisions exist.</p>
             <?php endif; ?>
         </div>
-        <p class="muted">Review submission and internal approval arrive in M4C. Customer approval UI is owned by M5.</p>
+        <p class="muted">Internal review is available through each composed revision’s Review Workflow link. Customer approval decisions remain owned by M5. Generic sites are not publicly deployed.</p>
     </section>
 <?php endif; ?>
 <?php admin_end(); ?>
