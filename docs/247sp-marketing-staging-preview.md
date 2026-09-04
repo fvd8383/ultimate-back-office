@@ -118,8 +118,10 @@ change, or Git configuration change. The only routing changes recorded above are
 staging-only administrator Apache configuration. Production Apache, DNS, and SSL
 remain unchanged, and `247salespartner.com` is not configured.
 
-M4B remains **IMPLEMENTED LOCALLY / REVIEW REQUIRED**. M4C remains **NOT STARTED**.
-PR #110 has not been deployed. Generic customer sites remain separate and dormant.
+M4B is **COMPLETE / STAGING PASS / FORMALLY CLOSED** on merged, deployed, and validated
+SHA `557cc34fe4cf3ab56cdcb59fd7c623c495fd8eaf`. M4C is **NEXT / NOT STARTED**.
+PR #110 was subsequently merged and M4B was deployed and validated on
+`557cc34fe4cf3ab56cdcb59fd7c623c495fd8eaf`. Generic customer sites remain separate and dormant.
 
 ## Launch placeholders retained
 
