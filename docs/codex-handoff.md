@@ -20,23 +20,44 @@ Migration 024 was applied exactly once; the final registry contains 16 definitio
 22 variants with zero verifier drift. M4 is **IN PROGRESS**. M4A is **COMPLETE /
 STAGING PASS / FORMALLY CLOSED** on final deployed and validated SHA
 `8805eeeae704f130ddda357e82c4dd936fde5b4c`; M4A required no migration. M4B is
-**IMPLEMENTED LOCALLY / REVIEW REQUIRED**, and M4C is **NOT STARTED**.
+**COMPLETE / STAGING PASS / FORMALLY CLOSED** on merged, deployed, and validated SHA
+`557cc34fe4cf3ab56cdcb59fd7c623c495fd8eaf`, and M4C is **NEXT / NOT STARTED**.
 Production remains **UNAUTHORIZED / NOT DEPLOYED**.
 
-M4B is implemented locally on baseline
-`e848012415b06a4e122933e9368b905c9d7f0c44`, branch
-`codex/sprint-8.8-m4b-composition-editor`, for draft PR review. It adds the structured
+M4B was merged through PR #110, “Sprint 8.8 M4B: add composition editor and admin
+preview,” at `557cc34fe4cf3ab56cdcb59fd7c623c495fd8eaf`. It adds the structured
 composition editor, repository-schema forms/catalog, and validated inert internal
 preview over the M3 replacement boundary. No migration or generic runtime cutover
-occurs. M4B must not be deployed before separate authorization.
+occurs. The staging deployment and final real-MySQL validation passed. The deployment
+gate recorded 161 PHP files linted and 39/39 standalone suites PASS, including M4B
+170/37/59 assertions. Final validation used MySQL 8.4.8 with native PDO prepares and
+emulation disabled. Real editor, concurrency, rollback, assets, validated preview,
+authorization, integrity, and cleanup evidence is recorded in
+`docs/sprint-8.8-m4b-closeout.md`.
+
+The M4B deployment report is `evidence/SPRINT-8.8-M4B-STAGING-DEPLOYMENT.md`, SHA-256
+`fd0709031cec52c61df2b435dc16a9153ae53c855e89824b8d842f9608a038c8`.
+The final real-MySQL report is
+`ubo-sprint-8.8-m4b-final-validation-20260904T010109Z/SPRINT-8.8-M4B-STAGING-FINAL-VALIDATION.md`,
+SHA-256 `dedc82f80c61f5aadb164b2c092093368cd67477ca64421c8b54057e0355ddb8`.
+These are user-supplied external evidence references. Real inactive/non-authorable
+exact-version based-on validation and authenticated browser route validation were
+**NOT EXECUTABLE**; the closeout retains their reasons and nonblocking coverage.
+Migrations 023/024 remained unchanged, 025+ remained absent, and migration executions
+were zero. Cleanup left zero generic validation rows and temporary fixtures, registry
+16 definitions / 22 variants with zero drift, and legacy 6 websites / 37 pages.
 
 The separate `public/marketing` staging preview is **PASS / ACTIVE** at
 [https://staging-app.ultimatebackoffice.com/marketing/](https://staging-app.ultimatebackoffice.com/marketing/).
 User-supplied evidence on 2026-09-03 verifies 200 responses for the marketing pages
 and assets, the 302 `/marketing` redirect, actual `noindex, nofollow` response headers,
 and matching CSS/JS hashes. Staging-only administrator routing serves the existing
-marketing property; deployed application SHA remains
-`8805eeeae704f130ddda357e82c4dd936fde5b4c`. M4B/PR #110 was not deployed.
+marketing property. Historically, that initial publication left the deployed application
+at `8805eeeae704f130ddda357e82c4dd936fde5b4c` and required no M4B deployment.
+PR #110 was subsequently merged, deployed, and validated at
+`557cc34fe4cf3ab56cdcb59fd7c623c495fd8eaf`. M4B deployment and final validation
+confirmed the marketing HTTP/asset, redirect, and noindex regression checks passed;
+the separate Apache setup did not occur during M4B final validation.
 Viewport, console, and interactive browser QA are **NOT YET RECORDED**. See
 `docs/247sp-marketing-staging-preview.md`. Production Apache, DNS, and SSL were
 unchanged; `247salespartner.com` was not configured. This is not a production launch.
@@ -114,7 +135,7 @@ versioned creative briefs, authoritative server-side snapshots, and deterministi
 empty authored drafts. It preserves all legacy website/customer runtime boundaries
 and adds no migration, provider action, review/approval UI, generic preview, or public
 cutover. M4A is **COMPLETE / STAGING PASS / FORMALLY CLOSED**; M4 is **IN PROGRESS**,
-M4B is **IMPLEMENTED LOCALLY / REVIEW REQUIRED**, and M4C is **NOT STARTED**. The contract is
+M4B is **COMPLETE / STAGING PASS / FORMALLY CLOSED**, and M4C is **NEXT / NOT STARTED**. The contract is
 `docs/sprint-8.8-m4-service-contract.md`. The
 later executable plan is
 `docs/sprint-8.9.md` for the Communications Core Foundation.

@@ -5,14 +5,17 @@
 Sprint 8.8 M4 is delivered in three internal passes:
 
 - **M4A — Admin Workflow Foundation:** **COMPLETE / STAGING PASS / FORMALLY CLOSED**;
-- **M4B — Composition Editor + Generic Admin Preview:** **IMPLEMENTED LOCALLY / REVIEW REQUIRED**;
-- **M4C — Review Submission + Internal Approval + Final M4 Validation:** **NOT STARTED**;
+- **M4B — Composition Editor + Generic Admin Preview:** **COMPLETE / STAGING PASS / FORMALLY CLOSED**;
+- **M4C — Review Submission + Internal Approval + Final M4 Validation:** **NEXT / NOT STARTED**;
 - **M4 overall:** **IN PROGRESS**.
 
-This contract describes the complete M4 boundary, completed M4A, and locally implemented M4B. M4
+This contract describes the complete M4 boundary and completed M4A/M4B. M1, M2, and M3
+are **COMPLETE / STAGING PASS / FORMALLY CLOSED**. M4
 remains in progress. Sprint 8.8 remains in progress, and production remains
 unauthorized and not deployed. The authoritative M4A completion record is
-`docs/sprint-8.8-m4a-closeout.md`.
+`docs/sprint-8.8-m4a-closeout.md`; the authoritative M4B completion record is
+`docs/sprint-8.8-m4b-closeout.md`, on merged, deployed, and validated SHA
+`557cc34fe4cf3ab56cdcb59fd7c623c495fd8eaf`.
 
 ## Parallel Admin Workspace And Legacy Boundary
 
@@ -32,7 +35,7 @@ legacy preview/public runtime behavior.
 
 ## Authorization And Route Contract
 
-Both Site Platform routes require an authenticated session plus Internal Admin or
+All Site Platform routes require an authenticated session plus Internal Admin or
 Super Admin authority. The route check and every service entry point use existing
 Admin/Site authorization contracts. Submitted identifiers are untrusted; services
 re-resolve site, business association, brief, revision, and ancestry ownership.
@@ -181,7 +184,7 @@ test-session mechanism avoided credential/session forgery. Deployed unauthentica
 HTTP, actual service authorization, and CSRF/PRG contracts passed. See the closeout for
 the exact evidence and limitations.
 
-## M4B - Implemented Locally / Review Required
+## M4B - Complete / Staging Pass / Formally Closed
 
 M4B adds `/app/admin/site-composer.php` and `/app/admin/site-preview.php`.
 M4A site detail links mutable revisions to the composer and composed revisions to
@@ -263,7 +266,9 @@ M2/M3 scope allowlists were extended only for the two authorized M4B routes. M4A
 obsolete composer-placeholder/no-preview assertions now check the M4B delegation;
 legacy and migration guards remain intact.
 
-M4B has not been deployed. M4C remains **NOT STARTED**. There is no materiality,
+M4B was merged through PR #110 and deployed and validated on
+`557cc34fe4cf3ab56cdcb59fd7c623c495fd8eaf`. M4C remains **NEXT / NOT STARTED**.
+There is no materiality,
 review-submission, approval, publication, customer workflow, or generic runtime
 cutover. M4 and Sprint 8.8 remain **IN PROGRESS**.
 
@@ -273,11 +278,55 @@ site. Its staging preview publication is **PASS / ACTIVE** at
 User-supplied evidence verifies HTTP routes/assets, the canonical marketing redirect,
 actual noindex/nofollow response headers, and matching CSS/JS hashes. Browser viewport,
 console, and interaction QA are **NOT YET RECORDED**. See
-`docs/247sp-marketing-staging-preview.md`. M4B was not deployed; production Apache,
+`docs/247sp-marketing-staging-preview.md`. Historically, initial marketing publication
+required no M4B deployment; its Apache setup was separate staging-only administrator
+configuration. Subsequent M4B deployment and final validation confirmed marketing
+HTTP/asset, redirect, and noindex checks remained PASS. Production Apache,
 DNS, and SSL were unchanged. `247salespartner.com` is not configured and production
 remains unauthorized.
 
-## M4C — Not Started
+## Final M4B Staging Evidence
+
+The deployment gate passed on `ubo-stage-app` as `ubo-deploy`, advancing from
+`8805eeeae704f130ddda357e82c4dd936fde5b4c` to PR #110 merge
+`557cc34fe4cf3ab56cdcb59fd7c623c495fd8eaf`, matching remote main. One deploy-wrapper
+invocation exited 0; migration-wrapper invocations were zero. PHP lint passed for
+161 files, all 39 standalone suites passed, and M4B behavior/view/scope suites passed
+170/37/59 assertions. New unauthenticated routes returned normal authentication
+redirects without 5xx. Deployment report:
+`evidence/SPRINT-8.8-M4B-STAGING-DEPLOYMENT.md`, SHA-256
+`fd0709031cec52c61df2b435dc16a9153ae53c855e89824b8d842f9608a038c8`.
+
+Final validation passed on real MySQL 8.4.8 with native PDO prepares and emulation
+disabled, as `codex-validation` on `ubo-stage-app`. The report is
+`ubo-sprint-8.8-m4b-final-validation-20260904T010109Z/SPRINT-8.8-M4B-STAGING-FINAL-VALIDATION.md`,
+SHA-256 `dedc82f80c61f5aadb164b2c092093368cd67477ca64421c8b54057e0355ddb8`.
+These are user-supplied external evidence references, not new runs during docs closeout.
+
+Real editor initialization, page/section/theme operations, same-site immutable based-on
+copy, asset rejection/repair, validated inert preview and tamper fail-closed behavior,
+service authorization, audit/integrity, and cleanup passed. Two real MySQL writers
+sharing one hash produced one success and one `stale_write`, with zero loser partial
+writes or false success events. Real rollback restored rows and revision hash.
+
+The real inactive/non-authorable historical exact-version based-on case was
+**NOT EXECUTABLE** because prohibited shared-registry mutation would be needed;
+deployed behavior contracts cover exact-version rejection. Authenticated browser
+routes were **NOT EXECUTABLE** because no approved safe staging session mechanism
+existed; real service authorization, deployed source/route contracts, and unauthenticated
+HTTP passed without cookie/session forging. Both limitations are nonblocking and
+neither is labeled PASS. Invalid layout variant rejection is deployed behavior-suite
+coverage. Separate marketing viewport/browser QA remains **NOT YET RECORDED**.
+
+M4B required no migration: 023/024 unchanged, 025+ absent, migration executions zero.
+Final validation performed zero deployments, migrations, provider calls, production
+access, Apache changes, repository writes, permission/ownership/sudoers changes,
+persistent Git configuration changes, or M4C implementation. Cleanup left zero generic
+validation rows and fixtures, registry 16 definitions/22 variants with zero drift,
+legacy 6 websites/37 pages, restored source and a clean tree at the same deployed SHA.
+See `docs/sprint-8.8-m4b-closeout.md` for the full evidence and implementation history.
+
+## M4C — Next / Not Started
 
 M4C will own materiality classification UI, validation feedback, mark-ready-for-review,
 customer-review request, internal approval request/decision, and final M4 validation.

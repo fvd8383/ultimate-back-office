@@ -9,11 +9,13 @@ CLOSED** on validated and deployed SHA `2a545a056f650122a3d9ccbf077f35cef83f6065
 `31d5f64ba6fdf9005fe839c9d3bae4e996ce3bd4`. M3 is **COMPLETE / STAGING PASS** on
 validated and deployed SHA `a431f6fc06e24f2252a9a282954d5541551c9000` and is
 **FORMALLY CLOSED**. M4 is **IN PROGRESS**: M4A is **COMPLETE / STAGING PASS /
-FORMALLY CLOSED**, M4B is **IMPLEMENTED LOCALLY / REVIEW REQUIRED**, and M4C is **NOT STARTED**.
+FORMALLY CLOSED**, M4B is **COMPLETE / STAGING PASS / FORMALLY CLOSED** on merged,
+deployed, and validated SHA `557cc34fe4cf3ab56cdcb59fd7c623c495fd8eaf`, and M4C is
+**NEXT / NOT STARTED**.
 Production is **UNAUTHORIZED / NOT DEPLOYED**. The detailed
 completion records are `docs/sprint-8.8-m1-closeout.md`,
-`docs/sprint-8.8-m2-closeout.md`, `docs/sprint-8.8-m3-closeout.md`, and
-`docs/sprint-8.8-m4a-closeout.md`.
+`docs/sprint-8.8-m2-closeout.md`, `docs/sprint-8.8-m3-closeout.md`,
+`docs/sprint-8.8-m4a-closeout.md`, and `docs/sprint-8.8-m4b-closeout.md`.
 
 The sprint implements the approved generic 247SP/EMD website platform in eight focused
 milestones. It replaces no historical migration and does not treat the customer
@@ -263,8 +265,8 @@ recorded in `docs/sprint-8.8-m3-closeout.md`.
 Status: **IN PROGRESS**.
 
 - M4A — Admin Workflow Foundation: **COMPLETE / STAGING PASS / FORMALLY CLOSED**;
-- M4B — Composition Editor + Generic Admin Preview: **IMPLEMENTED LOCALLY / REVIEW REQUIRED**;
-- M4C — Review Submission + Internal Approval + Final M4 Validation: **NOT STARTED**.
+- M4B — Composition Editor + Generic Admin Preview: **COMPLETE / STAGING PASS / FORMALLY CLOSED**;
+- M4C — Review Submission + Internal Approval + Final M4 Validation: **NEXT / NOT STARTED**.
 
 M4A adds the parallel, internal-only **Site Platform** workspace without changing the
 legacy **Websites** administration or customer Website Manager. It includes generic
@@ -302,15 +304,47 @@ impersonation dependency is introduced. Super Admin remains the authority for
 ownership/routing/domain-rights conversion operations; ordinary composition does not
 silently perform those operations.
 
-### M4B local implementation
+### M4B completion and staging gate
 
-M4B is **IMPLEMENTED LOCALLY / REVIEW REQUIRED**. The composer and generic admin
+M4B is **COMPLETE / STAGING PASS / FORMALLY CLOSED**. The composer and generic admin
 preview are implemented over M3, with structured repository-schema forms, active
 catalog choices, exact-version verification, explicit new/based-on initialization,
 page/section/theme operations, permitted existing assets, stale-write protection,
 and a validated inert preview. All writes converge on one atomic M3 replacement.
 See `docs/sprint-8.8-m4-service-contract.md` for the implemented architecture.
-M4B has not been merged or deployed; M4C is **NOT STARTED**.
+PR #110 merged at final deployed and validated SHA
+`557cc34fe4cf3ab56cdcb59fd7c623c495fd8eaf`; M4C is **NEXT / NOT STARTED**.
+The original implementation is `d3f0cd34397d3451921d669b29a15a2a0c4b46d4`; the
+marketing publication documentation correction is
+`a2e1917f76a32fa4cfe99b7b7347e69a0ecdff5d`.
+
+Deployment passed with one deploy-wrapper invocation (exit 0), zero migration-wrapper
+invocations, 161 PHP files linted, and 39/39 standalone suites PASS. M4B behavior/view/
+scope suites passed 170/37/59 assertions. The deployment report is
+`evidence/SPRINT-8.8-M4B-STAGING-DEPLOYMENT.md`, SHA-256
+`fd0709031cec52c61df2b435dc16a9153ae53c855e89824b8d842f9608a038c8`.
+
+Final validation passed on real MySQL 8.4.8 with native PDO prepares, emulation
+disabled. Editor/page/section/theme operations, real concurrent writers (one success,
+one `stale_write`), transaction rollback, same-site immutable based-on initialization,
+asset validation/repair, inert validated preview, tamper fail-closed behavior,
+authorization, audit/integrity, and cleanup passed. Its report is
+`ubo-sprint-8.8-m4b-final-validation-20260904T010109Z/SPRINT-8.8-M4B-STAGING-FINAL-VALIDATION.md`,
+SHA-256 `dedc82f80c61f5aadb164b2c092093368cd67477ca64421c8b54057e0355ddb8`.
+These external evidence references were supplied by the user; full results and
+evidence distinctions are in `docs/sprint-8.8-m4b-closeout.md`.
+
+The real inactive/non-authorable historical exact-version based-on case was
+**NOT EXECUTABLE** because it required prohibited shared-registry mutation.
+Authenticated browser routes were **NOT EXECUTABLE** because no approved safe staging
+session mechanism existed. Both are nonblocking with the deployed behavior/route
+contracts and real service authorization coverage recorded in the closeout; neither
+is claimed PASS. Invalid layout variant rejection is deployed behavior-suite coverage.
+M4B required no migration: 023/024 unchanged, 025+ absent, executions zero. Final
+cleanup left zero generic validation rows/fixtures, registry 16/22 with zero drift,
+and legacy 6 websites/37 pages. Final validation deployed nothing and changed no
+Apache configuration, repository, permissions, ownership, sudoers, or persistent Git
+configuration; provider calls and production access were zero.
 
 The existing sales/marketing landing page remains the separate `public/marketing`
 property. Its staging preview publication is **PASS / ACTIVE** at
@@ -318,8 +352,13 @@ property. Its staging preview publication is **PASS / ACTIVE** at
 User-supplied evidence verifies 200 routes/assets, the canonical 302 marketing
 redirect, actual noindex/nofollow response headers, and matching CSS/JS hashes.
 Browser viewport, console, and interaction QA are **NOT YET RECORDED**; see
-`docs/247sp-marketing-staging-preview.md`. M4B was not deployed. Production Apache,
-DNS, and SSL were unchanged, and `247salespartner.com` was not configured.
+`docs/247sp-marketing-staging-preview.md`. Historically, initial marketing publication
+required no M4B deployment; its Apache routing was separate staging-only administrator
+configuration. Subsequent M4B deployment/final validation confirmed the marketing
+pages/assets remained 200, `/marketing` redirected 302 to `/marketing/`, and
+`X-Robots-Tag: noindex, nofollow` remained present. Marketing launch placeholders
+remain pending and do not block M4B closeout. Production Apache, DNS, and SSL were
+unchanged, and `247salespartner.com` was not configured.
 
 ### M4A staging gate and remaining exit gate
 
@@ -331,7 +370,7 @@ real-MySQL report is
 recorded SHA-256
 `9fe38af06fa13c8196d0e106cc207aa80391c8bc7ae1ab53f403c4792f0b2de8`.
 
-The remaining M4B/M4C gate must cover role matrices, CSRF, cross-business and forged
+The remaining M4C and final M4 workflow gate must cover role matrices, CSRF, cross-business and forged
 IDs, invalid composition,
 concurrent edits, draft creation without published revision loss, review submission,
 internal approval, safe failure activity, and static no-direct-lifecycle-SQL checks.
