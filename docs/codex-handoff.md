@@ -31,6 +31,12 @@ before Sprint 8.8 closes.
 See [M4C closeout](sprint-8.8-m4c-closeout.md) and
 [overall M4 closeout](sprint-8.8-m4-closeout.md).
 
+M5 planning is recorded in the [M5 service/workflow contract](sprint-8.8-m5-service-contract.md),
+audited from `c2efc5d210b9c6528414f9096acddd815f7e8985`. It proposes customer Website
+Manager review/preview, bounded feedback and presentation requests, and exact-revision
+decisions through the existing approval services. M5 remains **NEXT / NOT STARTED**;
+the contract is planning only and does not authorize implementation or deployment.
+
 M4B was merged through PR #110, “Sprint 8.8 M4B: add composition editor and admin
 preview,” at `557cc34fe4cf3ab56cdcb59fd7c623c495fd8eaf`. It adds the structured
 composition editor, repository-schema forms/catalog, and validated inert internal
