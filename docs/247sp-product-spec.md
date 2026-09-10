@@ -65,9 +65,15 @@ The following approved product capabilities are not yet complete unless a later 
 * EMD demo and bidirectional site-conversion workflows
 
 The first-customer pricing gate in
-`docs/247sp-pricing-cohort-implementation-plan.md` is COMPLETE / PASS. Execution now
-continues with Sprint 8.8 website work in `docs/sprint-8.8.md`, followed by Sprint 8.9
-communications/professional-email work in `docs/sprint-8.9.md`. Vendasta
+`docs/247sp-pricing-cohort-implementation-plan.md` is COMPLETE / PASS. M4
+is **COMPLETE / STAGING PASS / FORMALLY CLOSED**, on final M4
+deployed/validated SHA `d33589da5eebbf8e2ae0dc203837d6667abd1f71`; see
+`docs/sprint-8.8-m4-closeout.md`. Sprint 8.8 remains **IN PROGRESS**.
+The next Website Platform milestone is M5 —
+**NEXT / NOT STARTED** — for customer preview/feedback/approval UI; later public
+runtime work remains outstanding in `docs/sprint-8.8.md`. Production is
+**UNAUTHORIZED / NOT DEPLOYED**. Sprint 8.9 communications/professional-email work
+remains separately planned in `docs/sprint-8.9.md`. Vendasta
 professional-email provisioning is first-customer critical; Twilio foundation is
 planned for Sprint 8.9 and Retell voice runtime remains planned for Sprint 8.10.
 

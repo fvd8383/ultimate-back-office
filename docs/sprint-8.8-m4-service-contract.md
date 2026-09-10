@@ -6,13 +6,18 @@ Sprint 8.8 M4 is delivered in three internal passes:
 
 - **M4A — Admin Workflow Foundation:** **COMPLETE / STAGING PASS / FORMALLY CLOSED**;
 - **M4B — Composition Editor + Generic Admin Preview:** **COMPLETE / STAGING PASS / FORMALLY CLOSED**;
-- **M4C — Review Submission + Internal Approval + Final M4 Validation:** **IMPLEMENTED LOCALLY / REVIEW REQUIRED**;
-- **M4 overall:** **IN PROGRESS**.
+- **M4C — Review Submission + Internal Approval + Final M4 Validation:** **COMPLETE / STAGING PASS / FORMALLY CLOSED**;
+- **M4 overall:** **COMPLETE / STAGING PASS / FORMALLY CLOSED**.
 
-This contract describes the complete M4 boundary and completed M4A/M4B. M1, M2, and M3
-are **COMPLETE / STAGING PASS / FORMALLY CLOSED**. M4
-remains in progress. Sprint 8.8 remains in progress, and production remains
-unauthorized and not deployed. The authoritative M4A completion record is
+This contract describes the completed M4A/M4B/M4C boundary. M1, M2, and M3
+are **COMPLETE / STAGING PASS / FORMALLY CLOSED**. Sprint 8.8 remains **IN PROGRESS**.
+Final M4
+merged/deployed/validated SHA: `d33589da5eebbf8e2ae0dc203837d6667abd1f71`.
+M5 is **NEXT / NOT STARTED**; production is **UNAUTHORIZED / NOT DEPLOYED**.
+The [M4C closeout](sprint-8.8-m4c-closeout.md) and
+[overall M4 closeout](sprint-8.8-m4-closeout.md) record the final integrated gate.
+The M4 exit gate is complete; M5–M8 and the full M1–M8 sprint exit gate remain
+required before Sprint 8.8 closes. The authoritative M4A completion record is
 `docs/sprint-8.8-m4a-closeout.md`; the authoritative M4B completion record is
 `docs/sprint-8.8-m4b-closeout.md`, on merged, deployed, and validated SHA
 `557cc34fe4cf3ab56cdcb59fd7c623c495fd8eaf`.
@@ -268,9 +273,10 @@ legacy and migration guards remain intact.
 
 M4B was merged through PR #110 and deployed and validated on
 `557cc34fe4cf3ab56cdcb59fd7c623c495fd8eaf`. At that closeout, M4C was next and not
-started; it is now **IMPLEMENTED LOCALLY / REVIEW REQUIRED**. The M4B deployment has
+started; M4C has since completed its final staging gate and formal closeout. The M4B deployment had
 no M4C materiality, review-submission, approval, customer workflow, publication, or
-generic runtime cutover. M4 and Sprint 8.8 remain **IN PROGRESS**.
+generic runtime cutover. M4 is now **COMPLETE / STAGING PASS / FORMALLY CLOSED**.
+Sprint 8.8 remains **IN PROGRESS**.
 
 The separate existing marketing property in `public/marketing` is not a Site Platform
 site. Its staging preview publication is **PASS / ACTIVE** at
@@ -326,7 +332,7 @@ validation rows and fixtures, registry 16 definitions/22 variants with zero drif
 legacy 6 websites/37 pages, restored source and a clean tree at the same deployed SHA.
 See `docs/sprint-8.8-m4b-closeout.md` for the full evidence and implementation history.
 
-## M4C — Implemented Locally / Review Required
+## M4C — Complete / Staging Pass / Formally Closed
 
 M4C adds the internal-only `/app/admin/site-review.php?revision_id=<id>` workflow and
 `SiteReviewAdminWorkflow`. The route uses authenticated Admin bootstrap, the existing
@@ -353,8 +359,10 @@ audit, approval, and changes-requested transitions remain service-owned.
 Internal approval leaves the generic site in an approval lifecycle state. The UI
 states that approval does not publish or deploy the site. M4C adds no migration,
 provider call, public route, build/deployment, domain, LeadHub, customer Website
-Manager, or legacy runtime change. M4 and Sprint 8.8 remain **IN PROGRESS** pending
-review, merge, staging deployment, and final real-MySQL M4 validation.
+Manager, or legacy runtime change. M4 is **COMPLETE /
+STAGING PASS / FORMALLY CLOSED** following PR #112 merge, staging deployment, and
+the final real-MySQL M4 gate on `d33589da5eebbf8e2ae0dc203837d6667abd1f71`.
+Sprint 8.8 remains **IN PROGRESS**; this is the M4 exit gate, not the M1–M8 sprint gate.
 
 The local gate is **42/42 standalone suites PASS**. Focused M4C coverage records 37
 behavior assertions, 21 rendered-view assertions, and 33 scope/contract assertions.
@@ -368,11 +376,56 @@ service rejects the stale decision without overwriting the approval, moving the 
 or revision, or recording a false success event. Local true two-connection concurrency
 is **NOT EXECUTABLE IN THE LOCAL FIXTURE** and is not labeled PASS.
 
-Final staging real-MySQL M4 validation must use two connections to verify concurrent
-materiality classification produces one winner and one conflict, duplicate approval
-requests produce one durable logical request with an idempotent or serialized second
-caller, and concurrent internal decisions produce one winner and one conflict. Every
-case must also verify no partial lifecycle/approval state and no false success events.
+Final staging real-MySQL M4 validation separately passed all three real races using
+independent connections: materiality produced one material winner, one safe conflict,
+and exactly one successful event; customer request produced one row, one creation,
+and one idempotent existing result; internal decision produced one approval winner
+and one conflict, with final approval `approved`, revision `internally_approved`,
+site `approved`, and zero false success events. Temporary concurrency helpers were
+removed. These results are distinct from the deployed deterministic TOCTOU suite.
+
+## Final M4C Deployment And Integrated M4 Evidence
+
+Initial implementation `e76aede9677e16cea01da8bd2e962aac67b6e0f8` and review correction
+`2fd772ff64db3e681ebb4ad7e1bdcda32c15f04b` merged through PR #112 at
+`d33589da5eebbf8e2ae0dc203837d6667abd1f71`. Deployment passed with one deploy-wrapper
+invocation (exit 0), zero migration-wrapper invocations, and 42/42 suites PASS.
+Report: `evidence/SPRINT-8.8-M4C-STAGING-DEPLOYMENT.md`; SHA-256
+`0f43460b2706805a8d399ae900ffa87857c0c025dfc328cd7a1118a3f23327ea`.
+
+**SPRINT 8.8 M4 STAGING FINAL VALIDATION: PASS** on that SHA, MySQL 8.4.8, native PDO
+prepares, emulation disabled. Report:
+`ubo-sprint-8.8-m4-final-validation-20260904T215556Z/SPRINT-8.8-M4-STAGING-FINAL-VALIDATION.md`;
+SHA-256 `9cec3387d20ab05afec7c9b50d6659c7596a5b1d6e2085b35ed4651f016899bc`.
+These are user-supplied external references, not new runs during documentation closeout.
+Final regression passed 42/42 suites, M4C 37/21/33 assertions, and Git-derived PHP lint
+**171 tracked / 171 linted / PASS**. Deployment reported 167 files PASS; its evidence
+was unavailable to final validation to explain the count. No root cause is asserted.
+
+Integrated A/B/C site/brief/revision, composition/editing/hashes/validated-preview,
+materiality/review/customer-request/internal-decision, and non-material baseline
+flows passed in real MySQL. Authorized workspace and preview reads caused zero
+mutation; invalid composition failed closed. Internal actors passed authorization,
+non-admin and cross-tenant actors were rejected, and no PII was exposed. A real
+associated Owner passed the existing M2 customer decision service; Internal Admin
+impersonation was rejected. No customer UI, route, authentication, or preview was added.
+
+Ancestry, review-ready display, and comment escaping passed. Reason escaping passed
+through deployed view/source regression. Private/provider/correlation metadata was
+not exposed, and the approval-does-not-publish warning was present.
+Authenticated browser route validation remained **NOT EXECUTABLE** because no approved
+safe staging session mechanism existed. It is nonblocking given real service
+authorization/mutations, deployed route/source contracts, and five safe unauthenticated
+redirects with zero 5xx; no session/cookie forgery or authenticated browser PASS is claimed.
+
+Audit false success events, unsafe metadata, and unexpected integrity findings were
+zero; constraints stayed enabled. Cleanup left generic rows/approvals/test events at
+zero, registry 16/22/0 drift, legacy 6 websites/37 pages, no actors created or modified,
+zero `/tmp` helpers, and a clean tree at the same deployed SHA. M4C required no
+migration: 023/024 unchanged, 025+ absent, deployment/final migration executions zero.
+Final validation publication, deployments, provider calls, production access, Apache,
+and DNS changes were zero. Marketing HTTP/asset/redirect/noindex regression passed;
+separate viewport/browser QA remains **NOT YET RECORDED**.
 
 ## Customer Review And M5 Boundary
 
@@ -380,7 +433,9 @@ M4 does not permit internal staff to approve as a customer or forge customer fee
 `SiteAuthorizationPolicy::requireCustomerApproval()` remains unchanged and rejects
 Internal Admin actors. M5 owns the controlled customer preview, feedback/change
 request, approved input, and revision-specific customer approval UI. The legacy
-customer Website Manager is not converted in M4A.
+customer Website Manager is not converted by M4. M5 is **NEXT / NOT STARTED**.
+Administrative `approved` does not mean published, live, deployed, domain-active, or
+production-ready; later deployment/runtime milestones retain authority.
 
 ## Schema, Runtime, And Provider Boundaries
 

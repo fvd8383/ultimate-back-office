@@ -2,23 +2,33 @@
 
 ## Status
 
-Planned architecture. The current repository has 247SP onboarding, one starter template, generated page records, private previews, customer-safe website management, an internal website editor, domain workflows, and website lead capture. It does not yet have the component CMS, portable site lifecycle, bidirectional conversion workflows, or revision and approval system described here.
+This document retains the architectural design and proposed wider product scope.
+The repository preserves legacy onboarding, generated pages, private previews,
+customer Website Manager, internal website editing, domain workflows, and lead capture.
+The generic foundation, revision/lifecycle/approval services, component composition,
+and internal Site Platform workflow through M4 are now implemented and staging validated.
+Customer workflow, public publishing, runtime cutover, and bidirectional conversion
+remain later work; architectural descriptions below do not claim their implementation.
 
 Sprint 8.7 Milestone 6 completed the implementation-ready repository audit in
 `docs/sprint-8.7-milestone-6-website-platform-audit.md`. That audit is authoritative
 where this earlier architecture used proposed purpose/lifecycle values or left legacy
 transition, analytics, approval, pricing, and migration decisions open. It remains a
-documentation design. Sprint 8.8 M1 now has a local review implementation of only the
-dormant generic schema and legacy compatibility/backfill foundation; no generic CMS
-management runtime or publisher is implemented.
+documentation design. Sprint 8.8 M1, M2, M3, M4A, M4B, M4C, and M4 overall
+are **COMPLETE / STAGING PASS / FORMALLY CLOSED**. Sprint 8.8 remains **IN PROGRESS**.
+The final M4
+deployed/validated SHA is `d33589da5eebbf8e2ae0dc203837d6667abd1f71`; see
+`docs/sprint-8.8-m4-closeout.md`. M5 is **NEXT / NOT STARTED** and owns customer preview,
+feedback/change requests, and approval decision UI. Production is **UNAUTHORIZED /
+NOT DEPLOYED**.
 
 Milestone 7 locked the executable Sprint 8.8 sequence in `docs/sprint-8.8.md` and the
 initial planned website migration as `023_website_platform_foundation.sql`. The preceding
 pricing migration 022 is applied and staging validated, and the dedicated pricing gate
-is CLEARED / PASS. Migration 023 is implemented locally for review but is not applied
-or staging validated. The legacy website runtime remains authoritative, the generic
-model remains dormant/read-compatible, and M2 and the publisher/runtime milestones
-remain unimplemented.
+is CLEARED / PASS. Migration 023 was applied once and staging validated during M1;
+migration 024 was applied once during M3. M4A/M4B/M4C required no new migration and
+025+ remains absent. The legacy website runtime remains authoritative; generic sites
+remain unpublished, and publisher/runtime milestones remain outstanding.
 
 ---
 

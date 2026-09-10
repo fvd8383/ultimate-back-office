@@ -119,7 +119,12 @@ staging-only administrator Apache configuration. Production Apache, DNS, and SSL
 remain unchanged, and `247salespartner.com` is not configured.
 
 M4B is **COMPLETE / STAGING PASS / FORMALLY CLOSED** on merged, deployed, and validated
-SHA `557cc34fe4cf3ab56cdcb59fd7c623c495fd8eaf`. M4C is **NEXT / NOT STARTED**.
+SHA `557cc34fe4cf3ab56cdcb59fd7c623c495fd8eaf`. M4C and M4 overall
+are now **COMPLETE / STAGING PASS / FORMALLY CLOSED**, with final M4
+deployed/validated SHA `d33589da5eebbf8e2ae0dc203837d6667abd1f71`.
+Sprint 8.8 remains **IN PROGRESS**. M5 is **NEXT / NOT STARTED**;
+production remains **UNAUTHORIZED / NOT DEPLOYED**.
+See `docs/sprint-8.8-m4-closeout.md`. Marketing remains separate from Site Platform.
 PR #110 was subsequently merged and M4B was deployed and validated on
 `557cc34fe4cf3ab56cdcb59fd7c623c495fd8eaf`. Generic customer sites remain separate and dormant.
 

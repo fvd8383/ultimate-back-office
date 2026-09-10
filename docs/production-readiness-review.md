@@ -13,7 +13,9 @@ Not ready for the first paying 24/7 Sales Partner customer.
 The website-generation and LeadHub foundations exist. Migration 021 established the
 initial Shared Business Profile schema, Milestone 4 added its validated service, and
 Milestone 5's customer/admin interface completed staging validation as PASS. The
-component CMS, portable site lifecycle/publisher, registered-site ingestion,
+internal Site Platform through M4 is **COMPLETE / STAGING PASS / FORMALLY CLOSED**.
+Sprint 8.8 remains **IN PROGRESS**. M5 customer workflow, public publisher/runtime,
+registered-site ingestion,
 DataForSEO, unified inbox, communications provider layer, AI
 receptionist, business texting, website chat, usage metering, and internal MCP gateway
 remain planned.
@@ -36,7 +38,7 @@ remain planned.
 | Shared Business Profile schema | Complete and staging validated |
 | Structured Business Profile service | Complete and staging validated as PASS in Sprint 8.7 Milestone 4 |
 | Structured Business Profile UI | Complete and staging validated as PASS in Sprint 8.7 Milestone 5 |
-| Component CMS and portable site lifecycle | Planned for Sprint 8.8 |
+| Component CMS and portable site lifecycle | Internal workflow through M4 COMPLETE / STAGING PASS / FORMALLY CLOSED; M5 NEXT / NOT STARTED; public lifecycle remains outstanding |
 | Communications core and unified inbox | Planned for Sprint 8.9 and later |
 | Telephony and AI receptionist | Planned for Sprint 8.10 |
 | Internal MCP gateway | Proposed and deferred |
@@ -188,9 +190,12 @@ business/service/service-area boundaries as the website platform begins consumin
 
 ## Website Generation And Public Lifecycle
 
-Status: Existing private legacy generation; Milestone 6 architecture defined; runtime planned for Sprint 8.8
+Status: Existing legacy runtime remains authoritative; generic Site Platform through M4 COMPLETE / STAGING PASS / FORMALLY CLOSED; customer/public runtime remains outstanding
 
-Complete the site model, structured page/component definitions, revisions, approval, build/deployment state, public publishing, validation, archival/restoration, and controlled conversion audit.
+The site model, structured component composition, revision/approval services, and
+internal admin workflow through M4 passed staging validation. Complete M5 customer
+workflow and later build/deployment, public publishing, runtime validation/restoration,
+and controlled conversion work before claiming those production capabilities.
 
 ## Billing And Commercial Policy
 
@@ -271,16 +276,24 @@ Before any site conversion or cancellation workflow can be launch-ready:
 Pricing P1 and P2 are COMPLETE / STAGING VALIDATED PASS, and the dedicated gate in
 `docs/247sp-pricing-cohort-implementation-plan.md` is CLEARED. Migration
 `022_247sp_pricing_cohorts.sql` is applied and validated on staging. Pricing production
-migration/deployment remains unauthorized and has not been performed. Sprint 8.8 M1 is
-the next planned application-development work.
+migration/deployment remains unauthorized and has not been performed. M4 is
+**COMPLETE / STAGING PASS / FORMALLY CLOSED**. Sprint 8.8 remains **IN PROGRESS**.
+M5 is **NEXT / NOT
+STARTED** within the Website Platform sequence; production remains **UNAUTHORIZED /
+NOT DEPLOYED**.
 
 ## Sprint 8.8 - Website Platform And Component CMS
 
-Planned in `docs/sprint-8.8.md`: migration `023_website_platform_foundation.sql` and
-generic schema/backfill; SiteManager and revisions/approvals;
-component composition; admin workflow; customer review/approval; build/deploy/restore;
-registered-site routing and EMD compatibility; then full staging validation. This is
-not a customer drag-and-drop builder.
+M1, M2, M3, M4A, M4B, M4C, and M4 overall are **COMPLETE /
+STAGING PASS / FORMALLY CLOSED**. Sprint 8.8 remains **IN PROGRESS**.
+Final M4 deployed/validated SHA:
+`d33589da5eebbf8e2ae0dc203837d6667abd1f71`; see `docs/sprint-8.8-m4-closeout.md`.
+Migrations 023/024, generic schema/backfill, SiteManager and revisions/approvals,
+component composition, and internal admin workflow passed their staging gates.
+M5 is **NEXT / NOT STARTED** for customer preview/feedback/approval UI. Later
+build/deploy/restore, registered-site routing/ingestion, EMD conversion, and full public
+runtime validation remain outstanding in the sequence retained in `docs/sprint-8.8.md`.
+This completion does not establish first-customer or production readiness.
 
 ## Sprint 8.9 - Communications Core Foundation
 

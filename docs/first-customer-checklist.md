@@ -12,7 +12,7 @@ New module development is paused until 247SP is launch-ready. EMD, SSP, TUHWD, a
 
 1. Sprint 8.7: Shared Business Profile and Website Platform Alignment — COMPLETE
 2. 247SP First-Customer Pricing Implementation and staging gate — COMPLETE / PASS
-3. Sprint 8.8: Website Platform and Component CMS
+3. Sprint 8.8: Website Platform and Component CMS — IN PROGRESS; M1–M4 COMPLETE / STAGING PASS / FORMALLY CLOSED; M5 NEXT / NOT STARTED
 4. Sprint 8.9: Communications Core Foundation
 5. Sprint 8.10: Telephony and AI Receptionist
 6. Later Sprint: Messaging and Website Chat
@@ -259,13 +259,18 @@ cohorts, never-reused sequence allocation, locked terms and Alpha dates,
 completed-signup atomicity, locked billing reads, POST/CSRF Checkout, all four cohort
 payloads, provider idempotency/recovery, webhook replay/order guards, and customer/admin
 presentation. The dedicated pricing first-customer technical gate is CLEARED.
-The generic CMS, publisher/restore lifecycle, registered-site ingestion, broader Sprint
-8.8 website platform, DataForSEO, unified inbox, communications services, AI
+The Site Platform foundation, composition, and internal workflow
+through M4 are **COMPLETE / STAGING PASS / FORMALLY CLOSED**, on final M4
+deployed/validated SHA `d33589da5eebbf8e2ae0dc203837d6667abd1f71`.
+Sprint 8.8 remains **IN PROGRESS**. See `docs/sprint-8.8-m4-closeout.md`.
+M5 is **NEXT / NOT STARTED** for customer
+preview/feedback/approval UI. Public publisher/restore lifecycle, registered-site
+ingestion, legacy runtime cutover, DataForSEO, unified inbox, communications services, AI
 receptionist, texting, chat, usage metering, and conversion workflows remain planned.
 
 Major Remaining Milestones:
 
-1. Sprint 8.8 staged website platform/component/revision/publishing/routing implementation beginning with planned migration 023 and full validation
+1. Website Platform M5 customer workflow, then later publishing/deployment/routing/ingestion and public runtime validation; migrations 023/024 and internal work through M4 are complete in staging, with production UNAUTHORIZED / NOT DEPLOYED
 2. Sprint 8.9 communications core, Vendasta professional email, Twilio foundation, and LeadHub timeline
 3. Sprint 8.10 telephony and AI receptionist
 4. Later messaging, website chat, unified inbox, usage, and overages required by the sold product

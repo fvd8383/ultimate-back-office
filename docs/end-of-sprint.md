@@ -213,9 +213,14 @@ validation SHA-256:
 `687a1444664f9d7167dfb316510f09094e922c2b83166874849db44fb10382a6`.
 
 Migration `022_247sp_pricing_cohorts.sql` is applied and validated on staging, and the
-pricing gate is cleared. Sprint 8.8 is the next planned application work, with reserved
-`023_website_platform_foundation.sql` and the M1-M8 execution plan in
-`docs/sprint-8.8.md`. Sprint 8.9 communications planning is in `docs/sprint-8.9.md`.
+pricing gate is cleared. Sprint 8.8 M1–M4 are **COMPLETE / STAGING PASS / FORMALLY
+CLOSED**; Sprint 8.8 remains **IN PROGRESS**. Final M4 deployed/validated SHA:
+`d33589da5eebbf8e2ae0dc203837d6667abd1f71`; see `docs/sprint-8.8-m4-closeout.md`.
+Migrations 023 and 024 were applied and validated in staging. The wider Website
+Platform sequence remains in `docs/sprint-8.8.md`: M5 is **NEXT / NOT STARTED** for
+customer workflow; later public/runtime work remains outstanding. Production is
+**UNAUTHORIZED / NOT DEPLOYED**. Sprint 8.9 communications planning remains separately
+in `docs/sprint-8.9.md`.
 
 ## Sprint 8.7 Milestone 4 Closeout
 
