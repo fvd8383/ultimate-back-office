@@ -15,16 +15,17 @@ FORMALLY CLOSED** on merged, deployed, and validated SHA
 | M4B | COMPLETE / STAGING PASS / FORMALLY CLOSED |
 | M4C | COMPLETE / STAGING PASS / FORMALLY CLOSED |
 | M4 overall | COMPLETE / STAGING PASS / FORMALLY CLOSED |
-| Sprint 8.8, through M4 | COMPLETE / STAGING PASS / FORMALLY CLOSED |
+| Sprint 8.8 | IN PROGRESS |
 | M5 | NEXT / NOT STARTED |
 | Production | UNAUTHORIZED / NOT DEPLOYED |
 
 This documentation-only closeout records authoritative user-supplied deployment and
 final-validation evidence. External report paths and SHA-256 values are supplied
 references; no report copies were fabricated and no staging gates were rerun here.
-Sprint 8.8 completion means the Website Platform milestone through M4 is formally
-complete at its current boundary. Customer workflow, public runtime, deployment,
-domain/routing, LeadHub ingestion, legacy cutover, and production remain later work.
+M4 completion closes the internal administrative workflow exit gate. Sprint 8.8
+remains **IN PROGRESS** and still requires M5–M8 and the full M1–M8 exit gate.
+Customer workflow, public runtime, deployment, domain/routing, LeadHub ingestion,
+legacy cutover, and production remain later work.
 See the [overall M4 closeout](sprint-8.8-m4-closeout.md).
 
 ## Delivered Scope
@@ -304,5 +305,5 @@ schema, or providers and performs no staging/production access or M5 implementat
    SHA-256 `9cec3387d20ab05afec7c9b50d6659c7596a5b1d6e2085b35ed4651f016899bc`.
    Git-derived PHP lint 171/171, integrated A/B/C services, and all three real races
    passed; authenticated browser validation remained NOT EXECUTABLE.
-4. **Documentation closeout:** records the supplied evidence and formally closes M4C,
-   M4, and Sprint 8.8 through M4. It does not rerun staging validation or begin M5.
+4. **Documentation closeout:** records the supplied evidence and formally closes M4C
+   and M4. Sprint 8.8 remains IN PROGRESS. It does not rerun staging validation or begin M5.

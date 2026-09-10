@@ -330,8 +330,8 @@ No existing Sprint 8.8, 8.9, or 8.10 plan conflicts were found in the repository
 Pricing P1, Pricing P2, and the dedicated staging validation in
 `docs/247sp-pricing-cohort-implementation-plan.md` are COMPLETE / PASS. Migration 022
 belongs to pricing and is applied and validated on staging. The gate is cleared.
-Sprint 8.8 has subsequently completed through M4 and is **COMPLETE / STAGING PASS /
-FORMALLY CLOSED**. See `docs/sprint-8.8.md` for its completed milestone record and
+Sprint 8.8 M1–M4 are **COMPLETE / STAGING PASS / FORMALLY CLOSED**.
+Sprint 8.8 remains **IN PROGRESS**. See `docs/sprint-8.8.md` for its milestone record and
 current roadmap. Within that Website Platform sequence, M5 is **NEXT / NOT STARTED**.
 Production remains **UNAUTHORIZED / NOT DEPLOYED**.
 
@@ -409,9 +409,9 @@ Planned categories must not be marked complete until implementation and required
 # Recommended Next Task
 
 The Milestone 7 documentation-only closeout and the subsequent pricing P1/P2
-implementation and staging gate are complete. Sprint 8.8 has subsequently completed
-through M4 and is **COMPLETE / STAGING PASS / FORMALLY CLOSED**, including M1, M2,
-M3, M4A, M4B, M4C, and M4 overall. See `docs/sprint-8.8.md` for the completed Website
+implementation and staging gate are complete. Sprint 8.8 M1, M2,
+M3, M4A, M4B, M4C, and M4 overall are **COMPLETE / STAGING PASS / FORMALLY CLOSED**.
+Sprint 8.8 remains **IN PROGRESS**. See `docs/sprint-8.8.md` for the Website
 Platform milestone record and current roadmap. Within that sequence, M5 is
 **NEXT / NOT STARTED**. The separately numbered Sprint 8.9 communications workstream
 retains its roadmap above. Production remains **UNAUTHORIZED / NOT DEPLOYED**.

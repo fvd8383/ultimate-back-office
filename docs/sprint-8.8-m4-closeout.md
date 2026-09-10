@@ -2,10 +2,11 @@
 
 ## Final Status And Sprint Boundary
 
-M4 and Sprint 8.8 are **COMPLETE / STAGING PASS / FORMALLY CLOSED** on final
+M4 is **COMPLETE / STAGING PASS / FORMALLY CLOSED** on final
 merged, deployed, and validated SHA `d33589da5eebbf8e2ae0dc203837d6667abd1f71`.
-Sprint 8.8 closes at the approved Website Platform boundary **through M4**. The wider
-M1–M8 architectural sequence remains a roadmap; M5–M8 completion is not claimed.
+Sprint 8.8 remains **IN PROGRESS**. The M4 exit gate completes the internal
+administrative workflow; M5–M8 and the full M1–M8 exit requirements remain necessary
+before Sprint 8.8 itself closes.
 
 | Milestone | Final status | Completion record |
 | --- | --- | --- |
@@ -16,7 +17,7 @@ M1–M8 architectural sequence remains a roadmap; M5–M8 completion is not clai
 | M4B | COMPLETE / STAGING PASS / FORMALLY CLOSED | [M4B closeout](sprint-8.8-m4b-closeout.md) |
 | M4C | COMPLETE / STAGING PASS / FORMALLY CLOSED | [M4C closeout](sprint-8.8-m4c-closeout.md) |
 | M4 overall | COMPLETE / STAGING PASS / FORMALLY CLOSED | This record |
-| Sprint 8.8, through M4 | COMPLETE / STAGING PASS / FORMALLY CLOSED | [Sprint record](sprint-8.8.md) |
+| Sprint 8.8 | IN PROGRESS | [Sprint record](sprint-8.8.md) |
 | M5 | NEXT / NOT STARTED | Customer workflow remains outstanding |
 | Production | UNAUTHORIZED / NOT DEPLOYED | Separate authorization required |
 

@@ -12,7 +12,7 @@ New module development is paused until 247SP is launch-ready. EMD, SSP, TUHWD, a
 
 1. Sprint 8.7: Shared Business Profile and Website Platform Alignment — COMPLETE
 2. 247SP First-Customer Pricing Implementation and staging gate — COMPLETE / PASS
-3. Sprint 8.8: Website Platform and Component CMS through M4 — COMPLETE / STAGING PASS / FORMALLY CLOSED; Website Platform M5 — NEXT / NOT STARTED
+3. Sprint 8.8: Website Platform and Component CMS — IN PROGRESS; M1–M4 COMPLETE / STAGING PASS / FORMALLY CLOSED; M5 NEXT / NOT STARTED
 4. Sprint 8.9: Communications Core Foundation
 5. Sprint 8.10: Telephony and AI Receptionist
 6. Later Sprint: Messaging and Website Chat
@@ -259,10 +259,11 @@ cohorts, never-reused sequence allocation, locked terms and Alpha dates,
 completed-signup atomicity, locked billing reads, POST/CSRF Checkout, all four cohort
 payloads, provider idempotency/recovery, webhook replay/order guards, and customer/admin
 presentation. The dedicated pricing first-customer technical gate is CLEARED.
-Sprint 8.8 and the Site Platform foundation, composition, and internal workflow
+The Site Platform foundation, composition, and internal workflow
 through M4 are **COMPLETE / STAGING PASS / FORMALLY CLOSED**, on final M4
 deployed/validated SHA `d33589da5eebbf8e2ae0dc203837d6667abd1f71`.
-See `docs/sprint-8.8-m4-closeout.md`. M5 is **NEXT / NOT STARTED** for customer
+Sprint 8.8 remains **IN PROGRESS**. See `docs/sprint-8.8-m4-closeout.md`.
+M5 is **NEXT / NOT STARTED** for customer
 preview/feedback/approval UI. Public publisher/restore lifecycle, registered-site
 ingestion, legacy runtime cutover, DataForSEO, unified inbox, communications services, AI
 receptionist, texting, chat, usage metering, and conversion workflows remain planned.

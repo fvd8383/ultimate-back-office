@@ -9,14 +9,15 @@ Sprint 8.8 M4 is delivered in three internal passes:
 - **M4C — Review Submission + Internal Approval + Final M4 Validation:** **COMPLETE / STAGING PASS / FORMALLY CLOSED**;
 - **M4 overall:** **COMPLETE / STAGING PASS / FORMALLY CLOSED**.
 
-This contract describes the completed M4A/M4B/M4C boundary. M1, M2, M3, and Sprint 8.8
-through M4 are **COMPLETE / STAGING PASS / FORMALLY CLOSED**. Final M4
+This contract describes the completed M4A/M4B/M4C boundary. M1, M2, and M3
+are **COMPLETE / STAGING PASS / FORMALLY CLOSED**. Sprint 8.8 remains **IN PROGRESS**.
+Final M4
 merged/deployed/validated SHA: `d33589da5eebbf8e2ae0dc203837d6667abd1f71`.
 M5 is **NEXT / NOT STARTED**; production is **UNAUTHORIZED / NOT DEPLOYED**.
 The [M4C closeout](sprint-8.8-m4c-closeout.md) and
 [overall M4 closeout](sprint-8.8-m4-closeout.md) record the final integrated gate.
-Sprint completion is bounded through M4; later customer/public/runtime milestones
-remain outstanding. The authoritative M4A completion record is
+The M4 exit gate is complete; M5–M8 and the full M1–M8 sprint exit gate remain
+required before Sprint 8.8 closes. The authoritative M4A completion record is
 `docs/sprint-8.8-m4a-closeout.md`; the authoritative M4B completion record is
 `docs/sprint-8.8-m4b-closeout.md`, on merged, deployed, and validated SHA
 `557cc34fe4cf3ab56cdcb59fd7c623c495fd8eaf`.
@@ -274,8 +275,8 @@ M4B was merged through PR #110 and deployed and validated on
 `557cc34fe4cf3ab56cdcb59fd7c623c495fd8eaf`. At that closeout, M4C was next and not
 started; M4C has since completed its final staging gate and formal closeout. The M4B deployment had
 no M4C materiality, review-submission, approval, customer workflow, publication, or
-generic runtime cutover. M4 and Sprint 8.8 through M4 are now
-**COMPLETE / STAGING PASS / FORMALLY CLOSED**.
+generic runtime cutover. M4 is now **COMPLETE / STAGING PASS / FORMALLY CLOSED**.
+Sprint 8.8 remains **IN PROGRESS**.
 
 The separate existing marketing property in `public/marketing` is not a Site Platform
 site. Its staging preview publication is **PASS / ACTIVE** at
@@ -358,9 +359,10 @@ audit, approval, and changes-requested transitions remain service-owned.
 Internal approval leaves the generic site in an approval lifecycle state. The UI
 states that approval does not publish or deploy the site. M4C adds no migration,
 provider call, public route, build/deployment, domain, LeadHub, customer Website
-Manager, or legacy runtime change. M4 and Sprint 8.8 through M4 are **COMPLETE /
+Manager, or legacy runtime change. M4 is **COMPLETE /
 STAGING PASS / FORMALLY CLOSED** following PR #112 merge, staging deployment, and
 the final real-MySQL M4 gate on `d33589da5eebbf8e2ae0dc203837d6667abd1f71`.
+Sprint 8.8 remains **IN PROGRESS**; this is the M4 exit gate, not the M1–M8 sprint gate.
 
 The local gate is **42/42 standalone suites PASS**. Focused M4C coverage records 37
 behavior assertions, 21 rendered-view assertions, and 33 scope/contract assertions.

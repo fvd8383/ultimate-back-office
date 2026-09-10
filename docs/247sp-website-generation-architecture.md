@@ -14,8 +14,9 @@ Sprint 8.7 Milestone 6 completed the implementation-ready repository audit in
 `docs/sprint-8.7-milestone-6-website-platform-audit.md`. That audit is authoritative
 where this earlier architecture used proposed purpose/lifecycle values or left legacy
 transition, analytics, approval, pricing, and migration decisions open. It remains a
-documentation design. Sprint 8.8 M1, M2, M3, M4A, M4B, M4C, M4 overall, and Sprint 8.8
-through M4 are **COMPLETE / STAGING PASS / FORMALLY CLOSED**. The final M4
+documentation design. Sprint 8.8 M1, M2, M3, M4A, M4B, M4C, and M4 overall
+are **COMPLETE / STAGING PASS / FORMALLY CLOSED**. Sprint 8.8 remains **IN PROGRESS**.
+The final M4
 deployed/validated SHA is `d33589da5eebbf8e2ae0dc203837d6667abd1f71`; see
 `docs/sprint-8.8-m4-closeout.md`. M5 is **NEXT / NOT STARTED** and owns customer preview,
 feedback/change requests, and approval decision UI. Production is **UNAUTHORIZED /

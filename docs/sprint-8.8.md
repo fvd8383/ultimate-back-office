@@ -2,7 +2,7 @@
 
 ## Status And Objective
 
-Sprint 8.8 through M4 is **COMPLETE / STAGING PASS / FORMALLY CLOSED**.
+Sprint 8.8 is **IN PROGRESS**.
 M1 is **COMPLETE / STAGING PASS / FORMALLY
 CLOSED** on validated and deployed SHA `2a545a056f650122a3d9ccbf077f35cef83f6065`; migration
 `023_website_platform_foundation.sql` is applied and reconciled on staging. M2 is
@@ -23,12 +23,12 @@ completion records are `docs/sprint-8.8-m1-closeout.md`,
 [M4C closeout](sprint-8.8-m4c-closeout.md), and
 [overall M4 closeout](sprint-8.8-m4-closeout.md).
 
-The original architecture sequences the generic 247SP/EMD website platform in eight
-focused milestones. The approved Sprint 8.8 closeout boundary is now **through M4**;
-M5–M8 below retain later milestone ownership and are not claimed complete by this
-closeout. Customer review UI, public generic sites, build/deployment, domain/routing,
-LeadHub ingestion, legacy runtime cutover, and production authorization remain outside
-this completed boundary. Historical migrations remain immutable, and the customer
+The sprint sequences the generic 247SP/EMD website platform in eight focused
+milestones, M1–M8. M1–M4 are complete and formally closed; M5–M8 remain required
+before Sprint 8.8 closes. The completed M4 exit gate covers the internal administrative
+workflow. Customer review UI, public generic sites, build/deployment, domain/routing,
+LeadHub ingestion, legacy runtime cutover, and production authorization remain
+outstanding. Historical migrations remain immutable, and the customer
 Website Manager is not a drag-and-drop builder. The authoritative architecture is
 `docs/sprint-8.7-milestone-6-website-platform-audit.md`.
 
@@ -390,8 +390,9 @@ Site detail links composed revisions to Review Workflow while preserving Preview
 mutable Edit Composition links. The review UI states that approval does not publish.
 M4C added no migration, customer route, provider integration, generic-site
 build/deployment, domain routing, LeadHub ingestion, legacy runtime cutover, or
-production activation. M4C, M4, and Sprint 8.8 through M4 are **COMPLETE / STAGING PASS /
-FORMALLY CLOSED**; M5 is **NEXT / NOT STARTED**, and production is **UNAUTHORIZED /
+production activation. M4C and M4 are **COMPLETE / STAGING PASS /
+FORMALLY CLOSED**. Sprint 8.8 remains **IN PROGRESS**; M5 is **NEXT / NOT STARTED**,
+and production is **UNAUTHORIZED /
 NOT DEPLOYED**.
 
 The local M4C gate is **42/42 standalone suites PASS**, including focused M4C behavior,
@@ -479,8 +480,8 @@ from service or source-contract coverage.
 
 ## M5 — Customer Preview / Feedback / Approval
 
-Status: **NEXT / NOT STARTED**. M5 and the later milestones below are outside the
-completed Sprint 8.8 boundary through M4. They retain the wider Website Platform plan.
+Status: **NEXT / NOT STARTED**. M5–M8 remain unfinished milestones within Sprint 8.8
+and are required before the sprint closes.
 
 ### Deliverables
 
@@ -570,8 +571,8 @@ customer CRM/lead/conversation isolation.
 
 ## M8 — Full Staging Validation + Closeout
 
-This is the retained later full customer/public-runtime gate from the original wider
-sequence. It is not the completed internal M4 gate or a claim that M5–M8 have shipped.
+This is the required full Sprint 8.8 staging validation and closeout gate. It remains
+unfinished; the completed internal M4 gate does not satisfy the M1–M8 sprint exit gate.
 
 At the appropriate implementation point, create
 `docs/sprint-8.8-website-platform-staging-validation.md`. Its executable phases are:
@@ -602,19 +603,21 @@ At the appropriate implementation point, create
 
 No production call or deployment is implied by staging validation. Any unresolved
 data-loss, tenant, approval, publication, restore, domain/routing, public-ingestion,
-conversion-rights, cleanup, or reconciliation failure blocks that later runtime closeout.
+conversion-rights, cleanup, or reconciliation failure blocks closeout.
 
 ## Sprint Exit Criteria
 
-Sprint 8.8 is **COMPLETE / STAGING PASS / FORMALLY CLOSED** at the explicitly approved
-boundary through M4. M1/M2/M3/M4A/M4B/M4C are formally closed, and the final integrated
-M4 real-MySQL gate passed on `d33589da5eebbf8e2ae0dc203837d6667abd1f71` with the
-authenticated-browser limitation retained. M5 is **NEXT / NOT STARTED**. This closes
-the internal administrative workflow without declaring generic sites publicly live,
-customer review UI complete, build/deployment/domain/routing/LeadHub ingestion complete,
-legacy runtime cut over, first-customer readiness, or production authorization.
+Sprint 8.8 closes only when M1-M8 are merged in focused PRs, migrations are applied
+and reconciled under approval, legacy compatibility is preserved, generic services and
+UI/publisher/routing runtime pass the complete staging runbook, first-customer website
+blockers are updated honestly, and planned capabilities are relabeled implemented only
+where evidence supports that claim.
 
-The original wider-sequence exit criteria called for M1–M8, approved and reconciled
-migrations, preserved legacy compatibility, and complete customer UI/publisher/routing
-staging validation. Those requirements remain applicable to the later public/runtime
-work described above; they are not represented as satisfied by the M4 closeout.
+Current status: Sprint 8.8 is **IN PROGRESS**. M1/M2/M3/M4A/M4B/M4C and M4 overall
+are formally closed. The final integrated M4 real-MySQL gate passed on
+`d33589da5eebbf8e2ae0dc203837d6667abd1f71` with the authenticated-browser limitation
+retained. This completes M4's internal administrative workflow exit gate, not the
+Sprint 8.8 M1–M8 exit gate. M5 is **NEXT / NOT STARTED**; the remaining M5–M8
+customer/public/runtime work and validation are still required before Sprint 8.8 closes.
+Production remains **UNAUTHORIZED / NOT DEPLOYED**, and M4 does not establish
+first-customer readiness.

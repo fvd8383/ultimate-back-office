@@ -13,8 +13,8 @@ Not ready for the first paying 24/7 Sales Partner customer.
 The website-generation and LeadHub foundations exist. Migration 021 established the
 initial Shared Business Profile schema, Milestone 4 added its validated service, and
 Milestone 5's customer/admin interface completed staging validation as PASS. The
-internal Site Platform through M4 is **COMPLETE / STAGING PASS / FORMALLY CLOSED**,
-as is Sprint 8.8 at that boundary. M5 customer workflow, public publisher/runtime,
+internal Site Platform through M4 is **COMPLETE / STAGING PASS / FORMALLY CLOSED**.
+Sprint 8.8 remains **IN PROGRESS**. M5 customer workflow, public publisher/runtime,
 registered-site ingestion,
 DataForSEO, unified inbox, communications provider layer, AI
 receptionist, business texting, website chat, usage metering, and internal MCP gateway
@@ -276,15 +276,17 @@ Before any site conversion or cancellation workflow can be launch-ready:
 Pricing P1 and P2 are COMPLETE / STAGING VALIDATED PASS, and the dedicated gate in
 `docs/247sp-pricing-cohort-implementation-plan.md` is CLEARED. Migration
 `022_247sp_pricing_cohorts.sql` is applied and validated on staging. Pricing production
-migration/deployment remains unauthorized and has not been performed. Sprint 8.8
-through M4 is **COMPLETE / STAGING PASS / FORMALLY CLOSED**. M5 is **NEXT / NOT
+migration/deployment remains unauthorized and has not been performed. M4 is
+**COMPLETE / STAGING PASS / FORMALLY CLOSED**. Sprint 8.8 remains **IN PROGRESS**.
+M5 is **NEXT / NOT
 STARTED** within the Website Platform sequence; production remains **UNAUTHORIZED /
 NOT DEPLOYED**.
 
 ## Sprint 8.8 - Website Platform And Component CMS
 
-M1, M2, M3, M4A, M4B, M4C, M4 overall, and Sprint 8.8 through M4 are **COMPLETE /
-STAGING PASS / FORMALLY CLOSED**. Final M4 deployed/validated SHA:
+M1, M2, M3, M4A, M4B, M4C, and M4 overall are **COMPLETE /
+STAGING PASS / FORMALLY CLOSED**. Sprint 8.8 remains **IN PROGRESS**.
+Final M4 deployed/validated SHA:
 `d33589da5eebbf8e2ae0dc203837d6667abd1f71`; see `docs/sprint-8.8-m4-closeout.md`.
 Migrations 023/024, generic schema/backfill, SiteManager and revisions/approvals,
 component composition, and internal admin workflow passed their staging gates.

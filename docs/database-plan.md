@@ -2102,9 +2102,9 @@ Transfer fee:
 Existing 247SP website storage uses `247sp_templates`, `247sp_template_assignments`, `247sp_generated_websites`, `247sp_generated_pages`, branding/image/content override tables, and `website_integrations`. These records support the current single-template generation, private preview, and editing foundations.
 
 The shared component composition and internal 247SP/EMD site lifecycle workflow
-through M4 are **COMPLETE / STAGING PASS / FORMALLY CLOSED**, as is Sprint 8.8 at
-that boundary, on final M4 deployed/validated SHA
-`d33589da5eebbf8e2ae0dc203837d6667abd1f71`. M5 is **NEXT / NOT STARTED**;
+through M4 are **COMPLETE / STAGING PASS / FORMALLY CLOSED**, on final M4 deployed/validated SHA
+`d33589da5eebbf8e2ae0dc203837d6667abd1f71`. Sprint 8.8 remains **IN PROGRESS**.
+M5 is **NEXT / NOT STARTED**;
 customer/public/runtime work remains outstanding and production is **UNAUTHORIZED /
 NOT DEPLOYED**. See `docs/sprint-8.8-m4-closeout.md`.
 Sprint 8.7 Milestone 6 completed the implementation-ready schema design in

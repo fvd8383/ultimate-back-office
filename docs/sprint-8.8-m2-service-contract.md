@@ -4,8 +4,8 @@
 
 M2 is **COMPLETE / STAGING PASS / FORMALLY CLOSED** on its merged, deployed, and
 validated SHA `31d5f64ba6fdf9005fe839c9d3bae4e996ce3bd4`. M1, M3, M4A, M4B, M4C,
-M4 overall, and Sprint 8.8 through M4 are now **COMPLETE / STAGING PASS / FORMALLY
-CLOSED**. The subsequent final M4 deployed/validated SHA is
+and M4 overall are now **COMPLETE / STAGING PASS / FORMALLY CLOSED**.
+Sprint 8.8 remains **IN PROGRESS**. The subsequent final M4 deployed/validated SHA is
 `d33589da5eebbf8e2ae0dc203837d6667abd1f71`; see
 `docs/sprint-8.8-m4-closeout.md`. M5 is **NEXT / NOT STARTED**. This M2 contract remains
 service/domain logic only; production is **UNAUTHORIZED / NOT DEPLOYED**.

@@ -11,8 +11,7 @@ six-site validation imported and reconciled all 6 legacy websites and 37 pages,
 including normalized legacy duplicate ordering, hash/idempotence, and executable
 real-MySQL contracts. Cleanup restored the zero generic baseline with the expected
 1 component definition and 4 variants. The generic model remains dormant and the
-legacy website runtime remains authoritative. Sprint 8.8 through M4 is now
-**COMPLETE / STAGING PASS / FORMALLY CLOSED**.
+legacy website runtime remains authoritative. Sprint 8.8 remains **IN PROGRESS**.
 Sprint 8.8 M2 is **COMPLETE / STAGING PASS / FORMALLY CLOSED** on merged, deployed,
 and validated SHA `31d5f64ba6fdf9005fe839c9d3bae4e996ce3bd4`. M3 is **COMPLETE /
 STAGING PASS / FORMALLY CLOSED** on final deployed and validated SHA
@@ -26,8 +25,9 @@ STAGING PASS / FORMALLY CLOSED** on final deployed and validated SHA
 `557cc34fe4cf3ab56cdcb59fd7c623c495fd8eaf`. M4C is **COMPLETE / STAGING PASS /
 FORMALLY CLOSED** on PR #112 merge and final deployed/validated SHA
 `d33589da5eebbf8e2ae0dc203837d6667abd1f71`. M5 is **NEXT / NOT STARTED**.
-Production remains **UNAUTHORIZED / NOT DEPLOYED**. Sprint completion is the approved
-boundary through M4, not completion of M5 or later customer/public/runtime work.
+Production remains **UNAUTHORIZED / NOT DEPLOYED**. M4's exit gate is complete;
+M5–M8 customer/public/runtime work and the full M1–M8 sprint exit gate remain required
+before Sprint 8.8 closes.
 See [M4C closeout](sprint-8.8-m4c-closeout.md) and
 [overall M4 closeout](sprint-8.8-m4-closeout.md).
 
@@ -189,8 +189,9 @@ the parallel internal Site Platform workspace, generic site creation/detail read
 versioned creative briefs, authoritative server-side snapshots, and deterministic
 empty authored drafts. It preserves all legacy website/customer runtime boundaries
 and adds no migration, provider action, review/approval UI, generic preview, or public
-cutover. M4A, M4B, M4C, M4 overall, and Sprint 8.8 through M4 are
-**COMPLETE / STAGING PASS / FORMALLY CLOSED**. M5 is **NEXT / NOT STARTED** and owns
+cutover. M4A, M4B, M4C, and M4 overall are
+**COMPLETE / STAGING PASS / FORMALLY CLOSED**. Sprint 8.8 remains **IN PROGRESS**.
+M5 is **NEXT / NOT STARTED** and owns
 customer-authenticated preview, feedback/change requests, and customer approval UI.
 Build/deployment, domain/routing, LeadHub ingestion, and legacy runtime cutover remain
 later milestones. Administrative `approved` does not mean published, live, deployed,
