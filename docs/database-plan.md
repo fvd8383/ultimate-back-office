@@ -768,9 +768,11 @@ completion. Assigned 247SP billing/customer/admin reads use
 `plans` fees as a locked contract. Cohort-aware Checkout uses only snapshot Price
 references, and webhook/payment recovery continues to use `subscriptions`, `payments`,
 and `stripe_webhook_events`. Migration 022 is applied and validated on staging.
-Migration 023 was absent at pricing closeout and reserved for Sprint 8.8. It is now
-implemented on the Sprint 8.8 M1 local review branch but has not been applied or
-staging validated. Applied MySQL behavior for migration 022 and Stripe TEST behavior
+Migration 023 was absent at pricing closeout and reserved for Sprint 8.8. It was
+subsequently applied exactly once on staging during M1, passed staging validation,
+and M1 was formally closed. Migration 024 was applied exactly once during M3.
+M4A/M4B/M4C required no new migration; migration 025+ remains absent.
+Applied MySQL behavior for migration 022 and Stripe TEST behavior
 passed the dedicated pricing staging gate. Historical pricing
 migrations remain unchanged. See
 `docs/247sp-pricing-cohort-implementation-plan.md`.
@@ -2099,12 +2101,17 @@ Transfer fee:
 
 Existing 247SP website storage uses `247sp_templates`, `247sp_template_assignments`, `247sp_generated_websites`, `247sp_generated_pages`, branding/image/content override tables, and `website_integrations`. These records support the current single-template generation, private preview, and editing foundations.
 
-The shared component CMS and portable 247SP/EMD site lifecycle are planned and not
-implemented. Sprint 8.7 Milestone 6 completed the implementation-ready schema design in
+The shared component composition and internal 247SP/EMD site lifecycle workflow
+through M4 are **COMPLETE / STAGING PASS / FORMALLY CLOSED**, as is Sprint 8.8 at
+that boundary, on final M4 deployed/validated SHA
+`d33589da5eebbf8e2ae0dc203837d6667abd1f71`. M5 is **NEXT / NOT STARTED**;
+customer/public/runtime work remains outstanding and production is **UNAUTHORIZED /
+NOT DEPLOYED**. See `docs/sprint-8.8-m4-closeout.md`.
+Sprint 8.7 Milestone 6 completed the implementation-ready schema design in
 `docs/sprint-8.7-milestone-6-website-platform-audit.md`. That document supersedes the
 earlier conceptual field list in this plan.
 
-The future model uses durable `sites` identity with purpose values `247sp`, `emd`, and
+The full architectural model uses durable `sites` identity with purpose values `247sp`, `emd`, and
 `internal_demo`; separate business, domain, routing, and analytics associations; stable
 logical pages; immutable revision pages/sections/themes; repository-owned component
 implementations with database metadata; revision-specific approvals; assets and rights;
@@ -2120,14 +2127,17 @@ dependency-safe Sprint 8.8 M1 core because migration 022 implements Pricing P1.
 Build/deployment and domain/routing/conversion structures may use later focused
 additive migrations in implementation order. Historical migrations are never edited.
 
-Sprint 8.8 M1 now implements that dependency-safe core locally for review. Migration
+Sprint 8.8 M1 implemented and staging validated that dependency-safe core. Migration
 023 adds generic sites, optional business associations, stable logical pages,
 generation briefs, revisions and immutable composition snapshots, the minimum
 repository-backed legacy component metadata, revision themes/assets/approvals,
 legacy website/page mappings and import state, and generic site events. The importer
 keeps Shared Business Profile and existing services authoritative, creates no generic
 published/active state, and leaves all existing website readers unchanged. Migration
-023 is not applied; staging validation and reconciliation remain pending.
+023 was applied exactly once during M1; staging validation and reconciliation passed,
+and M1 is **COMPLETE / STAGING PASS / FORMALLY CLOSED**. Migration 024 subsequently
+added versioned component registry identity and was applied exactly once during M3.
+M4A/M4B/M4C required no new migration; 023/024 remain unchanged and 025+ remains absent.
 
 Component implementation remains repository-owned; database records never contain
 executable PHP or JavaScript. 247SP and EMD share the public ingestion contract, while

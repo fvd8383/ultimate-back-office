@@ -2,10 +2,13 @@
 
 ## Status And Boundary
 
-M3 is **COMPLETE / STAGING PASS** on final deployed and validated SHA
-`a431f6fc06e24f2252a9a282954d5541551c9000`. M1 and M2 remain **COMPLETE /
-STAGING PASS**. Sprint 8.8 remains **IN PROGRESS**; M4 is **NEXT / NOT STARTED**;
-production is **UNAUTHORIZED / NOT DEPLOYED**. This milestone adds service code and
+M3 is **COMPLETE / STAGING PASS / FORMALLY CLOSED** on its final deployed and validated
+SHA `a431f6fc06e24f2252a9a282954d5541551c9000`. M1, M2, M4A, M4B, M4C, M4 overall,
+and Sprint 8.8 through M4 are now **COMPLETE / STAGING PASS / FORMALLY CLOSED**.
+The subsequent final M4 deployed/validated SHA is
+`d33589da5eebbf8e2ae0dc203837d6667abd1f71`; see
+`docs/sprint-8.8-m4-closeout.md`. M5 is **NEXT / NOT STARTED**;
+production is **UNAUTHORIZED / NOT DEPLOYED**. This M3 milestone adds service code and
 migration 024 only. It adds no route, browser UI, public runtime cutover, upload
 pipeline, build, deployment, domain, routing, publication, conversion, or provider
 behavior.
