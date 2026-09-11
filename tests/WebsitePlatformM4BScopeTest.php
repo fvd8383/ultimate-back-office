@@ -17,6 +17,7 @@ $previewService = file_get_contents($root . '/private/classes/SiteAdminPreview.p
 $view = file_get_contents($root . '/private/views/site-composer.php');
 $catalog = file_get_contents($root . '/private/classes/SiteAuthoringCatalog.php');
 $forms = file_get_contents($root . '/private/classes/SiteSchemaForm.php');
+$customerManager = file_get_contents($root . '/public/app/247sp/website-manager.php');
 foreach ([$composer, $preview] as $route) {
     checkM4BScope(str_contains($route, 'admin_bootstrap()'), 'Routes require an authenticated session.');
     checkM4BScope(str_contains($route, 'SiteAuthorizationPolicy::requireInternalAdmin'), 'Routes require internal admin authority.');
@@ -47,8 +48,10 @@ checkM4BScope(str_contains($catalog, 'ThemeRegistry::manifest()'), 'Theme choice
 $baseline = 'e848012415b06a4e122933e9368b905c9d7f0c44';
 foreach (['database/migrations', 'public/marketing', 'private/classes/SiteGenerator.php', 'private/classes/WebsiteManager.php',
     'public/app/admin/websites.php', 'public/app/admin/website.php', 'public/app/admin/website-editor.php',
-    'public/app/247sp/website-manager.php', 'infrastructure', 'private/classes/domains', 'public/accounts'] as $path) {
+    'infrastructure', 'private/classes/domains', 'public/accounts'] as $path) {
     exec('git -C ' . escapeshellarg($root) . ' diff --quiet ' . $baseline . ' -- ' . escapeshellarg($path), $output, $status);
     checkM4BScope($status === 0, 'Protected path unchanged: ' . $path);
 }
+checkM4BScope(str_contains($customerManager, 'SiteGenerator::websiteForBusiness(') && str_contains($customerManager, 'WebsiteManager::saveWebsiteManager('), 'M5A retains the legacy customer manager runtime and save boundary.');
+checkM4BScope(!str_contains($customerManager, 'SiteCompositionEditor::'), 'M5A does not expose the internal composition editor to customers.');
 echo "Website platform M4B scope: {$assertions} assertions passed.\n";

@@ -41,6 +41,9 @@ final class SiteCompositionRenderer
         }
         foreach ($pages as $page) {
             $html .= '<main data-page-key="' . SiteComponentRenderers::escape($page['page_key']) . '">';
+            if (($context['preview_mode'] ?? false) === true) {
+                $html .= '<p class="preview-page-label">Page: ' . SiteComponentRenderers::escape($page['title']) . '</p>';
+            }
             $sections = $page['sections'];
             usort($sections, static fn (array $a, array $b): int => ((int) $a['sort_order']) <=> ((int) $b['sort_order']));
             foreach ($sections as $section) {

@@ -5,10 +5,11 @@ declare(strict_types=1);
 $root = dirname(__DIR__); $assertions = 0;
 function checkM4CScope(bool $condition, string $message): void { global $assertions; $assertions++; if (!$condition) throw new RuntimeException($message); }
 $route = file_get_contents($root . '/public/app/admin/site-review.php');
-$service = file_get_contents($root . '/private/classes/SiteReviewAdminWorkflow.php');
+$service = str_replace(["\r\n", "\r"], "\n", (string) file_get_contents($root . '/private/classes/SiteReviewAdminWorkflow.php'));
 $approval = file_get_contents($root . '/private/classes/SiteApprovalManager.php');
 $view = file_get_contents($root . '/private/views/site-review.php');
 $detail = file_get_contents($root . '/public/app/admin/site.php');
+$customerManager = file_get_contents($root . '/public/app/247sp/website-manager.php');
 checkM4CScope(is_file($root . '/public/app/admin/site-review.php'), 'M4C route exists in the app admin root.');
 foreach (['admin_bootstrap()', 'SiteAuthorizationPolicy::requireInternalAdmin', 'Csrf::requireValid(', "'admin-site-platform'", 'Csrf::rotate(', 'true, 303'] as $token) checkM4CScope(str_contains($route, $token), "Route contract: $token");
 checkM4CScope(strpos($route, 'Csrf::requireValid(') < strpos($route, 'SiteReviewAdminWorkflow::apply(') && strpos($route, 'Csrf::rotate(') > strpos($route, 'SiteReviewAdminWorkflow::apply('), 'CSRF validates before mutation and rotates after success.');
@@ -22,8 +23,10 @@ checkM4CScope(str_contains($detail, 'site-review.php?revision_id=') && str_conta
 foreach ([$route, $service, $view] as $source) checkM4CScope(!preg_match('/(?:Stripe|Twilio|Retell|Vendasta|Namecheap|DigitalOcean|SiteGenerator|WebsiteManager|DomainManager|LeadHub)::|curl_|file_put_contents\s*\(/i', $source), 'M4C has no provider, legacy runtime, publication, or filesystem work.');
 foreach (['production', 'conversion', 'revoke'] as $future) checkM4CScope(!preg_match('/name=["\'](?:action|approval_type)["\'][^>]*value=["\']' . $future . '/i', $view), "No $future UI.");
 checkM4CScope(!str_contains($view, 'Approve as Customer') && !str_contains($view, 'Reject as Customer'), 'No customer decision UI.');
-foreach (['database/migrations/023_website_platform_foundation.sql', 'database/migrations/024_component_registry_versioning.sql', 'public/app/247sp/website-manager.php', 'private/classes/SiteGenerator.php', 'private/classes/WebsiteManager.php', 'public/marketing'] as $path) {
+foreach (['database/migrations/023_website_platform_foundation.sql', 'database/migrations/024_component_registry_versioning.sql', 'private/classes/SiteGenerator.php', 'private/classes/WebsiteManager.php', 'public/marketing'] as $path) {
     exec('git -C ' . escapeshellarg($root) . ' diff --quiet c77f7cbb3d6871c3cb6df1b85fae92beeb4948c3 -- ' . escapeshellarg($path), $out, $status); checkM4CScope($status === 0, "Protected path unchanged: $path");
 }
+checkM4CScope(str_contains($customerManager, 'WebsiteManager::saveWebsiteManager(') && str_contains($customerManager, 'SiteCustomerReviewWorkflow::workspace('), 'M5A integrates a customer read while retaining the legacy save boundary.');
+checkM4CScope(!preg_match('/SiteApprovalManager::(?:requestApproval|decideApproval|revokeApproval)|SiteReviewAdminWorkflow::apply/', $customerManager), 'M5A adds no customer or internal approval mutation to Website Manager.');
 checkM4CScope(glob($root . '/database/migrations/02[5-9]_*.sql') === [], 'No migration 025+ was added.');
 echo "Website platform M4C scope: {$assertions} assertions passed.\n";

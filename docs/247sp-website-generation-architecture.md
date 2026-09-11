@@ -7,7 +7,8 @@ The repository preserves legacy onboarding, generated pages, private previews,
 customer Website Manager, internal website editing, domain workflows, and lead capture.
 The generic foundation, revision/lifecycle/approval services, component composition,
 and internal Site Platform workflow through M4 are now implemented and staging validated.
-Customer workflow, public publishing, runtime cutover, and bidirectional conversion
+The read-only M5A customer review/preview foundation is implemented locally for review.
+Customer mutations, public publishing, runtime cutover, and bidirectional conversion
 remain later work; architectural descriptions below do not claim their implementation.
 
 Sprint 8.7 Milestone 6 completed the implementation-ready repository audit in
@@ -18,8 +19,8 @@ documentation design. Sprint 8.8 M1, M2, M3, M4A, M4B, M4C, and M4 overall
 are **COMPLETE / STAGING PASS / FORMALLY CLOSED**. Sprint 8.8 remains **IN PROGRESS**.
 The final M4
 deployed/validated SHA is `d33589da5eebbf8e2ae0dc203837d6667abd1f71`; see
-`docs/sprint-8.8-m4-closeout.md`. M5 is **NEXT / NOT STARTED** and owns customer preview,
-feedback/change requests, and approval decision UI. Production is **UNAUTHORIZED /
+`docs/sprint-8.8-m4-closeout.md`. M5 is **IN PROGRESS**: M5A is **IMPLEMENTED LOCALLY /
+REVIEW REQUIRED**, while M5B/M5C are **NOT STARTED**. Production is **UNAUTHORIZED /
 NOT DEPLOYED**.
 
 Milestone 7 locked the executable Sprint 8.8 sequence in `docs/sprint-8.8.md` and the
