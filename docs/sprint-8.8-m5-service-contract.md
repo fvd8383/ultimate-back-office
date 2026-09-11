@@ -2,10 +2,10 @@
 
 ## 1. Status and authoritative baseline
 
-**PLANNING CONTRACT ONLY — M5 NEXT / NOT STARTED; NOT IMPLEMENTED.**
+**M5 IN PROGRESS — M5A IMPLEMENTED LOCALLY / REVIEW REQUIRED; M5B/M5C NOT STARTED.**
 M1–M4 remain COMPLETE / STAGING PASS / FORMALLY CLOSED. M6–M8 remain NOT STARTED.
 Sprint 8.8 remains IN PROGRESS. Production remains UNAUTHORIZED / NOT DEPLOYED.
-Nothing in this document authorizes implementation, migration execution, or deployment.
+This implementation record does not authorize deployment, later M5 passes, or M6 work.
 
 Authoritative planning baseline: `c2efc5d210b9c6528414f9096acddd815f7e8985`
 in `fvd8383/ultimate-back-office`. The session initially found clean local `main` at
@@ -14,6 +14,8 @@ the requested SHA; local main was fast-forwarded before any edit. This documenta
 branch starts at the requested SHA. The initial checkout itself was **not** at that
 SHA. Final M4 application deployment/validation remains `d33589d`; `c2efc5d` includes
 the subsequent documentation closeout and is not a new deployment claim.
+The authoritative M5A implementation baseline after planning PR #114 merged is
+`2b110466e6cf0ef0e456a1c3ea874f7622daab95`.
 
 The [sprint plan](sprint-8.8.md), [handoff](codex-handoff.md),
 [M2 contract](sprint-8.8-m2-service-contract.md),
@@ -28,8 +30,9 @@ compatibility, and separate publication authority. Their older conceptual/future
 language does not override the implemented M2/M3 lifecycle contracts. The checklist's
 completed legacy Website Manager is not evidence of M5 completion.
 
-Throughout this document, “existing” describes inspected code; “must” and “proposed”
-define future M5 work. Names of new services/routes below are proposed, not discovered.
+Throughout the original contract, “existing” describes inspected planning-baseline
+code and “must” or “proposed” records the locked design. The M5A service and route names
+are now implemented locally; M5B/M5C language remains future work.
 
 ## 2. Repository audit and evidence inventory
 
@@ -213,7 +216,7 @@ continues to live solely in the existing managers. No independent approval engin
 
 ## 6. Customer-safe immutable preview
 
-Proposed `SiteCustomerPreview` first uses the customer review resolver, then calls
+The implemented M5A `SiteCustomerPreview` first uses the customer review resolver, then calls
 `SiteCompositionManager::validatedCompositionForActor()` and
 `SiteCompositionRenderer::render()` with empty action/asset context. It does not call
 the internal-only `SiteAdminPreview` entry point or the legacy preview route.
@@ -508,7 +511,9 @@ the failed action. Customer DTOs contain no internal reasons or actor identifier
 
 ## 15. Test strategy and evidence distinctions
 
-All tests below are **required future work**, not PASS claims from this planning pass.
+The M5A subsets below now have local executable coverage as recorded in the status
+section. M5B/M5C and authenticated staging/real-MySQL items remain required future work;
+no local result is a staging PASS claim.
 
 | Layer | Required executable coverage |
 | --- | --- |
@@ -590,9 +595,13 @@ data model until the final QA pass. Begin browser validation in M5A, not at clos
 | **M5B — Feedback, permitted input and decisions** | Versioned bounded feedback namespace, input requests, exact presentation binding, narrow transactional authorization extension, existing approve/reject delegation, CSRF/303 on integrated manager, admin visibility and stale handling. | Actual service/view tests, M2/M3/M4 regressions, replay/rollback/security coverage; no lifecycle duplication or legacy cutover; focused authorized MySQL/browser mutation validation. |
 | **M5C — Integrated customer QA and closeout** | Responsive/accessibility/console corrections, complete authenticated browser matrix, final real-MySQL concurrency/eligibility/integrity run, evidence and cleanup. | All mandatory customer-facing gates executable and passed, no unresolved tenant/approval/data-loss/security issues, no schema/runtime cutover, evidence-backed review/merge/staging closeout. |
 
-Passes remain proposals, **not started**. Separate review/merge/deployment approvals
-and evidence-backed staging gates still apply. A planning document cannot close M5
-or Sprint 8.8.
+M5A is **IMPLEMENTED LOCALLY / REVIEW REQUIRED**. Its local gate passes 45/45
+standalone suites, including focused behavior/view/scope results of 103/40/59
+assertions and executable zero-domain-mutation coverage. Repository-wide PHP lint passes
+180/180; Markdown reference/fence checks and `git diff --check` pass. Authenticated
+staging browser and real-MySQL validation were not run and are not claimed. M5B and M5C remain
+**NOT STARTED**. Separate review, merge, deployment, and evidence-backed staging gates
+still apply; this implementation does not close M5 or Sprint 8.8.
 
 ## 18. Reconciliation, implementation prerequisites and planning verification
 
@@ -608,8 +617,9 @@ No schema or approval-state-machine gap blocks implementation of the selected sc
 The metadata limits and request-only input are deliberate first-customer constraints.
 Full media fidelity, uploads or an unbounded discussion system would require revisiting
 this scope; they are not silently promised. Safe designated staging actors/login and
-executable browser/race fixtures are validation prerequisites, still unverified here.
-The current instruction explicitly withholds application implementation authorization.
+executable browser/race fixtures remain later validation prerequisites. The separate
+M5A implementation instruction authorized only the read-only customer review and
+preview foundation.
 
 Planning verification: all ten required documents exist at the authoritative SHA;
 relevant implementation paths are inventoried above. At the start of the planning

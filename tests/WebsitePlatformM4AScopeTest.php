@@ -20,7 +20,8 @@ $siteRoute = file_get_contents($root . '/public/app/admin/site.php');
 $navigation = file_get_contents($root . '/public/app/admin/_common.php');
 $policy = file_get_contents($root . '/private/classes/SiteAuthorizationPolicy.php');
 $revisionManager = file_get_contents($root . '/private/classes/SiteRevisionManager.php');
-foreach ([$sitesRoute, $siteRoute, $navigation, $policy, $revisionManager] as $source) {
+$customerManager = file_get_contents($root . '/public/app/247sp/website-manager.php');
+foreach ([$sitesRoute, $siteRoute, $navigation, $policy, $revisionManager, $customerManager] as $source) {
     assertM4AScope(is_string($source), 'M4A scope source must be readable.');
 }
 
@@ -60,7 +61,6 @@ $immutableHashes = [
     'public/app/admin/websites.php' => 'e2160f0340c30b5bfae6691c9df922c284a2ee54410da1da7547cccfebeb53c9',
     'public/app/admin/website.php' => '59694e3f9b905b9a39920c0e2792d64177aedccf8d689325a629106617d512ca',
     'public/app/admin/website-editor.php' => '86741713ceb1c036109e0b1989cdefb0ec7c3aa821c5a1f124649cbad0047409',
-    'public/app/247sp/website-manager.php' => '8b397373dec38c0e3d5b9d120a370e727ab45dd8fe5b2d943234dbb3d26b9edf',
 ];
 foreach ($immutableHashes as $path => $expectedHash) {
     $contents = file_get_contents($root . '/' . $path);
@@ -70,5 +70,10 @@ foreach ($immutableHashes as $path => $expectedHash) {
 assertM4AScope(glob($root . '/database/migrations/025*') === [], 'M4A must add no migration 025 or later.');
 assertM4AScope(!str_contains($siteRoute, 'SiteCompositionRenderer::render'), 'M4A detail delegates preview to the separate M4B route.');
 assertM4AScope(!is_file($root . '/public/app/admin/site-editor.php'), 'M4A must add no generic composition editor route.');
+assertM4AScope(str_contains($customerManager, 'WebsiteManager::saveWebsiteManager('), 'M5A must retain the legacy Website Manager save service.');
+assertM4AScope(str_contains($customerManager, 'SiteGenerator::websiteForBusiness('), 'M5A must retain the legacy generated-site reader.');
+assertM4AScope(str_contains($customerManager, 'SiteCustomerReviewWorkflow::workspace('), 'M5A may add only its customer review read boundary to Website Manager.');
+assertM4AScope(str_contains($customerManager, "Csrf::input('customer-website-manager')") && str_contains($customerManager, 'true, 303'), 'M5A secures the retained legacy POST with its dedicated CSRF scope and PRG.');
+assertM4AScope(!preg_match('/SiteApprovalManager::(?:requestApproval|decideApproval|revokeApproval)|SiteRevisionManager::markReadyForReview/', $customerManager), 'M5A Website Manager must not add generic lifecycle mutations.');
 
 echo "Website platform M4A scope: {$assertions} assertions passed.\n";

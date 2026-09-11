@@ -55,10 +55,12 @@ $allowedLaterPublicAppChanges = [
     'public/app/admin/site-composer.php',
     'public/app/admin/site-preview.php',
     'public/app/admin/site-review.php',
+    'public/app/247sp/website-manager.php',
+    'public/app/247sp/website-review-preview.php',
 ];
 assertM3Scope(
     $status === 0 && array_diff($output, $allowedLaterPublicAppChanges) === [],
-    'M3 protected public/app paths must remain unchanged outside the authorized later M4A/M4B admin workspace.'
+    'M3 protected public/app paths must remain unchanged outside the authorized later M4/M5A workspaces.'
 );
 
 foreach ([

@@ -15,7 +15,8 @@ FORMALLY CLOSED**, M4B is **COMPLETE / STAGING PASS / FORMALLY CLOSED** on merge
 deployed, and validated SHA `557cc34fe4cf3ab56cdcb59fd7c623c495fd8eaf`, and M4C is
 **COMPLETE / STAGING PASS / FORMALLY CLOSED** on PR #112 merge and final M4
 deployed/validated SHA `d33589da5eebbf8e2ae0dc203837d6667abd1f71`.
-M5 is **NEXT / NOT STARTED**.
+M5 is **IN PROGRESS**; M5A is **IMPLEMENTED LOCALLY / REVIEW REQUIRED**, and M5B/M5C
+are **NOT STARTED**.
 Production is **UNAUTHORIZED / NOT DEPLOYED**. The detailed
 completion records are `docs/sprint-8.8-m1-closeout.md`,
 `docs/sprint-8.8-m2-closeout.md`, `docs/sprint-8.8-m3-closeout.md`,
@@ -391,8 +392,8 @@ mutable Edit Composition links. The review UI states that approval does not publ
 M4C added no migration, customer route, provider integration, generic-site
 build/deployment, domain routing, LeadHub ingestion, legacy runtime cutover, or
 production activation. M4C and M4 are **COMPLETE / STAGING PASS /
-FORMALLY CLOSED**. Sprint 8.8 remains **IN PROGRESS**; M5 is **NEXT / NOT STARTED**,
-and production is **UNAUTHORIZED /
+FORMALLY CLOSED**. Sprint 8.8 remains **IN PROGRESS**; M5 is **IN PROGRESS** with
+M5A implemented locally for review, and production is **UNAUTHORIZED /
 NOT DEPLOYED**.
 
 The local M4C gate is **42/42 standalone suites PASS**, including focused M4C behavior,
@@ -480,8 +481,19 @@ from service or source-contract coverage.
 
 ## M5 — Customer Preview / Feedback / Approval
 
-Status: **NEXT / NOT STARTED**. M5–M8 remain unfinished milestones within Sprint 8.8
-and are required before the sprint closes.
+Status: **IN PROGRESS**. M5A is **IMPLEMENTED LOCALLY / REVIEW REQUIRED**. M5B and
+M5C are **NOT STARTED**. M5–M8 remain unfinished milestones within Sprint 8.8 and are
+required before the sprint closes.
+
+M5A adds a customer-only read boundary, an allowlisted issued-review DTO, a dedicated
+GET-only private preview route, and an explicit inert render mode over the validated M3
+stored composition. Website Manager now separates generic revision review from retained
+legacy settings. The local gate passes 45/45 standalone suites; focused M5A behavior,
+view, and scope suites pass 103, 40, and 59 assertions. GET/read coverage verifies zero
+domain mutation. Repository-wide PHP lint passes 180/180; Markdown reference/fence checks
+and `git diff --check` pass. No migration was added, 023/024 remain unchanged, and migration 025
+remains available for M6. No deployment or authenticated staging browser/real-MySQL
+validation occurred, so M5A is not complete or staging-passed.
 
 ### Deliverables
 
@@ -617,7 +629,8 @@ Current status: Sprint 8.8 is **IN PROGRESS**. M1/M2/M3/M4A/M4B/M4C and M4 overa
 are formally closed. The final integrated M4 real-MySQL gate passed on
 `d33589da5eebbf8e2ae0dc203837d6667abd1f71` with the authenticated-browser limitation
 retained. This completes M4's internal administrative workflow exit gate, not the
-Sprint 8.8 M1–M8 exit gate. M5 is **NEXT / NOT STARTED**; the remaining M5–M8
-customer/public/runtime work and validation are still required before Sprint 8.8 closes.
+Sprint 8.8 M1–M8 exit gate. M5 is **IN PROGRESS**; M5A is **IMPLEMENTED LOCALLY /
+REVIEW REQUIRED**, while M5B/M5C and the remaining M6–M8 customer/public/runtime work
+and validation are still required before Sprint 8.8 closes.
 Production remains **UNAUTHORIZED / NOT DEPLOYED**, and M4 does not establish
 first-customer readiness.

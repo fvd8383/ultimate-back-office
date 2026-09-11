@@ -8,10 +8,14 @@ final class SiteComponentRenderers
 {
     public static function render(string $renderer, string $variantKey, array $configuration, array $context = []): string
     {
+        if (($context['preview_mode'] ?? false) === true) {
+            // Fail closed even if a server caller accidentally supplies live context.
+            $context = ['preview_mode' => true, 'navigation' => $context['navigation'] ?? []];
+        }
         return match ($renderer) {
             'hero' => self::hero($variantKey, $configuration, $context),
             'statistics' => self::statistics($configuration),
-            'service_grid' => self::serviceGrid($configuration),
+            'service_grid' => self::serviceGrid($configuration, $context),
             'service_detail' => self::serviceDetail($configuration, $context),
             'trust_cards' => self::cards($configuration, 'trust-cards'),
             'about_content' => self::content($configuration, 'about-content', $context),
@@ -72,7 +76,7 @@ final class SiteComponentRenderers
         return $html . '</ul></section>';
     }
 
-    private static function serviceGrid(array $c): string
+    private static function serviceGrid(array $c, array $context): string
     {
         $html = '<section class="service-grid"><h2>' . self::escape($c['heading']) . '</h2>';
         if (!empty($c['intro'])) {
@@ -81,7 +85,7 @@ final class SiteComponentRenderers
         $html .= '<div class="service-cards">';
         foreach ($c['services'] as $service) {
             $name = self::escape($service['name']);
-            if (!empty($service['path'])) {
+            if (!empty($service['path']) && ($context['preview_mode'] ?? false) !== true) {
                 $name = '<a href="/' . self::escape($service['path']) . '">' . $name . '</a>';
             }
             $html .= '<article><h3>' . $name . '</h3><p>' . self::escape($service['description']) . '</p></article>';
@@ -229,14 +233,14 @@ final class SiteComponentRenderers
         if (($c['show_phone'] ?? false) === true) {
             $html .= self::actionLink((string) ($context['phone_label'] ?? 'Call us'), 'call', $context);
         }
-        return $html . self::navigation($context['navigation'] ?? []) . '</header>';
+        return $html . self::navigation($context['navigation'] ?? [], $context) . '</header>';
     }
 
     private static function footer(array $c, array $context): string
     {
         $html = '<footer class="site-footer">';
         if ($c['show_navigation']) {
-            $html .= self::navigation($context['navigation'] ?? []);
+            $html .= self::navigation($context['navigation'] ?? [], $context);
         }
         if ($c['show_contact']) {
             $html .= '<div class="site-footer__contact">'
@@ -345,11 +349,13 @@ final class SiteComponentRenderers
         return '<div class="mobile-cta">' . self::actionLink($c['label'], $c['action'], $context) . '</div>';
     }
 
-    private static function navigation(array $items): string
+    private static function navigation(array $items, array $context): string
     {
         $html = '<nav><ul>';
         foreach ($items as $item) {
-            $html .= '<li><a href="' . self::escape($item['href']) . '">' . self::escape($item['label']) . '</a></li>';
+            $html .= ($context['preview_mode'] ?? false) === true
+                ? '<li><span>' . self::escape($item['label']) . '</span></li>'
+                : '<li><a href="' . self::escape($item['href']) . '">' . self::escape($item['label']) . '</a></li>';
         }
         return $html . '</ul></nav>';
     }

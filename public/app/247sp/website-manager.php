@@ -1,9 +1,26 @@
 <?php
 
 require_once __DIR__ . '/../../../private/classes/Auth.php';
+require_once __DIR__ . '/../../../private/classes/Csrf.php';
 require_once __DIR__ . '/../../../private/classes/TwentyFourSevenSalesPartner.php';
 require_once __DIR__ . '/../../../private/classes/SiteGenerator.php';
 require_once __DIR__ . '/../../../private/classes/WebsiteManager.php';
+require_once __DIR__ . '/../../../private/classes/SiteCustomerPreview.php';
+
+foreach (SiteCustomerPreview::headers() as $name => $value) header($name . ': ' . $value);
+if (!in_array($_SERVER['REQUEST_METHOD'], ['GET', 'POST'], true)) {
+    header('Allow: GET, POST');
+    http_response_code(405);
+    exit;
+}
+// The only retained POST path is the existing settings save. Generic commands
+// must never fall through to it, including future or forged review actions.
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && (
+    isset($_POST['action']) || isset($_POST['revision_id']) || isset($_POST['request_id']) || isset($_POST['site_id'])
+)) {
+    http_response_code(400);
+    exit;
+}
 
 try {
     $accountsBaseUrl = rtrim((string) Database::config('ACCOUNTS_BASE_URL'), '/');
@@ -12,6 +29,8 @@ try {
 }
 
 Session::requireAuth($accountsBaseUrl . '/login.php');
+// Session startup may emit its own cache policy; reassert the M5 private response contract.
+foreach (SiteCustomerPreview::headers() as $name => $value) header($name . ': ' . $value);
 
 $user = null;
 $business = null;
@@ -32,6 +51,7 @@ $loadError = '';
 $actionError = '';
 $accessDenied = false;
 $saved = isset($_GET['saved']);
+$customerReview = null;
 
 try {
     $user = Auth::currentUser();
@@ -42,16 +62,28 @@ try {
         exit;
     }
 
-    $requestedBusinessId = (int) ($_POST['business_id'] ?? $_GET['business_id'] ?? 0);
-    $business = TwentyFourSevenSalesPartner::businessForUser($requestedBusinessId > 0 ? $requestedBusinessId : null, (int) $user['id']);
+    $selection = array_key_exists('business_id', $_POST) ? $_POST : $_GET;
+    $requestedBusinessId = array_key_exists('business_id', $selection)
+        ? SiteCustomerReviewWorkflow::positiveId($selection['business_id']) : null;
+    // Resolve generic review independently; failure never dispatches a legacy save.
+    if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+        try {
+            if (array_diff(array_keys($_GET), ['business_id', 'saved']) === []) {
+                $customerReview = SiteCustomerReviewWorkflow::workspace((int) $user['id'], $requestedBusinessId);
+            }
+        } catch (Throwable) { $customerReview = null; }
+    }
+    $business = TwentyFourSevenSalesPartner::businessForUser($requestedBusinessId, (int) $user['id']);
 
     if ($business !== null) {
         $businessId = (int) $business['id'];
         $accessDenied = !TwentyFourSevenSalesPartner::businessHasAccess($businessId);
 
         if (!$accessDenied && $_SERVER['REQUEST_METHOD'] === 'POST') {
+            Csrf::requireValid($_POST['csrf_token'] ?? null, 'customer-website-manager');
             WebsiteManager::saveWebsiteManager($businessId, (int) $user['id'], $_POST, $_FILES);
-            header('Location: website-manager.php?business_id=' . urlencode((string) $businessId) . '&saved=1');
+            Csrf::rotate('customer-website-manager');
+            header('Location: website-manager.php?business_id=' . urlencode((string) $businessId) . '&saved=1', true, 303);
             exit;
         }
 
@@ -63,6 +95,19 @@ try {
             $serviceImages = WebsiteManager::serviceImagesForBusiness($businessId);
             $overrides = WebsiteManager::contentOverridesForBusiness($businessId);
         }
+    }
+} catch (CsrfException $exception) {
+    http_response_code(403);
+    $actionError = $exception->getMessage();
+
+    if ($business !== null && !$accessDenied) {
+        $businessId = (int) $business['id'];
+        $bundle = TwentyFourSevenSalesPartner::bundle($businessId);
+        $website = SiteGenerator::websiteForBusiness($businessId);
+        $pages = $website !== null ? SiteGenerator::pagesForWebsite((int) $website['id']) : [];
+        $branding = WebsiteManager::brandingForBusiness($businessId);
+        $serviceImages = WebsiteManager::serviceImagesForBusiness($businessId);
+        $overrides = WebsiteManager::contentOverridesForBusiness($businessId);
     }
 } catch (InvalidArgumentException $exception) {
     $actionError = $exception->getMessage();
@@ -237,8 +282,10 @@ require __DIR__ . '/../../../private/views/account-navigation.php';
         <section class="hero-panel product-hero product-hero--247sp">
             <p class="eyebrow">Website Manager</p>
             <h1><?= $business ? e($business['business_name']) : '247SP website manager' ?></h1>
-            <p class="muted">Manage branding, images, and editable content for the private website preview.</p>
+            <p class="muted">View your website revision review and manage your existing website settings.</p>
         </section>
+
+        <?php require __DIR__ . '/../../../private/views/site-customer-review.php'; ?>
 
         <?php if ($saved): ?>
             <?= ui_alert('Website manager settings saved.', 'success') ?>
@@ -260,7 +307,14 @@ require __DIR__ . '/../../../private/views/account-navigation.php';
                 <p>24/7 Sales Partner is not active for this business.</p>
             </section>
         <?php else: ?>
+            <section class="business-switcher">
+                <h2>Existing Website Settings</h2>
+                <p>These settings apply to your existing website preview. They do not change an immutable revision sent for review.</p>
+                <p><a href="site-preview.php?business_id=<?= e($businessIdForLinks) ?>">Existing website preview</a>
+                    · <a href="business-profile.php?business_id=<?= e($businessIdForLinks) ?>">Business Profile</a></p>
+            </section>
             <form method="post" action="website-manager.php" enctype="multipart/form-data" class="website-manager-form">
+                <?= Csrf::input('customer-website-manager') ?>
                 <input type="hidden" name="business_id" value="<?= e($businessIdForLinks) ?>">
 
                 <section class="business-switcher website-manager-section">
