@@ -2,10 +2,10 @@
 
 ## 1. Status and authoritative baseline
 
-**M5 IN PROGRESS — M5A IMPLEMENTED LOCALLY / REVIEW REQUIRED; M5B/M5C NOT STARTED.**
+**M5 IN PROGRESS — M5A COMPLETE / STAGING PASS / FORMALLY CLOSED; M5B NEXT / NOT STARTED; M5C NOT STARTED.**
 M1–M4 remain COMPLETE / STAGING PASS / FORMALLY CLOSED. M6–M8 remain NOT STARTED.
 Sprint 8.8 remains IN PROGRESS. Production remains UNAUTHORIZED / NOT DEPLOYED.
-This implementation record does not authorize deployment, later M5 passes, or M6 work.
+This closeout does not authorize M5B/M5C implementation, M6 work, or production.
 
 Authoritative planning baseline: `c2efc5d210b9c6528414f9096acddd815f7e8985`
 in `fvd8383/ultimate-back-office`. The session initially found clean local `main` at
@@ -511,9 +511,8 @@ the failed action. Customer DTOs contain no internal reasons or actor identifier
 
 ## 15. Test strategy and evidence distinctions
 
-The M5A subsets below now have local executable coverage as recorded in the status
-section. M5B/M5C and authenticated staging/real-MySQL items remain required future work;
-no local result is a staging PASS claim.
+The M5A subsets below have deployed executable coverage recorded in the M5A closeout.
+M5B/M5C mutation and final integrated browser requirements remain future work.
 
 | Layer | Required executable coverage |
 | --- | --- |
@@ -595,13 +594,17 @@ data model until the final QA pass. Begin browser validation in M5A, not at clos
 | **M5B — Feedback, permitted input and decisions** | Versioned bounded feedback namespace, input requests, exact presentation binding, narrow transactional authorization extension, existing approve/reject delegation, CSRF/303 on integrated manager, admin visibility and stale handling. | Actual service/view tests, M2/M3/M4 regressions, replay/rollback/security coverage; no lifecycle duplication or legacy cutover; focused authorized MySQL/browser mutation validation. |
 | **M5C — Integrated customer QA and closeout** | Responsive/accessibility/console corrections, complete authenticated browser matrix, final real-MySQL concurrency/eligibility/integrity run, evidence and cleanup. | All mandatory customer-facing gates executable and passed, no unresolved tenant/approval/data-loss/security issues, no schema/runtime cutover, evidence-backed review/merge/staging closeout. |
 
-M5A is **IMPLEMENTED LOCALLY / REVIEW REQUIRED**. Its local gate passes 45/45
-standalone suites, including focused behavior/view/scope results of 103/40/59
-assertions and executable zero-domain-mutation coverage. Repository-wide PHP lint passes
-180/180; Markdown reference/fence checks and `git diff --check` pass. Authenticated
-staging browser and real-MySQL validation were not run and are not claimed. M5B and M5C remain
-**NOT STARTED**. Separate review, merge, deployment, and evidence-backed staging gates
-still apply; this implementation does not close M5 or Sprint 8.8.
+M5A is **COMPLETE / STAGING PASS / FORMALLY CLOSED** on merged/deployed SHA
+`ee8c670a6dc8bc19ecb0786dff62abfea645aff3`. Its deployed gate passes 45/45
+standalone suites, focused behavior/view/scope results of 103/40/59 assertions, and
+180/180 PHP lint. Real MySQL 8.4.8 authorization, issued-review, M3 integrity,
+zero-domain-mutation, concurrency, normal OTP-authenticated HTTP/DOM, legacy CSRF and
+303 PRG, private-data, and cleanup gates passed. Browser-only responsive/keyboard,
+console, and network smoke is explicitly NOT EXECUTABLE because no browser runtime or
+interactive operator was available; M5A permits blocked evidence, while the complete
+mandatory customer browser matrix remains an M5C exit gate. See
+[M5A closeout](sprint-8.8-m5a-closeout.md). M5B is **NEXT / NOT STARTED** and M5C is
+**NOT STARTED**; M5 and Sprint 8.8 remain in progress.
 
 ## 18. Reconciliation, implementation prerequisites and planning verification
 
