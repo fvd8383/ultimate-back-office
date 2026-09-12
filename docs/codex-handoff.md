@@ -25,7 +25,9 @@ STAGING PASS / FORMALLY CLOSED** on final deployed and validated SHA
 `557cc34fe4cf3ab56cdcb59fd7c623c495fd8eaf`. M4C is **COMPLETE / STAGING PASS /
 FORMALLY CLOSED** on PR #112 merge and final deployed/validated SHA
 `d33589da5eebbf8e2ae0dc203837d6667abd1f71`. M5 is **IN PROGRESS**; M5A is
-**IMPLEMENTED LOCALLY / REVIEW REQUIRED**, and M5B/M5C are **NOT STARTED**.
+**COMPLETE / STAGING PASS / FORMALLY CLOSED** on deployed/validated SHA
+`ee8c670a6dc8bc19ecb0786dff62abfea645aff3`, M5B is **NEXT / NOT STARTED**, and M5C
+is **NOT STARTED**.
 Production remains **UNAUTHORIZED / NOT DEPLOYED**. M4's exit gate is complete;
 M5–M8 customer/public/runtime work and the full M1–M8 sprint exit gate remain required
 before Sprint 8.8 closes.
@@ -39,10 +41,16 @@ M5A adds the read-only customer Website Manager review section, exact issued-rev
 resolver and allowlisted DTO, dedicated GET-only private preview, and keyboard-inert
 M3 rendering under an empty iframe sandbox and restrictive srcdoc CSP. The local gate
 passes 45/45 standalone suites, with M5A behavior/view/scope results of 103/40/59
-assertions. Repository-wide PHP lint passes 180/180; Markdown reference/fence checks and
-`git diff --check` pass. No migration, deployment, staging data change, provider call,
-or production action occurred. Authenticated staging browser and real-MySQL validation were not run;
-M5A remains under review, and M5B/M5C have not started.
+assertions. Repository-wide PHP lint passes 180/180. Final staging validation passed
+MySQL 8.4.8 native-prepare authorization, issued-review, M3 integrity,
+zero-domain-mutation, concurrency, normal OTP-authenticated HTTP/DOM, retained legacy
+CSRF/303 PRG, private-data, and cleanup gates. Browser-only responsive/accessibility
+smoke is explicitly NOT EXECUTABLE because no browser runtime/operator was available;
+the M5A contract permits blocked evidence, while M5C retains the mandatory complete
+browser gate. The authoritative report is
+`ubo-sprint-8.8-m5a-final-validation-20260911T234520Z/SPRINT-8.8-M5A-STAGING-FINAL-VALIDATION.md`,
+SHA-256 `284133b11b7285c34abfa9972b2215532b0c842b5e7f8901b32b07990bb201a7`.
+No migration/provider/production action occurred. M5B is next and has not started.
 
 M4B was merged through PR #110, “Sprint 8.8 M4B: add composition editor and admin
 preview,” at `557cc34fe4cf3ab56cdcb59fd7c623c495fd8eaf`. It adds the structured
@@ -205,8 +213,9 @@ and adds no migration, provider action, review/approval UI, generic preview, or 
 cutover. M4A, M4B, M4C, and M4 overall are
 **COMPLETE / STAGING PASS / FORMALLY CLOSED**. Sprint 8.8 remains **IN PROGRESS**.
 M5 is **IN PROGRESS**. M5A's customer-authenticated read-only preview foundation is
-implemented locally for review; feedback/change requests and customer approval UI remain
-M5B work, and integrated validation/closeout remains M5C work.
+**COMPLETE / STAGING PASS / FORMALLY CLOSED**; feedback/change requests and customer
+approval UI remain M5B work, and final integrated customer browser validation remains
+M5C work.
 Build/deployment, domain/routing, LeadHub ingestion, and legacy runtime cutover remain
 later milestones. Administrative `approved` does not mean published, live, deployed,
 domain-active, or production-ready. The contract is
