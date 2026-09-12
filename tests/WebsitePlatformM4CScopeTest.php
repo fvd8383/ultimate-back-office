@@ -26,7 +26,7 @@ checkM4CScope(!str_contains($view, 'Approve as Customer') && !str_contains($view
 foreach (['database/migrations/023_website_platform_foundation.sql', 'database/migrations/024_component_registry_versioning.sql', 'private/classes/SiteGenerator.php', 'private/classes/WebsiteManager.php', 'public/marketing'] as $path) {
     exec('git -C ' . escapeshellarg($root) . ' diff --quiet c77f7cbb3d6871c3cb6df1b85fae92beeb4948c3 -- ' . escapeshellarg($path), $out, $status); checkM4CScope($status === 0, "Protected path unchanged: $path");
 }
-checkM4CScope(str_contains($customerManager, 'WebsiteManager::saveWebsiteManager(') && str_contains($customerManager, 'SiteCustomerReviewWorkflow::workspace('), 'M5A integrates a customer read while retaining the legacy save boundary.');
+checkM4CScope(str_contains($customerManager, 'WebsiteManager::saveWebsiteManager(') && str_contains($customerManager, 'SiteCustomerReviewWorkflow::workspaceWithForms('), 'M5A integrates a customer read while retaining the legacy save boundary.');
 checkM4CScope(!preg_match('/SiteApprovalManager::(?:requestApproval|decideApproval|revokeApproval)|SiteReviewAdminWorkflow::apply/', $customerManager), 'M5A adds no customer or internal approval mutation to Website Manager.');
 checkM4CScope(glob($root . '/database/migrations/02[5-9]_*.sql') === [], 'No migration 025+ was added.');
 echo "Website platform M4C scope: {$assertions} assertions passed.\n";

@@ -26,7 +26,7 @@ STAGING PASS / FORMALLY CLOSED** on final deployed and validated SHA
 FORMALLY CLOSED** on PR #112 merge and final deployed/validated SHA
 `d33589da5eebbf8e2ae0dc203837d6667abd1f71`. M5 is **IN PROGRESS**; M5A is
 **COMPLETE / STAGING PASS / FORMALLY CLOSED** on deployed/validated SHA
-`ee8c670a6dc8bc19ecb0786dff62abfea645aff3`, M5B is **NEXT / NOT STARTED**, and M5C
+`ee8c670a6dc8bc19ecb0786dff62abfea645aff3`, M5B is **IMPLEMENTED LOCALLY / REVIEW REQUIRED**, and M5C
 is **NOT STARTED**.
 Production remains **UNAUTHORIZED / NOT DEPLOYED**. M4's exit gate is complete;
 M5–M8 customer/public/runtime work and the full M1–M8 sprint exit gate remain required
@@ -50,7 +50,17 @@ the M5A contract permits blocked evidence, while M5C retains the mandatory compl
 browser gate. The authoritative report is
 `ubo-sprint-8.8-m5a-final-validation-20260911T234520Z/SPRINT-8.8-M5A-STAGING-FINAL-VALIDATION.md`,
 SHA-256 `284133b11b7285c34abfa9972b2215532b0c842b5e7f8901b32b07990bb201a7`.
-No migration/provider/production action occurred. M5B is next and has not started.
+No migration/provider/production action occurred during M5A closeout.
+
+M5B is **IMPLEMENTED LOCALLY / REVIEW REQUIRED** from authoritative baseline
+`2c742190809006008b42f7e2c7075701047ac74b`. It adds bounded feedback and advisory
+presentation/image requests, exact session-bound customer decisions, transaction-time
+reauthorization, replay protection, CSRF/303 receipts, and internal submission visibility.
+The local gate passes 48/48 standalone suites, including M5B behavior/input-session/
+view-route totals of 215/72/97 assertions. PHP lint passes 189/189. Migration 023/024
+remain unchanged and 025 remains absent. See the [M5B local implementation record](sprint-8.8-m5b-local-implementation.md)
+for security findings, file inventory, and the outstanding real-MySQL/browser gates.
+No M5B staging deployment or validation occurred; M5C/M6 remain NOT STARTED.
 
 M4B was merged through PR #110, “Sprint 8.8 M4B: add composition editor and admin
 preview,” at `557cc34fe4cf3ab56cdcb59fd7c623c495fd8eaf`. It adds the structured

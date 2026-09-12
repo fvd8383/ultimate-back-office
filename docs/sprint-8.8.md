@@ -16,7 +16,7 @@ deployed, and validated SHA `557cc34fe4cf3ab56cdcb59fd7c623c495fd8eaf`, and M4C 
 **COMPLETE / STAGING PASS / FORMALLY CLOSED** on PR #112 merge and final M4
 deployed/validated SHA `d33589da5eebbf8e2ae0dc203837d6667abd1f71`.
 M5 is **IN PROGRESS**; M5A is **COMPLETE / STAGING PASS / FORMALLY CLOSED** on
-`ee8c670a6dc8bc19ecb0786dff62abfea645aff3`, M5B is **NEXT / NOT STARTED**, and M5C
+`ee8c670a6dc8bc19ecb0786dff62abfea645aff3`, M5B is **IMPLEMENTED LOCALLY / REVIEW REQUIRED**, and M5C
 is **NOT STARTED**.
 Production is **UNAUTHORIZED / NOT DEPLOYED**. The detailed
 completion records are `docs/sprint-8.8-m1-closeout.md`,
@@ -484,7 +484,7 @@ from service or source-contract coverage.
 ## M5 — Customer Preview / Feedback / Approval
 
 Status: **IN PROGRESS**. M5A is **COMPLETE / STAGING PASS / FORMALLY CLOSED** on
-`ee8c670a6dc8bc19ecb0786dff62abfea645aff3`. M5B is **NEXT / NOT STARTED** and M5C
+`ee8c670a6dc8bc19ecb0786dff62abfea645aff3`. M5B is **IMPLEMENTED LOCALLY / REVIEW REQUIRED** and M5C
 is **NOT STARTED**. M5–M8 remain unfinished milestones within Sprint 8.8 and are
 required before the sprint closes.
 
@@ -501,6 +501,13 @@ normal OTP-authenticated HTTP/DOM. Browser-only responsive/accessibility smoke w
 explicitly NOT EXECUTABLE because no browser runtime/operator was available, which the
 M5A exit gate permits as blocked evidence; the complete browser matrix remains mandatory
 for M5C. See [M5A closeout](sprint-8.8-m5a-closeout.md).
+
+M5B now implements feedback, permitted advisory input, and exact revision decisions
+locally. Its [implementation record](sprint-8.8-m5b-local-implementation.md) records
+48/48 standalone suites, 215/72/97 focused assertions, 189/189 PHP lint, and the
+security self-review. M5B remains **IMPLEMENTED LOCALLY / REVIEW REQUIRED**;
+staging, real-MySQL concurrency, and authenticated browser mutation gates were NOT RUN.
+No deployment, migration, M5C, M6, provider, public runtime, or production action occurred.
 
 ### Deliverables
 

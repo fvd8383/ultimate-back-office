@@ -120,7 +120,8 @@ final class SiteApprovalManager
         int $approvalId,
         string $decision,
         ?string $comment = null,
-        ?string $correlationId = null
+        ?string $correlationId = null,
+        ?array $expectedCustomerReview = null
     ): array {
         SiteServiceSupport::positiveId($approvalId, 'Approval ID');
         if (!in_array($decision, ['approved', 'rejected'], true)) {
@@ -131,18 +132,36 @@ final class SiteApprovalManager
         $actor = (string) $identity['approval_type'] === 'customer'
             ? SiteAuthorizationPolicy::requireCustomerApproval($actingUserId, (int) $identity['site_id'])
             : SiteAuthorizationPolicy::requireInternalAdmin($actingUserId);
+        if ($expectedCustomerReview !== null) {
+            require_once __DIR__ . '/SiteCustomerReviewGuard.php';
+            require_once __DIR__ . '/SiteCustomerReviewInput.php';
+            SiteCustomerReviewGuard::context($expectedCustomerReview);
+            if ($identity['approval_type'] !== 'customer') throw new SiteServiceException('invalid_request', 'A customer request is required.');
+            $comment = SiteCustomerReviewInput::text($comment ?? '', $decision === 'rejected');
+        }
         $comment = SiteServiceSupport::optionalComment($comment);
         $correlationId = SiteServiceSupport::correlationId($correlationId);
 
         return SiteServiceSupport::transaction(static function (object $connection) use (
-            $approvalId, $decision, $comment, $actor, $correlationId
+            $approvalId, $decision, $comment, $actor, $correlationId, $identity, $expectedCustomerReview, $actingUserId
         ): array {
-            $probe = self::approvalIdentityWithConnection($connection, $approvalId);
+            $probe = $identity;
             $site = SiteManager::lockSite($connection, (int) $probe['site_id']);
             SiteServiceSupport::assertSiteOperational($site);
             $revision = SiteRevisionManager::lockRevision($connection, (int) $probe['revision_id']);
-            SiteServiceSupport::assertNoNewerMaterialRevision($connection, $revision);
             $approval = self::lockApproval($connection, $approvalId);
+            if ((int) $approval['site_id'] !== (int) $site['id']
+                || (int) $approval['revision_id'] !== (int) $revision['id']
+                || (int) $revision['site_id'] !== (int) $site['id']
+                || $approval['approval_type'] !== $identity['approval_type']) {
+                throw new SiteServiceException('conflict', 'The approval changed. Reload before submitting again.');
+            }
+            if ($approval['approval_type'] === 'customer') {
+                $actor = $expectedCustomerReview === null
+                    ? SiteAuthorizationPolicy::requireCustomerApproval($actingUserId, (int) $site['id'], $connection)
+                    : SiteCustomerReviewGuard::check($connection, $actingUserId, $site, $revision, $approval, $expectedCustomerReview)['actor'];
+            }
+            SiteServiceSupport::assertNoNewerMaterialRevision($connection, $revision);
             if ((string) $approval['state'] !== 'requested') {
                 throw new SiteServiceException('conflict', 'Only a requested approval can be decided.');
             }
@@ -231,6 +250,55 @@ final class SiteApprovalManager
                 'state' => $decision,
                 'correlation_id' => $correlationId,
             ];
+        });
+    }
+
+    public static function recordCustomerFeedback(int $actingUserId, array $expectedCustomerReview, array $input, string $submissionKeyHash): array
+    {
+        require_once __DIR__ . '/SiteCustomerReviewGuard.php';
+        require_once __DIR__ . '/SiteCustomerFeedback.php';
+        $expected = SiteCustomerReviewGuard::context($expectedCustomerReview);
+        $payload = SiteCustomerReviewInput::payload($input);
+        if (preg_match('/^[a-f0-9]{64}$/D', $submissionKeyHash) !== 1) {
+            throw new SiteServiceException('invalid_request', 'Invalid submission identity.');
+        }
+        SiteAuthorizationPolicy::requireCustomerApproval($actingUserId, $expected['site_id']);
+        return SiteServiceSupport::transaction(static function (object $connection) use ($actingUserId, $expected, $payload, $submissionKeyHash): array {
+            $site = SiteManager::lockSite($connection, $expected['site_id']);
+            $revision = SiteRevisionManager::lockRevision($connection, $expected['revision_id']);
+            $approval = self::lockApproval($connection, $expected['request_id']);
+            // Reauthorize even a replay, before exposing its original receipt.
+            SiteCustomerReviewGuard::check($connection, $actingUserId, $site, $revision, $approval, $expected, true);
+            $metadata = SiteCustomerFeedback::metadata($approval['metadata_json']);
+            $entries = $metadata->customer_review_v1->entries ?? [];
+            $payloadHash = hash('sha256', SiteCustomerReviewInput::encode($payload));
+            foreach ($entries as $entry) {
+                if (!hash_equals($entry->submission_key_hash, $submissionKeyHash)) continue;
+                if (!hash_equals($entry->payload_hash, $payloadHash) || $entry->actor_user_id !== $actingUserId) {
+                    throw new SiteServiceException('conflict', 'This submission was already used with different content.');
+                }
+                return ['entry_id' => $entry->entry_id, 'created_at' => $entry->created_at, 'kind' => $entry->kind, 'replayed' => true];
+            }
+            $guard = SiteCustomerReviewGuard::check($connection, $actingUserId, $site, $revision, $approval, $expected);
+            if ($payload['kind'] === 'image_replacement_request'
+                && !array_key_exists($payload['target'], SiteCustomerReviewGuard::images($guard['composition']))) {
+                throw new SiteServiceException('invalid_request', 'Choose an image from this revision.');
+            }
+            if (count($entries) >= 20) throw new SiteServiceException('conflict', 'This request has reached its feedback limit. Revision decisions remain available.');
+            $entry = $payload + ['entry_id' => SiteServiceSupport::uuidV4(), 'actor_user_id' => $actingUserId,
+                'created_at' => gmdate('Y-m-d\TH:i:s\Z'), 'submission_key_hash' => $submissionKeyHash,
+                'payload_hash' => $payloadHash, 'correlation_id' => SiteServiceSupport::uuidV4()];
+            $entries[] = (object) $entry;
+            $namespace = (object) ['entries' => $entries];
+            if (strlen(SiteCustomerReviewInput::encode($namespace)) > 131072) throw new SiteServiceException('conflict', 'This request has reached its feedback size limit. Revision decisions remain available.');
+            $metadata->customer_review_v1 = $namespace;
+            $update = $connection->prepare('UPDATE site_approvals SET metadata_json = :metadata_json WHERE id = :approval_id AND state = :state');
+            $update->execute(['metadata_json' => SiteCustomerReviewInput::encode($metadata), 'approval_id' => (int) $approval['id'], 'state' => 'requested']);
+            if ($update->rowCount() !== 1) throw new SiteServiceException('conflict', 'The review changed. Reload before submitting again.');
+            SiteServiceSupport::event($connection, (int) $site['id'], (int) $revision['id'], $guard['actor'],
+                'site_customer_feedback_recorded', $entry['correlation_id'], null,
+                ['approval_id' => (int) $approval['id'], 'entry_id' => $entry['entry_id'], 'kind' => $entry['kind'], 'entry_count' => count($entries)]);
+            return ['entry_id' => $entry['entry_id'], 'created_at' => $entry['created_at'], 'kind' => $entry['kind'], 'replayed' => false];
         });
     }
 
