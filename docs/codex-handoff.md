@@ -1,6 +1,22 @@
 # Codex Handoff
 
-## M5B staging closeout — 2026-09-13
+## Current M5C local implementation status
+
+**M5C IMPLEMENTED LOCALLY / REVIEW REQUIRED**. M5 and Sprint 8.8 remain **IN PROGRESS**.
+M1–M4, M5A and M5B remain COMPLETE / STAGING PASS / FORMALLY CLOSED; M6 remains
+NOT STARTED. Production remains UNAUTHORIZED / NOT DEPLOYED. See the
+[M5C local implementation and QA record](sprint-8.8-m5c-local-implementation.md)
+for scoped responsive/focus/accessibility corrections, 50/50 local standalone suites,
+193/193 PHP lint, synthetic browser evidence and the final validation checklist.
+The complete authenticated browser matrix, actual 200% zoom, keyboard, screen reader,
+console/network and integrated workflows AND the final real-MySQL concurrency,
+eligibility, metadata/private-data/lifecycle integrity and cleanup gates remain
+required after separately authorized deployment. No M5C staging PASS or M5 closeout.
+
+The M5B closeout snapshot below preserves historical M5C NEXT / NOT STARTED wording;
+this current status supersedes that wording without changing the M5B evidence.
+
+## M5B staging closeout — 2026-09-13 (historical snapshot)
 
 **M5B COMPLETE / STAGING PASS / FORMALLY CLOSED** on deployed/validated SHA
 `8cd63146713ef8fef26fd2861e960ac64ee1387a`. M5A remains **COMPLETE / STAGING PASS /
@@ -67,7 +83,7 @@ FORMALLY CLOSED** on PR #112 merge and final deployed/validated SHA
 `d33589da5eebbf8e2ae0dc203837d6667abd1f71`. M5 is **IN PROGRESS**; M5A is
 **COMPLETE / STAGING PASS / FORMALLY CLOSED** on deployed/validated SHA
 `ee8c670a6dc8bc19ecb0786dff62abfea645aff3`, M5B is **COMPLETE / STAGING PASS / FORMALLY CLOSED**, and M5C
-is **NEXT / NOT STARTED**.
+is **IMPLEMENTED LOCALLY / REVIEW REQUIRED**.
 Production remains **UNAUTHORIZED / NOT DEPLOYED**. M4's exit gate is complete;
 M5–M8 customer/public/runtime work and the full M1–M8 sprint exit gate remain required
 before Sprint 8.8 closes.
@@ -103,7 +119,7 @@ remain unchanged and 025 remains absent. See the [M5B local implementation recor
 for security findings and file inventory. The [M5B closeout](sprint-8.8-m5b-closeout.md)
 records passed real-MySQL/concurrency/replay/HTTP and authenticated browser mutation
 gates, including approval, changes, stale-tab, populated tenant denial, and forged input.
-All 81 table counts reconciled after cleanup. M5C is NEXT / NOT STARTED; M6 is NOT STARTED.
+All 81 table counts reconciled after cleanup. M5C is IMPLEMENTED LOCALLY / REVIEW REQUIRED; M6 is NOT STARTED.
 
 M4B was merged through PR #110, “Sprint 8.8 M4B: add composition editor and admin
 preview,” at `557cc34fe4cf3ab56cdcb59fd7c623c495fd8eaf`. It adds the structured

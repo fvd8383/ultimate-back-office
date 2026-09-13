@@ -1,6 +1,22 @@
 # Sprint 8.8 — Website Platform And Component CMS
 
-## M5B staging closeout — 2026-09-13
+## Current M5C local implementation status
+
+**M5C IMPLEMENTED LOCALLY / REVIEW REQUIRED**. M5 and Sprint 8.8 remain **IN PROGRESS**.
+M1–M4, M5A and M5B remain COMPLETE / STAGING PASS / FORMALLY CLOSED; M6 remains
+NOT STARTED. Production remains UNAUTHORIZED / NOT DEPLOYED. See the
+[M5C local implementation and QA record](sprint-8.8-m5c-local-implementation.md)
+for scoped responsive/focus/accessibility corrections, 50/50 local standalone suites,
+193/193 PHP lint, synthetic browser evidence and the final validation checklist.
+The complete authenticated browser matrix, actual 200% zoom, keyboard, screen reader,
+console/network and integrated workflows AND the final real-MySQL concurrency,
+eligibility, metadata/private-data/lifecycle integrity and cleanup gates remain
+required after separately authorized deployment. No M5C staging PASS or M5 closeout.
+
+The M5B closeout snapshot below preserves historical M5C NEXT / NOT STARTED wording;
+this current status supersedes that wording without changing the M5B evidence.
+
+## M5B staging closeout — 2026-09-13 (historical snapshot)
 
 **M5B COMPLETE / STAGING PASS / FORMALLY CLOSED** on deployed/validated SHA
 `8cd63146713ef8fef26fd2861e960ac64ee1387a`. M5A remains **COMPLETE / STAGING PASS /
@@ -57,7 +73,7 @@ deployed, and validated SHA `557cc34fe4cf3ab56cdcb59fd7c623c495fd8eaf`, and M4C 
 deployed/validated SHA `d33589da5eebbf8e2ae0dc203837d6667abd1f71`.
 M5 is **IN PROGRESS**; M5A is **COMPLETE / STAGING PASS / FORMALLY CLOSED** on
 `ee8c670a6dc8bc19ecb0786dff62abfea645aff3`, M5B is **COMPLETE / STAGING PASS / FORMALLY CLOSED**, and M5C
-is **NEXT / NOT STARTED**.
+is **IMPLEMENTED LOCALLY / REVIEW REQUIRED**.
 Production is **UNAUTHORIZED / NOT DEPLOYED**. The detailed
 completion records are `docs/sprint-8.8-m1-closeout.md`,
 `docs/sprint-8.8-m2-closeout.md`, `docs/sprint-8.8-m3-closeout.md`,
@@ -527,7 +543,7 @@ from service or source-contract coverage.
 
 Status: **IN PROGRESS**. M5A is **COMPLETE / STAGING PASS / FORMALLY CLOSED** on
 `ee8c670a6dc8bc19ecb0786dff62abfea645aff3`. M5B is **COMPLETE / STAGING PASS / FORMALLY CLOSED** and M5C
-is **NEXT / NOT STARTED**. M5–M8 remain unfinished milestones within Sprint 8.8 and are
+is **IMPLEMENTED LOCALLY / REVIEW REQUIRED**. M5–M8 remain unfinished milestones within Sprint 8.8 and are
 required before the sprint closes.
 
 M5A adds a customer-only read boundary, an allowlisted issued-review DTO, a dedicated
