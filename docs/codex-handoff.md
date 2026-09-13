@@ -1,5 +1,45 @@
 # Codex Handoff
 
+## M5B staging closeout — 2026-09-13
+
+**M5B COMPLETE / STAGING PASS / FORMALLY CLOSED** on deployed/validated SHA
+`8cd63146713ef8fef26fd2861e960ac64ee1387a`. M5A remains **COMPLETE / STAGING PASS /
+FORMALLY CLOSED**. M5 is **IN PROGRESS**; M5C is **NEXT / NOT STARTED**; M6 is
+**NOT STARTED**. Migration 025 is absent/reserved for M6. Production is
+**UNAUTHORIZED / NOT DEPLOYED**. This is an external documentation export; the deployed
+checkout was not edited and no deployment, migration, commit, or PR occurred in the
+completion run. See [M5B closeout](sprint-8.8-m5b-closeout.md).
+
+Completed M5B gates: customer feedback/tone/emphasis/image-request browser mutations;
+customer approval and request-changes with exact POST303GET receipts and legal DB
+states; stale-tab409 with zero writes; populated cross-tenant manager/preview denial;
+both forged preference400 cases with zero writes; targeted leakage; and the earlier
+real-MySQL/concurrency/replay/HTTP/security validation. All 81 staging table counts
+reconciled after final synthetic cleanup. Customer approval does not publish or
+automatically create an internal approval request.
+
+M5C — Integrated customer QA and closeout — owns correction of the approximately 11px
+overflow at 360px; review and correction if needed of PRG focus returning to BODY;
+the complete authenticated browser and responsive matrices; actual 200% zoom;
+keyboard/accessibility and required screen-reader validation; complete console/network
+QA; integrated customer-workflow regression; the final real-MySQL concurrency,
+eligibility, and integrity run; private-data and lifecycle integrity confirmation;
+evidence, cleanup, and formal M5 closeout if every M5C gate passes. These requirements
+were explicitly deferred by the final M5B closure request and remain unstarted. Prior
+shared global-module-disable and exact independent 128KiB valid-history limitations
+remain documented and do not independently block M5B closure.
+
+The immutable four-report evidence chain is:
+
+1. Backend / real MySQL: `/home/codex-validation/ubo-sprint-8.8-m5b-final-validation-20260913T205919Z/SPRINT-8.8-M5B-STAGING-FINAL-VALIDATION.md`
+   SHA-256: `8d74bd6b479a84e04b68fd3136df71d032fda12f34785f147954ef2e9bdae909`
+2. Staging-host browser dependency report: `/home/codex-validation/ubo-sprint-8.8-m5b-browser-completion-20260913T212752Z/SPRINT-8.8-M5B-BROWSER-COMPLETION.md`
+   SHA-256: `354b02c454dd84c345fb9ecd8d9efa47f7e5449840b77dcc0004b18ef2c1d1f3`
+3. External browser partial report: `/home/codex-validation/ubo-sprint-8.8-m5b-browser-external-20260913T214743Z/SPRINT-8.8-M5B-EXTERNAL-BROWSER-VALIDATION.md`
+   SHA-256: `febc8c065a9e3e6d95daee8f34d07f34baab0dda1af96764a18164d930b59deb`
+4. Final browser mutation completion: `/home/codex-validation/ubo-sprint-8.8-m5b-browser-final-20260913T220233Z/SPRINT-8.8-M5B-FINAL-BROWSER-MUTATION-VALIDATION.md`
+   SHA-256: `3bdb19ff3d3bcb6aa7e2a5fd472f36864029474c59bb66612acd1a1e15e6620b`
+
 You are building Ultimate Back Office.
 
 ## Current Handoff
@@ -26,8 +66,8 @@ STAGING PASS / FORMALLY CLOSED** on final deployed and validated SHA
 FORMALLY CLOSED** on PR #112 merge and final deployed/validated SHA
 `d33589da5eebbf8e2ae0dc203837d6667abd1f71`. M5 is **IN PROGRESS**; M5A is
 **COMPLETE / STAGING PASS / FORMALLY CLOSED** on deployed/validated SHA
-`ee8c670a6dc8bc19ecb0786dff62abfea645aff3`, M5B is **IMPLEMENTED LOCALLY / REVIEW REQUIRED**, and M5C
-is **NOT STARTED**.
+`ee8c670a6dc8bc19ecb0786dff62abfea645aff3`, M5B is **COMPLETE / STAGING PASS / FORMALLY CLOSED**, and M5C
+is **NEXT / NOT STARTED**.
 Production remains **UNAUTHORIZED / NOT DEPLOYED**. M4's exit gate is complete;
 M5–M8 customer/public/runtime work and the full M1–M8 sprint exit gate remain required
 before Sprint 8.8 closes.
@@ -52,15 +92,18 @@ browser gate. The authoritative report is
 SHA-256 `284133b11b7285c34abfa9972b2215532b0c842b5e7f8901b32b07990bb201a7`.
 No migration/provider/production action occurred during M5A closeout.
 
-M5B is **IMPLEMENTED LOCALLY / REVIEW REQUIRED** from authoritative baseline
+M5B is **COMPLETE / STAGING PASS / FORMALLY CLOSED** on deployed/validated SHA
+`8cd63146713ef8fef26fd2861e960ac64ee1387a`, implemented from baseline
 `2c742190809006008b42f7e2c7075701047ac74b`. It adds bounded feedback and advisory
 presentation/image requests, exact session-bound customer decisions, transaction-time
 reauthorization, replay protection, CSRF/303 receipts, and internal submission visibility.
 The local gate passes 48/48 standalone suites, including M5B behavior/input-session/
-view-route totals of 215/72/97 assertions. PHP lint passes 189/189. Migration 023/024
+view-route totals of 258/72/118 assertions. PHP lint passes 189/189. Migration 023/024
 remain unchanged and 025 remains absent. See the [M5B local implementation record](sprint-8.8-m5b-local-implementation.md)
-for security findings, file inventory, and the outstanding real-MySQL/browser gates.
-No M5B staging deployment or validation occurred; M5C/M6 remain NOT STARTED.
+for security findings and file inventory. The [M5B closeout](sprint-8.8-m5b-closeout.md)
+records passed real-MySQL/concurrency/replay/HTTP and authenticated browser mutation
+gates, including approval, changes, stale-tab, populated tenant denial, and forged input.
+All 81 table counts reconciled after cleanup. M5C is NEXT / NOT STARTED; M6 is NOT STARTED.
 
 M4B was merged through PR #110, “Sprint 8.8 M4B: add composition editor and admin
 preview,” at `557cc34fe4cf3ab56cdcb59fd7c623c495fd8eaf`. It adds the structured
@@ -223,9 +266,11 @@ and adds no migration, provider action, review/approval UI, generic preview, or 
 cutover. M4A, M4B, M4C, and M4 overall are
 **COMPLETE / STAGING PASS / FORMALLY CLOSED**. Sprint 8.8 remains **IN PROGRESS**.
 M5 is **IN PROGRESS**. M5A's customer-authenticated read-only preview foundation is
-**COMPLETE / STAGING PASS / FORMALLY CLOSED**; feedback/change requests and customer
-approval UI remain M5B work, and final integrated customer browser validation remains
-M5C work.
+**COMPLETE / STAGING PASS / FORMALLY CLOSED**. M5B feedback/change requests and
+customer approval UI are also **COMPLETE / STAGING PASS / FORMALLY CLOSED**. M5C still
+requires integrated customer-workflow and browser validation, the final real-MySQL
+concurrency/eligibility/integrity run, private-data/lifecycle confirmation, evidence,
+cleanup, and formal M5 closeout.
 Build/deployment, domain/routing, LeadHub ingestion, and legacy runtime cutover remain
 later milestones. Administrative `approved` does not mean published, live, deployed,
 domain-active, or production-ready. The contract is

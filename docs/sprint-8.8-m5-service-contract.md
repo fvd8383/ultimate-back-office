@@ -1,15 +1,56 @@
 # Sprint 8.8 M5 — Customer Preview / Feedback / Approval Contract
 
+## M5B staging closeout — 2026-09-13
+
+**M5B COMPLETE / STAGING PASS / FORMALLY CLOSED** on deployed/validated SHA
+`8cd63146713ef8fef26fd2861e960ac64ee1387a`. M5A remains **COMPLETE / STAGING PASS /
+FORMALLY CLOSED**. M5 is **IN PROGRESS**; M5C is **NEXT / NOT STARTED**; M6 is
+**NOT STARTED**. Migration 025 is absent/reserved for M6. Production is
+**UNAUTHORIZED / NOT DEPLOYED**. This is an external documentation export; the deployed
+checkout was not edited and no deployment, migration, commit, or PR occurred in the
+completion run. See [M5B closeout](sprint-8.8-m5b-closeout.md).
+
+Completed M5B gates: customer feedback/tone/emphasis/image-request browser mutations;
+customer approval and request-changes with exact POST303GET receipts and legal DB
+states; stale-tab409 with zero writes; populated cross-tenant manager/preview denial;
+both forged preference400 cases with zero writes; targeted leakage; and the earlier
+real-MySQL/concurrency/replay/HTTP/security validation. All 81 staging table counts
+reconciled after final synthetic cleanup. Customer approval does not publish or
+automatically create an internal approval request.
+
+M5C — Integrated customer QA and closeout — owns correction of the approximately 11px
+overflow at 360px; review and correction if needed of PRG focus returning to BODY;
+the complete authenticated browser and responsive matrices; actual 200% zoom;
+keyboard/accessibility and required screen-reader validation; complete console/network
+QA; integrated customer-workflow regression; the final real-MySQL concurrency,
+eligibility, and integrity run; private-data and lifecycle integrity confirmation;
+evidence, cleanup, and formal M5 closeout if every M5C gate passes. These requirements
+were explicitly deferred by the final M5B closure request and remain unstarted. Prior
+shared global-module-disable and exact independent 128KiB valid-history limitations
+remain documented and do not independently block M5B closure.
+
+The immutable four-report evidence chain is:
+
+1. Backend / real MySQL: `/home/codex-validation/ubo-sprint-8.8-m5b-final-validation-20260913T205919Z/SPRINT-8.8-M5B-STAGING-FINAL-VALIDATION.md`
+   SHA-256: `8d74bd6b479a84e04b68fd3136df71d032fda12f34785f147954ef2e9bdae909`
+2. Staging-host browser dependency report: `/home/codex-validation/ubo-sprint-8.8-m5b-browser-completion-20260913T212752Z/SPRINT-8.8-M5B-BROWSER-COMPLETION.md`
+   SHA-256: `354b02c454dd84c345fb9ecd8d9efa47f7e5449840b77dcc0004b18ef2c1d1f3`
+3. External browser partial report: `/home/codex-validation/ubo-sprint-8.8-m5b-browser-external-20260913T214743Z/SPRINT-8.8-M5B-EXTERNAL-BROWSER-VALIDATION.md`
+   SHA-256: `febc8c065a9e3e6d95daee8f34d07f34baab0dda1af96764a18164d930b59deb`
+4. Final browser mutation completion: `/home/codex-validation/ubo-sprint-8.8-m5b-browser-final-20260913T220233Z/SPRINT-8.8-M5B-FINAL-BROWSER-MUTATION-VALIDATION.md`
+   SHA-256: `3bdb19ff3d3bcb6aa7e2a5fd472f36864029474c59bb66612acd1a1e15e6620b`
+
 ## 1. Status and authoritative baseline
 
-**M5 IN PROGRESS — M5A COMPLETE / STAGING PASS / FORMALLY CLOSED; M5B IMPLEMENTED LOCALLY / REVIEW REQUIRED; M5C NOT STARTED.**
+**M5 IN PROGRESS — M5A COMPLETE / STAGING PASS / FORMALLY CLOSED; M5B COMPLETE / STAGING PASS / FORMALLY CLOSED; M5C NEXT / NOT STARTED.**
 M1–M4 remain COMPLETE / STAGING PASS / FORMALLY CLOSED. M6–M8 remain NOT STARTED.
 Sprint 8.8 remains IN PROGRESS. Production remains UNAUTHORIZED / NOT DEPLOYED.
-M5B local implementation was separately authorized. This record does not authorize
-deployment, M5C, M6 work, or production. The [M5B local implementation record](sprint-8.8-m5b-local-implementation.md)
-documents its security design and local validation from baseline
-`2c742190809006008b42f7e2c7075701047ac74b`: 48/48 standalone suites, focused
-215/72/97 assertions, and 189/189 PHP lint. M5B staging/MySQL/browser gates remain NOT RUN.
+M5B is deployed and validated on `8cd63146713ef8fef26fd2861e960ac64ee1387a`.
+The [M5B closeout](sprint-8.8-m5b-closeout.md) records the four-report evidence chain,
+48/48 deployed standalone suites, 258/72/118 focused assertions, 189/189 PHP lint,
+real-MySQL concurrency/replay/security gates, and completed authenticated browser
+mutation validation. This documentation export does not authorize another deployment,
+M5C/M6 implementation, or production.
 
 Authoritative planning baseline: `c2efc5d210b9c6528414f9096acddd815f7e8985`
 in `fvd8383/ultimate-back-office`. The session initially found clean local `main` at
@@ -37,7 +78,10 @@ completed legacy Website Manager is not evidence of M5 completion.
 Throughout the original contract, “existing” describes inspected planning-baseline
 code and “must” or “proposed” records the locked design. The M5A service and route names
 are now implemented. M5B's previously proposed mutation boundaries are implemented
-locally as recorded above; M5C and real-MySQL/browser mutation gates remain future work.
+and staging validated as recorded above. Full integrated browser/accessibility QA and
+the final integrated real-MySQL concurrency/eligibility/integrity run remain M5C work;
+M5B's focused real-MySQL and customer-mutation browser gates passed but do not replace
+that final M5C gate.
 
 ## 2. Repository audit and evidence inventory
 
@@ -517,8 +561,10 @@ the failed action. Customer DTOs contain no internal reasons or actor identifier
 ## 15. Test strategy and evidence distinctions
 
 The M5A subsets below have deployed executable coverage recorded in the M5A closeout.
-M5B mutation requirements now have local fixture and DOM/source coverage; real-MySQL
-mutation/concurrency and the final integrated browser requirements remain future work.
+M5B mutation requirements have deployed fixture/DOM/source, real-MySQL
+mutation/concurrency, and focused authenticated browser coverage. Full integrated
+responsive/accessibility/browser QA and the final real-MySQL concurrency, eligibility,
+and integrity run remain mandatory M5C work.
 
 | Layer | Required executable coverage |
 | --- | --- |
@@ -554,8 +600,8 @@ be used. Audit found an existing route-based path:
 `shouldDisplayOtp()` returns true only for development/local/staging. The current
 login route includes that prepared code in its redirect to verify; verification
 checks the stored hash/expiry and marks it used, then regenerates the session ID.
-Email sending is currently unconfigured in this Auth flow. These are source findings,
-not confirmation of staging environment values or a browser PASS. The code-in-URL
+Email sending is currently unconfigured in this Auth flow. These were planning source findings; subsequent M5B evidence confirms the staging
+environment and successful normal OTP browser login. The code-in-URL
 behavior also means validation evidence must not retain login URLs, OTPs or cookies.
 
 For future authorized staging validation:
@@ -584,9 +630,10 @@ If designated actors or the existing staging login path are unavailable, operato
 authentication/provisioning is a staging prerequisite, not a reason to add a production
 bypass. No dedicated session-minting endpoint is proposed. A test-only browser runner
 may automate these same login forms with ephemeral secrets outside the repository;
-it must not modify auth code or environment configuration. Browser and real-MySQL
-gates remain blocked until safely executable. This does not block local M5 coding
-once implementation is separately authorized.
+it must not modify auth code or environment configuration. This paragraph records the
+pre-validation planning constraint; M5B's focused browser and real-MySQL gates later
+passed. M5C still requires its complete browser matrix and final integrated real-MySQL
+concurrency/eligibility/integrity run before formal M5 closeout.
 
 ## 17. Recommended implementation passes and exit gates
 
@@ -609,8 +656,8 @@ zero-domain-mutation, concurrency, normal OTP-authenticated HTTP/DOM, legacy CSR
 console, and network smoke is explicitly NOT EXECUTABLE because no browser runtime or
 interactive operator was available; M5A permits blocked evidence, while the complete
 mandatory customer browser matrix remains an M5C exit gate. See
-[M5A closeout](sprint-8.8-m5a-closeout.md). M5B is **IMPLEMENTED LOCALLY / REVIEW REQUIRED** and M5C is
-**NOT STARTED**; M5 and Sprint 8.8 remain in progress.
+[M5A closeout](sprint-8.8-m5a-closeout.md). M5B is **COMPLETE / STAGING PASS / FORMALLY CLOSED** and M5C is
+**NEXT / NOT STARTED**; M5 and Sprint 8.8 remain in progress.
 
 ## 18. Reconciliation, implementation prerequisites and planning verification
 
