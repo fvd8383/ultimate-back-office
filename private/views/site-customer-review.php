@@ -29,17 +29,18 @@
             <?php if (count($customerReview['feedback']) >= 20): ?><p>The feedback limit has been reached. You can still request changes or approve this revision.</p><?php endif; ?>
             <?php foreach ($actions as $action => $label):
                 if (count($customerReview['feedback']) >= 20 && in_array($action, SiteCustomerReviewInput::KINDS, true)) continue;
+                foreach ($action === 'presentation_preference' ? ['tone', 'emphasis'] : [null] as $preferenceTarget):
             ?>
                 <form method="post" action="website-manager.php" class="form-stack">
-                    <fieldset><legend><?= e($label) ?></legend>
+                    <fieldset><legend><?= e($preferenceTarget === null ? $label : 'Request ' . $preferenceTarget . ' change') ?></legend>
                     <?= Csrf::input('customer-website-manager') ?>
                     <input type="hidden" name="action" value="<?= e($action) ?>">
                     <input type="hidden" name="review_handle" value="<?= e($submission['handle']) ?>">
                     <input type="hidden" name="submission_nonce" value="<?= e($submission['nonces'][$action]) ?>">
                     <?php if ($action === 'presentation_preference'): ?>
-                        <label>Preference<select name="target"><option value="tone">Tone</option><option value="emphasis">Emphasis</option></select></label>
-                        <label>Requested value<select name="value"><optgroup label="Tone"><option value="professional">Professional</option><option value="friendly">Friendly</option><option value="concise">Concise</option></optgroup><optgroup label="Emphasis"><option value="services">Services</option><option value="trust">Trust</option><option value="contact">Contact</option></optgroup></select></label>
-                        <p>Choose a value from the group matching your preference. Sent for consideration; this does not change your preview.</p>
+                        <input type="hidden" name="target" value="<?= e($preferenceTarget) ?>">
+                        <label>Requested <?= e($preferenceTarget) ?><select name="value"><?php foreach ($preferenceTarget === 'tone' ? ['professional', 'friendly', 'concise'] : ['services', 'trust', 'contact'] as $preferenceValue): ?><option value="<?= e($preferenceValue) ?>"><?= e(ucfirst($preferenceValue)) ?></option><?php endforeach; ?></select></label>
+                        <p>Sent for consideration; this does not change your preview.</p>
                     <?php elseif ($action === 'image_replacement_request'): ?>
                         <label>Image in this revision<select name="target"><?php foreach ($customerReview['image_targets'] as $target => $imageLabel): ?><option value="<?= e($target) ?>"><?= e($imageLabel) ?></option><?php endforeach; ?></select></label>
                     <?php elseif ($action === 'request_changes'): ?>
@@ -51,6 +52,7 @@
                     <button type="submit"><?= e($label) ?></button>
                     </fieldset>
                 </form>
+            <?php endforeach; ?>
             <?php endforeach; ?>
         <?php endif; ?>
     <?php endif; ?>

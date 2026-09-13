@@ -39,13 +39,8 @@ final class SiteCustomerReviewGuard
         $sites->execute(['business_id' => $expected['business_id']]);
         $currentSites = array_values(array_filter($sites->fetchAll(), static fn (array $row): bool => $row['purpose'] === '247sp' && $row['association_role'] === 'customer' && $row['status'] === 'active'));
         if (count($currentSites) !== 1 || (int) $currentSites[0]['id'] !== (int) $site['id']) self::stale();
-        // A matching durable receipt is allowed after close, but never bypasses
-        // current actor/tenant eligibility. It causes no new write or event.
-        if ($receipt) return ['actor' => $actor];
-        if ($expected['lock_version'] !== (int) $site['lock_version'] || $approval['state'] !== 'requested'
-            || $approval['revoked_at'] !== null || $approval['decided_at'] !== null
-            || $revision['materiality'] !== 'material' || $revision['lifecycle_status'] !== 'ready_for_review'
-            || $site['lifecycle_status'] !== 'pending_customer') self::stale();
+        if ($approval['revoked_at'] !== null || in_array($approval['state'], ['revoked', 'superseded'], true)
+            || $revision['materiality'] !== 'material') self::stale();
 
         // Lock current eligibility inputs before the first consistent read. M2/M4
         // serialize composition and successor writers on the site lock.
@@ -56,10 +51,27 @@ final class SiteCustomerReviewGuard
         $requests = $connection->prepare('/* site-m5b:issued-reviews */ SELECT sa.id, sa.state FROM site_approvals sa INNER JOIN site_revisions sr ON sr.id = sa.revision_id AND sr.site_id = sa.site_id WHERE sa.site_id = :site_id AND sa.approval_type = :type ORDER BY sr.revision_number DESC, sa.requested_at DESC, sa.id DESC FOR UPDATE');
         $requests->execute(['site_id' => (int) $site['id'], 'type' => 'customer']);
         $issued = $requests->fetchAll();
+        $openCount = count(array_filter($issued, static fn (array $row): bool => $row['state'] === 'requested'));
         if ($issued === [] || (int) $issued[0]['id'] !== (int) $approval['id']
-            || count(array_filter($issued, static fn (array $row): bool => $row['state'] === 'requested')) !== 1) self::stale();
-        SiteServiceSupport::assertNoNewerMaterialRevision($connection, $revision);
-        if (SiteServiceSupport::effectiveCustomerApproval($connection, $revision) !== null) self::stale();
+            || $openCount !== ($approval['state'] === 'requested' ? 1 : 0)) self::stale();
+        try {
+            SiteServiceSupport::assertNoNewerMaterialRevision($connection, $revision);
+        } catch (SiteServiceException $exception) {
+            if ($exception->classification() !== 'invalid_transition') throw $exception;
+            self::stale();
+        }
+        $effective = SiteServiceSupport::effectiveCustomerApproval($connection, $revision);
+        // A receipt may survive the decision's site-version change, but only on
+        // the same selected review with a consistent M5 terminal state tuple.
+        $terminal = $receipt && $approval['decided_at'] !== null && match ($revision['lifecycle_status']) {
+            'customer_approved' => $approval['state'] === 'approved' && $effective === (int) $approval['id'] && $site['lifecycle_status'] === 'pending_internal_review',
+            'internally_approved' => $approval['state'] === 'approved' && $effective === (int) $approval['id'] && $site['lifecycle_status'] === 'approved',
+            'changes_requested' => $approval['state'] === 'rejected' && $effective === null && $site['lifecycle_status'] === 'draft',
+            default => false,
+        };
+        if (!$terminal && ($expected['lock_version'] !== (int) $site['lock_version'] || $approval['state'] !== 'requested'
+            || $approval['decided_at'] !== null || $effective !== null
+            || $revision['lifecycle_status'] !== 'ready_for_review' || $site['lifecycle_status'] !== 'pending_customer')) self::stale();
         $composition = SiteCompositionManager::validatedCompositionForActor($actorId, (int) $revision['id']);
         if (!hash_equals($expected['snapshot_hash'], $composition['snapshot_hash'])) self::stale();
         SiteCompositionRenderer::render($composition, ['preview_mode' => true]);

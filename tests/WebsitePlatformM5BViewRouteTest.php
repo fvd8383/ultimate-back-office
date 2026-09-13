@@ -20,7 +20,9 @@ function formsM5BV(string $html): array {
                 'textarea' => $node->textContent, 'select' => $node->getElementsByTagName('option')->item(0)->getAttribute('value'), default => $node->getAttribute('value'),
             };
         }
-        $forms[$fields['action']] = $fields;
+        $key = $fields['action'] === 'presentation_preference' ? $fields['action'] . ':' . $fields['target'] : $fields['action'];
+        if (isset($forms[$key])) throw new RuntimeException('Duplicate rendered form would be lost by parser');
+        $forms[$key] = $fields;
     }
     return $forms;
 }
@@ -29,12 +31,30 @@ function checkM5BV(bool $ok, string $message): void { global $assertions; $asser
 Session::start();
 $db = WebsitePlatformM5BDatabase::fixture(); $db->addImage();
 $html = renderM5BV(SiteCustomerReviewWorkflow::workspaceWithForms(3, 50)); $forms = formsM5BV($html);
-checkM5BV(count($forms) === 5, 'Five distinct customer actions render');
+checkM5BV(count($forms) === 6, 'Six forms include separate tone and emphasis preferences');
+checkM5BV(array_values(array_unique(array_column($forms, 'action'))) === SiteCustomerReviewSession::ACTIONS, 'All five distinct actions remain represented');
 foreach ($forms as $action => $fields) {
     checkM5BV(Csrf::validate($fields['csrf_token'], 'customer-website-manager'), 'Every actual form has scoped CSRF');
     foreach (['business_id', 'site_id', 'revision_id', 'request_id', 'actor_user_id', 'correlation_id', 'snapshot_hash'] as $secret) checkM5BV(!array_key_exists($secret, $fields), 'Browser cannot supply authoritative ' . $secret);
 }
 foreach (['Requesting changes ends this review', 'Internal review follows customer approval', 'does not change your preview', 'approving revision 1'] as $notice) checkM5BV(str_contains($html, $notice), 'Action consequence explained');
+$dom = new DOMDocument(); @$dom->loadHTML('<?xml encoding="UTF-8">' . $html); $xpath = new DOMXPath($dom);
+foreach (['tone' => ['professional', 'friendly', 'concise'], 'emphasis' => ['services', 'trust', 'contact']] as $target => $allowed) {
+    $nodes = $xpath->query('//form[.//input[@name="action" and @value="presentation_preference"]][.//input[@name="target" and @value="' . $target . '"]]');
+    checkM5BV($nodes->length === 1, 'Exactly one rendered preference form per category');
+    $node = $nodes->item(0);
+    checkM5BV($xpath->query('.//*[@name="target"]', $node)->length === 1 && $xpath->query('.//input[@name="target" and @type="hidden"]', $node)->length === 1, 'Target is a single fixed hidden control');
+    $values = array_map(fn ($option) => $option->getAttribute('value'), iterator_to_array($xpath->query('.//select[@name="value"]/option', $node)));
+    checkM5BV($values === $allowed, 'All rendered options belong only to ' . $target);
+    $actual = formsM5BV(renderM5BV(SiteCustomerReviewWorkflow::workspaceWithForms(3, 50)))['presentation_preference:' . $target];
+    Csrf::requireValid($actual['csrf_token'], 'customer-website-manager');
+    checkM5BV(SiteCustomerReviewWorkflow::submit(3, $actual, [], 1000)['mutated'], 'Actual rendered ' . $target . ' form succeeds');
+    $forged = $actual; $forged['value'] = $target === 'tone' ? 'services' : 'professional';
+    $snapshot = $db->read->snapshot();
+    try { SiteCustomerReviewWorkflow::submit(3, $forged, [], 1000); throw new RuntimeException('Forged pair accepted'); }
+    catch (SiteServiceException $exception) { checkM5BV($exception->classification() === 'invalid_request', 'Forged cross-category pair remains rejected'); }
+    checkM5BV($snapshot === $db->read->snapshot(), 'Forged pair causes no write/event');
+}
 $form = $forms['feedback']; $form['text'] = 'Customer prose & "quotes"';
 Csrf::requireValid($form['csrf_token'], 'customer-website-manager');
 $receipt = SiteCustomerReviewWorkflow::submit(3, $form, [], 1000);

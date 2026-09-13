@@ -56,8 +56,10 @@ Each eligible manager GET issues a random 32-byte opaque session handle, with a
 two-hour lifetime and a maximum of 20 retained handles. The browser receives the
 handle and separate random action nonces; domain expectations remain server-side.
 The replay key derives from handle/action/nonce. Matching feedback replay returns the
-original receipt without another append/event, including after request closure when
-the actor and tenant remain eligible. Changed payloads conflict. Fresh nonces represent
+original receipt without another append/event, including after a consistent terminal
+decision only when the same review remains selected and current eligibility holds.
+Superseded, revoked, replaced, and newer-material-invalidated reviews reject replay.
+Changed payloads conflict. Fresh nonces represent
 intentional new submissions. Decisions retain M2's conflict-on-second-decision behavior.
 
 Text validation normalizes line endings, trims, validates UTF-8 with PCRE, and enforces
@@ -67,7 +69,9 @@ Feedback and rejection instructions are required; approval comments are optional
 All output is escaped without Markdown interpretation or URL autolinking.
 
 Presentation requests allow one `tone = professional|friendly|concise` or
-`emphasis = services|trust|contact`. Image requests accept only an opaque token derived
+`emphasis = services|trust|contact`. Separate server-rendered tone and emphasis forms
+fix each target in a hidden control and list only that target's values, retaining the
+same presentation action/nonce semantics and server validation. Image requests accept only an opaque token derived
 from a validated image usage in the exact revision, re-resolved on POST, with required
 instructions. Safe page/image labels are projected for both customer and admin views.
 No uploads, asset catalog, arbitrary asset identifiers/URLs, or asset writes are added.
@@ -127,10 +131,10 @@ Modified:
 | Gate | Actual result |
 | --- | --- |
 | All repository standalone `tests/*Test.php` suites | **48/48 PASS** |
-| M5B behavior | **215 assertions PASS** |
+| M5B behavior | **258 assertions PASS** |
 | M5B input/session | **72 assertions PASS** |
-| M5B view/route | **97 assertions PASS** |
-| Combined focused M5B | **384 assertions PASS** |
+| M5B view/route | **118 assertions PASS** |
+| Combined focused M5B | **448 assertions PASS** |
 | M5A behavior/view/scope | **103/40/58 assertions PASS** |
 | Pricing, M1, M2, M3, M4A, M4B, M4C regressions | **All included suites PASS** |
 | Repository PHP lint | **189/189 PASS**, including subsequent lint of all 22 changed/new PHP files |
@@ -167,9 +171,46 @@ nested transactions, and lock ordering. Corrections made during review:
 - Verified all customer/internal prose rendering escapes and dashboard behavior remains
   byte-for-byte equivalent apart from the permitted text changes.
 
-No known unresolved M5B issue was found in this local review. Actual lock scheduling,
+The initial local review missed the two pre-merge findings corrected below. Actual lock scheduling,
 FK/range protection, native PDO execution, and authenticated browser behavior remain
 mandatory unproven gates; local fixtures do not establish them.
+
+## PR #117 pre-merge correction pass
+
+This local correction starts from `a13d876f5628095f9439980bbf0b78eb7267d4c6`
+on the existing branch and PR; the authoritative baseline remains unchanged.
+The GitHub stale-replay finding and the presentation-pair UI finding are addressed:
+
+- Receipt checks no longer return immediately after actor/tenant authorization.
+  Both receipt and open-mutation paths verify exact tuple and active association,
+  newest selected issued request, non-revocation/non-supersession, materiality,
+  no newer material revision, and current validation before receipt lookup can succeed.
+- Terminal receipts require a decision timestamp and one consistent tuple:
+  approved/customer_approved/pending_internal_review;
+  approved/internally_approved/approved; or rejected/changes_requested/draft.
+  Effective customer approval must match the selected request for approved states,
+  and be absent for changes requested. These terminal receipts do not require the
+  pre-decision site lock version. Open replay and every fresh append retain all
+  original open-review/version requirements. Matching payload/key is still mandatory.
+- Executable regressions return the exact original receipt with `replayed = true`
+  for all three terminal states and verify zero metadata/event/lifecycle writes.
+  Superseded, revoked, revoked-timestamp, replacement-on-same-revision, newer-material,
+  inconsistent-state, and missing-decision-timestamp cases return conflict with no
+  writes. Actor, membership, business, module, internal-role, association, and site
+  eligibility-loss cases still deny matching replay without writes.
+- Presentation preferences use two forms with fixed hidden targets. The DOM parser
+  preserves both forms explicitly: six forms still represent five distinct actions.
+  Every form retains CSRF and secret-field assertions. Tests verify exact option sets,
+  successful actual rendered tone/emphasis submissions, and server rejection of both
+  forged cross-category pairs with zero writes. No JavaScript is required.
+
+Correction changes are limited to `SiteCustomerReviewGuard.php`,
+`site-customer-review.php`, the M5B behavior and view/route tests, and this record.
+Current focused totals are **258 behavior / 72 input-session / 118 view-route = 448**.
+The full **48/48** standalone set and **189/189** repository lint pass, including
+M2 approval and M5A regressions. Markdown and working/cached/committed diff checks pass.
+Both findings are resolved in code and executable local regression coverage; this is
+not a staging or browser PASS. M5B remains IMPLEMENTED LOCALLY / REVIEW REQUIRED.
 
 ## Environment distinctions and next gate
 

@@ -150,4 +150,43 @@ foreach ([1205, 1213] as $code) {
         checkM5B($snapshot === $db->read->snapshot(), 'Simulated timeout/deadlock rolls back all domain writes and events');
     }
 }
+// Original service receipts, not merely workflow success messages, must survive
+// only a consistent decision on the still-selected review.
+foreach (['customer_approved', 'internally_approved', 'changes_requested'] as $terminal) {
+    $db = WebsitePlatformM5BDatabase::fixture(); $form = formM5B();
+    $binding = SiteCustomerReviewSession::resolve($form['review_handle'], $form['submission_nonce'], 'feedback', 3);
+    $record = fn () => SiteApprovalManager::recordCustomerFeedback(3, $binding['context'], ['kind' => 'feedback', 'text' => $form['text']], $binding['submission_key_hash']);
+    $original = $record();
+    submitM5B(formM5B(3, $terminal === 'changes_requested' ? 'request_changes' : 'approve_revision'));
+    if ($terminal === 'internally_approved') {
+        $internal = SiteApprovalManager::requestApproval(1, 100, 'internal');
+        SiteApprovalManager::decideApproval(1, $internal['approval_id'], 'approved');
+    }
+    checkM5B($binding['context']['lock_version'] !== $db->read->base->sites[10]['lock_version'], 'Decision changes the original site version');
+    $snapshot = $db->read->snapshot(); $replay = $record();
+    checkM5B($replay === array_replace($original, ['replayed' => true]), 'Original receipt returned for selected ' . $terminal);
+    checkM5B($snapshot === $db->read->snapshot(), 'Terminal receipt has no metadata/event/lifecycle writes');
+}
+$obsolete = [
+    'superseded' => fn ($d) => $d->read->base->approvals[700]['state'] = 'superseded',
+    'revoked' => fn ($d) => $d->read->base->approvals[700]['state'] = 'revoked',
+    'revoked timestamp' => fn ($d) => $d->read->base->approvals[700]['revoked_at'] = '2026-09-13',
+    'same revision replacement' => fn ($d) => $d->read->base->approvals[701] = WebsitePlatformM5ADatabase::request(701, 100),
+    'newer material' => fn ($d) => $d->read->base->revisions[101] = array_replace($d->read->base->revisions[100], ['id' => 101, 'revision_number' => 2, 'lifecycle_status' => 'draft']),
+    'inconsistent site' => fn ($d) => $d->read->base->sites[10]['lifecycle_status'] = 'draft',
+    'inconsistent revision' => fn ($d) => $d->read->base->revisions[100]['lifecycle_status'] = 'changes_requested',
+    'missing decision timestamp' => fn ($d) => $d->read->base->approvals[700]['decided_at'] = null,
+];
+foreach ($obsolete as $name => $change) {
+    $db = WebsitePlatformM5BDatabase::fixture(); $form = formM5B(); submitM5B($form);
+    submitM5B(formM5B(3, 'approve_revision')); $change($db); $snapshot = $db->read->snapshot();
+    denyM5B(fn () => submitM5B($form), 'conflict');
+    checkM5B($snapshot === $db->read->snapshot(), 'Obsolete matching replay has no receipt/write/event: ' . $name);
+}
+foreach (['actor inactive', 'membership inactive', 'business inactive', 'business suspended', 'business module disabled', 'global module disabled', 'internal Admin grant', 'tenant reassigned', 'site suspended'] as $name) {
+    $db = WebsitePlatformM5BDatabase::fixture(); $form = formM5B(); submitM5B($form);
+    submitM5B(formM5B(3, 'approve_revision')); $cases[$name]($db); $snapshot = $db->read->snapshot();
+    denyM5B(fn () => submitM5B($form));
+    checkM5B($snapshot === $db->read->snapshot(), 'Matching receipt cannot bypass current authority: ' . $name);
+}
 echo "Website platform M5B behavior: $assertions assertions passed.\n";
