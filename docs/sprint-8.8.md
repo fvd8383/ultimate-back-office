@@ -1,5 +1,41 @@
 # Sprint 8.8 — Website Platform And Component CMS
 
+## M5B staging closeout — 2026-09-13
+
+**M5B COMPLETE / STAGING PASS / FORMALLY CLOSED** on deployed/validated SHA
+`8cd63146713ef8fef26fd2861e960ac64ee1387a`. M5A remains **COMPLETE / STAGING PASS /
+FORMALLY CLOSED**. M5 is **IN PROGRESS**; M5C is **NEXT / NOT STARTED**; M6 is
+**NOT STARTED**. Migration 025 is absent/reserved for M6. Production is
+**UNAUTHORIZED / NOT DEPLOYED**. This is an external documentation export; the deployed
+checkout was not edited and no deployment, migration, commit, or PR occurred in the
+completion run. See [M5B closeout](sprint-8.8-m5b-closeout.md).
+
+Completed M5B gates: customer feedback/tone/emphasis/image-request browser mutations;
+customer approval and request-changes with exact POST303GET receipts and legal DB
+states; stale-tab409 with zero writes; populated cross-tenant manager/preview denial;
+both forged preference400 cases with zero writes; targeted leakage; and the earlier
+real-MySQL/concurrency/replay/HTTP/security validation. All 81 staging table counts
+reconciled after final synthetic cleanup. Customer approval does not publish or
+automatically create an internal approval request.
+
+M5C follow-up observations and scope: approximately 11px overflow at 360px; PRG focus
+observed on BODY; full responsive matrix; actual 200% zoom; keyboard/accessibility
+and screen-reader validation; complete console/network QA and integrated browser
+testing. These were explicitly deferred by the final M5B closure request and are not
+claimed complete. Prior shared global-module-disable and exact independent 128KiB
+valid-history limitations remain documented and do not independently block M5B closure.
+
+The immutable four-report evidence chain is:
+
+1. Backend / real MySQL: `/home/codex-validation/ubo-sprint-8.8-m5b-final-validation-20260913T205919Z/SPRINT-8.8-M5B-STAGING-FINAL-VALIDATION.md`
+   SHA-256: `8d74bd6b479a84e04b68fd3136df71d032fda12f34785f147954ef2e9bdae909`
+2. Staging-host browser dependency report: `/home/codex-validation/ubo-sprint-8.8-m5b-browser-completion-20260913T212752Z/SPRINT-8.8-M5B-BROWSER-COMPLETION.md`
+   SHA-256: `354b02c454dd84c345fb9ecd8d9efa47f7e5449840b77dcc0004b18ef2c1d1f3`
+3. External browser partial report: `/home/codex-validation/ubo-sprint-8.8-m5b-browser-external-20260913T214743Z/SPRINT-8.8-M5B-EXTERNAL-BROWSER-VALIDATION.md`
+   SHA-256: `febc8c065a9e3e6d95daee8f34d07f34baab0dda1af96764a18164d930b59deb`
+4. Final browser mutation completion: `/home/codex-validation/ubo-sprint-8.8-m5b-browser-final-20260913T220233Z/SPRINT-8.8-M5B-FINAL-BROWSER-MUTATION-VALIDATION.md`
+   SHA-256: `3bdb19ff3d3bcb6aa7e2a5fd472f36864029474c59bb66612acd1a1e15e6620b`
+
 ## Status And Objective
 
 Sprint 8.8 is **IN PROGRESS**.
@@ -16,8 +52,8 @@ deployed, and validated SHA `557cc34fe4cf3ab56cdcb59fd7c623c495fd8eaf`, and M4C 
 **COMPLETE / STAGING PASS / FORMALLY CLOSED** on PR #112 merge and final M4
 deployed/validated SHA `d33589da5eebbf8e2ae0dc203837d6667abd1f71`.
 M5 is **IN PROGRESS**; M5A is **COMPLETE / STAGING PASS / FORMALLY CLOSED** on
-`ee8c670a6dc8bc19ecb0786dff62abfea645aff3`, M5B is **IMPLEMENTED LOCALLY / REVIEW REQUIRED**, and M5C
-is **NOT STARTED**.
+`ee8c670a6dc8bc19ecb0786dff62abfea645aff3`, M5B is **COMPLETE / STAGING PASS / FORMALLY CLOSED**, and M5C
+is **NEXT / NOT STARTED**.
 Production is **UNAUTHORIZED / NOT DEPLOYED**. The detailed
 completion records are `docs/sprint-8.8-m1-closeout.md`,
 `docs/sprint-8.8-m2-closeout.md`, `docs/sprint-8.8-m3-closeout.md`,
@@ -484,8 +520,8 @@ from service or source-contract coverage.
 ## M5 — Customer Preview / Feedback / Approval
 
 Status: **IN PROGRESS**. M5A is **COMPLETE / STAGING PASS / FORMALLY CLOSED** on
-`ee8c670a6dc8bc19ecb0786dff62abfea645aff3`. M5B is **IMPLEMENTED LOCALLY / REVIEW REQUIRED** and M5C
-is **NOT STARTED**. M5–M8 remain unfinished milestones within Sprint 8.8 and are
+`ee8c670a6dc8bc19ecb0786dff62abfea645aff3`. M5B is **COMPLETE / STAGING PASS / FORMALLY CLOSED** and M5C
+is **NEXT / NOT STARTED**. M5–M8 remain unfinished milestones within Sprint 8.8 and are
 required before the sprint closes.
 
 M5A adds a customer-only read boundary, an allowlisted issued-review DTO, a dedicated
@@ -502,12 +538,14 @@ explicitly NOT EXECUTABLE because no browser runtime/operator was available, whi
 M5A exit gate permits as blocked evidence; the complete browser matrix remains mandatory
 for M5C. See [M5A closeout](sprint-8.8-m5a-closeout.md).
 
-M5B now implements feedback, permitted advisory input, and exact revision decisions
-locally. Its [implementation record](sprint-8.8-m5b-local-implementation.md) records
-48/48 standalone suites, 215/72/97 focused assertions, 189/189 PHP lint, and the
-security self-review. M5B remains **IMPLEMENTED LOCALLY / REVIEW REQUIRED**;
-staging, real-MySQL concurrency, and authenticated browser mutation gates were NOT RUN.
-No deployment, migration, M5C, M6, provider, public runtime, or production action occurred.
+M5B feedback, advisory presentation/image requests, and exact revision decisions are
+**COMPLETE / STAGING PASS / FORMALLY CLOSED** on deployed SHA
+`8cd63146713ef8fef26fd2861e960ac64ee1387a`. The four-report
+[M5B closeout](sprint-8.8-m5b-closeout.md) records 48/48 deployed suites, 258/72/118
+focused assertions, 189/189 PHP lint, real-MySQL concurrency/replay/security gates,
+and completed authenticated browser mutation validation. This validation/closeout
+performed no deployment or migration and changed no application/provider/public runtime.
+Full responsive/accessibility/integrated browser work remains M5C; M6 is NOT STARTED.
 
 ### Deliverables
 
@@ -644,7 +682,8 @@ are formally closed. The final integrated M4 real-MySQL gate passed on
 `d33589da5eebbf8e2ae0dc203837d6667abd1f71` with the authenticated-browser limitation
 retained. This completes M4's internal administrative workflow exit gate, not the
 Sprint 8.8 M1–M8 exit gate. M5 is **IN PROGRESS**; M5A is **COMPLETE / STAGING PASS /
-FORMALLY CLOSED**, while M5B/M5C and the remaining M6–M8 customer/public/runtime work
+FORMALLY CLOSED**; M5B is also **COMPLETE / STAGING PASS / FORMALLY CLOSED**, while
+M5C and the remaining M6–M8 customer/public/runtime work
 and validation are still required before Sprint 8.8 closes.
 Production remains **UNAUTHORIZED / NOT DEPLOYED**, and M4 does not establish
 first-customer readiness.
