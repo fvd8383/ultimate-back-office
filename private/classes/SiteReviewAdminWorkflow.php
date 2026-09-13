@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/SiteApprovalManager.php';
 require_once __DIR__ . '/SiteCompositionManager.php';
+require_once __DIR__ . '/SiteCustomerFeedback.php';
+require_once __DIR__ . '/SiteCustomerReviewGuard.php';
 
 final class SiteReviewAdminWorkflow
 {
@@ -19,7 +21,11 @@ final class SiteReviewAdminWorkflow
 
         $openCustomer = null;
         $openInternal = null;
+        $customerSubmissions = [];
         foreach ($approvals as $approval) {
+            if ($approval['approval_type'] === 'customer') {
+                $customerSubmissions = array_merge($customerSubmissions, SiteCustomerFeedback::projection($approval['metadata_json'] ?? null, SiteCustomerReviewGuard::images($composition)));
+            }
             if ((string) $approval['state'] !== 'requested') {
                 continue;
             }
@@ -40,6 +46,7 @@ final class SiteReviewAdminWorkflow
             'revision' => $revision,
             'composition' => $composition,
             'approvals' => $approvals,
+            'customer_submissions' => $customerSubmissions,
             'open_customer_request' => $openCustomer,
             'open_internal_request' => $openInternal,
             'capabilities' => $eligibility + [
@@ -109,7 +116,7 @@ final class SiteReviewAdminWorkflow
     {
         if ($classify) return 'Classify this revision’s materiality.';
         if ($submit) return 'Submit the stored composition through the review gate.';
-        if ($customer !== null) return 'Customer review is pending. Customer decisions arrive in M5.';
+        if ($customer !== null) return 'Customer review is pending. Eligible customers respond in Website Manager.';
         if ($internal !== null) return 'Complete the requested internal review.';
         if ($eligibility['can_request_customer_review']) return 'Request customer review.';
         if ($eligibility['can_request_internal_review']) return 'Request internal review.';

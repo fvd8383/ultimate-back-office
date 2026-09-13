@@ -56,6 +56,7 @@ $allowedLaterPublicAppChanges = [
     'public/app/admin/site-preview.php',
     'public/app/admin/site-review.php',
     'public/app/247sp/website-manager.php',
+    'public/app/247sp/dashboard.php', // M5B label-only separation, verified by its view/route suite.
     'public/app/247sp/website-review-preview.php',
 ];
 assertM3Scope(

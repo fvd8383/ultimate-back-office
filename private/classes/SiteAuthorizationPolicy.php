@@ -9,16 +9,32 @@ final class SiteAuthorizationPolicy
     private const INTERNAL_ADMIN_ROLES = ['Super Admin', 'Admin'];
     private const CUSTOMER_APPROVER_ROLES = ['Owner', 'Admin'];
 
-    public static function actorContext(int $actingUserId): array
+    public static function actorContext(int $actingUserId, ?object $lockedConnection = null): array
     {
         SiteServiceSupport::positiveId($actingUserId, 'Acting user ID');
-        return SiteServiceSupport::read(static function (object $connection) use ($actingUserId): array {
+        $resolve = static function (object $connection) use ($actingUserId, $lockedConnection): array {
+            if ($lockedConnection !== null) {
+                if (!$connection->inTransaction()) throw new SiteServiceException('conflict', 'Current authorization requires the owning transaction.');
+                // Lock the parent before the role range. The FK also blocks new grants
+                // while this user lock is held, including under READ COMMITTED.
+                $user = $connection->prepare('SELECT id FROM users WHERE id = :user_id FOR UPDATE');
+                $user->execute(['user_id' => $actingUserId]);
+                $user->fetchAll();
+                $grants = $connection->prepare('SELECT role_id FROM user_roles WHERE user_id = :user_id ORDER BY role_id FOR UPDATE');
+                $grants->execute(['user_id' => $actingUserId]);
+                $grants->fetchAll();
+                // Protect classification changes to already assigned role definitions,
+                // including a scope change from a currently non-internal role.
+                $roles = $connection->prepare('SELECT r.id FROM roles r INNER JOIN user_roles ur ON ur.role_id = r.id WHERE ur.user_id = :user_id ORDER BY r.id FOR SHARE');
+                $roles->execute(['user_id' => $actingUserId]);
+                $roles->fetchAll();
+            }
             $statement = $connection->prepare(
                 'SELECT u.id, u.status, r.name AS role_name
                  FROM users u
                  LEFT JOIN user_roles ur ON ur.user_id = u.id
                  LEFT JOIN roles r ON r.id = ur.role_id AND r.scope = :internal_scope
-                 WHERE u.id = :user_id'
+                 WHERE u.id = :user_id' . ($lockedConnection === null ? '' : ' FOR SHARE')
             );
             $statement->execute(['user_id' => $actingUserId, 'internal_scope' => 'internal']);
             $rows = $statement->fetchAll();
@@ -35,7 +51,8 @@ final class SiteAuthorizationPolicy
                 'is_super_admin' => $isSuperAdmin,
                 'is_internal_admin' => $isInternalAdmin,
             ];
-        });
+        };
+        return $lockedConnection === null ? SiteServiceSupport::read($resolve) : $resolve($lockedConnection);
     }
 
     public static function requireInternalAdmin(int $actingUserId): array
@@ -66,20 +83,20 @@ final class SiteAuthorizationPolicy
         return $actor + self::customerSiteContext($actingUserId, $siteId, false);
     }
 
-    public static function requireCustomerApproval(int $actingUserId, int $siteId): array
+    public static function requireCustomerApproval(int $actingUserId, int $siteId, ?object $lockedConnection = null): array
     {
         SiteServiceSupport::positiveId($siteId, 'Site ID');
-        $actor = self::actorContext($actingUserId);
+        $actor = self::actorContext($actingUserId, $lockedConnection);
         if ($actor['is_internal_admin']) {
             throw new SiteServiceException('unauthorized', 'Internal administrators cannot act as customer approvers.');
         }
-        return $actor + self::customerSiteContext($actingUserId, $siteId, true);
+        return $actor + self::customerSiteContext($actingUserId, $siteId, true, $lockedConnection);
     }
 
-    private static function customerSiteContext(int $actingUserId, int $siteId, bool $approvalRequired): array
+    private static function customerSiteContext(int $actingUserId, int $siteId, bool $approvalRequired, ?object $lockedConnection = null): array
     {
-        return SiteServiceSupport::read(static function (object $connection) use (
-            $actingUserId, $siteId, $approvalRequired
+        $resolve = static function (object $connection) use (
+            $actingUserId, $siteId, $approvalRequired, $lockedConnection
         ): array {
             $statement = $connection->prepare(
                 'SELECT s.id AS site_id, sba.business_id, bu.is_owner, r.name AS business_role
@@ -106,7 +123,7 @@ final class SiteAuthorizationPolicy
                AND m.is_active = 1
              WHERE s.id = :site_id
                AND s.purpose = :purpose
-                 LIMIT 1'
+                 LIMIT 1' . ($lockedConnection === null ? '' : ' FOR SHARE')
             );
             $statement->execute([
                 'association_role' => 'customer',
@@ -135,6 +152,7 @@ final class SiteAuthorizationPolicy
                 'is_owner' => (int) $context['is_owner'] === 1,
                 'business_role' => $context['business_role'],
             ];
-        });
+        };
+        return $lockedConnection === null ? SiteServiceSupport::read($resolve) : $resolve($lockedConnection);
     }
 }

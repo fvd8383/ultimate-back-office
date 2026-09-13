@@ -198,7 +198,7 @@ function sp247_build_launch_readiness(
             'action' => ['label' => 'Choose email', 'href' => 'onboarding.php?business_id=' . $businessId . '&step=email_selection'],
         ],
         [
-            'label' => 'Website Approval',
+            'label' => 'Legacy Website Approval',
             'completed' => $websiteApproved,
             'detail' => $websiteApproved ? 'Your approval has been saved.' : ($previewReady ? 'Approve the preview when it looks ready, or request changes below.' : 'Review and approve your preview once it is ready.'),
             'action' => ['label' => 'Preview website', 'href' => 'site-preview.php?business_id=' . $businessId],
@@ -224,7 +224,7 @@ function sp247_build_launch_readiness(
         $supportingText = 'Payment is requested only after your website preview is ready for approval.';
     } elseif ($previewReady && $paymentComplete && !$websiteApproved) {
         $primaryAction = [
-            'label' => 'Approve & Launch Website',
+            'label' => 'Approve Legacy Website Launch',
             'href' => '',
             'attributes' => ['name' => 'approve_launch', 'value' => '1', 'form' => 'launch-readiness-action-form'],
         ];
@@ -367,6 +367,7 @@ require __DIR__ . '/../../../private/views/account-navigation.php';
                     </div>
                 <?php else: ?>
                     <p class="muted">Review your private website preview, adjust customer-editable content, or request changes from the 247SP team.</p>
+                    <p class="muted">These legacy launch actions are separate from Website Revision Review in Website Manager. Approving a specific revision there does not approve launch or publish your website.</p>
                     <div class="button-row">
                         <?= ui_button('Preview Website', 'site-preview.php?business_id=' . urlencode((string) $businessIdForLinks), 'primary') ?>
                         <?= ui_button('Website Manager', 'website-manager.php?business_id=' . urlencode((string) $businessIdForLinks), 'secondary') ?>
@@ -374,7 +375,7 @@ require __DIR__ . '/../../../private/views/account-navigation.php';
                     <form method="post" action="dashboard.php" class="form-stack">
                         <?= Csrf::input('247sp-dashboard') ?>
                         <input type="hidden" name="business_id" value="<?= e($businessIdForLinks) ?>">
-                        <label>Request Changes
+                        <label>Request Legacy Website Changes
                             <textarea name="change_request" rows="4" maxlength="2000" placeholder="Tell us what you would like changed on the website preview."></textarea>
                         </label>
                         <?= ui_button('Send change request', '', 'secondary', ['name' => 'request_changes', 'value' => '1']) ?>

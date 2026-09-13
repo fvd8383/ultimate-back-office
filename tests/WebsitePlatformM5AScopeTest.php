@@ -34,24 +34,24 @@ exec('git -C ' . escapeshellarg($root) . ' rev-parse ' . escapeshellarg($baselin
 checkM5AScope($status === 0 && trim(implode("\n", $output)) === $baseline, 'The authoritative post-PR-114 M5A baseline must exist.');
 foreach (['database/migrations/023_website_platform_foundation.sql', 'database/migrations/024_component_registry_versioning.sql',
     'private/classes/SiteGenerator.php', 'private/classes/WebsiteManager.php', 'public/marketing', 'public/accounts',
-    'public/app/admin', 'public/app/247sp/dashboard.php', 'public/app/247sp/site-preview.php',
+    'public/app/admin', 'public/app/247sp/site-preview.php',
     'public/app/247sp/lead-submit.php', 'public/app/247sp/onboarding.php', 'public/app/247sp/review.php',
     'public/app/247sp/business-profile.php', 'infrastructure', 'private/classes/domains'] as $path) {
     checkM5AScope(m5aGitQuiet($root, $baseline, $path), 'M5A protected path remains unchanged: ' . $path);
 }
 checkM5AScope(glob($root . '/database/migrations/02[5-9]_*.sql') === [], 'Migration 025+ remains absent.');
 
-checkM5AScope(str_contains($manager, 'SiteCustomerReviewWorkflow::workspace('), 'Website Manager delegates generic customer reads to the M5A workflow.');
+checkM5AScope(str_contains($manager, 'SiteCustomerReviewWorkflow::workspaceWithForms('), 'Website Manager delegates generic customer reads to the M5A workflow.');
 checkM5AScope(str_contains($manager, 'WebsiteManager::saveWebsiteManager(') && str_contains($manager, 'SiteGenerator::websiteForBusiness('), 'Website Manager retains the legacy save and generated-site readers.');
 checkM5AScope(!preg_match('/TwentyFourSevenSalesPartner::(?:approveWebsiteLaunch|requestWebsiteChanges|websiteLaunchApproval)/', $manager), 'Generic review remains separate from legacy activity-based launch approval.');
 checkM5AScope(str_contains($manager, "\$_SERVER['REQUEST_METHOD'] === 'GET'"), 'Generic customer workflow is dispatched only on GET.');
-checkM5AScope(str_contains($manager, "isset(\$_POST['action'])") && str_contains($manager, "isset(\$_POST['request_id'])"), 'Forged generic POST fields cannot fall through to the legacy save.');
+checkM5AScope(str_contains($manager, "!is_string(\$_POST['action'] ?? null)") && str_contains($manager, "\$_POST['action'] === 'legacy_save'"), 'Explicit M5B actions prevent generic POST fallthrough to the legacy save.');
 checkM5AScope(!preg_match('/SiteApprovalManager::|SiteReviewAdminWorkflow::|SiteCompositionEditor::/', $manager), 'Customer manager contains no generic approval or composition mutation.');
 foreach (['Csrf::requireValid(', "'customer-website-manager'", 'Csrf::rotate(', 'true, 303', "Csrf::input('customer-website-manager')"] as $token) {
     checkM5AScope(str_contains($manager, $token), 'Retained legacy manager POST security: ' . $token);
 }
 checkM5AScope(strpos($manager, 'Csrf::requireValid(') < strpos($manager, 'WebsiteManager::saveWebsiteManager(')
-    && strpos($manager, 'Csrf::rotate(') > strpos($manager, 'WebsiteManager::saveWebsiteManager('), 'CSRF validates before the retained save and rotates only after success.');
+    && strrpos($manager, 'Csrf::rotate(') > strpos($manager, 'WebsiteManager::saveWebsiteManager('), 'CSRF validates before the retained save and rotates only after success.');
 checkM5AScope(str_contains($manager, 'catch (CsrfException') && str_contains($manager, 'http_response_code(403)'), 'Invalid retained-form CSRF fails with a safe 403.');
 
 checkM5AScope(str_contains($previewRoute, "\$_SERVER['REQUEST_METHOD'] !== 'GET'") && str_contains($previewRoute, 'http_response_code(405)') && str_contains($previewRoute, "header('Allow: GET')"), 'Customer preview route is GET only with safe 405 behavior.');
@@ -73,10 +73,10 @@ checkM5AScope(str_contains($renderers, "\$context = ['preview_mode' => true, 'na
 
 $m5aSources = implode("\n", [$workflow, $previewService, $previewRoute, $reviewView, $previewView]);
 checkM5AScope(!preg_match('/\b(?:INSERT\s+INTO|UPDATE\s+(?:sites|site_|business)|DELETE\s+FROM|REPLACE\s+INTO|ALTER\s+TABLE|CREATE\s+TABLE|DROP\s+TABLE)\b/i', $m5aSources), 'M5A services/routes/views contain no direct mutation SQL.');
-checkM5AScope(!preg_match('/(?:requestApproval|decideApproval|revokeApproval|markReadyForReview|createAuthoredDraftRevision|replaceDraftComposition)\s*\(/', $m5aSources), 'M5A contains no lifecycle, approval, or composition mutation call.');
-checkM5AScope(!preg_match('/\b(?:review_handle|decision_nonce|feedback_metadata|presentation_preference)\b/i', $m5aSources), 'M5B feedback, decision, handle, and nonce work has not begun.');
+checkM5AScope(!preg_match('/(?:requestApproval|revokeApproval|markReadyForReview|createAuthoredDraftRevision|replaceDraftComposition)\s*\(/', $m5aSources), 'M5B delegates only customer decisions and feedback, with no authoring or internal requests.');
+checkM5AScope(str_contains($workflow, 'SiteApprovalManager::decideApproval(') && str_contains($workflow, 'SiteApprovalManager::recordCustomerFeedback('), 'M5B reuses the authoritative approval manager.');
 checkM5AScope(!preg_match('/(?:Stripe|Twilio|Retell|Vendasta|Namecheap|DigitalOcean|DomainManager|LeadHub|SiteGenerator|WebsiteManager)::|\b(?:curl_|fsockopen|stream_socket_client|file_put_contents|mkdir|rename|unlink|copy)\s*\(/i', $m5aSources), 'M5A customer boundary has no provider, legacy runtime, network, domain, lead, or filesystem side effects.');
 checkM5AScope(!preg_match('/class\s+(?:SiteBuildService|SitePublisher|SiteDeploymentManager)|->\s*(?:publish|deploy|build|restore)\s*\(/i', $m5aSources), 'M6 build, deployment, publishing, and restore work has not begun.');
-checkM5AScope(!preg_match('/<(?:form|button|textarea|select)\b/i', $reviewView), 'Customer review view is read only.');
+checkM5AScope(str_contains($reviewView, "!empty(\$customerReview['submission'])"), 'M5B mutation forms require an eligible server-issued presentation.');
 
 echo "Website platform M5A scope: {$assertions} assertions passed.\n";

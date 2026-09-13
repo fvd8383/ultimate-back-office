@@ -2,10 +2,14 @@
 
 ## 1. Status and authoritative baseline
 
-**M5 IN PROGRESS — M5A COMPLETE / STAGING PASS / FORMALLY CLOSED; M5B NEXT / NOT STARTED; M5C NOT STARTED.**
+**M5 IN PROGRESS — M5A COMPLETE / STAGING PASS / FORMALLY CLOSED; M5B IMPLEMENTED LOCALLY / REVIEW REQUIRED; M5C NOT STARTED.**
 M1–M4 remain COMPLETE / STAGING PASS / FORMALLY CLOSED. M6–M8 remain NOT STARTED.
 Sprint 8.8 remains IN PROGRESS. Production remains UNAUTHORIZED / NOT DEPLOYED.
-This closeout does not authorize M5B/M5C implementation, M6 work, or production.
+M5B local implementation was separately authorized. This record does not authorize
+deployment, M5C, M6 work, or production. The [M5B local implementation record](sprint-8.8-m5b-local-implementation.md)
+documents its security design and local validation from baseline
+`2c742190809006008b42f7e2c7075701047ac74b`: 48/48 standalone suites, focused
+215/72/97 assertions, and 189/189 PHP lint. M5B staging/MySQL/browser gates remain NOT RUN.
 
 Authoritative planning baseline: `c2efc5d210b9c6528414f9096acddd815f7e8985`
 in `fvd8383/ultimate-back-office`. The session initially found clean local `main` at
@@ -32,7 +36,8 @@ completed legacy Website Manager is not evidence of M5 completion.
 
 Throughout the original contract, “existing” describes inspected planning-baseline
 code and “must” or “proposed” records the locked design. The M5A service and route names
-are now implemented locally; M5B/M5C language remains future work.
+are now implemented. M5B's previously proposed mutation boundaries are implemented
+locally as recorded above; M5C and real-MySQL/browser mutation gates remain future work.
 
 ## 2. Repository audit and evidence inventory
 
@@ -512,7 +517,8 @@ the failed action. Customer DTOs contain no internal reasons or actor identifier
 ## 15. Test strategy and evidence distinctions
 
 The M5A subsets below have deployed executable coverage recorded in the M5A closeout.
-M5B/M5C mutation and final integrated browser requirements remain future work.
+M5B mutation requirements now have local fixture and DOM/source coverage; real-MySQL
+mutation/concurrency and the final integrated browser requirements remain future work.
 
 | Layer | Required executable coverage |
 | --- | --- |
@@ -603,7 +609,7 @@ zero-domain-mutation, concurrency, normal OTP-authenticated HTTP/DOM, legacy CSR
 console, and network smoke is explicitly NOT EXECUTABLE because no browser runtime or
 interactive operator was available; M5A permits blocked evidence, while the complete
 mandatory customer browser matrix remains an M5C exit gate. See
-[M5A closeout](sprint-8.8-m5a-closeout.md). M5B is **NEXT / NOT STARTED** and M5C is
+[M5A closeout](sprint-8.8-m5a-closeout.md). M5B is **IMPLEMENTED LOCALLY / REVIEW REQUIRED** and M5C is
 **NOT STARTED**; M5 and Sprint 8.8 remain in progress.
 
 ## 18. Reconciliation, implementation prerequisites and planning verification

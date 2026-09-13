@@ -72,7 +72,7 @@ assertM4AScope(!str_contains($siteRoute, 'SiteCompositionRenderer::render'), 'M4
 assertM4AScope(!is_file($root . '/public/app/admin/site-editor.php'), 'M4A must add no generic composition editor route.');
 assertM4AScope(str_contains($customerManager, 'WebsiteManager::saveWebsiteManager('), 'M5A must retain the legacy Website Manager save service.');
 assertM4AScope(str_contains($customerManager, 'SiteGenerator::websiteForBusiness('), 'M5A must retain the legacy generated-site reader.');
-assertM4AScope(str_contains($customerManager, 'SiteCustomerReviewWorkflow::workspace('), 'M5A may add only its customer review read boundary to Website Manager.');
+assertM4AScope(str_contains($customerManager, 'SiteCustomerReviewWorkflow::workspaceWithForms('), 'M5A may add only its customer review read boundary to Website Manager.');
 assertM4AScope(str_contains($customerManager, "Csrf::input('customer-website-manager')") && str_contains($customerManager, 'true, 303'), 'M5A secures the retained legacy POST with its dedicated CSRF scope and PRG.');
 assertM4AScope(!preg_match('/SiteApprovalManager::(?:requestApproval|decideApproval|revokeApproval)|SiteRevisionManager::markReadyForReview/', $customerManager), 'M5A Website Manager must not add generic lifecycle mutations.');
 

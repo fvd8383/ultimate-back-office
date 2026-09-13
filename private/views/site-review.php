@@ -2,6 +2,8 @@
 $site = $workspace['site'];
 $revision = $workspace['revision'];
 $caps = $workspace['capabilities'];
+$customerSubmissions = $workspace['customer_submissions'] ?? [];
+require __DIR__ . '/site-customer-submissions.php';
 $postForm = static function (string $action, string $label, array $hidden = [], bool $comment = false) use ($revision): void {
 ?>
 <form method="post" action="site-review.php" class="form-stack">

@@ -3,8 +3,12 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/SiteCompositionManager.php';
+require_once __DIR__ . '/SiteCustomerFeedback.php';
+require_once __DIR__ . '/SiteCustomerReviewSession.php';
+require_once __DIR__ . '/SiteCustomerReviewGuard.php';
+require_once __DIR__ . '/SiteApprovalManager.php';
 
-/** Customer read boundary. No request creation, decisions, or viewed events. */
+/** Customer review boundary; lifecycle decisions remain in SiteApprovalManager. */
 final class SiteCustomerReviewWorkflow
 {
     public static function positiveId(mixed $value): int
@@ -22,13 +26,54 @@ final class SiteCustomerReviewWorkflow
         return self::load($actorId, $businessId, null, false)['review'];
     }
 
+    public static function workspaceWithForms(int $actorId, ?int $businessId = null): array
+    {
+        return self::load($actorId, $businessId, null, false, true)['review'];
+    }
+
+    public static function safeFailureMessage(SiteServiceException $exception): string
+    {
+        // Only these exact, content-free messages may cross the HTTP boundary.
+        return match ($exception->getMessage()) {
+            'This request has reached its feedback limit. Revision decisions remain available.' => 'This request has reached its feedback limit. Revision decisions remain available. Reload to review the current status.',
+            'This request has reached its feedback size limit. Revision decisions remain available.' => 'This request has reached its feedback size limit. Revision decisions remain available. Reload to review the current status.',
+            default => $exception->classification() === 'invalid_request'
+                ? 'Use plain text within 2,000 characters and 5,000 bytes, choose listed options, and submit no files. Reload before trying again.'
+                : 'The submission could not be accepted. Reload and review before trying again.',
+        };
+    }
+
+    public static function submit(int $actorId, array $input, array $files, int $bodyBytes): array
+    {
+        if ($bodyBytes > 16384 || strlen(http_build_query($input)) > 16384 || $files !== []
+            || array_diff(array_keys($input), ['action', 'review_handle', 'submission_nonce', 'csrf_token', 'text', 'target', 'value']) !== []) {
+            throw new SiteServiceException('invalid_request', 'The submitted form is invalid.');
+        }
+        foreach ($input as $value) if (!is_string($value)) throw new SiteServiceException('invalid_request', 'The submitted form is invalid.');
+        $action = $input['action'] ?? '';
+        if (!in_array($action, SiteCustomerReviewSession::ACTIONS, true)) throw new SiteServiceException('invalid_request', 'Choose a listed review action.');
+        $resolved = SiteCustomerReviewSession::resolve($input['review_handle'] ?? null, $input['submission_nonce'] ?? null, $action, $actorId);
+        $context = $resolved['context'];
+        if (in_array($action, ['request_changes', 'approve_revision'], true)) {
+            if (isset($input['target']) || isset($input['value'])) throw new SiteServiceException('invalid_request', 'The decision form is invalid.');
+            $comment = SiteCustomerReviewInput::text($input['text'] ?? '', $action === 'request_changes');
+            SiteApprovalManager::decideApproval($actorId, $context['request_id'], $action === 'request_changes' ? 'rejected' : 'approved', $comment, null, $context);
+            $message = $action === 'request_changes' ? 'Changes requested.' : 'Approved by customer; awaiting internal review.';
+        } else {
+            $payload = ['kind' => $action] + array_intersect_key($input, array_flip(['text', 'target', 'value']));
+            $receipt = SiteApprovalManager::recordCustomerFeedback($actorId, $context, $payload, $resolved['submission_key_hash']);
+            $message = 'Sent for consideration; this does not change your preview.';
+        }
+        return ['message' => $message, 'location' => 'website-manager.php?business_id=' . $context['business_id'], 'mutated' => !($receipt['replayed'] ?? false)];
+    }
+
     /** Server-only validated render input; customer views receive only the review DTO. */
     public static function validatedPreview(int $actorId, int $businessId, int $requestId): array
     {
         return self::load($actorId, $businessId, self::positiveId($requestId), true);
     }
 
-    private static function load(int $actorId, ?int $businessId, ?int $expectedRequest, bool $preview): array
+    private static function load(int $actorId, ?int $businessId, ?int $expectedRequest, bool $preview, bool $forms = false): array
     {
         self::requireCustomer($actorId);
         if ($businessId !== null) self::positiveId($businessId);
@@ -41,7 +86,7 @@ final class SiteCustomerReviewWorkflow
         $siteId = $candidates === [] ? null : (int) $candidates[0]['id'];
 
         return SiteServiceSupport::transaction(static function (object $connection) use (
-            $actorId, $businessId, $siteId, $expectedRequest, $preview
+            $actorId, $businessId, $siteId, $expectedRequest, $preview, $forms
         ): array {
             // Existing M2 writers serialize on the site. All subsequent plain reads
             // share the transaction snapshot; no domain rows are changed by this read.
@@ -74,7 +119,7 @@ final class SiteCustomerReviewWorkflow
             $requests = $connection->prepare(
                 '/* site-m5a:issued-reviews */
                  SELECT sa.id, sa.site_id, sa.revision_id, sa.state, sa.requested_at, sa.decided_at,
-                        sa.revoked_at, sr.site_id AS revision_site_id, sr.revision_number
+                        sa.revoked_at, sa.metadata_json, sa.comments, sa.actor_type, sr.site_id AS revision_site_id, sr.revision_number
                  FROM site_approvals sa
                  LEFT JOIN site_revisions sr ON sr.id = sa.revision_id
                  WHERE sa.site_id = :site_id AND sa.approval_type = :type
@@ -128,15 +173,30 @@ final class SiteCustomerReviewWorkflow
             $review['status'] = $status;
             $review['status_label'] = match ($status) {
                 'ready_for_review' => 'Revision ready for review',
-                'customer_approved' => 'Customer approved — awaiting internal review',
+                'customer_approved' => 'Approved by customer; awaiting internal review.',
                 'internally_approved' => 'Internal review complete. Approval does not publish your website.',
-                'changes_requested' => 'Changes requested',
+                'changes_requested' => 'Changes requested.',
             };
             $review['revision_number'] = (int) $revision['revision_number'];
             $review['requested_at'] = (string) $request['requested_at'];
             $review['decided_at'] = $request['decided_at'];
             $review['preview_available'] = true;
             $review['preview_href'] = 'website-review-preview.php?business_id=' . $businessId . '&request_id=' . (int) $request['id'];
+            if ($forms) {
+                $review['feedback'] = SiteCustomerFeedback::projection($request['metadata_json'] ?? null, SiteCustomerReviewGuard::images($composition));
+                $review['decision_comment'] = in_array($request['state'], ['approved', 'rejected'], true)
+                    && ($request['actor_type'] ?? '') === 'customer' ? ($request['comments'] ?? null) : null;
+                $review['submission'] = null;
+                $review['image_targets'] = SiteCustomerReviewGuard::images($composition);
+                if ($status === 'ready_for_review' && !$review['decision_read_only']) {
+                    SiteAuthorizationPolicy::requireCustomerApproval($actorId, $siteId);
+                    $review['submission'] = SiteCustomerReviewSession::issue([
+                        'actor_user_id' => $actorId, 'business_id' => $businessId, 'site_id' => $siteId,
+                        'revision_id' => (int) $revision['id'], 'request_id' => (int) $request['id'],
+                        'snapshot_hash' => (string) $composition['snapshot_hash'], 'lock_version' => (int) $site['lock_version'],
+                    ]);
+                }
+            }
             return self::result($review, $composition, $preview);
         });
     }

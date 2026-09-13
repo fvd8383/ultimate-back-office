@@ -13,10 +13,12 @@ if (!in_array($_SERVER['REQUEST_METHOD'], ['GET', 'POST'], true)) {
     http_response_code(405);
     exit;
 }
-// The only retained POST path is the existing settings save. Generic commands
-// must never fall through to it, including future or forged review actions.
+// Every form explicitly identifies its action. Missing/unknown generic actions
+// can never enter the retained legacy settings handler.
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && (
-    isset($_POST['action']) || isset($_POST['revision_id']) || isset($_POST['request_id']) || isset($_POST['site_id'])
+    !is_string($_POST['action'] ?? null)
+    || !in_array($_POST['action'], array_merge(['legacy_save'], SiteCustomerReviewSession::ACTIONS), true)
+    || ($_POST['action'] === 'legacy_save' && array_intersect(array_keys($_POST), ['review_handle', 'submission_nonce', 'revision_id', 'request_id', 'site_id']) !== [])
 )) {
     http_response_code(400);
     exit;
@@ -50,7 +52,9 @@ $overrides = [];
 $loadError = '';
 $actionError = '';
 $accessDenied = false;
-$saved = isset($_GET['saved']);
+$saved = ($_SESSION['website_manager_flash'] ?? null) === 'Website settings saved.';
+$reviewReceipt = $_SESSION['website_manager_flash'] ?? null;
+unset($_SESSION['website_manager_flash']);
 $customerReview = null;
 
 try {
@@ -62,6 +66,27 @@ try {
         exit;
     }
 
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && $_POST['action'] !== 'legacy_save') {
+        $reviewFailure = 'The submission could not be accepted. Reload and review before trying again.';
+        try {
+            Csrf::requireValid($_POST['csrf_token'] ?? null, 'customer-website-manager');
+            $receipt = SiteCustomerReviewWorkflow::submit((int) $user['id'], $_POST, $_FILES, (int) ($_SERVER['CONTENT_LENGTH'] ?? 0));
+            $_SESSION['website_manager_flash'] = $receipt['message'];
+            if ($receipt['mutated']) Csrf::rotate('customer-website-manager');
+            header('Location: ' . $receipt['location'], true, 303);
+            exit;
+        } catch (CsrfException) {
+            http_response_code(403);
+        } catch (SiteServiceException $exception) {
+            $reviewFailure = SiteCustomerReviewWorkflow::safeFailureMessage($exception);
+            http_response_code(match ($exception->classification()) {
+                'invalid_request' => 400, 'unauthorized', 'not_found' => 404, default => 409,
+            });
+        } catch (Throwable) { http_response_code(409); }
+        echo '<p>' . htmlspecialchars($reviewFailure, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '</p><a href="website-manager.php">Reload Website Manager</a>';
+        exit;
+    }
+
     $selection = array_key_exists('business_id', $_POST) ? $_POST : $_GET;
     $requestedBusinessId = array_key_exists('business_id', $selection)
         ? SiteCustomerReviewWorkflow::positiveId($selection['business_id']) : null;
@@ -69,7 +94,7 @@ try {
     if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         try {
             if (array_diff(array_keys($_GET), ['business_id', 'saved']) === []) {
-                $customerReview = SiteCustomerReviewWorkflow::workspace((int) $user['id'], $requestedBusinessId);
+                $customerReview = SiteCustomerReviewWorkflow::workspaceWithForms((int) $user['id'], $requestedBusinessId);
             }
         } catch (Throwable) { $customerReview = null; }
     }
@@ -83,7 +108,8 @@ try {
             Csrf::requireValid($_POST['csrf_token'] ?? null, 'customer-website-manager');
             WebsiteManager::saveWebsiteManager($businessId, (int) $user['id'], $_POST, $_FILES);
             Csrf::rotate('customer-website-manager');
-            header('Location: website-manager.php?business_id=' . urlencode((string) $businessId) . '&saved=1', true, 303);
+            $_SESSION['website_manager_flash'] = 'Website settings saved.';
+            header('Location: website-manager.php?business_id=' . urlencode((string) $businessId), true, 303);
             exit;
         }
 
@@ -314,6 +340,7 @@ require __DIR__ . '/../../../private/views/account-navigation.php';
                     · <a href="business-profile.php?business_id=<?= e($businessIdForLinks) ?>">Business Profile</a></p>
             </section>
             <form method="post" action="website-manager.php" enctype="multipart/form-data" class="website-manager-form">
+                <input type="hidden" name="action" value="legacy_save">
                 <?= Csrf::input('customer-website-manager') ?>
                 <input type="hidden" name="business_id" value="<?= e($businessIdForLinks) ?>">
 
