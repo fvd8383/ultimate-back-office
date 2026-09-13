@@ -1,6 +1,22 @@
 # Sprint 8.8 M5 — Customer Preview / Feedback / Approval Contract
 
-## M5B staging closeout — 2026-09-13
+## Current M5C local implementation status
+
+**M5C IMPLEMENTED LOCALLY / REVIEW REQUIRED**. M5 and Sprint 8.8 remain **IN PROGRESS**.
+M1–M4, M5A and M5B remain COMPLETE / STAGING PASS / FORMALLY CLOSED; M6 remains
+NOT STARTED. Production remains UNAUTHORIZED / NOT DEPLOYED. See the
+[M5C local implementation and QA record](sprint-8.8-m5c-local-implementation.md)
+for scoped responsive/focus/accessibility corrections, 50/50 local standalone suites,
+193/193 PHP lint, synthetic browser evidence and the final validation checklist.
+The complete authenticated browser matrix, actual 200% zoom, keyboard, screen reader,
+console/network and integrated workflows AND the final real-MySQL concurrency,
+eligibility, metadata/private-data/lifecycle integrity and cleanup gates remain
+required after separately authorized deployment. No M5C staging PASS or M5 closeout.
+
+The M5B closeout snapshot below preserves historical M5C NEXT / NOT STARTED wording;
+this current status supersedes that wording without changing the M5B evidence.
+
+## M5B staging closeout — 2026-09-13 (historical snapshot)
 
 **M5B COMPLETE / STAGING PASS / FORMALLY CLOSED** on deployed/validated SHA
 `8cd63146713ef8fef26fd2861e960ac64ee1387a`. M5A remains **COMPLETE / STAGING PASS /
@@ -42,7 +58,7 @@ The immutable four-report evidence chain is:
 
 ## 1. Status and authoritative baseline
 
-**M5 IN PROGRESS — M5A COMPLETE / STAGING PASS / FORMALLY CLOSED; M5B COMPLETE / STAGING PASS / FORMALLY CLOSED; M5C NEXT / NOT STARTED.**
+**M5 IN PROGRESS — M5A COMPLETE / STAGING PASS / FORMALLY CLOSED; M5B COMPLETE / STAGING PASS / FORMALLY CLOSED; M5C IMPLEMENTED LOCALLY / REVIEW REQUIRED.**
 M1–M4 remain COMPLETE / STAGING PASS / FORMALLY CLOSED. M6–M8 remain NOT STARTED.
 Sprint 8.8 remains IN PROGRESS. Production remains UNAUTHORIZED / NOT DEPLOYED.
 M5B is deployed and validated on `8cd63146713ef8fef26fd2861e960ac64ee1387a`.
@@ -657,7 +673,7 @@ console, and network smoke is explicitly NOT EXECUTABLE because no browser runti
 interactive operator was available; M5A permits blocked evidence, while the complete
 mandatory customer browser matrix remains an M5C exit gate. See
 [M5A closeout](sprint-8.8-m5a-closeout.md). M5B is **COMPLETE / STAGING PASS / FORMALLY CLOSED** and M5C is
-**NEXT / NOT STARTED**; M5 and Sprint 8.8 remain in progress.
+**IMPLEMENTED LOCALLY / REVIEW REQUIRED**; M5 and Sprint 8.8 remain in progress.
 
 ## 18. Reconciliation, implementation prerequisites and planning verification
 

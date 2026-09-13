@@ -1907,6 +1907,31 @@ button:hover,
     border-radius: 999px;
 }
 
+/* Customer review prose can contain long URLs or unbroken plain text. Allow
+   wrapping to contribute to grid intrinsic sizing instead of widening the page. */
+.site-customer-review,
+.site-customer-submissions,
+.site-customer-preview,
+.site-customer-context {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.site-customer-review fieldset {
+    min-inline-size: 0;
+}
+
+.site-customer-review textarea {
+    max-width: 100%;
+    resize: vertical;
+}
+
+.site-customer-review :is(a, button, select, textarea):focus-visible,
+.site-customer-receipt:focus {
+    outline: 3px solid var(--ubo-primary);
+    outline-offset: 2px;
+}
+
 .website-manager-form,
 .website-manager-section {
     display: grid;

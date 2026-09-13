@@ -83,7 +83,7 @@ try {
                 'invalid_request' => 400, 'unauthorized', 'not_found' => 404, default => 409,
             });
         } catch (Throwable) { http_response_code(409); }
-        echo '<p>' . htmlspecialchars($reviewFailure, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '</p><a href="website-manager.php">Reload Website Manager</a>';
+        require __DIR__ . '/../../../private/views/site-customer-review-error.php';
         exit;
     }
 
@@ -305,7 +305,7 @@ require __DIR__ . '/../../../private/views/header.php';
 require __DIR__ . '/../../../private/views/account-navigation.php';
 ?>
 <?php application_shell_begin('247sp', ['area' => 'app_247sp', 'user' => $user, 'business' => $business, 'secondary_nav' => sp247_manager_nav($businessIdForLinks, 'manager', $businessIdForLinks > 0 && !$accessDenied)]); ?>
-        <section class="hero-panel product-hero product-hero--247sp">
+        <section class="hero-panel product-hero product-hero--247sp site-customer-context">
             <p class="eyebrow">Website Manager</p>
             <h1><?= $business ? e($business['business_name']) : '247SP website manager' ?></h1>
             <p class="muted">View your website revision review and manage your existing website settings.</p>

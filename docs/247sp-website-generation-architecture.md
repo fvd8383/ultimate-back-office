@@ -1,6 +1,22 @@
 # 24/7SP Website Generation Architecture
 
-## M5B staging closeout — 2026-09-13
+## Current M5C local implementation status
+
+**M5C IMPLEMENTED LOCALLY / REVIEW REQUIRED**. M5 and Sprint 8.8 remain **IN PROGRESS**.
+M1–M4, M5A and M5B remain COMPLETE / STAGING PASS / FORMALLY CLOSED; M6 remains
+NOT STARTED. Production remains UNAUTHORIZED / NOT DEPLOYED. See the
+[M5C local implementation and QA record](sprint-8.8-m5c-local-implementation.md)
+for scoped responsive/focus/accessibility corrections, 50/50 local standalone suites,
+193/193 PHP lint, synthetic browser evidence and the final validation checklist.
+The complete authenticated browser matrix, actual 200% zoom, keyboard, screen reader,
+console/network and integrated workflows AND the final real-MySQL concurrency,
+eligibility, metadata/private-data/lifecycle integrity and cleanup gates remain
+required after separately authorized deployment. No M5C staging PASS or M5 closeout.
+
+The M5B closeout snapshot below preserves historical M5C NEXT / NOT STARTED wording;
+this current status supersedes that wording without changing the M5B evidence.
+
+## M5B staging closeout — 2026-09-13 (historical snapshot)
 
 **M5B COMPLETE / STAGING PASS / FORMALLY CLOSED** on deployed/validated SHA
 `8cd63146713ef8fef26fd2861e960ac64ee1387a`. M5A remains **COMPLETE / STAGING PASS /
@@ -53,7 +69,7 @@ FORMALLY CLOSED** on deployed/validated SHA
 [M5A closeout](sprint-8.8-m5a-closeout.md). M5B customer mutation work is **COMPLETE /
 STAGING PASS / FORMALLY CLOSED** on `8cd63146713ef8fef26fd2861e960ac64ee1387a`; see
 [M5B closeout](sprint-8.8-m5b-closeout.md). M5C integrated customer QA and closeout is
-**NEXT / NOT STARTED**; its complete authenticated browser matrix and final integrated
+**IMPLEMENTED LOCALLY / REVIEW REQUIRED**; its complete authenticated browser matrix and final integrated
 real-MySQL concurrency/eligibility/integrity run remain mandatory. Public publishing, runtime
 cutover, M6+, providers, and production remain future work; architectural descriptions
 below do not claim their implementation. Production is **UNAUTHORIZED / NOT DEPLOYED**.
@@ -67,7 +83,7 @@ are **COMPLETE / STAGING PASS / FORMALLY CLOSED**. Sprint 8.8 remains **IN PROGR
 The final M4
 deployed/validated SHA is `d33589da5eebbf8e2ae0dc203837d6667abd1f71`; see
 `docs/sprint-8.8-m4-closeout.md`. M5 is **IN PROGRESS**: M5B is **COMPLETE / STAGING PASS / FORMALLY CLOSED**
-and M5C is **NEXT / NOT STARTED**. M6 is **NOT STARTED**.
+and M5C is **IMPLEMENTED LOCALLY / REVIEW REQUIRED**. M6 is **NOT STARTED**.
 
 Milestone 7 locked the executable Sprint 8.8 sequence in `docs/sprint-8.8.md` and the
 initial planned website migration as `023_website_platform_foundation.sql`. The preceding

@@ -1,4 +1,4 @@
-<section class="hero-panel">
+<section class="hero-panel site-customer-preview">
     <h1>Private revision preview</h1>
     <p><?= e(SiteCustomerPreview::NOTICE) ?></p>
     <p><?= e(SiteCustomerPreview::MEDIA_NOTICE) ?></p>

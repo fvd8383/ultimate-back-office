@@ -1,5 +1,5 @@
 <?php if ($customerSubmissions !== []): ?>
-<section aria-label="Customer submissions">
+<section class="site-customer-submissions" aria-label="Customer submissions">
     <h3>Customer submissions</h3>
     <ol>
     <?php foreach ($customerSubmissions as $entry): ?>

@@ -1,9 +1,11 @@
 <?php
 /** $customerReview is an allowlisted DTO or null; never render raw service errors. */
 ?>
-<section class="business-switcher" aria-labelledby="website-revision-heading">
+<section class="business-switcher site-customer-review" aria-labelledby="website-revision-heading">
     <h2 id="website-revision-heading">Website Revision Review</h2>
-    <?php if (is_string($reviewReceipt ?? null) && !$saved): ?><p role="status"><?= e($reviewReceipt) ?></p><?php endif; ?>
+    <?php if (is_string($reviewReceipt ?? null) && !$saved): ?>
+        <p class="site-customer-receipt" role="status" tabindex="-1" autofocus><?= e($reviewReceipt) ?></p>
+    <?php endif; ?>
     <?php if ($customerReview === null): ?>
         <p>Website revision review is temporarily unavailable.</p>
     <?php else: ?>
@@ -25,7 +27,7 @@
             if (!empty($customerReview['image_targets'])) $actions['image_replacement_request'] = 'Request image replacement';
             $actions += ['request_changes' => 'Request changes', 'approve_revision' => 'Approve this revision'];
         ?>
-            <p>Feedback and preferences are sent for consideration; they do not change your preview. Text is limited to 2,000 characters and 5,000 bytes.</p>
+            <p id="customer-review-guidance">Feedback and preferences are sent for consideration; they do not change your preview. Text is limited to 2,000 characters and 5,000 bytes.</p>
             <?php if (count($customerReview['feedback']) >= 20): ?><p>The feedback limit has been reached. You can still request changes or approve this revision.</p><?php endif; ?>
             <?php foreach ($actions as $action => $label):
                 if (count($customerReview['feedback']) >= 20 && in_array($action, SiteCustomerReviewInput::KINDS, true)) continue;
@@ -48,7 +50,7 @@
                     <?php elseif ($action === 'approve_revision'): ?>
                         <p>You are approving revision <?= e($customerReview['revision_number']) ?>. Approval does not publish your website. Internal review follows customer approval.</p>
                     <?php endif; ?>
-                    <label><?= in_array($action, ['presentation_preference', 'approve_revision'], true) ? 'Comment (optional)' : 'Instructions or feedback (required)' ?><textarea name="text" maxlength="2000" rows="3" <?= in_array($action, ['presentation_preference', 'approve_revision'], true) ? '' : 'required' ?>></textarea></label>
+                    <label><?= in_array($action, ['presentation_preference', 'approve_revision'], true) ? 'Comment (optional)' : 'Instructions or feedback (required)' ?><textarea name="text" maxlength="2000" rows="3" aria-describedby="customer-review-guidance" <?= in_array($action, ['presentation_preference', 'approve_revision'], true) ? '' : 'required' ?>></textarea></label>
                     <button type="submit"><?= e($label) ?></button>
                     </fieldset>
                 </form>

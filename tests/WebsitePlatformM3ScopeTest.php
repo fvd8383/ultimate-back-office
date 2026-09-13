@@ -58,10 +58,11 @@ $allowedLaterPublicAppChanges = [
     'public/app/247sp/website-manager.php',
     'public/app/247sp/dashboard.php', // M5B label-only separation, verified by its view/route suite.
     'public/app/247sp/website-review-preview.php',
+    'public/app/assets/css/design-system.css', // M5C scoped additions verified by its scope suite.
 ];
 assertM3Scope(
     $status === 0 && array_diff($output, $allowedLaterPublicAppChanges) === [],
-    'M3 protected public/app paths must remain unchanged outside the authorized later M4/M5A workspaces.'
+    'M3 protected public/app paths must remain unchanged outside the authorized later M4/M5 workspaces.'
 );
 
 foreach ([
