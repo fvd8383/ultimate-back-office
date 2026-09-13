@@ -18,12 +18,16 @@ real-MySQL/concurrency/replay/HTTP/security validation. All 81 staging table cou
 reconciled after final synthetic cleanup. Customer approval does not publish or
 automatically create an internal approval request.
 
-M5C follow-up observations and scope: approximately 11px overflow at 360px; PRG focus
-observed on BODY; full responsive matrix; actual 200% zoom; keyboard/accessibility
-and screen-reader validation; complete console/network QA and integrated browser
-testing. These were explicitly deferred by the final M5B closure request and are not
-claimed complete. Prior shared global-module-disable and exact independent 128KiB
-valid-history limitations remain documented and do not independently block M5B closure.
+M5C — Integrated customer QA and closeout — owns correction of the approximately 11px
+overflow at 360px; review and correction if needed of PRG focus returning to BODY;
+the complete authenticated browser and responsive matrices; actual 200% zoom;
+keyboard/accessibility and required screen-reader validation; complete console/network
+QA; integrated customer-workflow regression; the final real-MySQL concurrency,
+eligibility, and integrity run; private-data and lifecycle integrity confirmation;
+evidence, cleanup, and formal M5 closeout if every M5C gate passes. These requirements
+were explicitly deferred by the final M5B closure request and remain unstarted. Prior
+shared global-module-disable and exact independent 128KiB valid-history limitations
+remain documented and do not independently block M5B closure.
 
 The immutable four-report evidence chain is:
 
@@ -140,5 +144,7 @@ existing documents were copied from the exact deployed checkout and updated only
 the external export. No deployment, application edit, staging commit, or PR is implied.
 
 M5C is the next unstarted pass and owns the deferred responsive/accessibility/browser
-corrections and complete integrated QA. M5 is not complete; M6 and production remain
-outside this closure.
+corrections, complete integrated customer-workflow regression, final real-MySQL
+concurrency/eligibility/integrity run, private-data/lifecycle confirmation, evidence,
+cleanup, and formal M5 closeout. M5 is not complete; M6 and production remain outside
+this closure.

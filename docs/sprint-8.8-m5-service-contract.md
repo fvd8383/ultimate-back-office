@@ -18,12 +18,16 @@ real-MySQL/concurrency/replay/HTTP/security validation. All 81 staging table cou
 reconciled after final synthetic cleanup. Customer approval does not publish or
 automatically create an internal approval request.
 
-M5C follow-up observations and scope: approximately 11px overflow at 360px; PRG focus
-observed on BODY; full responsive matrix; actual 200% zoom; keyboard/accessibility
-and screen-reader validation; complete console/network QA and integrated browser
-testing. These were explicitly deferred by the final M5B closure request and are not
-claimed complete. Prior shared global-module-disable and exact independent 128KiB
-valid-history limitations remain documented and do not independently block M5B closure.
+M5C — Integrated customer QA and closeout — owns correction of the approximately 11px
+overflow at 360px; review and correction if needed of PRG focus returning to BODY;
+the complete authenticated browser and responsive matrices; actual 200% zoom;
+keyboard/accessibility and required screen-reader validation; complete console/network
+QA; integrated customer-workflow regression; the final real-MySQL concurrency,
+eligibility, and integrity run; private-data and lifecycle integrity confirmation;
+evidence, cleanup, and formal M5 closeout if every M5C gate passes. These requirements
+were explicitly deferred by the final M5B closure request and remain unstarted. Prior
+shared global-module-disable and exact independent 128KiB valid-history limitations
+remain documented and do not independently block M5B closure.
 
 The immutable four-report evidence chain is:
 
@@ -74,8 +78,10 @@ completed legacy Website Manager is not evidence of M5 completion.
 Throughout the original contract, “existing” describes inspected planning-baseline
 code and “must” or “proposed” records the locked design. The M5A service and route names
 are now implemented. M5B's previously proposed mutation boundaries are implemented
-and staging validated as recorded above. Full integrated browser/accessibility QA
-remains M5C work; real-MySQL and focused customer mutation browser gates passed.
+and staging validated as recorded above. Full integrated browser/accessibility QA and
+the final integrated real-MySQL concurrency/eligibility/integrity run remain M5C work;
+M5B's focused real-MySQL and customer-mutation browser gates passed but do not replace
+that final M5C gate.
 
 ## 2. Repository audit and evidence inventory
 
@@ -557,7 +563,8 @@ the failed action. Customer DTOs contain no internal reasons or actor identifier
 The M5A subsets below have deployed executable coverage recorded in the M5A closeout.
 M5B mutation requirements have deployed fixture/DOM/source, real-MySQL
 mutation/concurrency, and focused authenticated browser coverage. Full integrated
-responsive/accessibility/browser QA remains M5C work.
+responsive/accessibility/browser QA and the final real-MySQL concurrency, eligibility,
+and integrity run remain mandatory M5C work.
 
 | Layer | Required executable coverage |
 | --- | --- |
@@ -623,9 +630,10 @@ If designated actors or the existing staging login path are unavailable, operato
 authentication/provisioning is a staging prerequisite, not a reason to add a production
 bypass. No dedicated session-minting endpoint is proposed. A test-only browser runner
 may automate these same login forms with ephemeral secrets outside the repository;
-it must not modify auth code or environment configuration. Browser and real-MySQL
-gates remain blocked until safely executable. This does not block local M5 coding
-once implementation is separately authorized.
+it must not modify auth code or environment configuration. This paragraph records the
+pre-validation planning constraint; M5B's focused browser and real-MySQL gates later
+passed. M5C still requires its complete browser matrix and final integrated real-MySQL
+concurrency/eligibility/integrity run before formal M5 closeout.
 
 ## 17. Recommended implementation passes and exit gates
 

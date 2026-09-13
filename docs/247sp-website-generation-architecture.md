@@ -18,12 +18,16 @@ real-MySQL/concurrency/replay/HTTP/security validation. All 81 staging table cou
 reconciled after final synthetic cleanup. Customer approval does not publish or
 automatically create an internal approval request.
 
-M5C follow-up observations and scope: approximately 11px overflow at 360px; PRG focus
-observed on BODY; full responsive matrix; actual 200% zoom; keyboard/accessibility
-and screen-reader validation; complete console/network QA and integrated browser
-testing. These were explicitly deferred by the final M5B closure request and are not
-claimed complete. Prior shared global-module-disable and exact independent 128KiB
-valid-history limitations remain documented and do not independently block M5B closure.
+M5C — Integrated customer QA and closeout — owns correction of the approximately 11px
+overflow at 360px; review and correction if needed of PRG focus returning to BODY;
+the complete authenticated browser and responsive matrices; actual 200% zoom;
+keyboard/accessibility and required screen-reader validation; complete console/network
+QA; integrated customer-workflow regression; the final real-MySQL concurrency,
+eligibility, and integrity run; private-data and lifecycle integrity confirmation;
+evidence, cleanup, and formal M5 closeout if every M5C gate passes. These requirements
+were explicitly deferred by the final M5B closure request and remain unstarted. Prior
+shared global-module-disable and exact independent 128KiB valid-history limitations
+remain documented and do not independently block M5B closure.
 
 The immutable four-report evidence chain is:
 
@@ -48,9 +52,9 @@ FORMALLY CLOSED** on deployed/validated SHA
 `ee8c670a6dc8bc19ecb0786dff62abfea645aff3`; see the
 [M5A closeout](sprint-8.8-m5a-closeout.md). M5B customer mutation work is **COMPLETE /
 STAGING PASS / FORMALLY CLOSED** on `8cd63146713ef8fef26fd2861e960ac64ee1387a`; see
-[M5B closeout](sprint-8.8-m5b-closeout.md). M5C final integrated customer/browser
-validation is **NEXT / NOT STARTED**, and its
-complete authenticated browser matrix remains mandatory. Public publishing, runtime
+[M5B closeout](sprint-8.8-m5b-closeout.md). M5C integrated customer QA and closeout is
+**NEXT / NOT STARTED**; its complete authenticated browser matrix and final integrated
+real-MySQL concurrency/eligibility/integrity run remain mandatory. Public publishing, runtime
 cutover, M6+, providers, and production remain future work; architectural descriptions
 below do not claim their implementation. Production is **UNAUTHORIZED / NOT DEPLOYED**.
 

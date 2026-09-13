@@ -18,12 +18,16 @@ real-MySQL/concurrency/replay/HTTP/security validation. All 81 staging table cou
 reconciled after final synthetic cleanup. Customer approval does not publish or
 automatically create an internal approval request.
 
-M5C follow-up observations and scope: approximately 11px overflow at 360px; PRG focus
-observed on BODY; full responsive matrix; actual 200% zoom; keyboard/accessibility
-and screen-reader validation; complete console/network QA and integrated browser
-testing. These were explicitly deferred by the final M5B closure request and are not
-claimed complete. Prior shared global-module-disable and exact independent 128KiB
-valid-history limitations remain documented and do not independently block M5B closure.
+M5C — Integrated customer QA and closeout — owns correction of the approximately 11px
+overflow at 360px; review and correction if needed of PRG focus returning to BODY;
+the complete authenticated browser and responsive matrices; actual 200% zoom;
+keyboard/accessibility and required screen-reader validation; complete console/network
+QA; integrated customer-workflow regression; the final real-MySQL concurrency,
+eligibility, and integrity run; private-data and lifecycle integrity confirmation;
+evidence, cleanup, and formal M5 closeout if every M5C gate passes. These requirements
+were explicitly deferred by the final M5B closure request and remain unstarted. Prior
+shared global-module-disable and exact independent 128KiB valid-history limitations
+remain documented and do not independently block M5B closure.
 
 The immutable four-report evidence chain is:
 
@@ -263,8 +267,10 @@ cutover. M4A, M4B, M4C, and M4 overall are
 **COMPLETE / STAGING PASS / FORMALLY CLOSED**. Sprint 8.8 remains **IN PROGRESS**.
 M5 is **IN PROGRESS**. M5A's customer-authenticated read-only preview foundation is
 **COMPLETE / STAGING PASS / FORMALLY CLOSED**. M5B feedback/change requests and
-customer approval UI are also **COMPLETE / STAGING PASS / FORMALLY CLOSED**; final
-integrated customer browser validation remains M5C work.
+customer approval UI are also **COMPLETE / STAGING PASS / FORMALLY CLOSED**. M5C still
+requires integrated customer-workflow and browser validation, the final real-MySQL
+concurrency/eligibility/integrity run, private-data/lifecycle confirmation, evidence,
+cleanup, and formal M5 closeout.
 Build/deployment, domain/routing, LeadHub ingestion, and legacy runtime cutover remain
 later milestones. Administrative `approved` does not mean published, live, deployed,
 domain-active, or production-ready. The contract is
