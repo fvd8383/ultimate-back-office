@@ -1,5 +1,95 @@
 # Sprint 8.8 M5C — Local integrated customer QA corrections
 
+## Current correction — 2026-09-14
+
+**M5C ACCESSIBILITY CORRECTION IMPLEMENTED LOCALLY / REVIEW REQUIRED**.
+M5C and M5 remain **IN PROGRESS**; M6 remains **NOT STARTED**. No staging PASS,
+deployment, formal closure or production authorization is claimed by this change.
+
+Baseline: clean current `main` at `026fbeb07e5700dd87436b30de00ee605abd82be`.
+Branch: `codex/sprint-8.8-m5c-narrator-announcement`.
+
+Actual Windows Narrator validation on that deployed baseline failed the automatic
+success announcement: the browser focused the server-rendered `role=status`
+receipt, but the operator heard its text only after pressing Tab. Focus and a
+prepopulated status node did not establish a reliable live announcement. This is
+the observed design failure; no undocumented Narrator-internal cause is asserted.
+The repeated history label was separate from the missing success announcement.
+The error-flow `GET /favicon.ico` 404 was attributed to optional browser fallback
+and is non-blocking; no favicon change is included.
+
+The correction keeps escaped visible receipt text with a static
+`data-customer-review-receipt` marker, removing its role, tabindex and autofocus.
+A separate initially empty `.site-customer-announcer` has `role=status`,
+`aria-live=polite` and `aria-atomic=true`. It is visually hidden with a narrowly
+scoped rule that remains exposed to accessibility APIs. The focus outline now
+targets only the existing alert receipt; the complete error document is unchanged.
+
+One dedicated same-origin deferred asset,
+`public/app/assets/js/customer-review-status.js`, waits for window load (or handles
+an already loaded document), then a rendered frame and a zero-delay queued task.
+It copies the visible receipt's `textContent` to the established region's
+`textContent` once. It never moves focus, interprets HTML, constructs script,
+uses customer-controlled selectors or URLs, or initiates a network/database write.
+Re-executing the asset cannot repopulate the region. Without JavaScript the visible
+receipt remains available. Normal GETs and legacy saves emit neither the generic
+marker/announcer nor its script.
+
+Inspection found no shared application JS loader or existing visually hidden
+utility. The shared header/footer offer no reusable script mechanism; a few other
+pages use inline page scripts, which this correction does not extend. The manager
+uses `frame-ancestors 'self'` without a restrictive `default-src`/`script-src`;
+the same-origin external path is permitted. The private preview's separate
+`script-src 'none'` CSP remains unchanged. No CSP was weakened, dependency added,
+or backend/auth/CSRF/replay/lifecycle/dispatch behavior modified.
+
+### Immutable validation evidence
+
+- Server-side final PASS SHA-256:
+  `f362926d5ac0a10018794a1c8107750d52e435bccb774355c183365761189727`.
+- Broader external-browser evidence SHA-256:
+  `8ddc215e371da0ec9679d59ef009d09b1ec2134e62305bb9d295ebd52f04fcfe`.
+- Narrator/network supplemental failure SHA-256:
+  `013996df0a39dcf2392fe4dc3a6e6f81ee4d1918d7f814dfa6289ab236e6da5e`.
+- Supplemental report:
+  `/home/codex-validation/ubo-sprint-8.8-m5c-accessibility-final-20260914T002109Z/SPRINT-8.8-M5C-NARRATOR-NETWORK-CLOSURE.md`.
+
+These reports remain immutable. This local correction does not replace or convert
+the failure evidence to PASS. No staging access occurred in this correction task.
+
+### Correction validation
+
+All **50/50 standalone PHP suites PASS**; full tracked PHP lint **193/193 PASS**.
+M2/M3/M4 regressions pass. M5A behavior/view/scope remains **103/40/58**;
+M5B behavior/input-session/view-route remains **258/72/118**. Failure-injection
+exceptions printed by those suites are expected test output, not failed suites.
+Markdown local-reference/fence checks and `git diff --check` pass. Migrations
+023/024 are byte-equivalent to the correction baseline; migration 025 is absent.
+
+M5C view: **200 assertions**. M5C scope: **34 assertions**. The scope suite preserves
+the existing global CSS and all protected backend/schema/security/route/error
+trees, and allows only the exact new JS asset in the public application changes.
+M2/M3 allowlists add that single path; their protected-tree assertions remain intact.
+
+Local Edge 153.0.4234.32 synthetic browser: **118 assertions PASS**, no console errors.
+The test holds the script response to prove the live region exists empty before
+execution; after load it verifies exact plain-text population once, even if the
+asset executes again. It covers simulated POST/303/GET, normal Tab order, hostile
+text, legacy/normal GET separation and no-JavaScript fallback, while retaining the
+existing reflow, error recovery and inert-preview regressions.
+
+**DOM/live-region mutation evidence only — Narrator validation still required after
+deployment.** The test neither authenticates against staging nor proves audible
+speech. Separately authorized post-merge/deployment Narrator revalidation remains
+mandatory, including success without Tab, error/recovery, terminal states, detailed
+guidance and private iframe navigation. Do not close M5C/M5 on local tests alone.
+
+The original implementation history below is retained as a dated snapshot; its
+success-autofocus design and earlier pending-gate wording are superseded by this
+correction and the immutable evidence above.
+
+## Original local implementation — 2026-09-13 (historical)
+
 Status: **M5C IMPLEMENTED LOCALLY / REVIEW REQUIRED**. M5 and Sprint 8.8 remain
 **IN PROGRESS**. M1–M4, M5A and M5B remain COMPLETE / STAGING PASS / FORMALLY CLOSED.
 M6 is NOT STARTED. Production remains UNAUTHORIZED / NOT DEPLOYED.
