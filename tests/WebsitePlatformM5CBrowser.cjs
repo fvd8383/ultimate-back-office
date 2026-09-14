@@ -9,6 +9,7 @@ const http = require('node:http');
 const root = path.resolve(__dirname, '..');
 const documents = JSON.parse(execFileSync(process.env.PHP_BINARY || 'php', [path.join(__dirname, 'support/WebsitePlatformM5CViewFixture.php')], { encoding: 'utf8' }));
 const css = fs.readFileSync(path.join(root, 'public/app/assets/css/design-system.css'), 'utf8');
+const statusScript = fs.readFileSync(path.join(root, 'public/app/assets/js/customer-review-status.js'), 'utf8');
 let assertions = 0;
 function check(ok, message) { assertions++; assert.ok(ok, message); }
 
@@ -28,6 +29,10 @@ function check(ok, message) { assertions++; assert.ok(ok, message); }
             response.writeHead(200, { 'Content-Type': 'text/css' });
             return response.end(css);
         }
+        if (pathname.endsWith('/customer-review-status.js')) {
+            response.writeHead(200, { 'Content-Type': 'text/javascript' });
+            return response.end(statusScript);
+        }
         if (pathname.endsWith('.svg') || pathname === '/favicon.ico') {
             response.writeHead(200, { 'Content-Type': 'image/svg+xml' });
             return response.end('<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"/>');
@@ -44,11 +49,26 @@ function check(ok, message) { assertions++; assert.ok(ok, message); }
         browser = await chromium.launch({ channel: process.env.M5C_BROWSER_CHANNEL || 'msedge', headless: true });
         const context = await browser.newContext();
         const page = await context.newPage();
+        let scriptGate = null;
+        await page.addInitScript(() => {
+            window.receiptMutations = [];
+            new MutationObserver(records => {
+                for (const record of records) {
+                    if (record.target.nodeType === 1 && record.target.matches('.site-customer-announcer')) {
+                        window.receiptMutations.push(record.target.textContent);
+                    }
+                }
+            }).observe(document, { subtree: true, childList: true });
+        });
         page.on('pageerror', error => errors.push(error.message));
         page.on('console', message => { if (message.type() === 'error') errors.push(message.text()); });
         page.on('request', request => requests.add(request.url()));
         await context.route('**/*', async route => {
             const url = new URL(route.request().url());
+            if (url.origin === base && url.pathname.endsWith('/customer-review-status.js') && scriptGate) {
+                scriptGate.requested();
+                await scriptGate.wait;
+            }
             if (url.origin !== base) {
                 // The shared stylesheet's existing Google Fonts dependency is allowed.
                 if (!['fonts.googleapis.com', 'fonts.gstatic.com'].includes(url.hostname)) {
@@ -102,13 +122,49 @@ function check(ok, message) { assertions++; assert.ok(ok, message); }
             const form = page.locator('form').filter({ has: page.locator('input[name="action"][value="' + action + '"]') });
             await form.locator('textarea').fill('Synthetic keyboard submission');
             await form.locator('button').focus();
-            await Promise.all([page.waitForURL('**/' + state), page.keyboard.press('Enter')]);
-            await page.waitForFunction(() => document.activeElement?.classList.contains('site-customer-receipt'));
+            let release, requested;
+            const requestSeen = new Promise(resolve => { requested = resolve; });
+            scriptGate = { wait: new Promise(resolve => { release = resolve; }), requested };
+            const post = page.waitForResponse(response => response.request().method() === 'POST');
+            await Promise.all([page.waitForURL('**/' + state, { waitUntil: 'commit' }), page.keyboard.press('Enter')]);
+            check((await post).status() === 303, 'Rendered POST redirects with 303: ' + action);
+            await page.locator('[data-customer-review-receipt]').waitFor();
+            await requestSeen;
+            check(await page.locator('.site-customer-announcer').textContent() === '', 'Region exists empty before script executes');
+            check(await page.locator('[data-customer-review-receipt]').evaluate(e => e !== document.activeElement && !e.hasAttribute('autofocus') && !e.hasAttribute('tabindex')), 'Visible receipt does not receive forced focus');
+            release();
+            scriptGate = null;
+            await page.waitForLoadState('load');
+            await page.waitForFunction(() => document.querySelector('.site-customer-announcer').textContent !== '');
+            const text = await page.locator('[data-customer-review-receipt]').textContent();
+            check(await page.locator('.site-customer-announcer').textContent() === text, 'Post-load announcement equals rendered plain text');
+            check(await page.evaluate(() => document.activeElement === document.body), 'Announcement preserves normal document focus');
+            // Re-executing the same asset must not publish the receipt twice.
+            await page.addScriptTag({ url: base + '/assets/js/customer-review-status.js' });
+            await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => setTimeout(resolve, 0))));
+            check(JSON.stringify(await page.evaluate(() => window.receiptMutations)) === JSON.stringify([text]), 'Exactly one live-region population, including duplicate asset execution');
             if (process.env.M5C_SCREENSHOT_DIR && state === 'receipt') await page.screenshot({ path: path.join(process.env.M5C_SCREENSHOT_DIR, 'm5c-360-receipt.png') });
-            check(await page.locator('.site-customer-receipt').evaluate(e => getComputedStyle(e).outlineStyle === 'solid'), 'Receipt has a visible focus outline');
             await page.keyboard.press('Tab');
-            check(await page.evaluate(() => document.activeElement.textContent === 'View private revision preview'), 'Tab continues logically from receipt');
+            check(await page.evaluate(() => document.activeElement === document.querySelector('a[href]')), 'Tab follows normal page navigation after redirect');
         }
+        for (const state of ['initial', 'legacy']) {
+            await open(state);
+            // Even an accidentally loaded asset must remain inert outside generic success.
+            await page.addScriptTag({ url: base + '/assets/js/customer-review-status.js' });
+            check(await page.locator('[data-customer-review-receipt],.site-customer-announcer,[autofocus]').count() === 0, 'No generic marker/announcer/forced focus on ' + state);
+            check(await page.evaluate(() => window.receiptMutations.length) === 0, 'No announcement on ' + state);
+        }
+        await open('hostile');
+        await page.waitForFunction(() => document.querySelector('.site-customer-announcer').textContent !== '');
+        check(await page.locator('.site-customer-announcer').textContent() === await page.locator('[data-customer-review-receipt]').textContent(), 'Hostile receipt copied exactly as text');
+        check(await page.locator('.site-customer-announcer *,[data-customer-review-receipt] *,[onerror]').count() === 0, 'Hostile text creates no elements or attributes');
+        check(await page.locator('[data-customer-review-receipt]').count() === 1, 'Hostile text cannot change static selector');
+        const noJs = await browser.newContext({ javaScriptEnabled: false });
+        const fallback = await noJs.newPage();
+        await fallback.goto(base + '/receipt');
+        check(await fallback.locator('[data-customer-review-receipt]').isVisible(), 'Visible success works without JavaScript');
+        check(await fallback.locator('.site-customer-announcer').textContent() === '', 'No-JS region remains empty');
+        await noJs.close();
         await open('error');
         await page.waitForFunction(() => document.activeElement?.getAttribute('role') === 'alert');
         await page.keyboard.press('Tab');
@@ -128,6 +184,6 @@ function check(ok, message) { assertions++; assert.ok(ok, message); }
         check(await frame.locator('a,form,script,input:not([disabled]),button:not([disabled])').count() === 0, 'Preview remains inert');
         check(await frame.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'Preview content reflows');
         check(errors.length === 0, 'No console/page errors: ' + errors.join('; '));
-        console.log(JSON.stringify({ result: 'PASS', assertions, browser: browser.version(), widths: [360,768,1280,640], consoleErrors: errors, networkHosts: [...new Set([...requests].map(url => new URL(url).hostname))], scope: 'Synthetic local views and mocked redirects only; real zoom, authenticated browser, screen reader and MySQL gates NOT RUN' }, null, 2));
+        console.log(JSON.stringify({ result: 'PASS', assertions, browser: browser.version(), widths: [360,768,1280,640], consoleErrors: errors, networkHosts: [...new Set([...requests].map(url => new URL(url).hostname))], scope: 'DOM/live-region mutation evidence only — Narrator validation still required after deployment. Synthetic views and mocked redirects; authenticated browser, actual zoom and MySQL gates NOT RUN.' }, null, 2));
     } finally { if (browser) await browser.close(); await new Promise(resolve => server.close(resolve)); }
 })().catch(error => { console.error(error); process.exitCode = 1; });

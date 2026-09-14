@@ -82,6 +82,8 @@ function m5cDocuments(): array
         'initial' => m5cShell($initial),
         'long' => m5cShell(m5cReview($review)),
         'receipt' => m5cShell(m5cReview($review, $receipt['message'])),
+        'hostile' => m5cShell(m5cReview($review, '<img src=x onerror=alert(1)>" data-customer-review-receipt="hostile')),
+        'legacy' => m5cShell('<p>Website settings saved.</p>' . m5cReview($review, 'Website settings saved.', true)),
         'readonly' => m5cShell(m5cReview(SiteCustomerReviewWorkflow::workspaceWithForms(5, 50))),
         'unavailable' => m5cShell(m5cReview(null)),
         'preview' => m5cShell($preview, true),

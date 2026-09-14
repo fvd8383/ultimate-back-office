@@ -4,7 +4,9 @@
 <section class="business-switcher site-customer-review" aria-labelledby="website-revision-heading">
     <h2 id="website-revision-heading">Website Revision Review</h2>
     <?php if (is_string($reviewReceipt ?? null) && !$saved): ?>
-        <p class="site-customer-receipt" role="status" tabindex="-1" autofocus><?= e($reviewReceipt) ?></p>
+        <p class="site-customer-receipt" data-customer-review-receipt><?= e($reviewReceipt) ?></p>
+        <div class="site-customer-announcer" role="status" aria-live="polite" aria-atomic="true"></div>
+        <script src="../assets/js/customer-review-status.js" defer></script>
     <?php endif; ?>
     <?php if ($customerReview === null): ?>
         <p>Website revision review is temporarily unavailable.</p>
