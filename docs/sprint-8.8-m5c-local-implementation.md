@@ -1,6 +1,145 @@
 # Sprint 8.8 M5C — Local integrated customer QA corrections
 
-## Current correction — 2026-09-14
+## Current second correction — 2026-09-17
+
+**M5C SECOND ACCESSIBILITY CORRECTION IMPLEMENTED LOCALLY / REVIEW REQUIRED**.
+M5 remains **IN PROGRESS**; M6 remains **NOT STARTED**. Final recorded Narrator
+revalidation remains mandatory after review, merge and separately authorized deployment.
+No staging access, deployment, provider/domain/public-runtime or production work occurs
+in this local correction. Historical evidence and dated implementation sections below
+are preserved; their superseded receipt architectures are not the current design.
+
+Baseline: `3c20b113a42fe2d94b27a1dd0fbc687a21b171c4` (merged PR #120).
+Branch: `codex/sprint-8.8-m5c-narrator-deduplication`.
+
+### Confirmed defect and correction
+
+The first correction made the success message audible without subsequent Tab or
+navigation. One submission, recorded to one Windows WASAPI WAV, then produced:
+
+> Sent for consideration. This does not change your preview. Sent for consideration.
+> This does not change your preview.
+
+The transcript contains at least two consecutive recognizable receipt occurrences.
+The original recording reached its 90-second ceiling while Narrator continued; it
+proves duplication but does not establish the total utterance count beyond that window.
+The post-recording browser inspection timed out, so that run did not retain its HTTP
+trace. These limitations remain in the immutable failure report and are not relabeled
+as a passing run. The two-accessible-copy design (visible receipt plus hidden live
+announcer containing the same text) is the architectural cause targeted by this fix;
+no undocumented Narrator internals are asserted.
+
+The success view now renders one visible-style, initially empty paragraph with
+`role=status`, `aria-live=polite`, `aria-atomic=true` and the static receipt marker.
+An adjacent inert `template` contains the server-escaped message. A server-escaped
+`noscript` paragraph supplies readable fallback when JavaScript is disabled. In a
+JS-enabled document neither source creates a second accessible receipt. The empty
+paragraph needs no reserved height or hidden CSS; it becomes visibly sized when filled.
+
+The deferred same-origin asset requires exactly one marked receipt and exactly one
+source template in its review section. After window load, one rendered frame and
+one later zero-delay task, it assigns `source.content.textContent` to the same
+receipt's `textContent` only if that receipt is still empty. There is no second timing
+cycle, focus call, assertive/alert workaround, role removal/re-addition, cloning, HTML
+insertion, network operation or storage. Asset re-execution neither clears nor
+repopulates the status. Normal and legacy GETs remain inert.
+
+The separate `.site-customer-announcer` markup and its entire visually hidden CSS
+rule are removed. All other stylesheet rules remain equivalent to baseline.
+The exact receipt sentence was also present as static preference-form guidance;
+it now reads “A preference request is advisory and does not change your preview.”
+The advisory/preview boundary and existing M5B consequence assertion remain intact.
+For approved/changes states, the persistent status label is identical to the receipt.
+The view omits that duplicate label only when the current non-legacy receipt supplies
+exactly the same text. Subsequent GETs without a receipt retain the original label;
+no backend DTO, state or lifecycle behavior changes.
+
+### Security and scope
+
+Application changes are limited to:
+
+- `private/views/site-customer-review.php`;
+- `public/app/assets/js/customer-review-status.js`;
+- `public/app/assets/css/design-system.css` (obsolete rule removal only).
+
+Server escaping prevents template/noscript termination, HTML/attribute/script injection
+and selector changes. Tests round-trip hostile closing tags, executable-looking text,
+quotes, ampersands and Unicode through source -> textContent exactly. Customer text
+never enters executable JavaScript or a selector. The fixture server's optional script
+probe exists only in browser tests, to verify enabled/disabled document execution.
+
+The scope baseline is the exact merged SHA above. Protected service, authorization,
+replay, CSRF, lifecycle, database, infrastructure, accounts, webhooks, shared, application
+routing and error-view trees remain unchanged. The complete Website Manager route,
+400/403/404/409 mapping, error alert/focus/recovery and legacy dispatch are preserved.
+No migration: 023/024 are unchanged; 025 remains absent. No validation audio helper,
+NAudio package, transcription code, API key or auth state is added to this repository.
+
+### Local validation
+
+| Gate | Actual result |
+| --- | --- |
+| Standalone PHP suites | **50/50 PASS**, including focused reruns after guidance wording correction |
+| M5C view | **267 assertions PASS** |
+| M5C scope | **34 assertions PASS**, bound to 3c20b113a42fe2d94b27a1dd0fbc687a21b171c4 |
+| Synthetic Edge 153.0.4234.32 | **176 assertions PASS**, zero console errors |
+| Actual JavaScript-disabled Edge contexts | Feedback, approved, changes and hostile receipts: visible exact fallback, empty status, no document script execution, one accessible copy |
+| M2 | **4 suites PASS**, 95/69/23/103 assertions |
+| M3 | **10 suites PASS**, 29/42/59/13/46/26/34/84/30/27 assertions |
+| M4A / M4B / M4C | **4/3/3 suites PASS**, 209/267/92 assertions total |
+| M5A behavior/view/scope | **103/40/58 assertions PASS** |
+| M5B behavior/input-session/view-route | **258/72/118 assertions PASS**; no M5B tests changed |
+| Tracked PHP lint | **193/193 PASS**, with changed-file rechecks |
+| Markdown and Git | Local links/fences and `git diff --check` PASS |
+
+The synthetic Edge test holds the script response before execution, inspects the empty
+status and inert source, and checks zero matching accessible StaticText nodes. After
+execution it verifies the same status node, visible exact text, one accessibility-tree
+copy and one population mutation. Re-execution produces no second mutation, node or
+accessible copy. Terminal later-GET labels, normal focus/Tab, hostile text, disabled-JS
+fallback, reflow, error recovery and inert preview regressions are covered. Loopback
+fixtures simulate POST -> 303 -> GET; no authenticated staging flow is claimed.
+
+**DOM/live-region mutation evidence only — actual Narrator audio validation required after deployment.**
+
+Local suite/lint/browser logs are outside the repository at
+`%TEMP%/ubo-m5c-deduplication-local-qa`. Browser contexts and fixture server close
+automatically. No staging fixtures were created and no staging cleanup is claimed.
+
+### Immutable evidence and final audio gate
+
+| Evidence | SHA-256 |
+| --- | --- |
+| Server-side PASS | `f362926d5ac0a10018794a1c8107750d52e435bccb774355c183365761189727` |
+| Broad browser matrix | `8ddc215e371da0ec9679d59ef009d09b1ec2134e62305bb9d295ebd52f04fcfe` |
+| Initial Narrator failure | `013996df0a39dcf2392fe4dc3a6e6f81ee4d1918d7f814dfa6289ab236e6da5e` |
+| Deployed first-correction regression | `5f9459afbbbf5ad35212e9f57e34798a3b51432e3abd0b3a443cf82ddc0128eb` |
+| Recorded duplicate failure report | `d85dbb2e4cc390c2e040a7994a9f48a79eff2d9af816d7cf04a4f8e8b6bc2968` |
+| Single-submission success WAV showing duplication | `b58a7b2113e6cb871ce8d6e6504c554c31419726cb8102c7a76447b3cbade30d` |
+
+Audio report:
+`/home/codex-validation/ubo-sprint-8.8-m5c-narrator-audio-final-20260917T011223Z/SPRINT-8.8-M5C-FINAL-NARRATOR-AUDIO-VALIDATION.md`.
+The local report and WAV hashes were rechecked without accessing staging. Older hashes
+are preserved from authoritative evidence; no historical report was rewritten.
+
+Final revalidation must retain the working methodology: **NAudio 3.1.0**, Windows
+**WASAPI loopback**, **Speakers (Realtek(R) Audio)**, **48 kHz stereo PCM16** and
+**gpt-transcribe**. Keep recorder/transcription tooling disposable and outside UBO;
+read the API key from process environment only. Record **ONE browser action per WAV**,
+with capture/action timestamps, output device, original WAV and transcript/raw JSON
+hashes. Establish quiet output and keep Narrator off during authentication; no microphone
+capture or spoken secrets. Preserve a complete speech window and browser trace rather
+than treating a truncated recording as a complete passing result.
+
+**PASS:** one successful submission produces exactly **one** recognizable receipt
+occurrence in its dedicated WAV, automatically without subsequent Tab/navigation.
+**FAIL:** that one submission produces **zero** or **two-or-more** recognizable
+occurrences. Never combine submissions into one WAV. The recording and transcription,
+not operator memory or a DOM mutation count, are authoritative. Record error/recovery,
+approved, changes and private-preview cases separately, then verify cleanup. All
+required recorded Narrator cases must pass before M5C/M5 can close; M6 stays NOT STARTED.
+
+## First correction — 2026-09-14 (historical)
 
 **M5C ACCESSIBILITY CORRECTION IMPLEMENTED LOCALLY / REVIEW REQUIRED**.
 M5C and M5 remain **IN PROGRESS**; M6 remains **NOT STARTED**. No staging PASS,

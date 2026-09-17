@@ -1,20 +1,39 @@
 # Sprint 8.8 M5 — Customer Preview / Feedback / Approval Contract
 
-## Current M5C local implementation status
+## Current M5C second accessibility correction
 
-**M5C IMPLEMENTED LOCALLY / REVIEW REQUIRED**. M5 and Sprint 8.8 remain **IN PROGRESS**.
-M1–M4, M5A and M5B remain COMPLETE / STAGING PASS / FORMALLY CLOSED; M6 remains
-NOT STARTED. Production remains UNAUTHORIZED / NOT DEPLOYED. See the
-[M5C local implementation and QA record](sprint-8.8-m5c-local-implementation.md)
-for scoped responsive/focus/accessibility corrections, 50/50 local standalone suites,
-193/193 PHP lint, synthetic browser evidence and the final validation checklist.
-The complete authenticated browser matrix, actual 200% zoom, keyboard, screen reader,
-console/network and integrated workflows AND the final real-MySQL concurrency,
-eligibility, metadata/private-data/lifecycle integrity and cleanup gates remain
-required after separately authorized deployment. No M5C staging PASS or M5 closeout.
+**M5C SECOND ACCESSIBILITY CORRECTION IMPLEMENTED LOCALLY / REVIEW REQUIRED**.
+M5C, M5 and Sprint 8.8 remain **IN PROGRESS**; M6 remains **NOT STARTED**.
+M1–M4, M5A and M5B remain COMPLETE / STAGING PASS / FORMALLY CLOSED.
+Production remains UNAUTHORIZED / NOT DEPLOYED.
 
-The M5B closeout snapshot below preserves historical M5C NEXT / NOT STARTED wording;
-this current status supersedes that wording without changing the M5B evidence.
+On baseline `3c20b113a42fe2d94b27a1dd0fbc687a21b171c4`, the first correction
+made the result audible automatically, but one-submission WASAPI audio proved two
+consecutive receipt occurrences. The two-accessible-copy architecture is the primary
+cause targeted here: visible receipt plus a separate hidden live announcer.
+
+The second correction uses one visible, initially empty polite atomic status node.
+An escaped inert template supplies its plain text after the existing load/frame/task
+sequence; noscript supplies a visible no-JS fallback. The separate announcer and
+its CSS are removed. Identical terminal labels are omitted only while the receipt
+supplies that same message; later GETs retain the label. Preference guidance keeps
+its advisory meaning with wording distinct from the success receipt.
+Backend, authorization, lifecycle, replay, CSRF, routes and error behavior are unchanged.
+
+See the [M5C correction and historical implementation record](sprint-8.8-m5c-local-implementation.md)
+for actual local totals and all five immutable evidence hashes. The audio failure
+report SHA-256 is `d85dbb2e4cc390c2e040a7994a9f48a79eff2d9af816d7cf04a4f8e8b6bc2968`.
+
+**DOM/live-region mutation evidence only — actual Narrator audio validation required after deployment.**
+One submission must produce exactly one recognizable receipt occurrence in its own
+WAV; zero or two-or-more fails. Local tests do not close M5C/M5. Review and separately
+authorized deployment followed by recorded/transcribed Narrator revalidation remain
+mandatory. No staging access or deployment occurs in this correction. Existing server
+and broad browser evidence remains authoritative; do not repeat passed gates merely
+to create new evidence. The optional favicon fallback 404 remains non-blocking.
+
+The M5B closeout snapshot below is historical; this current status supersedes its
+M5C NEXT / NOT STARTED wording without changing the M5B evidence.
 
 ## M5B staging closeout — 2026-09-13 (historical snapshot)
 

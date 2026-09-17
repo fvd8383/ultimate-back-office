@@ -64,6 +64,11 @@ function m5cShell(string $content, bool $preview = false): string
     return (string) ob_get_clean();
 }
 
+function m5cHostileReceipt(): string
+{
+    return '</template></noscript><script>window.receiptInjected=true</script><img src=x onerror=alert(1)>" data-customer-review-receipt="hostile & café';
+}
+
 function m5cDocuments(): array
 {
     $db = WebsitePlatformM5BDatabase::fixture();
@@ -82,7 +87,7 @@ function m5cDocuments(): array
         'initial' => m5cShell($initial),
         'long' => m5cShell(m5cReview($review)),
         'receipt' => m5cShell(m5cReview($review, $receipt['message'])),
-        'hostile' => m5cShell(m5cReview($review, '<img src=x onerror=alert(1)>" data-customer-review-receipt="hostile')),
+        'hostile' => m5cShell(m5cReview($review, m5cHostileReceipt())),
         'legacy' => m5cShell('<p>Website settings saved.</p>' . m5cReview($review, 'Website settings saved.', true)),
         'readonly' => m5cShell(m5cReview(SiteCustomerReviewWorkflow::workspaceWithForms(5, 50))),
         'unavailable' => m5cShell(m5cReview(null)),
@@ -95,6 +100,7 @@ function m5cDocuments(): array
         $form['text'] = 'Please review the customer decision.';
         $receipt = SiteCustomerReviewWorkflow::submit(3, $form, [], 1000);
         $documents[$state] = m5cShell(m5cReview(SiteCustomerReviewWorkflow::workspaceWithForms(3, 50), $receipt['message']));
+        $documents[$state . '-get'] = m5cShell(m5cReview(SiteCustomerReviewWorkflow::workspaceWithForms(3, 50)));
     }
     return $documents;
 }
