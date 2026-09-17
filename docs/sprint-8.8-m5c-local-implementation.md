@@ -1,6 +1,99 @@
 # Sprint 8.8 M5C — Local integrated customer QA corrections
 
-## Current post-submit orientation enhancement — 2026-09-17
+## Current customer-approval title clarification — 2026-09-17
+
+**M5C APPROVAL TITLE CLARIFICATION IMPLEMENTED LOCALLY / REVIEW REQUIRED**.
+M5C and M5 remain **IN PROGRESS**; M6 remains **NOT STARTED**. Production remains
+**UNAUTHORIZED / NOT DEPLOYED**. Recorded Narrator validation remains pending.
+
+Correction baseline: `a2288b041ce7ff116fed839c7702fd64b9767770` (merged PR #122).
+Branch: `codex/sprint-8.8-m5c-approval-title-clarification`.
+Origin/main matched that baseline exactly; local main was fast-forwarded and the
+working tree was clean before the new branch. No intervening commits were present.
+The last reported staging SHA remains `8d198af9c96c52f879252932456eef29cb0b97cb`;
+this task does not access or change staging.
+
+The completed automated review on [PR #122](https://github.com/fvd8383/ultimate-back-office/pull/122)
+found: “Preserve the pending-review state in the approval title.” The previous
+“Website approved” prefix did not distinguish customer approval from internal
+approval, legacy launch authority, publication or deployment. This follow-up changes
+only the output string of the existing exact receipt match arm:
+
+```php
+'Approved by customer; awaiting internal review.' => 'Customer approval recorded; internal review pending',
+```
+
+The matched receipt string, workflow response, consumed session flash and lifecycle
+are unchanged. The existing Website Manager `$pageTitle` → `private/views/header.php`
+→ `shared/ui/layout/header.php` path still escapes the title through `e($pageTitle)`.
+No shared header change is necessary.
+
+| Situation | Current complete title |
+| --- | --- |
+| Immediate customer approval receipt GET | Customer approval recorded; internal review pending - 247SP Website Manager - Ultimate Back Office |
+| Immediate feedback/advisory receipt GET | Feedback sent - 247SP Website Manager - Ultimate Back Office |
+| Immediate changes receipt GET | Changes requested - 247SP Website Manager - Ultimate Back Office |
+| Normal GET, later terminal GET, legacy save, unknown/hostile receipt | 247SP Website Manager - Ultimate Back Office |
+
+GET-only/non-legacy conditions, default behavior and allowlisting remain unchanged.
+No customer text, POST field, URL parameter or metadata supplies title text.
+The detailed approval receipt remains exactly
+“Approved by customer; awaiting internal review.”
+
+The scope test now uses the correction baseline and restores exactly one corrected
+match arm to prove that the entire application file differs only by this output-string
+replacement. All protected-tree assertions are retained. Private classes/views,
+database, infrastructure, accounts, webhooks, shared headers, receipt JavaScript and
+CSS remain unchanged, as do authorization, CSRF, replay, tenant isolation, approval
+services, lifecycle, POST dispatch, redirects, errors and legacy authority.
+Migrations 023/024 remain unchanged; 025 remains absent.
+
+View and synthetic Edge expectations use the exact corrected complete approval title
+and explicitly verify the unchanged detailed approval receipt. Feedback, changes,
+normal/later/legacy, hostile-input, single-status, template, noscript, one-time population
+and focus assertions remain intact. The existing local synthetic runner is reused;
+no staging fixtures, audio recording or transcription API call occur.
+
+### Local clarification validation
+
+| Gate | Actual result |
+| --- | --- |
+| Standalone PHP suites | **50/50 PASS**, including all M2–M5B regressions |
+| M5C view / scope | **314 / 38 assertions PASS** |
+| Synthetic Edge 153.0.4234.32 | **202 assertions PASS**, zero console errors |
+| Tracked PHP lint | **193/193 PASS** |
+| Updated Markdown | **5/5 PASS**, local links and fenced code blocks |
+| Git | `git diff --check` PASS; protected application trees unchanged |
+| Migrations | 023/024 unchanged; 025 absent |
+
+The scope assertion proves exactly one output-string replacement against the correction
+baseline. Edge verifies the exact server-rendered title before receipt JavaScript,
+after synthetic POST -> 303 -> GET and with JavaScript disabled. No new network
+dependency appears. These local synthetic DOM/title results are not authenticated
+staging, actual zoom, MySQL or Narrator speech evidence. Local logs remain outside Git
+at `%TEMP%/ubo-m5c-approval-title-local-qa-20260917`.
+
+### Recorded validation still required
+
+Document-title narration provides immediate orientation and must communicate both
+customer approval and pending internal review. The distinct detailed polite status
+is evaluated separately; title narration must not be miscounted as a duplicate
+detailed live-region announcement. The previously documented two-observation,
+idle-aware, up-to-60-second acceptance protocol remains unchanged.
+
+The latest recording's current interpretation remains
+**NARRATOR SUCCESS TEST INCONCLUSIVE — POLITE SPEECH QUEUE STILL ACTIVE AT RECORDING CUTOFF**.
+Historical reports, original verdicts, recordings and evidence hashes are unchanged.
+The merged PR #122 implementation description below is explicitly historical; this
+section supplies the authoritative current approval title and correction scope.
+
+No staging access, deployment, provider/domain/public-runtime operation or production
+action occurs. This is a new follow-up branch/PR, not an amendment to merged history.
+Review and separately authorized deployment/recorded Narrator validation remain
+required. No Narrator PASS or M5 closure is claimed; M5C/M5 remain open and M6 is
+NOT STARTED.
+
+## Post-submit orientation enhancement — 2026-09-17 (historical merged PR #122)
 
 **M5C POST-SUBMIT ORIENTATION ENHANCEMENT IMPLEMENTED LOCALLY / REVIEW REQUIRED**.
 M5C and M5 remain **IN PROGRESS**; M6 remains **NOT STARTED**. Production remains

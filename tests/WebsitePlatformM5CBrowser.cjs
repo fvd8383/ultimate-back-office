@@ -90,7 +90,7 @@ function check(ok, message) { assertions++; assert.ok(ok, message); }
             await page.evaluate(() => document.fonts.ready);
         }
         const normalTitle = '247SP Website Manager - Ultimate Back Office';
-        const resultPrefixes = { receipt: 'Feedback sent', approved: 'Website approved', changes: 'Changes requested' };
+        const resultPrefixes = { receipt: 'Feedback sent', approved: 'Customer approval recorded; internal review pending', changes: 'Changes requested' };
         async function fit(label) {
             const result = await page.evaluate(() => {
                 const content = document.querySelector('.account-content') || document.querySelector('main');
@@ -143,6 +143,7 @@ function check(ok, message) { assertions++; assert.ok(ok, message); }
             const receipt = page.locator('[data-customer-review-receipt]');
             const source = page.locator('template[data-customer-review-receipt-source]');
             const text = await source.evaluate(e => e.content.textContent);
+            if (state === 'approved') check(text === 'Approved by customer; awaiting internal review.', 'Detailed approval receipt remains unchanged alongside clarified title');
             check(await receipt.textContent() === '', 'Visible status exists empty before script executes');
             check(await source.count() === 1 && text.length > 0, 'Exactly one inert source contains expected text');
             check(await receipt.evaluate(e => {
