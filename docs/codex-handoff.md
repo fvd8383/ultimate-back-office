@@ -1,36 +1,41 @@
 # Codex Handoff
 
-## Current M5C second accessibility correction
+## Current M5C post-submit orientation enhancement
 
-**M5C SECOND ACCESSIBILITY CORRECTION IMPLEMENTED LOCALLY / REVIEW REQUIRED**.
+**M5C POST-SUBMIT ORIENTATION ENHANCEMENT IMPLEMENTED LOCALLY / REVIEW REQUIRED**.
 M5C, M5 and Sprint 8.8 remain **IN PROGRESS**; M6 remains **NOT STARTED**.
 M1–M4, M5A and M5B remain COMPLETE / STAGING PASS / FORMALLY CLOSED.
 Production remains UNAUTHORIZED / NOT DEPLOYED.
 
-On baseline `3c20b113a42fe2d94b27a1dd0fbc687a21b171c4`, the first correction
-made the result audible automatically, but one-submission WASAPI audio proved two
-consecutive receipt occurrences. The two-accessible-copy architecture is the primary
-cause targeted here: visible receipt plus a separate hidden live announcer.
+Current interpretation of the 15.013-second recording:
+**NARRATOR SUCCESS TEST INCONCLUSIVE — POLITE SPEECH QUEUE STILL ACTIVE AT RECORDING CUTOFF**.
+Narrator was reading document title/application chrome at cutoff. The original failed
+acceptance report remains unchanged as historical evidence; it is not proof of a
+polite live-region implementation defect.
 
-The second correction uses one visible, initially empty polite atomic status node.
-An escaped inert template supplies its plain text after the existing load/frame/task
-sequence; noscript supplies a visible no-JS fallback. The separate announcer and
-its CSS are removed. Identical terminal labels are omitted only while the receipt
-supplies that same message; later GETs retain the label. Preference guidance keeps
-its advisory meaning with wording distinct from the success receipt.
-Backend, authorization, lifecycle, replay, CSRF, routes and error behavior are unchanged.
+On baseline `8d198af9c96c52f879252932456eef29cb0b97cb`, Website Manager already
+supplies its escaped page title through the existing shared header. The narrow local
+enhancement adds only fixed “Feedback sent”, “Website approved” or “Changes requested”
+prefixes for the corresponding one-time receipt-bearing GET. Normal/later terminal
+GETs, legacy saves and unknown receipt values retain the exact original title.
+The single initially empty polite status, template, noscript fallback, population
+timing and focus behavior are unchanged. No shared layout, backend, lifecycle,
+authorization, CSRF, replay, redirect or error behavior changes.
 
-See the [M5C correction and historical implementation record](sprint-8.8-m5c-local-implementation.md)
-for actual local totals and all five immutable evidence hashes. The audio failure
-report SHA-256 is `d85dbb2e4cc390c2e040a7994a9f48a79eff2d9af816d7cf04a4f8e8b6bc2968`.
+See the [M5C implementation and evidence record](sprint-8.8-m5c-local-implementation.md)
+for the title path, local validation totals and revised recorded acceptance protocol.
+Latest historical report SHA-256:
+`a3a8094aba91509f5d468e200a9d411d10f5c1068c5c6a2e13d752a31dfd3f11`.
 
-**DOM/live-region mutation evidence only — actual Narrator audio validation required after deployment.**
-One submission must produce exactly one recognizable receipt occurrence in its own
-WAV; zero or two-or-more fails. Local tests do not close M5C/M5. Review and separately
-authorized deployment followed by recorded/transcribed Narrator revalidation remain
-mandatory. No staging access or deployment occurs in this correction. Existing server
-and broad browser evidence remains authoritative; do not repeat passed gates merely
-to create new evidence. The optional favicon fallback 404 remains non-blocking.
+The next recorded test has two observations: mandatory immediate title orientation
+before the full sidebar, and the distinct detailed polite receipt at a graceful idle
+opportunity. Record up to 60 seconds; continuous page reading at that limit is
+**INCONCLUSIVE — NARRATOR NEVER REACHED IDLE**, not application FAIL. Missing detail
+after actual idle plus a reasonable observation interval, or repeated detail, fails.
+Local DOM/title tests are not Narrator PASS. Review, separately authorized deployment
+and recorded Narrator revalidation remain mandatory; M5C/M5 cannot close yet.
+No staging access, deployment or M6 work occurs in this task. Earlier server/browser
+evidence remains authoritative; the optional favicon fallback remains non-blocking.
 
 The M5B closeout snapshot below is historical; this current status supersedes its
 M5C NEXT / NOT STARTED wording without changing the M5B evidence.

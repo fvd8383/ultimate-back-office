@@ -297,6 +297,14 @@ $contactHeading = sp247_manager_value($overrides, 'contact', 'heading', (string)
 $contactDescription = sp247_manager_value($overrides, 'contact', 'description', (string) ($contactContent['contact_description'] ?? 'Tell us what you need and we will help you take the next step.'));
 
 $pageTitle = '247SP Website Manager - Ultimate Back Office';
+// Only the consumed, application-controlled review flash supplies transient orientation.
+$reviewTitlePrefix = $_SERVER['REQUEST_METHOD'] === 'GET' && !$saved ? match ($reviewReceipt) {
+    'Sent for consideration; this does not change your preview.' => 'Feedback sent',
+    'Approved by customer; awaiting internal review.' => 'Website approved',
+    'Changes requested.' => 'Changes requested',
+    default => '',
+} : '';
+if ($reviewTitlePrefix !== '') $pageTitle = $reviewTitlePrefix . ' - ' . $pageTitle;
 $bodyClass = 'app-dashboard theme-247sp';
 $layoutHomeHref = '../dashboard.php';
 $layoutUserName = $user ? trim((string) $user['first_name'] . ' ' . (string) $user['last_name']) : '';
