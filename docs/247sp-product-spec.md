@@ -69,10 +69,13 @@ The first-customer pricing gate in
 is **COMPLETE / STAGING PASS / FORMALLY CLOSED**, on final M4
 deployed/validated SHA `d33589da5eebbf8e2ae0dc203837d6667abd1f71`; see
 `docs/sprint-8.8-m4-closeout.md`. Sprint 8.8 remains **IN PROGRESS**.
-The next Website Platform milestone is M5 —
-**NEXT / NOT STARTED** — for customer preview/feedback/approval UI; later public
-runtime work remains outstanding in `docs/sprint-8.8.md`. Production is
-**UNAUTHORIZED / NOT DEPLOYED**. Sprint 8.9 communications/professional-email work
+M5 is **COMPLETE FOR SPRINT PROGRESSION**, with M5C
+**ACCEPTED / NARRATOR FOLLOW-UP DEFERRED**; see
+[the M5 closeout](sprint-8.8-m5-closeout.md). M6 is **NEXT / NOT STARTED**;
+later public runtime, build, deployment, and routing work remains outstanding in
+`docs/sprint-8.8.md`. This closeout does not imply full accessibility validation
+or first-customer readiness. Production is **UNAUTHORIZED / NOT DEPLOYED**.
+Sprint 8.9 communications/professional-email work
 remains separately planned in `docs/sprint-8.9.md`. Vendasta
 professional-email provisioning is first-customer critical; Twilio foundation is
 planned for Sprint 8.9 and Retell voice runtime remains planned for Sprint 8.10.
