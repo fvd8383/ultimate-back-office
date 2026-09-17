@@ -172,10 +172,13 @@ completed legacy Website Manager is not evidence of M5 completion.
 Throughout the original contract, “existing” describes inspected planning-baseline
 code and “must” or “proposed” records the locked design. The M5A service and route names
 are now implemented. M5B's previously proposed mutation boundaries are implemented
-and staging validated as recorded above. Full integrated browser/accessibility QA and
-the final integrated real-MySQL concurrency/eligibility/integrity run remain M5C work;
-M5B's focused real-MySQL and customer-mutation browser gates passed but do not replace
-that final M5C gate.
+and staging validated as recorded above. The original M5 contract required final
+integrated browser/accessibility QA and real-MySQL concurrency/eligibility/integrity
+gates. Later server/browser/MySQL gates were executed and are preserved in the
+[M5 closeout evidence](sprint-8.8-m5-closeout.md). Remaining Windows Narrator follow-up
+is intentionally deferred under the product-owner acceptance decision; no additional
+mandatory M5C validation gate blocks M6 progression. This acceptance does not
+constitute a full accessibility-validation PASS.
 
 ## 2. Repository audit and evidence inventory
 
@@ -661,6 +664,10 @@ responsive/accessibility/browser and final real-MySQL evidence are recorded in
 [M5 closeout](sprint-8.8-m5-closeout.md). Remaining Narrator scenarios are intentionally
 deferred under the product-owner acceptance decision; they are not passed gates.
 
+The coverage matrix and execution instructions below preserve the original planning
+requirements. They do not impose additional M5C validation prerequisites for M6
+progression under the current product-owner acceptance decision.
+
 | Layer | Required executable coverage |
 | --- | --- |
 | Actual service tests | Owner/Admin/is_owner and lower-role matrix; inactive user/business/module/membership; internal impersonation; wrong business/site/revision/request; duplicate associations/requests; exact presentation binding; no request/draft enumeration; feedback/input bounds and replay; terminal states and supersession. |
@@ -681,7 +688,9 @@ Do not require every concurrent call to succeed or silently retry decisions.
 Check canonical composition hashes and row counts before/after GET and feedback;
 verify approval alone never changes published pointers/build/domain/LeadHub rows.
 Required cases that cannot execute must be NOT EXECUTABLE/BLOCKED with a reason.
-The final customer-facing browser gate cannot inherit M4's nonblocking browser waiver.
+The original contract did not permit the final customer-facing browser gate to inherit
+M4's nonblocking browser waiver. That historical requirement does not override the
+current acceptance decision and its non-blocking Narrator follow-up.
 
 ## 16. Staging authentication and browser validation
 
@@ -767,13 +776,16 @@ comments are internal and overwritten on decision; independent feedback needs bo
 metadata persistence; M4 pointer-only link disabling needs keyboard-safe rendering;
 legacy uploads are not a reusable generic media pipeline.
 
-No schema or approval-state-machine gap blocks implementation of the selected scope.
+At the original planning baseline, no schema or approval-state-machine gap blocked
+implementation of the selected scope.
 The metadata limits and request-only input are deliberate first-customer constraints.
 Full media fidelity, uploads or an unbounded discussion system would require revisiting
 this scope; they are not silently promised. Safe designated staging actors/login and
-executable browser/race fixtures remain later validation prerequisites. The separate
+executable browser/race fixtures were prerequisites for that later validation. The separate
 M5A implementation instruction authorized only the read-only customer review and
-preview foundation.
+preview foundation. Later completed server/browser/MySQL validation and the accepted,
+deferred Narrator follow-up are recorded in [M5 closeout](sprint-8.8-m5-closeout.md);
+no additional M5C validation prerequisite blocks M6 progression.
 
 Planning verification: all ten required documents exist at the authoritative SHA;
 relevant implementation paths are inventoried above. At the start of the planning

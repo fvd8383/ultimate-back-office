@@ -175,10 +175,13 @@ passes 45/45 standalone suites, with M5A behavior/view/scope results of 103/40/5
 assertions. Repository-wide PHP lint passes 180/180. Final staging validation passed
 MySQL 8.4.8 native-prepare authorization, issued-review, M3 integrity,
 zero-domain-mutation, concurrency, normal OTP-authenticated HTTP/DOM, retained legacy
-CSRF/303 PRG, private-data, and cleanup gates. Browser-only responsive/accessibility
-smoke is explicitly NOT EXECUTABLE because no browser runtime/operator was available;
-the M5A contract permits blocked evidence, while M5C retains the mandatory complete
-browser gate. The authoritative report is
+CSRF/303 PRG, private-data, and cleanup gates. At M5A closeout, browser-only
+responsive/accessibility smoke was NOT EXECUTABLE because no browser runtime/operator
+was available; the then-current contract deferred the mandatory complete browser
+gate to M5C. Later M5C browser/server/MySQL validation was executed and recorded in the
+[M5 closeout](sprint-8.8-m5-closeout.md). Only the explicitly deferred Windows Narrator
+follow-up remains, and it is non-blocking for M6 under the product-owner acceptance
+decision. The authoritative M5A report is
 `ubo-sprint-8.8-m5a-final-validation-20260911T234520Z/SPRINT-8.8-M5A-STAGING-FINAL-VALIDATION.md`,
 SHA-256 `284133b11b7285c34abfa9972b2215532b0c842b5e7f8901b32b07990bb201a7`.
 No migration/provider/production action occurred during M5A closeout.
