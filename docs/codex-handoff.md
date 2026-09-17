@@ -1,17 +1,30 @@
 # Codex Handoff
 
-## Current M5C local implementation status
+## Current M5C accessibility correction
 
-**M5C IMPLEMENTED LOCALLY / REVIEW REQUIRED**. M5 and Sprint 8.8 remain **IN PROGRESS**.
-M1–M4, M5A and M5B remain COMPLETE / STAGING PASS / FORMALLY CLOSED; M6 remains
-NOT STARTED. Production remains UNAUTHORIZED / NOT DEPLOYED. See the
-[M5C local implementation and QA record](sprint-8.8-m5c-local-implementation.md)
-for scoped responsive/focus/accessibility corrections, 50/50 local standalone suites,
-193/193 PHP lint, synthetic browser evidence and the final validation checklist.
-The complete authenticated browser matrix, actual 200% zoom, keyboard, screen reader,
-console/network and integrated workflows AND the final real-MySQL concurrency,
-eligibility, metadata/private-data/lifecycle integrity and cleanup gates remain
-required after separately authorized deployment. No M5C staging PASS or M5 closeout.
+**M5C ACCESSIBILITY CORRECTION IMPLEMENTED LOCALLY / REVIEW REQUIRED**.
+M5C, M5 and Sprint 8.8 remain **IN PROGRESS**; M6 remains **NOT STARTED**.
+M1–M4, M5A and M5B remain COMPLETE / STAGING PASS / FORMALLY CLOSED.
+Production remains UNAUTHORIZED / NOT DEPLOYED.
+
+The final deployed M5C accessibility gate failed: actual Windows Narrator did not
+announce the focused success receipt until the operator pressed Tab. The optional
+browser `GET /favicon.ico` fallback 404 is resolved as non-blocking. A local
+correction replaces success autofocus with a separate initially empty polite live
+region, populated from visible receipt text after load without moving focus.
+Backend, authorization, lifecycle, replay, CSRF, routes and error behavior are unchanged.
+
+See the [M5C correction and historical implementation record](sprint-8.8-m5c-local-implementation.md)
+for the implementation, tests and preserved evidence. Evidence SHA-256 values:
+
+- Server-side PASS: `f362926d5ac0a10018794a1c8107750d52e435bccb774355c183365761189727`.
+- Browser matrix: `8ddc215e371da0ec9679d59ef009d09b1ec2134e62305bb9d295ebd52f04fcfe`.
+- Narrator failure: `013996df0a39dcf2392fe4dc3a6e6f81ee4d1918d7f814dfa6289ab236e6da5e`.
+
+Local DOM/live-region browser assertions do not prove Narrator speech. Review and
+separately authorized deployment followed by actual Narrator revalidation remain
+mandatory. No staging PASS, M5 closeout, deployment or M6 work occurs in this correction.
+Prior evidence is preserved; do not repeat passed gates merely to create new evidence.
 
 The M5B closeout snapshot below preserves historical M5C NEXT / NOT STARTED wording;
 this current status supersedes that wording without changing the M5B evidence.

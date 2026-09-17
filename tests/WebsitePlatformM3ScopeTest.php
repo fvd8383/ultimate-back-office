@@ -59,6 +59,7 @@ $allowedLaterPublicAppChanges = [
     'public/app/247sp/dashboard.php', // M5B label-only separation, verified by its view/route suite.
     'public/app/247sp/website-review-preview.php',
     'public/app/assets/css/design-system.css', // M5C scoped additions verified by its scope suite.
+    'public/app/assets/js/customer-review-status.js', // Exact M5C announcer asset guarded by its scope suite.
 ];
 assertM3Scope(
     $status === 0 && array_diff($output, $allowedLaterPublicAppChanges) === [],
