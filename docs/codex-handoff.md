@@ -1,33 +1,39 @@
 # Codex Handoff
 
-## Current M5C accessibility correction
+## Current M5C second accessibility correction
 
-**M5C ACCESSIBILITY CORRECTION IMPLEMENTED LOCALLY / REVIEW REQUIRED**.
+**M5C SECOND ACCESSIBILITY CORRECTION IMPLEMENTED LOCALLY / REVIEW REQUIRED**.
 M5C, M5 and Sprint 8.8 remain **IN PROGRESS**; M6 remains **NOT STARTED**.
 M1–M4, M5A and M5B remain COMPLETE / STAGING PASS / FORMALLY CLOSED.
 Production remains UNAUTHORIZED / NOT DEPLOYED.
 
-The final deployed M5C accessibility gate failed: actual Windows Narrator did not
-announce the focused success receipt until the operator pressed Tab. The optional
-browser `GET /favicon.ico` fallback 404 is resolved as non-blocking. A local
-correction replaces success autofocus with a separate initially empty polite live
-region, populated from visible receipt text after load without moving focus.
+On baseline `3c20b113a42fe2d94b27a1dd0fbc687a21b171c4`, the first correction
+made the result audible automatically, but one-submission WASAPI audio proved two
+consecutive receipt occurrences. The two-accessible-copy architecture is the primary
+cause targeted here: visible receipt plus a separate hidden live announcer.
+
+The second correction uses one visible, initially empty polite atomic status node.
+An escaped inert template supplies its plain text after the existing load/frame/task
+sequence; noscript supplies a visible no-JS fallback. The separate announcer and
+its CSS are removed. Identical terminal labels are omitted only while the receipt
+supplies that same message; later GETs retain the label. Preference guidance keeps
+its advisory meaning with wording distinct from the success receipt.
 Backend, authorization, lifecycle, replay, CSRF, routes and error behavior are unchanged.
 
 See the [M5C correction and historical implementation record](sprint-8.8-m5c-local-implementation.md)
-for the implementation, tests and preserved evidence. Evidence SHA-256 values:
+for actual local totals and all five immutable evidence hashes. The audio failure
+report SHA-256 is `d85dbb2e4cc390c2e040a7994a9f48a79eff2d9af816d7cf04a4f8e8b6bc2968`.
 
-- Server-side PASS: `f362926d5ac0a10018794a1c8107750d52e435bccb774355c183365761189727`.
-- Browser matrix: `8ddc215e371da0ec9679d59ef009d09b1ec2134e62305bb9d295ebd52f04fcfe`.
-- Narrator failure: `013996df0a39dcf2392fe4dc3a6e6f81ee4d1918d7f814dfa6289ab236e6da5e`.
+**DOM/live-region mutation evidence only — actual Narrator audio validation required after deployment.**
+One submission must produce exactly one recognizable receipt occurrence in its own
+WAV; zero or two-or-more fails. Local tests do not close M5C/M5. Review and separately
+authorized deployment followed by recorded/transcribed Narrator revalidation remain
+mandatory. No staging access or deployment occurs in this correction. Existing server
+and broad browser evidence remains authoritative; do not repeat passed gates merely
+to create new evidence. The optional favicon fallback 404 remains non-blocking.
 
-Local DOM/live-region browser assertions do not prove Narrator speech. Review and
-separately authorized deployment followed by actual Narrator revalidation remain
-mandatory. No staging PASS, M5 closeout, deployment or M6 work occurs in this correction.
-Prior evidence is preserved; do not repeat passed gates merely to create new evidence.
-
-The M5B closeout snapshot below preserves historical M5C NEXT / NOT STARTED wording;
-this current status supersedes that wording without changing the M5B evidence.
+The M5B closeout snapshot below is historical; this current status supersedes its
+M5C NEXT / NOT STARTED wording without changing the M5B evidence.
 
 ## M5B staging closeout — 2026-09-13 (historical snapshot)
 

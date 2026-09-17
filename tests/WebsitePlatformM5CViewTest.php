@@ -22,7 +22,7 @@ foreach ($initial->query('//textarea|//select') as $control) {
         checkM5C($id === 'customer-review-guidance' && $initial->query('//*[@id="' . $id . '"]')->length === 1, 'Text limits are associated through a unique static description');
     }
 }
-foreach (['initial', 'long', 'readonly', 'unavailable', 'preview', 'legacy'] as $state) {
+foreach (['initial', 'long', 'readonly', 'unavailable', 'preview', 'legacy', 'approved-get', 'changes-get'] as $state) {
     $dom = m5cDom($documents[$state]);
     checkM5C($dom->query('//*[@autofocus]')->length === 0, 'Normal GET has no forced focus: ' . $state);
     checkM5C($dom->query('//*[@data-customer-review-receipt or @role="status"]')->length === 0, 'No generic announcement on normal/legacy GET: ' . $state);
@@ -30,14 +30,31 @@ foreach (['initial', 'long', 'readonly', 'unavailable', 'preview', 'legacy'] as 
 }
 foreach (['receipt', 'approved', 'changes', 'hostile'] as $state) {
     $dom = m5cDom($documents[$state]);
-    checkM5C($dom->query('//p[@data-customer-review-receipt and not(@role) and not(@tabindex) and not(@autofocus)]')->length === 1, 'Visible receipt does not force focus or act as live region: ' . $state);
-    $announcers = $dom->query('//div[@class="site-customer-announcer" and @role="status" and @aria-live="polite" and @aria-atomic="true"]');
-    checkM5C($announcers->length === 1 && $dom->query('//*[@role="status"]')->length === 1, 'Exactly one separate polite atomic region: ' . $state);
-    checkM5C($announcers->item(0)->textContent === '' && !$announcers->item(0)->hasChildNodes(), 'Live region starts empty: ' . $state);
+    $receipts = $dom->query('//p[@data-customer-review-receipt and @class="site-customer-receipt" and @role="status" and @aria-live="polite" and @aria-atomic="true"]');
+    checkM5C($receipts->length === 1, 'Visible receipt itself is the polite atomic status: ' . $state);
+    foreach (['role="status"', 'aria-live="polite"', 'aria-atomic="true"'] as $attribute) {
+        checkM5C($dom->query('//*[@' . $attribute . ']')->length === 1, 'Exactly one ' . $attribute . ': ' . $state);
+    }
+    checkM5C($receipts->item(0)->textContent === '' && !$receipts->item(0)->hasChildNodes(), 'Receipt starts empty with no server-rendered message: ' . $state);
+    $sources = $dom->query('//template[@data-customer-review-receipt-source]');
+    checkM5C($sources->length === 1 && $sources->item(0)->textContent !== '', 'Exactly one inert text source: ' . $state);
+    $fallback = $dom->query('//noscript/p[@class="site-customer-receipt"]');
+    checkM5C($fallback->length === 1 && $fallback->item(0)->textContent === $sources->item(0)->textContent, 'No-JS fallback retains the same message: ' . $state);
+    checkM5C($dom->query('//*[contains(@class,"site-customer-announcer")]')->length === 0, 'No separate announcer: ' . $state);
+    checkM5C($dom->query('//*[@tabindex]')->length === 0, 'Success has no tabindex: ' . $state);
     checkM5C($dom->query('//*[@autofocus]')->length === 0, 'Success never forces focus: ' . $state);
     checkM5C($dom->query('//script[@src="../assets/js/customer-review-status.js" and @defer]')->length === 1, 'One static same-origin deferred script: ' . $state);
+    if ($state !== 'hostile') {
+        $message = $sources->item(0)->textContent;
+        checkM5C($dom->query('//text()[not(ancestor::template) and not(ancestor::noscript) and contains(.,"' . $message . '")]')->length === 0, 'No ordinary duplicate receipt, including terminal status label: ' . $state);
+    }
 }
-foreach (['approved', 'changes', 'readonly', 'unavailable'] as $state) {
+$message = 'Sent for consideration; this does not change your preview.';
+$receiptDom = m5cDom($documents['receipt']);
+checkM5C($receiptDom->query('//template')->item(0)->textContent === $message, 'Expected success text is preserved in inert source');
+checkM5C($receiptDom->query('//text()[not(ancestor::template) and not(ancestor::noscript) and contains(.,"' . $message . '")]')->length === 0, 'No ordinary accessible copy of the receipt before JS');
+checkM5C($initial->query('//form//p[text()="A preference request is advisory and does not change your preview."]')->length === 2, 'Preference guidance retains advisory/preview boundary without repeating receipt');
+foreach (['approved', 'changes', 'readonly', 'unavailable', 'approved-get', 'changes-get'] as $state) {
     checkM5C(m5cDom($documents[$state])->query('//form')->length === 0, 'Read-only/terminal states retain no mutation forms: ' . $state);
 }
 checkM5C(str_contains($documents['approved'], 'Approved by customer; awaiting internal review.'), 'Approval receipt retains internal review boundary');
@@ -53,8 +70,18 @@ foreach ([m5cReview(null, $unsafe), m5cError($unsafe)] as $index => $html) {
     checkM5C(m5cDom($html)->query('//*[@autofocus]')->length === $index, 'Text cannot create a focus target');
     checkM5C(m5cDom($html)->query('//*[@id="customer-text" or @onerror]')->length === 0, 'Text cannot create attributes');
 }
+foreach (['approved-get' => 'Approved by customer; awaiting internal review.', 'changes-get' => 'Changes requested.'] as $state => $label) {
+    checkM5C(str_contains($documents[$state], $label), 'Persistent terminal label remains on later GET: ' . $state);
+}
 checkM5C(m5cDom($documents['hostile'])->query('//*[@data-customer-review-receipt]')->length === 1, 'Hostile text cannot change selector or create another marker');
 checkM5C(m5cDom($documents['hostile'])->query('//script[not(@src)]')->length === 0, 'No receipt text is embedded in executable script');
+$hostileDom = m5cDom($documents['hostile']);
+foreach (['//template[@data-customer-review-receipt-source]', '//noscript/p[@class="site-customer-receipt"]'] as $query) {
+    $node = $hostileDom->query($query)->item(0);
+    checkM5C($node->textContent === m5cHostileReceipt(), 'Hostile message survives server escaping exactly in source/fallback');
+    checkM5C($hostileDom->query('.//*', $node)->length === 0, 'Escaped source/fallback contains only text, never executable elements');
+}
+checkM5C(str_contains($documents['hostile'], e(m5cHostileReceipt())), 'Raw source contains escaped hostile receipt');
 checkM5C(!str_contains(m5cReview(null, 'Website settings saved.', true), 'autofocus'), 'Legacy save never gains generic receipt focus');
 foreach ($documents as $state => $html) {
     foreach (['METADATA-SENTINEL', 'INTERNAL-COMMENT', 'INTERNAL-REASON', 'SOURCE-SENTINEL', 'FACTS-SENTINEL', 'CORRELATION-SENTINEL', 'actor_user_id', 'payload_hash', 'submission_key_hash', 'storage_key', 'private reason'] as $secret) {

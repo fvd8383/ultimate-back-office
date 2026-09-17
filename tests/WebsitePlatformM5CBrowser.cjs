@@ -39,7 +39,8 @@ function check(ok, message) { assertions++; assert.ok(ok, message); }
         }
         const document = documents[pathname.slice(1)];
         response.writeHead(document ? 200 : 404, { 'Content-Type': 'text/html; charset=utf-8' });
-        response.end(document || 'Unknown synthetic fixture');
+        const probe = new URL(request.url, base).searchParams.has('script_probe');
+        response.end(document ? document + (probe ? '<script>window.pageScriptRan=true</script>' : '') : 'Unknown synthetic fixture');
     });
     await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
     const base = 'http://127.0.0.1:' + server.address().port;
@@ -54,12 +55,17 @@ function check(ok, message) { assertions++; assert.ok(ok, message); }
             window.receiptMutations = [];
             new MutationObserver(records => {
                 for (const record of records) {
-                    if (record.target.nodeType === 1 && record.target.matches('.site-customer-announcer')) {
+                    if (record.target.nodeType === 1 && record.target.matches('[data-customer-review-receipt]')) {
                         window.receiptMutations.push(record.target.textContent);
                     }
                 }
             }).observe(document, { subtree: true, childList: true });
         });
+        const accessibility = await context.newCDPSession(page);
+        async function accessibleCopies(text) {
+            const { nodes } = await accessibility.send('Accessibility.getFullAXTree');
+            return nodes.filter(node => !node.ignored && node.role?.value === 'StaticText' && node.name?.value === text).length;
+        }
         page.on('pageerror', error => errors.push(error.message));
         page.on('console', message => { if (message.type() === 'error') errors.push(message.text()); });
         page.on('request', request => requests.add(request.url()));
@@ -128,42 +134,77 @@ function check(ok, message) { assertions++; assert.ok(ok, message); }
             const post = page.waitForResponse(response => response.request().method() === 'POST');
             await Promise.all([page.waitForURL('**/' + state, { waitUntil: 'commit' }), page.keyboard.press('Enter')]);
             check((await post).status() === 303, 'Rendered POST redirects with 303: ' + action);
-            await page.locator('[data-customer-review-receipt]').waitFor();
+            await page.locator('[data-customer-review-receipt]').waitFor({ state: 'attached' });
             await requestSeen;
-            check(await page.locator('.site-customer-announcer').textContent() === '', 'Region exists empty before script executes');
+            const receipt = page.locator('[data-customer-review-receipt]');
+            const source = page.locator('template[data-customer-review-receipt-source]');
+            const text = await source.evaluate(e => e.content.textContent);
+            check(await receipt.textContent() === '', 'Visible status exists empty before script executes');
+            check(await source.count() === 1 && text.length > 0, 'Exactly one inert source contains expected text');
+            check(await receipt.evaluate(e => {
+                window.originalReceipt = e;
+                const style = getComputedStyle(e);
+                return e.getAttribute('role') === 'status' && e.getAttribute('aria-live') === 'polite' && e.getAttribute('aria-atomic') === 'true' && style.display !== 'none' && style.visibility === 'visible';
+            }), 'Empty receipt is the visible-style status, never a hidden announcer');
+            check(await accessibleCopies(text) === 0, 'No accessible receipt text before population, including template/noscript/static guidance: ' + action + ' / ' + text);
+            check(await page.locator('noscript .site-customer-receipt').count() === 0, 'JS-enabled noscript does not create another receipt node');
             check(await page.locator('[data-customer-review-receipt]').evaluate(e => e !== document.activeElement && !e.hasAttribute('autofocus') && !e.hasAttribute('tabindex')), 'Visible receipt does not receive forced focus');
             release();
             scriptGate = null;
             await page.waitForLoadState('load');
-            await page.waitForFunction(() => document.querySelector('.site-customer-announcer').textContent !== '');
-            const text = await page.locator('[data-customer-review-receipt]').textContent();
-            check(await page.locator('.site-customer-announcer').textContent() === text, 'Post-load announcement equals rendered plain text');
+            await page.waitForFunction(() => document.querySelector('[data-customer-review-receipt]').textContent !== '');
+            check(await receipt.textContent() === text, 'Post-load receipt equals inert source exactly');
+            check(await receipt.evaluate(e => e === window.originalReceipt), 'The same established status node is populated');
+            check(await receipt.isVisible(), 'Populated status is visibly rendered');
+            check(await page.locator('[role="status"]').count() === 1 && await page.locator('[aria-live]').count() === 1 && await page.locator('.site-customer-announcer').count() === 0, 'Only one visible live status exists');
+            check(await accessibleCopies(text) === 1, 'Exactly one accessible receipt text after population');
             check(await page.evaluate(() => document.activeElement === document.body), 'Announcement preserves normal document focus');
             // Re-executing the same asset must not publish the receipt twice.
             await page.addScriptTag({ url: base + '/assets/js/customer-review-status.js' });
             await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => setTimeout(resolve, 0))));
             check(JSON.stringify(await page.evaluate(() => window.receiptMutations)) === JSON.stringify([text]), 'Exactly one live-region population, including duplicate asset execution');
+            check(await receipt.evaluate(e => e === window.originalReceipt) && await accessibleCopies(text) === 1, 'Re-execution neither replaces node nor inserts another accessible copy');
             if (process.env.M5C_SCREENSHOT_DIR && state === 'receipt') await page.screenshot({ path: path.join(process.env.M5C_SCREENSHOT_DIR, 'm5c-360-receipt.png') });
             await page.keyboard.press('Tab');
             check(await page.evaluate(() => document.activeElement === document.querySelector('a[href]')), 'Tab follows normal page navigation after redirect');
         }
-        for (const state of ['initial', 'legacy']) {
+        for (const state of ['initial', 'legacy', 'approved-get', 'changes-get']) {
             await open(state);
             // Even an accidentally loaded asset must remain inert outside generic success.
             await page.addScriptTag({ url: base + '/assets/js/customer-review-status.js' });
             check(await page.locator('[data-customer-review-receipt],.site-customer-announcer,[autofocus]').count() === 0, 'No generic marker/announcer/forced focus on ' + state);
             check(await page.evaluate(() => window.receiptMutations.length) === 0, 'No announcement on ' + state);
+            if (state.endsWith('-get')) {
+                const label = state === 'approved-get' ? 'Approved by customer; awaiting internal review.' : 'Changes requested.';
+                check(await accessibleCopies(label) === 1, 'Later terminal GET retains its persistent readable status: ' + state);
+            }
         }
         await open('hostile');
-        await page.waitForFunction(() => document.querySelector('.site-customer-announcer').textContent !== '');
-        check(await page.locator('.site-customer-announcer').textContent() === await page.locator('[data-customer-review-receipt]').textContent(), 'Hostile receipt copied exactly as text');
-        check(await page.locator('.site-customer-announcer *,[data-customer-review-receipt] *,[onerror]').count() === 0, 'Hostile text creates no elements or attributes');
+        await page.waitForFunction(() => document.querySelector('[data-customer-review-receipt]').textContent !== '');
+        const hostile = '</template></noscript><script>window.receiptInjected=true</script><img src=x onerror=alert(1)>" data-customer-review-receipt="hostile & café';
+        check(await page.locator('[data-customer-review-receipt]').textContent() === hostile && await page.locator('template[data-customer-review-receipt-source]').evaluate(e => e.content.textContent) === hostile, 'Hostile source survives textContent conversion exactly');
+        check(await page.locator('[data-customer-review-receipt] *,[onerror],script:not([src])').count() === 0 && await page.evaluate(() => window.receiptInjected === undefined), 'Hostile text creates no elements, attributes or executable script');
         check(await page.locator('[data-customer-review-receipt]').count() === 1, 'Hostile text cannot change static selector');
+        check(await accessibleCopies(hostile) === 1, 'Hostile receipt has one accessible copy');
+        await page.goto(base + '/receipt?script_probe=1');
+        check(await page.evaluate(() => window.pageScriptRan === true), 'Fixture script probe executes when JavaScript is enabled');
         const noJs = await browser.newContext({ javaScriptEnabled: false });
         const fallback = await noJs.newPage();
-        await fallback.goto(base + '/receipt');
-        check(await fallback.locator('[data-customer-review-receipt]').isVisible(), 'Visible success works without JavaScript');
-        check(await fallback.locator('.site-customer-announcer').textContent() === '', 'No-JS region remains empty');
+        let noJsScriptRequests = 0;
+        fallback.on('request', request => { if (request.url().endsWith('/customer-review-status.js')) noJsScriptRequests++; });
+        for (const state of ['receipt', 'approved', 'changes', 'hostile']) {
+            await fallback.goto(base + '/' + state + '?script_probe=1');
+            const sourceText = await fallback.locator('template[data-customer-review-receipt-source]').evaluate(e => e.content.textContent);
+            const visibleFallback = fallback.locator('noscript .site-customer-receipt');
+            check(await visibleFallback.isVisible() && await visibleFallback.textContent() === sourceText, 'No-JS fallback shows exact escaped receipt: ' + state);
+            check(await fallback.locator('[data-customer-review-receipt]').textContent() === '', 'No-JS status stays empty: ' + state);
+            check(await fallback.evaluate(() => window.pageScriptRan === undefined && window.receiptInjected === undefined), 'Document scripts do not execute in disabled context: ' + state);
+            const session = await noJs.newCDPSession(fallback);
+            const { nodes } = await session.send('Accessibility.getFullAXTree');
+            check(nodes.filter(node => !node.ignored && node.role?.value === 'StaticText' && node.name?.value === sourceText).length === 1, 'No-JS fallback is the sole accessible receipt: ' + state);
+            await session.detach();
+        }
+        check(noJsScriptRequests === 0, 'Disabled browser makes no receipt-script request');
         await noJs.close();
         await open('error');
         await page.waitForFunction(() => document.activeElement?.getAttribute('role') === 'alert');
@@ -184,6 +225,6 @@ function check(ok, message) { assertions++; assert.ok(ok, message); }
         check(await frame.locator('a,form,script,input:not([disabled]),button:not([disabled])').count() === 0, 'Preview remains inert');
         check(await frame.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'Preview content reflows');
         check(errors.length === 0, 'No console/page errors: ' + errors.join('; '));
-        console.log(JSON.stringify({ result: 'PASS', assertions, browser: browser.version(), widths: [360,768,1280,640], consoleErrors: errors, networkHosts: [...new Set([...requests].map(url => new URL(url).hostname))], scope: 'DOM/live-region mutation evidence only — Narrator validation still required after deployment. Synthetic views and mocked redirects; authenticated browser, actual zoom and MySQL gates NOT RUN.' }, null, 2));
+        console.log(JSON.stringify({ result: 'PASS', assertions, browser: browser.version(), widths: [360,768,1280,640], consoleErrors: errors, networkHosts: [...new Set([...requests].map(url => new URL(url).hostname))], scope: 'DOM/live-region mutation evidence only — actual Narrator audio validation required after deployment. Synthetic views and mocked redirects; authenticated browser, actual zoom and MySQL gates NOT RUN.' }, null, 2));
     } finally { if (browser) await browser.close(); await new Promise(resolve => server.close(resolve)); }
 })().catch(error => { console.error(error); process.exitCode = 1; });

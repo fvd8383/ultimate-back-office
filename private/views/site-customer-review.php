@@ -4,14 +4,17 @@
 <section class="business-switcher site-customer-review" aria-labelledby="website-revision-heading">
     <h2 id="website-revision-heading">Website Revision Review</h2>
     <?php if (is_string($reviewReceipt ?? null) && !$saved): ?>
-        <p class="site-customer-receipt" data-customer-review-receipt><?= e($reviewReceipt) ?></p>
-        <div class="site-customer-announcer" role="status" aria-live="polite" aria-atomic="true"></div>
+        <p class="site-customer-receipt" role="status" aria-live="polite" aria-atomic="true" data-customer-review-receipt></p>
+        <template data-customer-review-receipt-source><?= e($reviewReceipt) ?></template>
+        <noscript><p class="site-customer-receipt"><?= e($reviewReceipt) ?></p></noscript>
         <script src="../assets/js/customer-review-status.js" defer></script>
     <?php endif; ?>
     <?php if ($customerReview === null): ?>
         <p>Website revision review is temporarily unavailable.</p>
     <?php else: ?>
-        <p><?= e($customerReview['status_label']) ?></p>
+        <?php if (!is_string($reviewReceipt ?? null) || $saved || $reviewReceipt !== $customerReview['status_label']): ?>
+            <p><?= e($customerReview['status_label']) ?></p>
+        <?php endif; ?>
         <?php if ($customerReview['revision_number'] !== null): ?>
             <p>Revision <?= e($customerReview['revision_number']) ?> · Sent for review <?= e($customerReview['requested_at']) ?></p>
             <?php if ($customerReview['decided_at'] !== null): ?><p>Decision recorded <?= e($customerReview['decided_at']) ?></p><?php endif; ?>
@@ -44,7 +47,7 @@
                     <?php if ($action === 'presentation_preference'): ?>
                         <input type="hidden" name="target" value="<?= e($preferenceTarget) ?>">
                         <label>Requested <?= e($preferenceTarget) ?><select name="value"><?php foreach ($preferenceTarget === 'tone' ? ['professional', 'friendly', 'concise'] : ['services', 'trust', 'contact'] as $preferenceValue): ?><option value="<?= e($preferenceValue) ?>"><?= e(ucfirst($preferenceValue)) ?></option><?php endforeach; ?></select></label>
-                        <p>Sent for consideration; this does not change your preview.</p>
+                        <p>A preference request is advisory and does not change your preview.</p>
                     <?php elseif ($action === 'image_replacement_request'): ?>
                         <label>Image in this revision<select name="target"><?php foreach ($customerReview['image_targets'] as $target => $imageLabel): ?><option value="<?= e($target) ?>"><?= e($imageLabel) ?></option><?php endforeach; ?></select></label>
                     <?php elseif ($action === 'request_changes'): ?>
