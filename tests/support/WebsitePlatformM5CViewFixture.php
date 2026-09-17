@@ -46,9 +46,28 @@ function m5cForm(string $html, string $action): array
     return $fields;
 }
 
-function m5cShell(string $content, bool $preview = false): string
+function m5cManagerTitle(mixed $reviewReceipt = null, bool $saved = false, string $method = 'GET'): string
 {
-    $pageTitle = 'Synthetic local M5C QA';
+    // Execute only the real route's title presentation block, never its auth/DB/POST route.
+    // The evaluated PHP is repository source; receipt values remain data, not code.
+    $route = file_get_contents(__DIR__ . '/../../public/app/247sp/website-manager.php');
+    $start = strpos($route, '$pageTitle =');
+    $end = strpos($route, '$bodyClass =', $start === false ? 0 : $start);
+    if ($start === false || $end === false) throw new RuntimeException('Missing route title block');
+    $priorMethod = $_SERVER['REQUEST_METHOD'] ?? null;
+    try {
+        $_SERVER['REQUEST_METHOD'] = $method;
+        eval(substr($route, $start, $end - $start));
+        return $pageTitle;
+    } finally {
+        if ($priorMethod === null) unset($_SERVER['REQUEST_METHOD']);
+        else $_SERVER['REQUEST_METHOD'] = $priorMethod;
+    }
+}
+
+function m5cShell(string $content, bool $preview = false, ?string $reviewReceipt = null, bool $saved = false): string
+{
+    $pageTitle = $preview ? 'Synthetic local M5C QA' : m5cManagerTitle($reviewReceipt, $saved);
     $bodyClass = 'app-dashboard theme-247sp';
     $layoutUserName = 'Synthetic Owner';
     $layoutLogoutHref = 'logout.php';
@@ -86,20 +105,24 @@ function m5cDocuments(): array
     $documents = [
         'initial' => m5cShell($initial),
         'long' => m5cShell(m5cReview($review)),
-        'receipt' => m5cShell(m5cReview($review, $receipt['message'])),
-        'hostile' => m5cShell(m5cReview($review, m5cHostileReceipt())),
-        'legacy' => m5cShell('<p>Website settings saved.</p>' . m5cReview($review, 'Website settings saved.', true)),
+        'receipt' => m5cShell(m5cReview($review, $receipt['message']), false, $receipt['message']),
+        'hostile' => m5cShell(m5cReview($review, m5cHostileReceipt()), false, m5cHostileReceipt()),
+        'legacy' => m5cShell('<p>Website settings saved.</p>' . m5cReview($review, 'Website settings saved.', true), false, 'Website settings saved.', true),
         'readonly' => m5cShell(m5cReview(SiteCustomerReviewWorkflow::workspaceWithForms(5, 50))),
         'unavailable' => m5cShell(m5cReview(null)),
         'preview' => m5cShell($preview, true),
         'error' => m5cError(SiteCustomerReviewWorkflow::safeFailureMessage(new SiteServiceException('conflict', 'private reason'))),
     ];
+    // Defense-in-depth view projection; the real input validator already rejects HTML.
+    $hostileReview = $review;
+    $hostileReview['feedback'][0]['text'] = m5cHostileReceipt();
+    $documents['hostile-feedback'] = m5cShell(m5cReview($hostileReview, $receipt['message']), false, $receipt['message']);
     foreach (['approve_revision' => 'approved', 'request_changes' => 'changes'] as $action => $state) {
         WebsitePlatformM5BDatabase::fixture();
         $form = m5cForm(m5cReview(SiteCustomerReviewWorkflow::workspaceWithForms(3, 50)), $action);
         $form['text'] = 'Please review the customer decision.';
         $receipt = SiteCustomerReviewWorkflow::submit(3, $form, [], 1000);
-        $documents[$state] = m5cShell(m5cReview(SiteCustomerReviewWorkflow::workspaceWithForms(3, 50), $receipt['message']));
+        $documents[$state] = m5cShell(m5cReview(SiteCustomerReviewWorkflow::workspaceWithForms(3, 50), $receipt['message']), false, $receipt['message']);
         $documents[$state . '-get'] = m5cShell(m5cReview(SiteCustomerReviewWorkflow::workspaceWithForms(3, 50)));
     }
     return $documents;

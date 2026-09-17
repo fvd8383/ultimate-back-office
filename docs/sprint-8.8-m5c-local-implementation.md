@@ -1,6 +1,165 @@
 # Sprint 8.8 M5C — Local integrated customer QA corrections
 
-## Current second correction — 2026-09-17
+## Current post-submit orientation enhancement — 2026-09-17
+
+**M5C POST-SUBMIT ORIENTATION ENHANCEMENT IMPLEMENTED LOCALLY / REVIEW REQUIRED**.
+M5C and M5 remain **IN PROGRESS**; M6 remains **NOT STARTED**. Production remains
+**UNAUTHORIZED / NOT DEPLOYED**. No staging access or deployment occurs in this task.
+
+Baseline: `8d198af9c96c52f879252932456eef29cb0b97cb` (merged PR #121).
+Branch: `codex/sprint-8.8-m5c-post-submit-page-title`.
+
+### Current interpretation of the last recording
+
+**NARRATOR SUCCESS TEST INCONCLUSIVE — POLITE SPEECH QUEUE STILL ACTIVE AT RECORDING CUTOFF**
+
+The fixed 15-second acceptance window was too short to distinguish a missing polite announcement from an announcement queued behind Narrator's automatic page-reading speech. The transcript showed Narrator remained busy reading page chrome at cutoff. This run is therefore retained as historical failed-test evidence but is not treated as proof of a live-region implementation defect.
+
+The 15.013-second raw transcript remains:
+
+> Send feedback button. Loading complete. 247SP Website Manager Ultimate Back Office.
+> 247SP Website Manager Ultimate Back Office has finished loading. 247SP Website Manager.
+
+The original report and its original failed-test verdict are unchanged. Their local
+SHA-256 values were rechecked read-only; no historical evidence file was rewritten:
+
+- Recorded report: `a3a8094aba91509f5d468e200a9d411d10f5c1068c5c6a2e13d752a31dfd3f11`.
+- WAV: `0e220c02b8e3731d4d17b8e0b65227dff1349ac094baa36f63a1dd05d5f6f669`.
+- Prior deployed second-correction regression: `4075aad176eddc7c9290671a4eaa70f5cf4bc26e6339365a3e7bd348de5e34f1`.
+
+The report remains at
+`/home/codex-validation/ubo-sprint-8.8-m5c-narrator-final-20260917T021615Z/SPRINT-8.8-M5C-FINAL-RECORDED-NARRATOR-VALIDATION.md`.
+Durable local originals remain under
+`%USERPROFILE%/Documents/UBO-Validation-Evidence/M5C-Narrator-20260917T021615Z/`.
+Older server, browser and Narrator evidence hashes in the dated records below remain
+unchanged. The current interpretation supersedes the fixed-window acceptance method;
+it does not retrospectively alter any original observation, hash or report verdict.
+
+[WAI-ARIA aria-live guidance](https://www.w3.org/TR/wai-aria/#aria-live) gives polite
+updates low priority and generally avoids interrupting the current task. Presentation
+is expected at a graceful opportunity; user/assistive-technology behavior can vary.
+The short recording cannot distinguish a queued update from one that never arrives.
+This enhancement addresses immediate server-navigation orientation independently of
+polite live-region scheduling; it does not establish a Narrator PASS.
+
+### Discovered title architecture and narrow change
+
+`public/app/247sp/website-manager.php` already sets the complete page-specific
+`$pageTitle` immediately before including `private/views/header.php`. That view
+retains the supplied value and includes `shared/ui/layout/header.php`, whose title
+is rendered through the existing `e($pageTitle)` HTML-escaping helper. There is no
+need for a new shared API, a shared-header edit, client-side title mutation, or a
+second application file. Existing punctuation is a spaced hyphen.
+
+The only application change is eight lines beside the existing Website Manager title
+assignment. For GET with the existing legacy-saved flag false, an exact strict match
+of the consumed, application-controlled review flash selects one of three fixed
+prefixes. Unknown values select no prefix. The title is never built from receipt
+prose, customer feedback, metadata, POST fields or URL parameters. The existing session
+flash read/unset, action dispatch and redirect code are unchanged, so the prefix lasts
+only for the immediate receipt-bearing GET.
+
+| Situation | Complete title |
+| --- | --- |
+| Advisory receipt (feedback, tone, emphasis, image request) | Feedback sent - 247SP Website Manager - Ultimate Back Office |
+| Approval receipt | Website approved - 247SP Website Manager - Ultimate Back Office |
+| Changes receipt | Changes requested - 247SP Website Manager - Ultimate Back Office |
+| Normal GET, later terminal GET, legacy save, unknown/hostile receipt | 247SP Website Manager - Ultimate Back Office |
+
+No current terminal lifecycle state is consulted for the transient title. Later
+approved/changes GETs retain their existing body labels and the normal page title.
+`Website settings saved.` is not an M5C title source. Even a recognized review
+receipt cannot add the prefix on POST or when the legacy-saved flag is true.
+
+### Preserved receipt and security behavior
+
+The deployed single-status architecture remains byte-equivalent: one visible,
+initially empty status with `role=status`, `aria-live=polite`, `aria-atomic=true`,
+one escaped inert template and an escaped noscript fallback. The same status receives
+plain text once on the existing frame/later-task schedule. There is no assertive or
+alert success role, autofocus, focused status, hidden announcer, second live region,
+clone, timing change, network call or storage operation.
+
+The concise complete document title differs from the detailed receipt and serves
+page-load orientation. The detailed receipt remains unchanged, including the advisory
+preview boundary and approval/internal-review wording. For changes, the short prefix
+is the requested “Changes requested” wording within the complete document title;
+title orientation must not be miscounted as another detailed status occurrence.
+
+Protected private/classes, database, infrastructure, accounts, webhooks, shared and
+private/views trees, and all existing CSS/JS assets, remain byte-equivalent. Scope
+coverage permits only the Website Manager path and reconstructs its baseline by
+removing the exact title presentation block, proving all remaining route bytes are
+unchanged. Authorization, tenant isolation, CSRF, replay, lifecycle, approval, POST
+dispatch, 303 redirects, error mapping/focus/recovery and legacy behavior are preserved.
+Migrations 023/024 remain unchanged; 025 remains absent.
+
+The synthetic fixture executes only the actual route's trusted title presentation
+block in a CLI test function, restoring its controlled request method afterward. It
+never executes route authentication, real DB work or dispatch. Repository PHP source
+is evaluated, not customer text. Actual shared header rendering verifies escaped
+output. The existing backend still rejects HTML-like feedback; a separate hostile
+view projection tests defense-in-depth title/markup safety without relaxing input rules.
+Tests cover unknown receipts, non-string values, almost-matching strings, malicious
+GET/POST data, later terminal states, legacy exclusion and hostile template/history text.
+
+### Local validation
+
+| Gate | Actual result |
+| --- | --- |
+| Standalone PHP suites | **50/50 PASS** |
+| M5C view / scope | **313 / 37 assertions PASS** |
+| Synthetic Edge 153.0.4234.32 | **201 assertions PASS**, zero console errors |
+| M2 | **4 suites PASS**, 95/69/23/103 assertions |
+| M3 | **10 suites PASS**, 29/42/59/13/46/26/34/84/30/27 assertions |
+| M4A / M4B / M4C | **4/3/3 suites PASS**, 209/267/92 assertions total |
+| M5A behavior/view/scope | **103/40/58 assertions PASS** |
+| M5B behavior/input-session/view-route | **258/72/118 assertions PASS** |
+| Tracked PHP lint | **193/193 PASS** |
+| Markdown / Git | Local links/fences and `git diff --check` PASS |
+| Migrations | 023/024 unchanged; 025 absent |
+
+Existing receipt assertions are retained: empty region before script execution; the
+same status node receives one population; exactly one detailed accessible copy;
+no hidden announcer or focus movement; re-execution is inert; noscript fallback and
+hostile text remain safe. Added Edge assertions check the server-rendered title before
+receipt JavaScript is released, after synthetic POST -> 303 -> GET, on later terminal
+GETs and in actual JavaScript-disabled contexts. Title feedback adds no asset or network
+dependency. Synthetic redirects and DOM/title evidence are not authenticated HTTP or
+actual Narrator evidence. Local logs are outside Git at `%TEMP%/ubo-m5c-title-local-qa`.
+
+### Revised recorded Narrator acceptance after deployment
+
+Review, merge and separately authorized deployment must precede the next real test.
+Use the recorded Windows output methodology: NAudio 3.1.0 WASAPI render-loopback,
+actual selected output device/format, no microphone, gpt-transcribe and original WAV/
+raw-transcript hashes. Preserve a durable evidence directory and HTTP/network trace.
+Authenticate with Narrator off and keep secrets outside recordings. One submission
+per dedicated WAV; no Tab, navigation, focus change or manual full-page read after
+submitting. Evaluate **two separate observations** from that single-action recording:
+
+1. **Immediate orientation — mandatory.** Initial page-load speech must communicate
+   the concise result through the title before traversing the full sidebar, for example
+   “Feedback sent - 247SP Website Manager - Ultimate Back Office”. Check near the start
+   of the WAV. A local document.title assertion is not an audio PASS.
+2. **Detailed polite receipt.** Allow a graceful idle opportunity and record up to
+   **60 seconds**. Exactly one recognizable detailed status occurrence passes. Two or
+   more detailed occurrences fail. If Narrator remains continuously busy reading other
+   content at 60 seconds, classify **INCONCLUSIVE — NARRATOR NEVER REACHED IDLE**,
+   not application FAIL. If Narrator reaches genuine idle, allow a reasonable additional
+   observation interval (for example 5–10 seconds); a still-missing detailed receipt
+   then fails. A cutoff without enough observed idle time is inconclusive and must not
+   be silently converted into failure or PASS. Do not restore a fixed 15-second failure
+   threshold or compensate by changing application JS delays.
+
+Preserve title speech and detailed receipt observations separately in the transcript
+analysis; the concise title is not an announcement clone or a second detailed receipt.
+Document any missing/inconclusive observation honestly. Complete the required error,
+terminal and iframe/keyboard cases and cleanup before any M5C/M5 formal closure.
+M5 remains IN PROGRESS, M6 NOT STARTED, production UNAUTHORIZED / NOT DEPLOYED.
+No provider/domain/public-runtime/production work is included in this enhancement.
+
+## Second correction — 2026-09-17 (historical)
 
 **M5C SECOND ACCESSIBILITY CORRECTION IMPLEMENTED LOCALLY / REVIEW REQUIRED**.
 M5 remains **IN PROGRESS**; M6 remains **NOT STARTED**. Final recorded Narrator

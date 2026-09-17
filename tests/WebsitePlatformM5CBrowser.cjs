@@ -89,6 +89,8 @@ function check(ok, message) { assertions++; assert.ok(ok, message); }
             await page.goto(base + '/' + state);
             await page.evaluate(() => document.fonts.ready);
         }
+        const normalTitle = '247SP Website Manager - Ultimate Back Office';
+        const resultPrefixes = { receipt: 'Feedback sent', approved: 'Website approved', changes: 'Changes requested' };
         async function fit(label) {
             const result = await page.evaluate(() => {
                 const content = document.querySelector('.account-content') || document.querySelector('main');
@@ -124,6 +126,7 @@ function check(ok, message) { assertions++; assert.ok(ok, message); }
         await fit('360 with scrollbar gutter');
         for (const [action, state] of [['feedback', 'receipt'], ['approve_revision', 'approved'], ['request_changes', 'changes']]) {
             await open('initial');
+            check(await page.title() === normalTitle, 'Initial GET retains exact original title');
             check(await page.locator('[autofocus]').count() === 0, 'Initial navigation does not steal focus');
             const form = page.locator('form').filter({ has: page.locator('input[name="action"][value="' + action + '"]') });
             await form.locator('textarea').fill('Synthetic keyboard submission');
@@ -136,6 +139,7 @@ function check(ok, message) { assertions++; assert.ok(ok, message); }
             check((await post).status() === 303, 'Rendered POST redirects with 303: ' + action);
             await page.locator('[data-customer-review-receipt]').waitFor({ state: 'attached' });
             await requestSeen;
+            check(await page.title() === resultPrefixes[state] + ' - ' + normalTitle, 'Server-rendered result title is available before receipt JS: ' + state);
             const receipt = page.locator('[data-customer-review-receipt]');
             const source = page.locator('template[data-customer-review-receipt-source]');
             const text = await source.evaluate(e => e.content.textContent);
@@ -152,6 +156,7 @@ function check(ok, message) { assertions++; assert.ok(ok, message); }
             release();
             scriptGate = null;
             await page.waitForLoadState('load');
+            check(await page.title() === resultPrefixes[state] + ' - ' + normalTitle, 'POST/303/GET retains concise allowlisted result title: ' + state);
             await page.waitForFunction(() => document.querySelector('[data-customer-review-receipt]').textContent !== '');
             check(await receipt.textContent() === text, 'Post-load receipt equals inert source exactly');
             check(await receipt.evaluate(e => e === window.originalReceipt), 'The same established status node is populated');
@@ -170,6 +175,7 @@ function check(ok, message) { assertions++; assert.ok(ok, message); }
         }
         for (const state of ['initial', 'legacy', 'approved-get', 'changes-get']) {
             await open(state);
+            check(await page.title() === normalTitle, 'Normal/later terminal/legacy GET has no transient prefix: ' + state);
             // Even an accidentally loaded asset must remain inert outside generic success.
             await page.addScriptTag({ url: base + '/assets/js/customer-review-status.js' });
             check(await page.locator('[data-customer-review-receipt],.site-customer-announcer,[autofocus]').count() === 0, 'No generic marker/announcer/forced focus on ' + state);
@@ -180,12 +186,18 @@ function check(ok, message) { assertions++; assert.ok(ok, message); }
             }
         }
         await open('hostile');
+        check(await page.title() === normalTitle, 'Unknown hostile receipt cannot alter title');
         await page.waitForFunction(() => document.querySelector('[data-customer-review-receipt]').textContent !== '');
         const hostile = '</template></noscript><script>window.receiptInjected=true</script><img src=x onerror=alert(1)>" data-customer-review-receipt="hostile & café';
         check(await page.locator('[data-customer-review-receipt]').textContent() === hostile && await page.locator('template[data-customer-review-receipt-source]').evaluate(e => e.content.textContent) === hostile, 'Hostile source survives textContent conversion exactly');
         check(await page.locator('[data-customer-review-receipt] *,[onerror],script:not([src])').count() === 0 && await page.evaluate(() => window.receiptInjected === undefined), 'Hostile text creates no elements, attributes or executable script');
         check(await page.locator('[data-customer-review-receipt]').count() === 1, 'Hostile text cannot change static selector');
         check(await accessibleCopies(hostile) === 1, 'Hostile receipt has one accessible copy');
+        await open('hostile-feedback');
+        await page.waitForFunction(() => document.querySelector('[data-customer-review-receipt]').textContent !== '');
+        check(await page.title() === 'Feedback sent - ' + normalTitle, 'Hostile feedback projection retains allowlisted feedback title');
+        check(await page.locator('title').count() === 1 && await page.locator('[onerror],script:not([src])').count() === 0 && await page.evaluate(() => window.receiptInjected === undefined), 'Hostile feedback creates no title, attribute or script injection');
+        check(await accessibleCopies('Sent for consideration; this does not change your preview.') === 1, 'Detailed receipt remains one accessible copy alongside concise title');
         await page.goto(base + '/receipt?script_probe=1');
         check(await page.evaluate(() => window.pageScriptRan === true), 'Fixture script probe executes when JavaScript is enabled');
         const noJs = await browser.newContext({ javaScriptEnabled: false });
@@ -194,6 +206,7 @@ function check(ok, message) { assertions++; assert.ok(ok, message); }
         fallback.on('request', request => { if (request.url().endsWith('/customer-review-status.js')) noJsScriptRequests++; });
         for (const state of ['receipt', 'approved', 'changes', 'hostile']) {
             await fallback.goto(base + '/' + state + '?script_probe=1');
+            check(await fallback.title() === (resultPrefixes[state] ? resultPrefixes[state] + ' - ' + normalTitle : normalTitle), 'Server title does not depend on JavaScript: ' + state);
             const sourceText = await fallback.locator('template[data-customer-review-receipt-source]').evaluate(e => e.content.textContent);
             const visibleFallback = fallback.locator('noscript .site-customer-receipt');
             check(await visibleFallback.isVisible() && await visibleFallback.textContent() === sourceText, 'No-JS fallback shows exact escaped receipt: ' + state);

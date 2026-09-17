@@ -12,6 +12,31 @@ function checkM5C(bool $ok, string $message): void
 }
 Session::start();
 $documents = m5cDocuments();
+$normalTitle = '247SP Website Manager - Ultimate Back Office';
+foreach (['initial', 'long', 'readonly', 'unavailable', 'legacy', 'approved-get', 'changes-get', 'hostile'] as $state) {
+    checkM5C(m5cDom($documents[$state])->query('//title')->item(0)->textContent === $normalTitle, 'Normal/later/legacy/unknown receipt GET retains exact original title: ' . $state);
+}
+foreach (['receipt' => 'Feedback sent', 'approved' => 'Website approved', 'changes' => 'Changes requested', 'hostile-feedback' => 'Feedback sent'] as $state => $prefix) {
+    $dom = m5cDom($documents[$state]);
+    checkM5C($dom->query('//title')->length === 1 && $dom->query('//title')->item(0)->textContent === $prefix . ' - ' . $normalTitle, 'One escaped title with exact allowlisted prefix and existing product identity: ' . $state);
+    checkM5C($dom->query('//title')->item(0)->textContent !== $dom->query('//template[@data-customer-review-receipt-source]')->item(0)->textContent, 'Concise title and detailed receipt remain distinct: ' . $state);
+}
+foreach ([null, '', 'Website settings saved.', m5cHostileReceipt(), 'Feedback sent', 'Changes requested', 'Changes requested. extra', ' Sent for consideration; this does not change your preview.', [], ['state' => 'approved']] as $untrusted) {
+    checkM5C(m5cManagerTitle($untrusted) === $normalTitle, 'Unrecognized or hostile receipt cannot supply title text');
+}
+foreach (['Sent for consideration; this does not change your preview.', 'Approved by customer; awaiting internal review.', 'Changes requested.'] as $message) {
+    checkM5C(m5cManagerTitle($message, true) === $normalTitle, 'Legacy saved flag excludes customer title orientation');
+    checkM5C(m5cManagerTitle($message, false, 'POST') === $normalTitle, 'Only receipt-bearing GET gets orientation');
+}
+$priorGet = $_GET; $priorPost = $_POST;
+try {
+    $_GET = ['status' => 'approved', 'receipt' => 'Changes requested.', 'saved' => '1'];
+    $_POST = ['action' => 'approve_revision', 'text' => m5cHostileReceipt()];
+    checkM5C(m5cManagerTitle() === $normalTitle, 'URL and POST data cannot spoof a title prefix without trusted flash');
+} finally { $_GET = $priorGet; $_POST = $priorPost; }
+$hostileFeedback = m5cDom($documents['hostile-feedback']);
+checkM5C($hostileFeedback->query('//title//*|//*[@onerror]|//script[not(@src)]')->length === 0, 'Hostile feedback projection cannot create title markup, attributes or script');
+checkM5C(str_contains($documents['hostile-feedback'], e(m5cHostileReceipt())), 'Hostile feedback remains escaped visible history, never title source');
 $initial = m5cDom($documents['initial']);
 checkM5C($initial->query('//fieldset/legend')->length === 6, 'Every rendered action has its own legend');
 checkM5C($initial->query('//textarea[@required]')->length === 3, 'Feedback, image instructions and changes remain required');
