@@ -13,10 +13,12 @@ This contract describes the completed M4A/M4B/M4C boundary. M1, M2, and M3
 are **COMPLETE / STAGING PASS / FORMALLY CLOSED**. Sprint 8.8 remains **IN PROGRESS**.
 Final M4
 merged/deployed/validated SHA: `d33589da5eebbf8e2ae0dc203837d6667abd1f71`.
-M5 is **NEXT / NOT STARTED**; production is **UNAUTHORIZED / NOT DEPLOYED**.
+M5 is **COMPLETE FOR SPRINT PROGRESSION**; M5C is
+**ACCEPTED / NARRATOR FOLLOW-UP DEFERRED**. M6 is **NEXT / NOT STARTED**.
+See [M5 closeout](sprint-8.8-m5-closeout.md); production is **UNAUTHORIZED / NOT DEPLOYED**.
 The [M4C closeout](sprint-8.8-m4c-closeout.md) and
 [overall M4 closeout](sprint-8.8-m4-closeout.md) record the final integrated gate.
-The M4 exit gate is complete; M5–M8 and the full M1–M8 sprint exit gate remain
+The M4 exit gate is complete; M6–M8 and the full M1–M8 sprint exit gate remain
 required before Sprint 8.8 closes. The authoritative M4A completion record is
 `docs/sprint-8.8-m4a-closeout.md`; the authoritative M4B completion record is
 `docs/sprint-8.8-m4b-closeout.md`, on merged, deployed, and validated SHA
@@ -433,7 +435,9 @@ M4 does not permit internal staff to approve as a customer or forge customer fee
 `SiteAuthorizationPolicy::requireCustomerApproval()` remains unchanged and rejects
 Internal Admin actors. M5 owns the controlled customer preview, feedback/change
 request, approved input, and revision-specific customer approval UI. The legacy
-customer Website Manager is not converted by M4. M5 is **NEXT / NOT STARTED**.
+customer Website Manager was not converted by M4. M5 subsequently delivered that
+controlled customer workflow and is **COMPLETE FOR SPRINT PROGRESSION**; M5C is
+**ACCEPTED / NARRATOR FOLLOW-UP DEFERRED**. M6 is **NEXT / NOT STARTED**.
 Administrative `approved` does not mean published, live, deployed, domain-active, or
 production-ready; later deployment/runtime milestones retain authority.
 
