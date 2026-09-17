@@ -300,7 +300,7 @@ $pageTitle = '247SP Website Manager - Ultimate Back Office';
 // Only the consumed, application-controlled review flash supplies transient orientation.
 $reviewTitlePrefix = $_SERVER['REQUEST_METHOD'] === 'GET' && !$saved ? match ($reviewReceipt) {
     'Sent for consideration; this does not change your preview.' => 'Feedback sent',
-    'Approved by customer; awaiting internal review.' => 'Website approved',
+    'Approved by customer; awaiting internal review.' => 'Customer approval recorded; internal review pending',
     'Changes requested.' => 'Changes requested',
     default => '',
 } : '';

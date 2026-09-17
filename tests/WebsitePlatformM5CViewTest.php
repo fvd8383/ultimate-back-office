@@ -16,7 +16,7 @@ $normalTitle = '247SP Website Manager - Ultimate Back Office';
 foreach (['initial', 'long', 'readonly', 'unavailable', 'legacy', 'approved-get', 'changes-get', 'hostile'] as $state) {
     checkM5C(m5cDom($documents[$state])->query('//title')->item(0)->textContent === $normalTitle, 'Normal/later/legacy/unknown receipt GET retains exact original title: ' . $state);
 }
-foreach (['receipt' => 'Feedback sent', 'approved' => 'Website approved', 'changes' => 'Changes requested', 'hostile-feedback' => 'Feedback sent'] as $state => $prefix) {
+foreach (['receipt' => 'Feedback sent', 'approved' => 'Customer approval recorded; internal review pending', 'changes' => 'Changes requested', 'hostile-feedback' => 'Feedback sent'] as $state => $prefix) {
     $dom = m5cDom($documents[$state]);
     checkM5C($dom->query('//title')->length === 1 && $dom->query('//title')->item(0)->textContent === $prefix . ' - ' . $normalTitle, 'One escaped title with exact allowlisted prefix and existing product identity: ' . $state);
     checkM5C($dom->query('//title')->item(0)->textContent !== $dom->query('//template[@data-customer-review-receipt-source]')->item(0)->textContent, 'Concise title and detailed receipt remain distinct: ' . $state);
@@ -83,6 +83,7 @@ foreach (['approved', 'changes', 'readonly', 'unavailable', 'approved-get', 'cha
     checkM5C(m5cDom($documents[$state])->query('//form')->length === 0, 'Read-only/terminal states retain no mutation forms: ' . $state);
 }
 checkM5C(str_contains($documents['approved'], 'Approved by customer; awaiting internal review.'), 'Approval receipt retains internal review boundary');
+checkM5C(m5cDom($documents['approved'])->query('//template[@data-customer-review-receipt-source]')->item(0)->textContent === 'Approved by customer; awaiting internal review.', 'Detailed approval receipt remains exactly unchanged');
 checkM5C(str_contains($documents['changes'], 'Changes requested'), 'Changes receipt remains readable');
 checkM5C(str_contains($documents['long'], str_repeat('reference', 12)), 'Long accepted prose is preserved without truncation');
 $error = m5cDom($documents['error']);

@@ -1,8 +1,8 @@
 # Codex Handoff
 
-## Current M5C post-submit orientation enhancement
+## Current M5C customer-approval title clarification
 
-**M5C POST-SUBMIT ORIENTATION ENHANCEMENT IMPLEMENTED LOCALLY / REVIEW REQUIRED**.
+**M5C APPROVAL TITLE CLARIFICATION IMPLEMENTED LOCALLY / REVIEW REQUIRED**.
 M5C, M5 and Sprint 8.8 remain **IN PROGRESS**; M6 remains **NOT STARTED**.
 M1–M4, M5A and M5B remain COMPLETE / STAGING PASS / FORMALLY CLOSED.
 Production remains UNAUTHORIZED / NOT DEPLOYED.
@@ -13,11 +13,19 @@ Narrator was reading document title/application chrome at cutoff. The original f
 acceptance report remains unchanged as historical evidence; it is not proof of a
 polite live-region implementation defect.
 
-On baseline `8d198af9c96c52f879252932456eef29cb0b97cb`, Website Manager already
-supplies its escaped page title through the existing shared header. The narrow local
-enhancement adds only fixed “Feedback sent”, “Website approved” or “Changes requested”
-prefixes for the corresponding one-time receipt-bearing GET. Normal/later terminal
-GETs, legacy saves and unknown receipt values retain the exact original title.
+Correction baseline: `a2288b041ce7ff116fed839c7702fd64b9767770` (merged PR #122).
+The completed automated review on PR #122 found: “Preserve the pending-review state
+in the approval title.” This follow-up changes only the existing approval match arm's
+output to “Customer approval recorded; internal review pending”. Its matched receipt
+remains exactly “Approved by customer; awaiting internal review.” Customer approval
+does not imply internal approval, legacy launch approval, publication or deployment.
+
+Website Manager still supplies its escaped page title through the existing shared
+header. The complete immediate approval title is
+“Customer approval recorded; internal review pending - 247SP Website Manager - Ultimate Back Office”.
+“Feedback sent” and “Changes requested” remain unchanged. GET-only/non-legacy
+conditions, allowlisting and default behavior are unchanged. Normal/later terminal
+GETs, legacy saves and unknown/hostile receipt values retain the exact original title.
 The single initially empty polite status, template, noscript fallback, population
 timing and focus behavior are unchanged. No shared layout, backend, lifecycle,
 authorization, CSRF, replay, redirect or error behavior changes.
