@@ -101,9 +101,13 @@ Customer approval alone is explicitly insufficient. M5 material-successor handli
 supersedes prior customer/requested internal approvals but can retain an approved
 internal record; checking only `internally_approved` or only site `approved` is unsafe.
 
-Eligibility is rechecked when requesting, claiming, accepting successful output,
-requesting deployment, immediately authorizing activation, and committing deployment
-success. A successor/revocation discovered after build leaves an immutable historical
+Eligibility is rechecked for new requests, execution claims, accepting successful
+output, immediately authorizing activation, and committing deployment success.
+Matching deployment/restore request replay uses current scoped history authorization
+before the separate new-operation gates (section 13). Recovery claims require current
+trusted recovery authority, not renewed publication eligibility; adoption/finalization
+rechecks eligibility, while inspection/compensation follows section 8's narrow rules.
+A successor/revocation discovered after build leaves an immutable historical
 artifact, not permission to publish it. Normal deployment rejects stale releases;
 the separately authorized known-good restore path is the deliberate exception in
 section 21. A grant authorizes an exact activation attempt at a defined transaction
@@ -183,7 +187,7 @@ that cannot be expressed as cross-table CHECK constraints.
 | job_key uuid; release_key uuid; revision_id ID; business_id ID?; association_id ID? | I; opaque correlation, reserved release identity and exact source ownership. |
 | snapshot_hash hash; build_input_hash hash; builder_version VARCHAR(64); builder_code_sha CHAR(40) ASCII; build_profile VARCHAR(40); build_options_json JSON; input_manifest_json JSON | I; canonical bounded public input specification and toolchain identity. Input manifest is private DB evidence, never a snapshot dump. |
 | idempotency_key hash; requested_by_user_id ID?; actor_type VARCHAR(24); correlation_id key | I; request identity and audit. |
-| status VARCHAR(32) default requested; attempt_count INT UNSIGNED default 0; max_attempts INT UNSIGNED default 3; next_attempt_at DATETIME(6)? | M; scheduling. |
+| status VARCHAR(32) default requested; next_attempt_at DATETIME(6)? | M; ordinary execution scheduling only. Shared execution/recovery accounting and policy columns below also apply. |
 | current_attempt_id ID?; lock_version BIGINT UNSIGNED default 0 | M; CAS/lease generation. |
 | failure_category VARCHAR(40)?; failure_code VARCHAR(64)?; safe_summary VARCHAR(500)? | M; last bounded result, no exception text. |
 | started_at DATETIME(6)?; completed_at DATETIME(6)?; updated_at DATETIME(6) | W first start, M terminal/updated timestamps; attempts retain each execution. |
@@ -193,25 +197,80 @@ UNIQUE `job_key`, `release_key`, `idempotency_key`, `(id,site_id)`,
 `(revision_id,site_id)`, `correlation_id`. FK `(revision_id,site_id)` to
 site_revisions; actor to users; business to businesses. Add current-attempt FK after
 attempt table exists: `(current_attempt_id,id,site_id)` to attempt `(id,build_job_id,site_id)`.
-CHECK max_attempts between 1 and 3, attempt_count <= max_attempts; business/association
-both NULL or both set. Job statuses: `requested`, `running`, `retry_wait`, `succeeded`,
+CHECK business/association both NULL or both set. Apply the shared counter CHECKs
+below. Job statuses: `requested`, `running`, `retry_wait`, `succeeded`,
 `failed`, `reconciliation_required`, `cancelled`. A failed retry may clear completed_at
-on the job; its terminal attempt remains immutable. Successful job is terminal.
+on the job; its terminal attempt remains immutable. Successful job outcome is terminal;
+recovery bookkeeping may still record inspection without rerendering or rewriting it.
+
+### Shared execution and recovery columns on jobs and deployments
+
+The selected model reuses both attempt tables with `attempt_kind=execution|recovery`.
+The following columns are required on **both** site_build_jobs and site_deployments;
+they replace the ambiguous attempt_count/max_attempts execution-budget pair. No new
+table, execution-budget reset or later schema amendment is needed for recovery.
+
+| Columns | Mutability and purpose |
+| --- | --- |
+| attempt_count BIGINT UNSIGNED default 0; execution_count INT UNSIGNED default 0; recovery_count BIGINT UNSIGNED default 0 | M, increment-only; total lease sequence and separate execution/recovery totals. |
+| max_execution_attempts INT UNSIGNED default 3; max_automatic_recoveries INT UNSIGNED default 2 | I; persisted per-operation limits selected by server policy. |
+| automatic_recovery_count INT UNSIGNED default 0 | M, increment-only; automatic recovery claims over the operation's lifetime, not a resettable retry window. |
+| recovery_status VARCHAR(16) default none; next_recovery_at DATETIME(6)? | M; none/required/running/blocked/resolved, separately visible from operation outcome. |
+| worker_policy_version VARCHAR(64); worker_policy_json JSON | I; version and exact bounded timing/backoff policy snapshot; no client override. |
+
+CHECK `attempt_count = execution_count + recovery_count`,
+`max_execution_attempts BETWEEN 1 AND 3`, `execution_count <= max_execution_attempts`,
+`max_automatic_recoveries BETWEEN 0 AND 2`,
+`automatic_recovery_count <= max_automatic_recoveries`,
+`automatic_recovery_count <= recovery_count`, and the recovery_status allowlist.
+There is **no** CHECK capping attempt_count or recovery_count at three. Execution claim
+CAS requires execution_count < max_execution_attempts; recovery claim does not.
+Each parent adds INDEX `(recovery_status,next_recovery_at,id)` for the separate queue.
+Monotonic counter updates and equality to child-row totals are enforced by the locked
+service transaction and real-MySQL tests; CHECKs alone cannot count child rows.
+
+The immutable policy snapshot stores `lease_seconds=120`, `heartbeat_seconds=30`,
+`execution_timeout_seconds=900` for builds or 300 for deployments,
+`recovery_timeout_seconds=300`, `execution_retry_delays_seconds=[30,120]`, and
+`automatic_recovery_delays_seconds=[30,120]`. Schema stores limits in typed columns;
+service validates JSON against worker_policy_version and these bounded values.
+Attempt deadline_at and initial expiry are computed from this snapshot and DB UTC
+leased_at, then persisted. Renewal cannot extend deadline_at. A policy version change
+applies to new operations only; it never silently changes existing budgets or clocks.
 
 ### 5.2 site_build_attempts — owner SiteBuildService worker
 
 | Columns | Mutability and purpose |
 | --- | --- |
-| build_job_id ID; attempt_number INT UNSIGNED; worker_id key; lease_token_hash hash; correlation_id key | I; unique claim and hashed 256-bit secret token. |
-| status VARCHAR(24); leased_at DATETIME(6); lease_expires_at DATETIME(6); heartbeat_at DATETIME(6); started_at DATETIME(6)?; completed_at DATETIME(6)? | I lease start; M expiry/heartbeat; W start/completion/terminal status. |
+| build_job_id ID; attempt_number BIGINT UNSIGNED; attempt_kind VARCHAR(16); execution_number INT UNSIGNED?; recovery_number BIGINT UNSIGNED?; worker_id key; lease_token_hash hash; correlation_id key | I; monotonically numbered claim across both kinds and hashed 256-bit secret token. |
+| recovery_of_attempt_id ID?; recovery_trigger VARCHAR(16)?; operator_request_key uuid?; recovery_authorized_by_user_id ID?; recovery_actor_type VARCHAR(24)?; recovery_reason_code VARCHAR(64)? | I; exact original execution being resolved; automatic/operator trigger and operator request evidence. Optional actor FK uses SET NULL, with actor type retained. |
+| status VARCHAR(24); leased_at DATETIME(6); deadline_at DATETIME(6); lease_expires_at DATETIME(6); heartbeat_at DATETIME(6); started_at DATETIME(6)?; completed_at DATETIME(6)? | I lease start/deadline; M expiry/heartbeat; W start/completion/terminal status. |
 | candidate_storage_key VARCHAR(500)?; candidate_artifact_hash hash?; external_reference VARCHAR(191)? | W; bounded private artifact receipt; no raw OS paths/URLs. |
 | failure_category VARCHAR(40)?; failure_code VARCHAR(64)?; safe_summary VARCHAR(500)? | W terminal result. |
 
-UNIQUE `(build_job_id,attempt_number)`, `(id,site_id)`, `(id,build_job_id,site_id)`;
+UNIQUE `(build_job_id,attempt_number)`, `(build_job_id,execution_number)`,
+`(build_job_id,recovery_number)`, `(build_job_id,operator_request_key)`,
+`(id,site_id)`, `(id,build_job_id,site_id)`;
 INDEX `(status,lease_expires_at,id)`, `correlation_id`; FK `(build_job_id,site_id)` to
-jobs. CHECK positive attempt and lease expiry > leased_at. Statuses `leased`,
+jobs; FK `(recovery_of_attempt_id,build_job_id,site_id)` to this table's
+`(id,build_job_id,site_id)`. CHECK positive attempt and
+`leased_at < lease_expires_at AND lease_expires_at <= deadline_at`. Statuses `leased`,
 `running`, `succeeded`, `failed`, `expired`, `abandoned`. Lease token never appears in
 DTO history, artifact, event metadata or logs.
+
+Shared attempt-shape CHECK: attempt_kind IN (execution,recovery). Execution requires
+execution_number IS NOT NULL and BETWEEN 1 AND 3, recovery_number NULL and all recovery
+fields NULL. Recovery requires execution_number NULL, recovery_number IS NOT NULL and
+positive, non-NULL recovery_of_attempt_id, non-NULL recovery_trigger in automatic/operator,
+non-NULL recovery_actor_type and recovery_reason_code. Required nullable branch members
+use explicit IS NOT NULL guards so SQL CHECK's UNKNOWN result cannot admit missing data. Automatic
+requires operator_request_key and recovery_authorized_by_user_id NULL and actor type
+system; operator requires non-NULL operator_request_key and actor type internal_admin
+or super_admin. The service requires a currently authorized non-NULL operator user at
+claim; later actor deletion may SET NULL without invalidating historical shape.
+Service also verifies recovery_of_attempt_id identifies an earlier **execution** row
+of the same parent. A recovery of a crashed recovery keeps that original execution
+reference; it gets a new recovery_number/attempt_number, not a reused token.
 
 ### 5.3 site_releases — owner SiteBuildService completion
 
@@ -272,15 +331,15 @@ success status: the guarded success transaction enforces that predicate.
 
 | Columns | Mutability and purpose |
 | --- | --- |
-| deployment_key uuid; target_id ID; release_id ID; source_revision_id ID; operation VARCHAR(16); request_key uuid; idempotency_key hash | I; exact target/release and publish/restore request. |
+| deployment_key uuid; target_id ID; release_id ID; source_revision_id ID; operation VARCHAR(16); request_key uuid; request_payload_hash hash; request_payload_json JSON; reason_code VARCHAR(64) | I; scoped request identity and separate canonical original intent fingerprint/body (section 7). The payload hash is not a unique request key. |
 | expected_current_deployment_id ID?; expected_pointer_version BIGINT UNSIGNED; restored_from_deployment_id ID?; deployment_approval_id ID? | I; optimistic request precondition, restore source and production grant. |
 | requested_by_user_id ID?; actor_type VARCHAR(24); correlation_id key; binding_version INT UNSIGNED | I; authorization/config snapshot. |
-| status VARCHAR(40) default requested; attempt_count INT UNSIGNED default 0; max_attempts INT UNSIGNED default 3; next_attempt_at DATETIME(6)?; current_attempt_id ID? | M; durable job and attempts. |
+| status VARCHAR(40) default requested; next_attempt_at DATETIME(6)?; current_attempt_id ID? | M; durable operation, ordinary execution scheduling and sole current lease owner. Shared execution/recovery accounting and policy columns above also apply. |
 | previous_deployment_id ID?; activation_fence BIGINT UNSIGNED?; external_reference VARCHAR(191)? | W per first activation reservation; target slot forbids intervening deployment; attempts carry recovery fences. |
 | failure_category VARCHAR(40)?; failure_code VARCHAR(64)?; safe_summary VARCHAR(500)? | M bounded terminal/current failure. |
 | started_at DATETIME(6)?; staged_at DATETIME(6)?; activation_attempted_at DATETIME(6)?; health_verified_at DATETIME(6)?; completed_at DATETIME(6)?; updated_at DATETIME(6) | W milestones/M workflow; attempt rows preserve retries. |
 
-UNIQUE `deployment_key`, `(target_id,request_key)`, `idempotency_key`, `(id,site_id)`,
+UNIQUE `deployment_key`, `(site_id,target_id,request_key)`, `(id,site_id)`,
 `(id,target_id,site_id)`; INDEX `(status,next_attempt_at,id)`,
 `(target_id,created_at,id)`, `(release_id,site_id)`, `correlation_id`.
 FK `(target_id,site_id)` to targets; FK `(release_id,source_revision_id,site_id)` to
@@ -289,25 +348,33 @@ releases `(id,source_revision_id,site_id)`; previous/expected/restore composite 
 `(current_attempt_id,id,site_id)` added after attempts exist. Approval FK to section
 5.9's `(id,release_id,target_id,site_id)` with matching columns on deployment.
 CHECK operation `publish`/`restore`; restore requires restored_from_deployment_id,
-publish requires it NULL; attempt limits 1..3. Production-approval requirement is a
+publish requires it NULL; shared counter/shape CHECKs apply. No uniqueness constraint
+on request_payload_hash. Production-approval requirement is a
 cross-table locked service check, not an ineffective same-row CHECK.
 
 ### 5.7 site_deployment_attempts — owner SiteDeploymentService worker
 
-Columns: `deployment_id ID`, `attempt_number INT UNSIGNED`, `worker_id key`,
+Columns: `deployment_id ID`, `attempt_number BIGINT UNSIGNED`, `worker_id key`,
 `lease_token_hash hash`, `fence_epoch BIGINT UNSIGNED`, `status VARCHAR(24)`,
-`leased_at DATETIME(6)`, `lease_expires_at DATETIME(6)`, `heartbeat_at DATETIME(6)`,
+`leased_at DATETIME(6)`, `deadline_at DATETIME(6)`, `lease_expires_at DATETIME(6)`, `heartbeat_at DATETIME(6)`,
 `started_at DATETIME(6)?`, `completed_at DATETIME(6)?`,
 `external_reference VARCHAR(191)?`, `receipt_json JSON?`,
 `failure_category VARCHAR(40)?`, `failure_code VARCHAR(64)?`,
 `safe_summary VARCHAR(500)?`, `correlation_id key`.
 
-Same immutability/lease/status rules as build attempts. `receipt_json` is bounded
+Also include the exact attempt_kind, execution_number, recovery_number and all six
+recovery authority/reference fields from section 5.2, with the same types/NULL rules.
+Same immutability/lease/status/shape CHECKs as build attempts. `receipt_json` is bounded
 16KiB structured phase evidence, never provider output; finalized once per attempt.
 Phase observations before finalization go to append-only site_events/health checks
-and external journal. UNIQUE `(deployment_id,attempt_number)`, `(id,site_id)`,
+and external journal. UNIQUE `(deployment_id,attempt_number)`,
+`(deployment_id,execution_number)`, `(deployment_id,recovery_number)`,
+`(deployment_id,operator_request_key)`, `(id,site_id)`,
 `(id,deployment_id,site_id)`; INDEX `(status,lease_expires_at,id)`, `correlation_id`;
-FK `(deployment_id,site_id)` to deployments. Expired attempt's fence is never reused.
+FK `(deployment_id,site_id)` to deployments; FK
+`(recovery_of_attempt_id,deployment_id,site_id)` to this table's
+`(id,deployment_id,site_id)`; optional recovery actor FK to users SET NULL. Both attempt
+kinds allocate a fresh target fence. Expired execution/recovery fences are never reused.
 
 ### 5.8 site_deployment_health_checks — owner health checker via deployment service
 
@@ -374,20 +441,25 @@ The proposed service is `private/classes/SiteBuildService.php`.
 | Proposed operation | Inputs and output | Boundary |
 | --- | --- | --- |
 | `requestBuild(int $actingUserId, array $input): array` | Input site_id, revision_id, expected_snapshot_hash, build_profile, correlation_id?; output BuildJob DTO plus existing boolean. Builder version is server-selected, never arbitrary customer code. | Locked authorization/eligibility and deterministic insert transaction; no FS/network. |
-| `claimBuild(array $workerContext): ?array` | Environment-bound worker_id/capabilities; output Lease DTO plus immutable BuildInput DTO. | Short transaction, one eligible job/attempt; worker principal is CLI-only, not a user-supplied system actor. |
+| `claimBuild(array $workerContext): ?array` | Environment-bound worker_id/capabilities; output execution Lease DTO plus immutable BuildInput DTO. | Short transaction, one eligible execution claim with execution_count below limit and no unresolved recovery; trusted CLI-only worker. |
 | `renewBuildLease(array $lease): array` | job_id, attempt_id, token; returns expiry. | Token, current attempt, status, unexpired lease and max runtime CAS. |
-| `executeBuild(array $lease): array` | Valid claimed lease; returns verified candidate receipt. | Outside DB transaction: bounded asset reads, static render, validation, immutable candidate storage. |
-| `completeBuildSuccess(array $lease, array $receipt): array` | Receipt references already verified sealed candidate; returns Release DTO. | Short transaction rechecks eligibility, lease, identity; inserts release/validation, succeeds job/attempt and event atomically. |
+| `executeBuild(array $lease): array` | Valid execution lease; rejects recovery kind; returns verified candidate receipt. | Outside DB transaction: bounded asset reads, static render, validation, immutable candidate storage. |
+| `completeBuildSuccess(array $lease, array $receipt): array` | Execution completion with verified sealed candidate; returns Release DTO. Recovery adoption uses the same internal success transaction through completeBuildRecovery. | Rechecks eligibility, lease kind/identity; inserts release/validation, succeeds job/current attempt and event atomically; recovery adoption also resolves recovery_status in that transaction. |
 | `completeBuildFailure(array $lease, array $failure): array` | Fixed category/code/safe summary; returns job. | Short guarded transaction; classify retry; never change published/current pointers. |
 | `buildJobForActor(int $actingUserId, int $jobId): array` | Internal reader; safe job/attempt summary. | Read-only tenant-scoped projection; no lease tokens/input snapshot. |
 | `releasesForSite(int $actingUserId, int $siteId, array $cursor): array` | Keyset cursor (created_at,id), limit 1..100. | Read-only history, immutable Release DTOs. |
 | `releaseManifestForActor(int $actingUserId, int $releaseId): array` | Returns bounded sanitized metadata/file manifest and integrity status. | Internal only; no unrestricted file-path/download API. |
-| `retryBuild(int $actingUserId, int $jobId, string $correlationId): array` | Eligible transient failure under attempt budget. | Reauthorize/recheck; requeue same job, append event. Succeeded never requeued. |
-| `reconcileBuild(int $jobId, array $workerContext): array` | Job + trusted reconciler identity. | Snapshot/claim transaction, external inspection, result transaction; never nest external work in transaction callback. |
+| `retryBuild(int $actingUserId, int $jobId, string $correlationId): array` | Eligible transient failure with execution_count below limit and resolved external state. | Reauthorize/recheck; requeue same job, append event. Succeeded never requeued; no counter reset. |
+| `claimBuildRecovery(int $jobId, array $workerContext, ?array $operatorRequest = null): array` | Current trusted recovery worker; optional authorized operator actor/request_key/reason_code. Returns existing resolved/request result or fresh recovery Lease DTO. | Site-first short transaction; separate recovery budget, even when execution_count=3; prior execution identity fixed server-side. |
+| `reconcileBuild(array $recoveryLease): array` | Current recovery-only lease with recovery_of_attempt_id; produces bounded evidence for completeBuildRecovery. | Inspect exact prior output outside transaction; no rendering/new output. |
+| `completeBuildRecovery(array $lease, array $result): array` | Recovery disposition recorded_success/adopted/safely_failed/retryable_recovery_failure/blocked, plus bounded evidence. | Token/deadline/current-attempt checks; one result transaction completes recovery attempt/status and, for adoption, invokes the shared verified-success implementation on that transaction. No nested/separate success commit, execution claim or expired-attempt rewrite. |
 
-BuildJob DTO: IDs, status, source hash, profile/version, attempt count, next retry,
-safe error, timestamps, correlation and release ID if succeeded. Lease DTO contains
-opaque token only in worker memory; BuildInput contains projected facts, ordered
+BuildJob DTO: IDs, status, source hash, profile/version, execution_count/limit,
+recovery_count/automatic count/limit, total attempt_count, recovery_status, separate
+next execution/recovery times, safe error, timestamps, correlation and release ID if
+succeeded. Lease DTO identifies attempt_kind, attempt_number, kind-specific number,
+recovery_of_attempt_id when applicable, deadline_at and opaque token only in worker
+memory. Recovery is not a generic BuildInput/executeBuild capability. BuildInput contains projected facts, ordered
 composition, exact versions, asset digests/authorized locator handles and output
 options. Release DTO contains IDs/digests/profile/validation summary/file counts and
 timestamp, never secrets or arbitrary storage credentials.
@@ -422,25 +494,66 @@ lock JSON ordering, list order, integer/NULL handling, UTF-8 and asset ordering.
 | --- | --- |
 | Duplicate/simultaneous request | UNIQUE identity plus locked read/insert returns one job/release_key; rollback duplicate-key transaction before rereading winner; no duplicate requested event. |
 | Same input and builder | Reuse successful immutable release; active job reports in progress. |
-| Retry after transient failure | Same job/key/reserved release_key, new numbered attempt. |
-| Crash/expired lease | Reconciliation first, then new fenced attempt; no blind retry if sealed output may exist. |
+| Retry after transient failure | Same job/key/reserved release_key, new execution attempt only while execution_count is below its limit. |
+| Crash/expired lease | Separate recovery claim first if external outcome is uncertain; execution budget exhaustion never prevents bounded recovery. No blind render retry. |
 | Builder code changes | New key/job/release even with same semantic version; server must identify the new SHA. |
 | Successor revision | Distinct key; normal freshness rules determine eligibility. |
 | Different options/profile | New input hash and key; only server-allowlisted profiles/options. |
 | Existing success no longer eligible | History is retained; deployability false. Never silently regenerate or reactivate it. |
 
-Deployment request idempotency is separate: SHA256 of target ID, release ID,
-operation, expected pointer version, restore source, approval ID and client-generated
-request_key. Repeating the key with any changed payload is conflict. A genuinely new
-publish/restore uses a new key and must satisfy the current-pointer precondition.
+### Deployment request identity and original payload
+
+For both requestDeployment and requestRestore, request **identity** is the tuple
+`(site_id,target_id,request_key)`, enforced by its UNIQUE key. Normalize request_key
+once to a lowercase UUID. It is not an authorization token and is not a payload hash.
+Different authorized target namespaces can use the same UUID without sharing history.
+Never look up a request key globally or move it to another target on retry.
+
+The immutable original payload is CanonicalJson::encode of exactly:
+`{request_contract_version:1, site_id, target_id, environment, release_id, operation,
+expected_current_deployment_id, expected_pointer_version, restored_from_deployment_id,
+deployment_approval_id, binding_version, reason_code}`. Environment comes from the
+authorized target's immutable environment, not a client-selected credential. The
+caller supplies the expected binding_version; do not substitute today's version on
+replay. All other listed values come from the normalized original request, not from
+current pointer/grant state. Store the canonical JSON and its SHA-256 separately as
+request_payload_json and request_payload_hash; compare hash **and** re-encoded canonical
+stored payload on replay. Neither has a uniqueness constraint.
+
+Reject unknown fields, floating/coerced IDs and invalid types. IDs are positive
+PHP-representable integers; pointer version is a nonnegative integer; nullable fields
+have explicit NULL normalization. Publish requires NULL restore source; restore
+requires its explicit source. reason_code is a required allowlisted intent code, not
+free text. Release identity determines its immutable revision/artifact/profile;
+binding_version fixes configuration intent. New-operation checks resolve and verify
+those records only after the existing-request path has been considered. Caller cannot
+override worker policy, target environment, source revision or builder configuration.
+
+request_key is outside the fingerprint because it names the request; authenticated
+actor and correlation_id are recorded separately for provenance/tracing. A currently
+authorized different internal operator may retrieve the same operation without
+impersonating its original requester. Original actor, policy snapshot, timestamps and
+correlation are never replaced. Trace IDs, time or today's server policy cannot make
+an otherwise exact replay a different operation.
+
+Matching identity/payload returns the recorded operation before new-operation pointer,
+eligibility, binding-readiness or grant checks (section 13). Changed payload conflicts.
+A new request key is a new intent and must pass every current precondition; matching
+history confers no execution/retry/production authority.
 
 ## 8. Worker leases, retries, and completion
 
-Defaults: 120-second lease, heartbeat every 30 seconds, 15-minute build and 5-minute
-deployment attempt deadline, maximum three execution attempts. All are server policy,
-recorded on jobs; no customer overrides. Initial transient retry delays are 30 and
-120 seconds. Deadlock retries are bounded separately and do not consume an execution
-attempt until claim commits. Time and claim conditions use MySQL UTC time.
+Execution means new rendering, staging or candidate activation through an ordinary
+claim/retry. Recovery means resolving effects of an already-recorded execution:
+inspection, verified adoption/finalization or narrowly bounded compensation. Both use
+new attempt rows, but only execution consumes the three-execution budget.
+
+Section 5 persists the limits and immutable timing policy. Lease is 120 seconds with
+30-second heartbeat; execution deadline is 15 minutes for build and 5 for deployment;
+each recovery has a 5-minute absolute deadline. Runtime/renewal never extends that
+persisted deadline. Execution retry delays are 30/120 seconds. Deadlock retries are
+bounded separately and consume no claim until the transaction commits. DB UTC time
+governs lease, deadline and due comparisons.
 
 Select candidate IDs without locks; then lock site, relevant revision/approval/tenant
 rows, target if applicable, job and attempt in documented order, and reread queue
@@ -449,19 +562,99 @@ then wait on site in another path. Queue-only `SKIP LOCKED` is optional optimiza
 not an eligibility/read-consistency mechanism; MySQL explicitly limits its useful
 semantics to queue-like workloads ([locking-read documentation](https://dev.mysql.com/doc/refman/8.4/en/innodb-locking-reads.html)).
 
-Claim increments attempt_count, creates attempt and random 32-byte token (store only
-SHA-256), records current_attempt_id, lease expiry, start event and returns the lease.
-Every renewal, failure, phase advance and completion matches attempt/token, current
-attempt and unexpired lease. Expired token cannot renew itself. Claim increments a
-monotonic target fence for deployment; a token alone cannot fence filesystem writes.
+Every claim locks the parent/current attempt, establishes that no unexpired owner
+remains, and increments attempt_count. The new attempt_number equals that total.
+An execution claim also increments execution_count and assigns execution_number;
+a recovery claim instead increments recovery_count and assigns recovery_number.
+Thus after three executions, first recovery is attempt_number=4, recovery_number=1,
+execution_number=NULL; execution_count stays 3. Only automatic recovery increments
+automatic_recovery_count. current_attempt_id's same-parent/site FK, locked CAS and
+UNIQUE attempt/kind numbers enforce one current owner; prior expired rows stay intact.
+
+Each claim creates a fresh random 32-byte token (only SHA-256 stored), persisted
+deadline/expiry and start event. Deployment execution **and recovery** claims also
+increment target fence_epoch. Renew/result/phase updates match kind, token, current
+attempt, unexpired lease and deadline. Recovery cannot call executeBuild,
+executeDeployment, stageRelease or candidate activateRelease. Expired tokens/fences
+cannot be renewed or reused. The original activation_fence remains provenance;
+the current attempt's new fence is the only fence authorized for recovery effects.
 
 Errors use fixed codes/categories: `authorization`, `eligibility`, `input_invalid`,
 `integrity`, `configuration`, `transient_storage`, `transient_network`, `lease_lost`,
 `external_unknown`, `health_failed`, `database_unavailable`. Only transient storage/
 network errors before activation auto-retry. Invalid source, rights, tampering, config,
 missing approval and health failures need correction/new explicit action. Ambiguous
-external outcomes require reconciliation. Exhaustion is terminal until a reviewed
-policy change/new valid input; retry never silently resets the three-attempt budget.
+external outcomes require reconciliation. Execution exhaustion prohibits further
+ordinary execution, not recovery. Unknown effects at exhaustion set operation status
+reconciliation_required and recovery_status required, not terminal-safe failed.
+Verified absence of effects can settle failed without retry. Never reset execution
+counters, raise an existing operation's immutable limit, or create a replacement
+operation merely to evade the limit or abandon an unresolved target slot.
+
+### Recovery claim policy and permitted work
+
+Before claiming or compensating, reread the authoritative DB result for the original
+operation/execution ID. The claim transaction repeats this check under its site-first
+parent/current-attempt locks before incrementing counters or replacing ownership; it
+cannot rely on a preflight snapshot. A late old result cannot commit after ownership
+is replaced. An already committed success is returned/retained; do not
+roll it back because its acknowledgement was lost or its grant has since expired.
+If DB commit state cannot be determined, remain blocked and perform no compensation.
+External inspection that is still necessary uses a new recovery lease; operation
+status succeeded stays succeeded, with independent recovery_status for any actual
+drift. History retrieval alone requires no lease or fence and has no side effects.
+For a committed success whose active slot was cleared, further external recovery
+requires the target still to identify that deployment as current and no newer active
+operation; acquire its slot under the target lock before granting recovery ownership.
+A historical operation cannot acquire a slot or mutate the target over a newer winner.
+
+Automatic recovery allows at most **two committed recovery claims per operation**,
+due after 30 then 120 seconds from the corresponding detected failure. Detection
+persists next_recovery_at once; repeated polling cannot slide the deadline or reset
+the count. Crash, expiry and unknown recovery results consume their claim. Conflicting
+identity, tampering or indeterminate authority blocks immediately rather than blindly
+retrying; transient recovery failure may schedule the second allowed automatic claim.
+If both automatic claims fail/expire, set recovery_status blocked, clear
+next_recovery_at, and retain reconciliation_required/blocked target and active slot.
+If persisted max_automatic_recoveries is zero, require operator recovery immediately;
+a lower persisted limit blocks when that limit is reached. Only required/due recovery
+is schedulable; blocked recovery is never selected automatically.
+
+A later explicit operator request can claim **one** additional recovery at any time
+after current ownership expires/is safely released, without schema or budget changes.
+It requires current scoped internal Admin/Super Admin for build/staging recovery or
+Super Admin for production recovery, trusted environment-bound worker context, a new
+operator_request_key and allowlisted reason. Record these on that recovery attempt
+and in site_events. UNIQUE `(parent_id,operator_request_key)` makes a lost-response
+operator request return its existing attempt summary, never another lease. A failed
+operator recovery stays blocked; another distinct authorized request is necessary.
+Compare the stored original execution and reason for a repeated operator key; changed
+intent conflicts. Current operator authorization is required for this history response.
+No operator request resets automatic/execution counters or re-enables the scheduler.
+All worker_context and operator identity values come from authenticated CLI/service
+context; a submitted user ID or a customer browser cannot forge this authority.
+
+Recovery binds server-side to the original execution row and immutable parent source,
+reserved release key/release, site, target, environment, binding version and recorded
+previous pointer. It may inspect DB/manifest/bytes/journal/pointer, repeat bounded
+health probes, adopt already sealed exact build output if currently eligible,
+finalize an already activated exact deployment only with current eligibility and
+valid grant, or compensate that activation to its recorded prior release/absence.
+It may not render, materialize new files, stage a release, initiate/repeat candidate
+activation, choose another source/target/environment, consume another approval or
+implicitly call an ordinary retry. Missing/partial output cannot be regenerated by
+recovery. A staged-but-never-activated release may only be inspected/settled; any later
+ordinary execution needs a remaining execution slot and normal eligibility. At three
+executions, it settles safely failed after verified absence of activation, or blocks
+if that absence cannot be proved.
+
+Expired/revoked production approval prevents adoption as a new successful publication;
+it does not revoke the original operation's narrow compensating authority. Fresh
+trusted recovery ownership plus original activation evidence permits only CAS restore
+to the recorded prior pointer (or verified unavailability for first deployment), under
+a fresh fence. This is not a new publish/restore request or grant consumption. If a
+newer operation owns/changed the target, recovery cannot overwrite it. Unknown or
+failed compensation remains visibly blocked. No safe terminal failure is inferred.
 
 Reuse existing SiteServiceException classifications for request errors; add a separate
 bounded worker result vocabulary rather than passing unrecognized strings to its
@@ -469,12 +662,19 @@ current constructor (which normalizes them to database_failure). Log exception c
 and fixed error code only, not message/SQL/command output. No nested transactions.
 
 Completion replay with matching already-committed attempt and receipt returns the
-recorded result and emits no duplicate event. A conflicting replay or any stale worker
-is rejected. Crash after sealed artifact but before DB success: reconciliation verifies
-reserved release identity, full hashes, producer receipt and current eligibility,
-claims a new attempt, and adopts only validated bytes. Stale attempts write only their
-own private candidate directory; they cannot overwrite the sealed namespace. Unknown
-or mismatched orphan remains quarantined with an event, never automatically published.
+recorded result and emits no duplicate event, after current trusted authorization;
+it cannot mutate state. A conflicting replay or stale-worker mutation is rejected.
+Recovery completion links the original producer receipt and the new recovery lease.
+Adoption/finalization atomically settles parent/recovery_status/attempt/result events;
+original expired execution stays expired. Verified adoption/finalization, confirmed
+recorded success or verified safe failure makes the recovery attempt succeeded and
+recovery_status resolved; safe failure still makes the original operation failed.
+An unsuccessful recovery attempt becomes failed (or expired on timeout). Only a
+retryable automatic recovery failure with remaining automatic budget sets required
+and next_recovery_at; exhausted, nonretryable or operator recovery failures set blocked.
+Neither outcome clears an unresolved target slot. Stale attempts
+write only their own private candidates, never the sealed namespace. Unknown or
+mismatched orphan remains quarantined with an event, never automatically published.
 
 ## 9. Immutable artifact contract
 
@@ -592,12 +792,12 @@ build eligibility. Array DTOs have documented allowlisted shapes.
 
 | SitePublisher operation | DTO contract |
 | --- | --- |
-| `stageRelease(array $release, array $target, array $context): array` | Verified release identity/digests, opaque target binding, operation key/fence; returns immutable staged receipt, verification summary and external reference. |
-| `activateRelease(array $staged, array $expectedCurrent, array $context): array` | Expected external release and fence, authorized attempt; returns activation receipt with old/new identity and observed fence, or conflict/unknown. |
+| `stageRelease(array $release, array $target, array $context): array` | Verified release identity/digests, opaque target binding, execution-only operation key/fence; returns immutable staged receipt, verification summary and external reference. |
+| `activateRelease(array $staged, array $expectedCurrent, array $context): array` | Expected external release and fence, authorized execution attempt; recovery kind rejected. Returns activation receipt with old/new identity and observed fence, or conflict/unknown. |
 | `healthCheck(array $expected, array $target, array $context): array` | Exact release/marker/probe profile, bounded phase and timeout; returns structured check evidence. |
 | `inspectCurrentRelease(array $target): array` | Read-only observed release, pointer/journal fence, integrity and unknown/missing classification; no DB pointer mutation. |
-| `restoreRelease(array $stagedKnownGood, array $expectedCurrent, array $context): array` | Same fenced activation mechanics; semantic restore marker retained in receipt. Authority comes from deployment service, not adapter. |
-| `reconcileExternalState(array $intent, array $target, array $context): array` | Returns observed state and bounded repair outcome for an authorized exact operation. Never automatically bless an arbitrary directory or latest symlink. |
+| `restoreRelease(array $stagedKnownGood, array $expectedCurrent, array $context): array` | Ordinary restore execution only, same fenced activation mechanics; semantic restore marker retained in receipt. Recovery compensation uses reconcileExternalState. Authority comes from deployment service, not adapter. |
+| `reconcileExternalState(array $intent, array $target, array $context): array` | Recovery-only lease for exact original execution; inspect/probe and optionally compensate its recorded activation. No staging or candidate activation. Never automatically bless an arbitrary directory or latest symlink. |
 
 Keep staging, activation, health and inspection distinct on one interface: each phase
 has a durable boundary and fault point, and this avoids one opaque “deploy succeeded”
@@ -610,11 +810,29 @@ Proposed SiteDeploymentService methods: `requestDeployment(actor,input)`,
 `requestRestore(actor,input)`, `claimDeployment(worker)`, `renewDeploymentLease(lease)`,
 `executeDeployment(lease)`, `completeDeploymentSuccess(lease,receipt)`,
 `completeDeploymentFailure(lease,failure)`, `deploymentForActor(actor,id)`,
-`deploymentsForSite(actor,site,environment,cursor)`, `reconcileDeployment(id,worker)`.
-Request includes site_id, target_id, release_id, expected current ID/pointer version,
-request_key, correlation and production approval ID when applicable. Worker cannot
-choose a different target/release. Triggering retry after activation uncertainty first
-requires reconciliation; restore is never implemented as a build-job retry.
+`deploymentsForSite(actor,site,environment,cursor)`,
+`claimDeploymentRecovery(id,worker,operatorRequest?)`,
+`reconcileDeployment(recoveryLease)`, `completeDeploymentRecovery(lease,result)`.
+Recovery claim/renew/completion uses the same durable policy and operator-request
+contract as build recovery, with a new target fence and same-operation active slot.
+executeDeployment accepts execution kind only; reconcileDeployment accepts recovery
+kind only. Recovery completion invokes the shared verified-success implementation
+within its single result transaction for an already activated result, or settles
+verified compensation/blocking. Parent, recovery_status, current recovery attempt and
+result events commit together; no nested/separate success commit. It never consumes a new
+grant or stages/activates the candidate. Known committed success is read before any
+compensation and is not replayed as a fresh success transition.
+
+Both request methods use the exact identity/payload and replay protocol in sections
+7/13. They return `{deployment_id, deployment_key, request_key, existing_operation,
+replayed, operation, operation_status, recovery_status, operation_release_id,
+target:{target_id,environment,current_deployment_id,current_release_id,pointer_version,
+active_deployment_id,reconciliation_status}, is_current}`. Matching replay sets both
+indicators true; new insertion sets both false. is_current compares operation ID to
+target.current_deployment_id, not release ID or historical success. All current target
+values are DB observations from this read, not new external health claims. History
+does not imply the release is still live. Worker cannot choose another release/target.
+Restore uses a new audited deployment, never a build-job retry.
 
 ## 13. Deployment states and transaction protocol
 
@@ -625,11 +843,67 @@ audited; an expired attempt cannot advance them. “Current”, “previous”, 
 and “restored” are history/read-model relationships, not destructive rewrites of a
 successful deployment status. A restore succeeds as a new row with operation restore.
 
-1. Request transaction: locked actor/site/revision/approvals/target checks; immutable
-   release verified by DB evidence; expected pointer/version match; insert intent/event.
-2. Claim transaction: acquire target active_deployment_id slot if NULL (or recover the
-   same reconciled operation), check request pointer precondition, issue attempt/lease
-   and new target fence. Concurrent queued requests do not own the slot yet.
+Recovery bookkeeping is independent: none/resolved -> required when unresolved effects
+are detected, required -> running -> resolved, or required/running -> blocked;
+blocked -> running only through a new authorized operator recovery
+claim. Transient failure may return required with a due time while automatic budget
+remains. Unresolved operation status stays reconciliation_required and target stays
+required/blocked with active_deployment_id retained. Recovering an acknowledged DB
+success preserves succeeded/history; recovery_status can report an actual external
+drift without rewriting that outcome. Neither recovery_status nor a replay response
+allows a new execution claim.
+
+### Request transaction: replay before new-operation gates
+
+1. Validate request shape/contract and canonical values. Begin a **fresh** transaction;
+   acquire SiteManager's site lock first, then locked current actor/tenant authorization.
+   Resolve target only with `(target_id,site_id)` and enforce current target access:
+   internal Admin/Super Admin for staging, Super Admin for production. Inactive/lost
+   role, missing site/target or forbidden scope is denied without revealing history.
+   Runtime enabledness, target readiness and historical grant validity are not access
+   permissions; those are new-operation gates later in this protocol.
+2. Under that root lock, read the existing identity `(site_id,target_id,request_key)`
+   and original payload. This is a scoped nonlocking read before revision/approval
+   mutation locks. All target/operation writers hold the same site lock; the fresh
+   transaction establishes its first consistent read **after** that lock, never from
+   an earlier preflight snapshot. This preserves site-first ordering without taking
+   a job/target write lock before revision/approval locks. History-only return needs
+   no lifecycle mutation locks. Read target state in the same protected snapshot.
+3. If found, compare the section 7 canonical original payload/hash. A mismatch returns
+   safe conflict. An exact match returns the existing-operation DTO and its actual
+   pending/succeeded/failed/reconciliation-required outcome. Commit a read-only result
+   with no intent, lease, grant consumption, event, retry, file action or pointer write.
+   Do **not** run today's expected-pointer, release freshness, binding-readiness or
+   approval expiry/consumption checks as though this were a new operation.
+4. Only if identity is absent, lock relevant revision/approval/tenant rows, then target,
+   then operation/attempt rows when needed, in the existing mutation order. Apply all
+   current source/release/restore eligibility, exact configuration binding, enabled
+   environment, expected current deployment/pointer version and production grant
+   preconditions. Insert original canonical payload, policy snapshot and one requested
+   event atomically. Unknown/foreign referenced release/restore/approval is denied.
+5. Site locking normally serializes duplicate inserts; the UNIQUE request identity is
+   the final database defense. On duplicate insert race, roll back the entire losing
+   transaction and any event work, start a fresh site-first authorized lookup, and
+   compare to the winner. Return matching history or payload conflict. Do not rerun
+   stale new-operation pointer/grant checks **before** checking the winner, even if
+   it already succeeded. Deadlock retries likewise restart at authorization/lookup.
+
+No request-key possession bypasses authorization. A foreign target/key combination
+is never searched globally; a foreign key cannot retrieve another site's row. If the
+same UUID is absent in an authorized target namespace it is merely a potential new
+identity, subject to all new-operation ownership gates, with no foreign existence
+disclosure. Lost current access denies even an otherwise identical replay. Matching
+history may be returned after pointer advancement, grant consumption/expiry/revocation
+or target disablement; none of these read responses reauthorize publication.
+
+### Execution and recovery phases
+
+1. Request transaction follows the replay/new-intent protocol above. Only a newly
+   created or explicitly eligible queued operation may proceed to execution claim.
+2. Execution claim transaction: require execution_count below its immutable limit and
+   no unresolved recovery; acquire target active_deployment_id slot if NULL or already
+   this safely reconciled operation, check request pointer precondition, and issue new
+   execution attempt/lease/fence. Queued/replayed requests do not themselves own a slot.
 3. Outside transaction: stage/verify immutable release and candidate health. Persist
    each phase/result in a short guarded transaction.
 4. Activation-authorizing transaction: recheck live eligibility/grant/config/lease,
@@ -641,18 +915,27 @@ successful deployment status. A restore succeeds as a new row with operation res
    expected pointer/version, current eligibility/grant and fresh health receipt, then
    records success, pointer, event and releases slot atomically.
 6. Failed active health/final authority: compensate outside transaction to verified
-   previous release using same operation/fence and expected candidate pointer, then
+   previous release using the still-valid current execution lease/fence and expected candidate pointer, then
    verify rollback. Only after confirmed compensation mark failed and free the slot.
    Unknown/failed compensation remains reconciliation_required and blocks new work.
    For a first deployment with no previous release, compensation removes only this
    operation's current link and verifies the preconfigured unavailable response;
    the DB pointer stays NULL. Never invent a successful previous deployment.
+7. If execution lease/deadline expires or the process dies, stop its writes. An
+   independent recovery claim follows section 8 even when execution_count=3. It gets
+   a new token/deadline/fence and references the original execution, holding only the
+   same operation's target slot. Observe committed DB outcome first; finalize verified
+   eligible prior activation or compensate under bounded recovery authority. Recovery
+   failure retains blocking; it cannot fall through into step 2 as execution four.
 
 No external operation runs inside any lifecycle DB transaction. Holding a bounded
 **external** per-target helper lock around activation/health/DB result coordination
 does not mean holding a SQL transaction through a network call. If the DB is down,
 the helper journals outcome, closes/relinquishes only after bounded compensation or
 records unresolved state; it never guesses DB commit success after a lost connection.
+When commit acknowledgement is missing, no rollback is attempted until a fresh
+authoritative DB read resolves whether success committed. A dead worker's execution
+token/fence is never used by its replacement, including for compensation.
 
 ## 14. Current pointer and existing publication lifecycle
 
@@ -710,12 +993,19 @@ active internal Super Admin can approve/revoke; an internal Admin may request re
 but cannot approve production. No customer production UI. No grant is created now.
 
 Worker rechecks decision type/state/revoked_at/expiry, approver's current Super Admin
-authority, exact binding and runtime environment at claim, activation authorization
+authority, exact binding and runtime environment at execution claim, activation authorization
 and success. Consumption binds one deployment operation, permitting only its fenced
-reconciliation/retries while the grant is still valid. Changed release/hash/pointer/
+eligible finalization/retries while the grant is still valid. Changed release/hash/pointer/
 binding, expiry, revocation or role loss rejects unexecuted work. Expired/revoked grant
 after activation cannot be used to declare success: restore previous verified pointer
 under the operation's bounded compensating authority, otherwise block/reconcile.
+
+There are three distinct checks: current caller access governs request-history replay;
+valid production grant governs new execution and finalizing an uncommitted activation;
+fresh trusted recovery lease plus original activation evidence governs bounded
+compensation. Consumed/expired grants are not consumed again on matching request
+replay. An already committed success is historical fact, not invalidated by a grant
+expiring later. Recovery after expiry/revocation cannot initiate a candidate activation.
 
 In-memory/raw grant IDs are not capabilities. The deployment service loads authority
 from DB, and the restricted helper validates the committed operation/fence against
@@ -800,7 +1090,14 @@ Persist accepted fence before mutation; after a crash the intent/link pair is in
 New worker/reconciler must acquire helper lock and install newer fence before recovery.
 A resumed old worker cannot overwrite a new winner even if its local lease memory says
 otherwise. It cannot bypass helper to write current. Database checks alone do not
-protect external state.
+protect external state. Helper context includes attempt_kind, original execution ID
+and permitted recovery disposition loaded from committed control-plane state. A
+recovery fence cannot authorize stage/new activation commands; it permits observation
+and only CAS compensation to the original previous pointer or absence. The helper
+must establish that the original success did not commit before compensation, never
+infer that from a lost acknowledgement; unknown DB state blocks compensation.
+All replacement recovery claims use fresh
+fences, including after execution three or a prior recovery crash.
 
 The helper holds its external lock across the bounded activation/health/result protocol;
 it does not hold an open SQL transaction through external work. Lease-expiry takeover
@@ -878,25 +1175,33 @@ is authority for what is physically serving now. Neither automatically overwrite
 other. Disagreement marks target required/blocked and exposes both observations to
 internal operators. Keep failed/pending external state distinct from last-known-good.
 
-Reconciler claims an exclusive new lease/fence for the existing operation (or a new
-audited repair deployment when none exists), checks target slot and approval policy,
-inspects bytes/link/journal/health outside transaction, then applies a short guarded
-result transaction. Repeated same observation/repair key is idempotent. No arbitrary
-filesystem path, newest timestamp or HTTP 200 can create success.
+Reconciler first resolves committed DB outcome, then, when work remains, claims a
+separate recovery attempt under section 8, independent of execution budget. It retains
+the existing operation identity/target slot, allocates new lease/deadline/fence, inspects
+outside transaction and records a guarded result. It never calls ordinary execution
+as recovery. A new audited repair/restore deployment when no recoverable operation
+exists is a **separate authorized new request**, with all new-operation preconditions;
+reconciliation cannot silently create it to bypass an exhausted or blocked operation.
+Repeated same receipt/result key is idempotent; a distinct recovery claim has its own
+history without duplicating the original outcome. No arbitrary path, newest timestamp
+or HTTP 200 can create success.
 
 | Failure window | Resolution |
 | --- | --- |
-| Built artifact, DB completion lost | Inspect reserved job/release key, full manifest/content, producer receipt and eligibility. Fresh fenced attempt may adopt exact valid output; otherwise quarantine and fail/requeue by classification. |
-| Deployment intent, worker never ran | Eligible requested row remains claimable. Expired lease without external effects becomes expired attempt and bounded retry. |
-| Staged release, no activation | Verify staged bytes/receipt; resume same authorized operation under new fence or cancel safely. Keep current pointer. |
+| Built artifact, DB completion lost | Read committed result first; new recovery attempt may verify/adopt only already sealed exact bytes with original producer receipt and current eligibility, even after execution three. Missing/invalid output is not rerendered; settle safe failure or block. |
+| Deployment intent, worker never ran | Eligible requested row remains claimable by ordinary execution. An expired claimed execution has its outcome resolved first; retry only within remaining execution budget. |
+| Staged release, no activation | Recovery inspects receipt/current state and records proven nonactivation. It cannot stage/activate. An ordinary eligible retry needs execution_count below limit; at three settle safely failed, or block if outcome uncertain. |
 | Config/reload success, DB record lost | Ordinary publish does not reload; for approved binding provisioning inspect installed config digest, actual served target and receipt. No assumption from process exit; disable target until reconciliation. |
 | Symlink activated, active health failed | CAS compensation to previous release, then rollback health. Mark failed only after prior active identity is verified; otherwise reconciliation_required and target remains occupied/blocked. |
-| Health passed, worker died before DB result | New reconciler rechecks approval/eligibility/fence and repeats fresh health; commit original deployment once if valid, otherwise compensate. Stale old worker completion rejected. |
+| Health passed, worker died before DB result | Recovery reads DB commitment first. If uncommitted, new recovery lease/fence repeats health and rechecks current approval/eligibility to finalize the prior activation once; otherwise bounded compensation. Execution exhaustion does not prevent this claim. |
 | DB pointer success, external different | Freeze new activation; preserve successful history and record drift. If an identifiable authorized in-flight operation exists reconcile it; otherwise create audited repair/restore to last verified release, never bless unknown external state. |
-| DB commit outcome unknown | Read transaction result by operation/attempt key after reconnect before compensation. If success committed, keep and reverify that current; if absent, reconcile intended operation. |
+| DB commit outcome unknown | Read authoritative transaction result by operation/original execution ID before compensation. If committed, retain its success (which may no longer be current after later work); never rollback it on lost acknowledgement. If absent, recover prior effects; if DB unavailable/ambiguous, block without compensation. |
 | External equals DB after compensation but prior DB finalization failed | Reverify rollback receipt and pointer; mark failed/free slot exactly once. No extra success deployment. |
 | Newer deployment won; old worker returns | Reject token/fence/expected-pointer mismatch. Old worker may not rollback newer live release. Its private artifact is quarantined for retention review. |
 | Orphan staged directory | Match exact job/deployment receipt and lease; retain for bounded recovery. Unknown or expired orphan never becomes current automatically; cleanup only under separate retention policy. |
+| Recovery crash/expiry or automatic budget exhausted | New recovery row replaces only expired ownership, with new token/fence; original execution_count never changes. After two unsuccessful automatic claims block visibly; a fresh authorized operator_request_key may claim one more bounded recovery, without schema change/reset. |
+| Grant expired/revoked after activation | Never initiate candidate publication or finalize an uncommitted success using that grant. If original success already committed, retain it; otherwise fresh recovery may only compensate recorded effects under section 8's narrow authority. |
+| First deployment, previous pointer NULL | Fresh recovery verifies no committed success, removes only the matching attempted current link, and proves no link plus configured 503/expected_absent. Never fabricate a previous successful release. |
 
 ## 21. Restore contract and honest failure semantics
 
@@ -948,7 +1253,7 @@ external pointer. This also applies to ordinary deployment failure.
 | Unsafe logs | Fixed error codes, safe summaries, IDs/hashes/counts only; discard stdout/stderr bodies; no SQL, paths with customer text, tokens, credentials, URLs with queries or response bodies. |
 | Environment confusion/escalation | Separate DB/OS/storage identities, binding roots and helpers; production deny default; environment assertion at every boundary; no fallback from staging to production. |
 | SSRF/cache/wrong-host false health | Operator allowlisted origin and TLS Host/SNI, redirects disabled, release marker plus byte hashes, fresh no-cache probes and private binding. |
-| Resource exhaustion | Bounded input/HTML/assets/files/manifest/time/memory, three attempts, one active target operation, disk-space preflight and isolated worker limits. |
+| Resource exhaustion | Bounded input/HTML/assets/files/manifest/time/memory, three executions, at most two automatic recoveries, separately authorized bounded operator recovery, one active target operation, disk-space preflight and isolated worker limits. |
 | Live-state race | Site/target locks + pointer CAS + external expected-pointer/fence; unknown state freezes target; never compensate over a newer winner. |
 | Legacy publication shortcut | DomainManager/legacy publish status excluded from all success and authorization checks; no use of UBO deployment wrapper for sites. |
 
@@ -968,8 +1273,20 @@ Required event types: `site_build_requested`, `site_build_started`,
 `site_reconciliation_required`, `site_reconciliation_completed`,
 `site_restore_requested`, `site_restore_succeeded`, `site_restore_failed`,
 `site_production_approval_granted`, `site_production_approval_revoked` and
-`site_production_approval_consumed`. Restore events accompany deployment events with
-the same operation ID. Preserve expired/abandoned attempts even after successful retry.
+`site_production_approval_consumed`. Add `site_recovery_requested` (operator claim),
+`site_recovery_started`, `site_recovery_completed` and `site_recovery_blocked` with
+attempt kind, original execution ID, total/kind counters, trigger, policy version,
+deadline and disposition. Operator request and lease claim share one transaction;
+each new claim has its own audit, including after a prior recovery crashes. Restore
+events accompany deployment events with the same operation ID. Preserve expired/
+abandoned execution and recovery attempts even after successful recovery.
+
+Exact deployment/restore request replay is an authorized read: no requested, success,
+approval-consumed or retry event. Lost-response duplicate completion/recovery records
+the result once by immutable operation/attempt/result identity; it does not suppress
+audit of genuinely distinct recovery attempts. Payload conflicts never mutate the
+original operation, actor, correlation or request. Automatic and operator recovery
+failures remain visible independently from a prior committed successful outcome.
 
 Each event has site/revision, actor or system identity, UTC time, result, stable
 correlation_id and bounded allowlisted metadata: job/deployment/release/target/attempt
@@ -979,7 +1296,8 @@ No raw token, OTP/session/cookie, approval comment, feedback, business/customer 
 snapshot/brief, provider credential, environment file, full response or command/SQL
 output is logged. History DTOs omit private storage keys and lease token hashes.
 
-Operational views expose queue age, lease expiry, retry count, duration, failures by
+Operational views expose queue age, lease expiry, execution and recovery counts/limits,
+recovery_status, automatic budget exhaustion, required operator action, duration, failures by
 category, target mismatch and last health time. The last successful pointer and current
 observed condition are displayed separately; a historical success must not hide drift.
 
@@ -999,7 +1317,7 @@ unchanged publication pointer/history and safe events, not merely exception text
 | B04 | Suspended/archive/pending site; inactive association/business/module | Denied at request and execution after mid-flight change. | Service, DB |
 | B05 | New material or newer approved successor; unclassified successor | Old candidate rejected; classified non-material draft alone follows section 3 rule. | Service, DB |
 | B06 | Sequential duplicate and simultaneous separate PDO requests | One identity/job/release_key/request event, both callers get same job. | Real MySQL concurrency |
-| B07 | Failed transient storage; retry; exhausted budget | Same job, attempts 1..3 retained, scheduled delays, no fourth execution. | Service, DB |
+| B07 | Failed transient storage; retry; exhausted execution budget | Same job, execution numbers 1..3 retained, scheduled delays, no fourth execution; separate recovery claims may raise total attempt_count above three. | Service, DB |
 | B08 | Crash before output / after seal / before DB commit | Expired attempt recorded; reconcile/adopt exact valid candidate once, or quarantine; no success inferred. | Fault injection, DB, filesystem |
 | B09 | Expiry/heartbeat race/late worker completion | Old token cannot renew/finish; newer attempt unaffected. | Clock, real MySQL concurrency |
 | B10 | Canonical input ordering, NULL/integers/Unicode, asset order | Golden hashes stable; changed content/options/version/SHA changes identity; actor/environment/time does not. | Pure unit |
@@ -1014,7 +1332,7 @@ unchanged publication pointer/history and safe events, not merely exception text
 | D02 | Production disabled or no grant/customer approval only | Zero provider calls, pointer unchanged. | Service, DB |
 | D03 | Wrong release/hash/site/env/operation/binding/pointer grant | All denied before activation; no grant consumption. | Service, DB |
 | D04 | Expired/revoked grant or approver role lost at each boundary | Before activation deny; after activation compensate or require reconciliation, no success. | DB concurrency, adapter fault |
-| D05 | Two deployments queued on same expected pointer | One active slot; first verified success wins, second conflicts and cannot move pointer. | Real MySQL + helper concurrency |
+| D05 | Two distinct request keys queued on same expected pointer | One active slot; first verified success wins, second conflicts and cannot move pointer. An identical-key replay instead follows D19–D26. | Real MySQL + helper concurrency |
 | D06 | Different sites/environments concurrent | Independent target slots; no cross-site pointer/storage visibility. | DB + helper |
 | D07 | Stage copy fails/disk full/permission denied | Old current untouched; bounded retry only if safe; no partial directory served. | Filesystem fault |
 | D08 | Configtest failure/reload uncertain during target provisioning | Prior config/current preserved; disabled or reconciliation-required binding; no false deploy success. | Isolated Apache fixture |
@@ -1028,6 +1346,14 @@ unchanged publication pointer/history and safe events, not merely exception text
 | D16 | New revision review while production pointer exists | Live state/pointer retained; fresh approvals required for successor; ordinary transition cannot publish. | Lifecycle regression |
 | D17 | First activation fails with no prior successful release | Remove only matching candidate pointer under fence; verify no current link and configured 503; DB current stays NULL. Failed recovery blocks target. | Adapter + DB fault |
 | D18 | Old HTML request overlaps activation | Its content-addressed asset remains available from same-site retained pool; tampered/cross-site pool lookup denied. | Concurrent HTTP + filesystem |
+| D19 | Matching request key/payload while pending, for publish and restore | Current scoped authorization then lookup returns same operation with existing_operation/replayed=true; exactly one intent/requested event, no lease or effects from replay. | Service + real MySQL |
+| D20 | Matching replay after original success advanced pointer | Return original succeeded operation; no stale new-operation pointer/grant check, activation, pointer increment or duplicate success event. | Service + DB effect counters |
+| D21 | Matching replay after a later deployment/restore advanced pointer again | Return historical operation plus actual target current ID/version and is_current=false; do not reactivate historical release. | Service + real MySQL |
+| D22 | Matching replay after original production grant consumed/expired/revoked | Currently authorized Super Admin gets history only; no grant consumption, lease, provider call or publication authority. | Service + DB |
+| D23 | Same identity with changed release/operation/restore source/approval/binding/expected pointer or reason | Canonical payload conflict for each individual field mutation, including NULL/value differences; original row/events unchanged. Different site/target is a separate namespace and must satisfy ownership checks. | Parameterized service + DB |
+| D24 | Matching replay with lost actor access or foreign target/tenant key | Safe authorization denial with no historical DTO; no global request-key lookup or foreign existence disclosure; customer/business Admin cannot use internal replay. | Authorization + HTTP/DB |
+| D25 | Concurrent identical requests, duplicate-insert race and lost response | One UNIQUE scoped identity, one requested event and one set of execution effects; losing transaction rolls back then reauthorizes/compares winner before new-operation gates. | Independent PDO barriers + HTTP |
+| D26 | Matching failed/reconciliation-required request replay | Return actual outcome/recovery_status and current target DTO; no implicit retry, recovery claim, scheduling/event/pointer change. | Service + real MySQL |
 | R01 | Restore previous known-good same target | New restore/deployment row, source/prior correlation, health and pointer success; all old history retained. | Service, DB, Apache |
 | R02 | Never-successful/missing/tampered/cross-site/wrong-environment restore | Denied; no provider calls or pointer change. | Service, DB, artifact |
 | R03 | Older superseded approval with explicit valid restore authority | Known-good restore allowed; old approval remains superseded; rights/tenant prohibition still denies. | Service, DB |
@@ -1037,11 +1363,18 @@ unchanged publication pointer/history and safe events, not merely exception text
 | C01 | External active / DB pending | Fresh fence/authority/full health establishes same deployment once or compensates. | DB + filesystem |
 | C02 | DB success / external mismatch | Freeze target, retain historical success, audit drift and repair via new authorized operation. | DB + filesystem |
 | C03 | Staged orphan / unknown artifact | Only matching receipt eligible for adoption; unknown quarantined, not published/deleted automatically. | Filesystem |
-| C04 | Expired lease before/after activation | Pre-activation bounded retry; post-activation inspect/repair first; no concurrent activation. | DB + process |
-| C05 | Repeat reconciliation with same observation | No duplicate success/pointer increment/repair operation/event. | Service, DB |
+| C04 | Expired lease before/after activation | Resolve uncertain effects first; ordinary retry only below execution limit; recovery remains claimable at limit; no concurrent activation. | DB + process |
+| C05 | Repeat reconciliation completion with same observation | No duplicate success/pointer increment/repair/result event. A separately authorized new recovery claim has its own attempt/audit, not a duplicate outcome. | Service, DB |
 | C06 | Reconciler vs old worker vs new request | One target authority; old fence cannot rollback newer winner; deadlocks handled boundedly. | Real MySQL + helper concurrency |
+| C07 | Execution three seals valid build then dies before DB completion | At counts (total=3,execution=3,recovery=0), fresh recovery claim yields (4,3,1), validates original execution receipt/current eligibility and adopts exact bytes. Zero rerenders; producer stays expired; no budget reset. | Build service + real MySQL/filesystem kill point |
+| C08 | Execution three activates deployment then dies before health/result | Recovery attempt 4 with fresh token/fence holds same target slot; inspect actual pointer, then finalize verified eligible prior activation or compensate. No stage/new candidate activation or fourth execution. | Real MySQL + helper/process fault |
+| C09 | Execution three loses DB commit acknowledgement | Resolve committed result before compensation/claim decisions; already committed success returned intact, including when a later operation is current. DB uncertainty blocks; no blind rollback. | Real MySQL commit/connection fault |
+| C10 | Production grant expires/revoked after third activation | If uncommitted, recovery cannot finalize/new-publish with invalid grant but can CAS compensate exact recorded effects using fresh restricted recovery authority. Committed historical success is not retroactively rolled back. | Grant/clock + helper fault |
+| C11 | Recovery attempt 4 crashes; later recovery resumes | Original execution reference unchanged; next claim has greater total/recovery number, fresh token/deadline/fence; old recovery renew/result/helper mutation rejected; prior rows preserved. | Real MySQL + multi-process fault |
+| C12 | Recovery cannot determine/restore external state; both automatic claims fail | recovery_status and target blocked, operation reconciliation_required, slot retained, execution_count=3, no fourth execution. Later current authorized operator key claims one bounded recovery without schema/counter reset; duplicate operator key creates no second claim; another failure stays blocked. | Service/authorization + real MySQL/helper fault |
+| C13 | Third first-deployment activation fails with no prior release | Fresh recovery verifies uncommitted result and exact candidate, then removes only its link and verifies configured 503/absence; current DB pointer NULL, no fabricated history. Unknown compensation remains blocked. | Real MySQL + Apache/process fault |
 | S01 | Clean install and upgrade 023/024 to proposed 025 | Exact types/indexes/CHECK/FKs, ownership and uniqueness; no historical row/content change. | Real MySQL |
-| S02 | Cross-site FK insert, multiple current attempts, pointer to other target | Ownership rejected by FK; status/lease illegal transitions rejected by service; rollback leaves no partial records. | Real MySQL |
+| S02 | Cross-site FK insert, competing execution/recovery claims, invalid counters/kinds, pointer to other target | Ownership/UNIQUE/shape/budget CHECKs reject invalid rows; execution 4 prohibited while total attempt 4/recovery 1 is valid; original-execution and current-owner checks enforced by locked service; transaction rollback leaves no partial counts. | Real MySQL |
 | S03 | History deletion, NULL actors, index limits and query plans | RESTRICT history, SET NULL optional actor; bounded indexed claims/history; MySQL 8.4 referenced-key rules pass. | Real MySQL |
 | U01 | Customer/business-admin request to internal routes/CLI impersonation | Denied; no command/DB side effect. | Authorization + HTTP |
 | U02 | CSRF/replayed request/stale pointer/admin demotion | Denied or idempotent as specified; POST303GET receipts correct and safe. | HTTP/browser + DB |
@@ -1052,6 +1385,13 @@ PRs. Real DB concurrency uses independent connections/processes and barriers, no
 sequential calls against the fake DB. Kill-point tests cover every committed intent /
 external action / result gap. Cleanup uses synthetic IDs, separate fixture roots,
 row-count/orphan reconciliation, and explicit authorization for staging cleanup.
+
+D19–D26 run for **both** requestDeployment and requestRestore, with each changed
+payload field tested independently. C07–C13 explicitly exercise execution-budget
+exhaustion, not just an early-attempt crash. S01/S02 verify the proposed new counters,
+NULL/shape CHECKs, same-parent recovery FKs and request-identity uniqueness on real
+MySQL at M6B/M6D gates; concurrency/effect tests remain M6D/M6E gates. This contract
+walkthrough is not schema or runtime proof.
 
 ## 25. Recommended submilestones and PR sequence
 
@@ -1090,8 +1430,13 @@ for separate launch authorization. No broad new role or customer destructive con
 Admin DTO shows source revision/hash, exact release and environment, validation,
 current successful deployment, latest observed external state, safe error, pending
 operation and available known-good restore choices. Forms carry CSRF, exact IDs,
-expected pointer version and request_key; server revalidates, uses 303 PRG and safe
-one-time receipts. Customer Website Manager retains existing M5 review/feedback/
+expected current ID/pointer version, binding version, restore source, approval and
+reason code with request_key. Preserve that original request snapshot/key across a
+lost response; a genuinely new action gets a new key and current preconditions.
+Server reauthorizes, checks for matching history first and uses 303 PRG/safe receipts
+without redispatching work. Replayed success must display whether it is still current;
+replayed failure/reconciliation state must not offer an automatic retry. Customer
+Website Manager retains existing M5 review/feedback/
 approval actions; customer approval never automatically builds, deploys or requests
 production approval. Existing `publicly_deployed=false` becomes an environment-aware
 internal read model only when real evidence exists.
@@ -1107,10 +1452,13 @@ Planning validation PASS: 90 relative Markdown links and one referenced anchor a
 seven changed documents; balanced fences; current-status consistency and unchanged
 M5/production/deployed-SHA invariants; `git diff --check`; documentation-only changed
 paths; absent migration 025; byte-identical 023/024 against the audit baseline.
-The implementation matrix defines 53 future cases. The temporary local documentation
+Architecture review correction on draft PR #125 separates execution/recovery authority
+and scoped request identity/payload replay; only this plan changed from reviewed head
+`36be6a208eb84e14b5f98143555913e7bf090627`. Supporting PR documents remain accurate.
+The implementation matrix defines 68 future cases. The temporary local documentation
 validator is outside the repository and is not application code or an M6 implementation.
 No application suite, real MySQL, staging HTTP/SSH, provider, Apache or production
-validation is claimed. A draft documentation PR may be created; it must remain
+validation is claimed. Existing documentation PR #125 remains draft; it must remain
 unmerged. Commit SHA and PR URL are reported with the task result, not self-referentially
 embedded into the commit that generates them.
 
