@@ -1,5 +1,11 @@
 # Ultimate Back Office Database Plan
 
+Current M6 planning: **PLANNING COMPLETE / IMPLEMENTATION NOT STARTED**. See the
+[M6 implementation plan](sprint-8.8-m6-implementation-plan.md) for the repository audit,
+proposed migration 025, service/artifact/publisher contracts and validation gates.
+Migration 025 remains absent. M5 acceptance and historical evidence are unchanged;
+earlier M6 NEXT/NOT STARTED references record the M5 handoff. No deployment is authorized.
+
 ## Purpose
 
 This document defines the database blueprint for Ultimate Back Office before development begins.
@@ -2105,7 +2111,7 @@ The shared component composition and internal 247SP/EMD site lifecycle workflow
 through M4 are **COMPLETE / STAGING PASS / FORMALLY CLOSED**, on final M4 deployed/validated SHA
 `d33589da5eebbf8e2ae0dc203837d6667abd1f71`. Sprint 8.8 remains **IN PROGRESS**.
 M5 is **COMPLETE FOR SPRINT PROGRESSION**; M5C is
-**ACCEPTED / NARRATOR FOLLOW-UP DEFERRED**. M6 is **NEXT / NOT STARTED**.
+**ACCEPTED / NARRATOR FOLLOW-UP DEFERRED**. M6 is **PLANNING COMPLETE / IMPLEMENTATION NOT STARTED**.
 Public build/deploy/restore and later runtime work remain outstanding; production
 is **UNAUTHORIZED / NOT DEPLOYED**. See [M5 closeout](sprint-8.8-m5-closeout.md). See `docs/sprint-8.8-m4-closeout.md`.
 Sprint 8.7 Milestone 6 completed the implementation-ready schema design in

@@ -1,5 +1,11 @@
 # 24/7SP Website Generation Architecture
 
+Current M6 planning: **PLANNING COMPLETE / IMPLEMENTATION NOT STARTED**. See the
+[M6 implementation plan](sprint-8.8-m6-implementation-plan.md) for the repository audit,
+proposed migration 025, service/artifact/publisher contracts and validation gates.
+Migration 025 remains absent. M5 acceptance and historical evidence are unchanged;
+earlier M6 NEXT/NOT STARTED references record the M5 handoff. No deployment is authorized.
+
 ## Current M5 closeout — 2026-09-17
 
 **M5 COMPLETE FOR SPRINT PROGRESSION** under the product-owner acceptance decision.
@@ -11,7 +17,7 @@
 | M5B | COMPLETE / STAGING PASS / FORMALLY CLOSED |
 | M5C | ACCEPTED / NARRATOR FOLLOW-UP DEFERRED |
 | M5 | COMPLETE FOR SPRINT PROGRESSION |
-| M6 | NEXT / NOT STARTED |
+| M6 | PLANNING COMPLETE / IMPLEMENTATION NOT STARTED |
 | Production | UNAUTHORIZED / NOT DEPLOYED |
 
 Authoritative deployed application SHA: `70a3051f73874e7268b9c1bba45bf19d41f9432a`.
@@ -161,7 +167,7 @@ The final M4
 deployed/validated SHA is `d33589da5eebbf8e2ae0dc203837d6667abd1f71`; see
 `docs/sprint-8.8-m4-closeout.md`. M5 is **COMPLETE FOR SPRINT PROGRESSION**;
 M5A/M5B are **COMPLETE / STAGING PASS / FORMALLY CLOSED**; M5C is
-**ACCEPTED / NARRATOR FOLLOW-UP DEFERRED**. M6 is **NEXT / NOT STARTED**.
+**ACCEPTED / NARRATOR FOLLOW-UP DEFERRED**. M6 is **PLANNING COMPLETE / IMPLEMENTATION NOT STARTED**.
 
 Milestone 7 locked the executable Sprint 8.8 sequence in `docs/sprint-8.8.md` and the
 initial planned website migration as `023_website_platform_foundation.sql`. The preceding

@@ -1,5 +1,11 @@
 # Production Readiness Review
 
+Current M6 planning: **PLANNING COMPLETE / IMPLEMENTATION NOT STARTED**. See the
+[M6 implementation plan](sprint-8.8-m6-implementation-plan.md) for the repository audit,
+proposed migration 025, service/artifact/publisher contracts and validation gates.
+Migration 025 remains absent. M5 acceptance and historical evidence are unchanged;
+earlier M6 NEXT/NOT STARTED references record the M5 handoff. No deployment is authorized.
+
 ## Review Date
 
 August 11, 2026; pricing closeout status updated August 30, 2026; current Website Platform roadmap reconciled September 17, 2026
@@ -15,7 +21,7 @@ initial Shared Business Profile schema, Milestone 4 added its validated service,
 Milestone 5's customer/admin interface completed staging validation as PASS. The
 internal Site Platform through M4 is **COMPLETE / STAGING PASS / FORMALLY CLOSED**.
 Sprint 8.8 remains **IN PROGRESS**. M5 is **COMPLETE FOR SPRINT PROGRESSION**; M5C is
-**ACCEPTED / NARRATOR FOLLOW-UP DEFERRED**. M6 is **NEXT / NOT STARTED**.
+**ACCEPTED / NARRATOR FOLLOW-UP DEFERRED**. M6 is **PLANNING COMPLETE / IMPLEMENTATION NOT STARTED**.
 M5 customer workflow is accepted under the [M5 closeout](sprint-8.8-m5-closeout.md)
 product-owner decision; remaining Narrator validation is deferred, not passed.
 Public build/deploy/restore and later runtime work, registered-site ingestion,
@@ -41,7 +47,7 @@ remain planned.
 | Shared Business Profile schema | Complete and staging validated |
 | Structured Business Profile service | Complete and staging validated as PASS in Sprint 8.7 Milestone 4 |
 | Structured Business Profile UI | Complete and staging validated as PASS in Sprint 8.7 Milestone 5 |
-| Component CMS and portable site lifecycle | M1–M4 and M5A/M5B COMPLETE / STAGING PASS / FORMALLY CLOSED; M5 COMPLETE FOR SPRINT PROGRESSION; M5C ACCEPTED / NARRATOR FOLLOW-UP DEFERRED; M6 NEXT / NOT STARTED; public lifecycle remains outstanding |
+| Component CMS and portable site lifecycle | M1–M4 and M5A/M5B COMPLETE / STAGING PASS / FORMALLY CLOSED; M5 COMPLETE FOR SPRINT PROGRESSION; M5C ACCEPTED / NARRATOR FOLLOW-UP DEFERRED; M6 PLANNING COMPLETE / IMPLEMENTATION NOT STARTED; public lifecycle remains outstanding |
 | Communications core and unified inbox | Planned for Sprint 8.9 and later |
 | Telephony and AI receptionist | Planned for Sprint 8.10 |
 | Internal MCP gateway | Proposed and deferred |
@@ -193,7 +199,7 @@ business/service/service-area boundaries as the website platform begins consumin
 
 ## Website Generation And Public Lifecycle
 
-Status: Existing legacy runtime remains authoritative; M5 COMPLETE FOR SPRINT PROGRESSION; M5C ACCEPTED / NARRATOR FOLLOW-UP DEFERRED; M6 NEXT / NOT STARTED; public build/deploy/restore and later runtime work remain outstanding
+Status: Existing legacy runtime remains authoritative; M5 COMPLETE FOR SPRINT PROGRESSION; M5C ACCEPTED / NARRATOR FOLLOW-UP DEFERRED; M6 PLANNING COMPLETE / IMPLEMENTATION NOT STARTED; public build/deploy/restore and later runtime work remain outstanding
 
 The site model, structured component composition, revision/approval services, and
 internal admin workflow through M4 passed staging validation. M5 customer workflow
@@ -285,7 +291,7 @@ Pricing P1 and P2 are COMPLETE / STAGING VALIDATED PASS, and the dedicated gate 
 migration/deployment remains unauthorized and has not been performed. M4 is
 **COMPLETE / STAGING PASS / FORMALLY CLOSED**. Sprint 8.8 remains **IN PROGRESS**.
 M5 is **COMPLETE FOR SPRINT PROGRESSION**; M5C is
-**ACCEPTED / NARRATOR FOLLOW-UP DEFERRED**. M6 is **NEXT / NOT STARTED**.
+**ACCEPTED / NARRATOR FOLLOW-UP DEFERRED**. M6 is **PLANNING COMPLETE / IMPLEMENTATION NOT STARTED**.
 Production remains **UNAUTHORIZED / NOT DEPLOYED**; the pricing gate and M5 acceptance
 do not complete the remaining launch requirements.
 
@@ -298,7 +304,7 @@ Final M4 deployed/validated SHA:
 Migrations 023/024, generic schema/backfill, SiteManager and revisions/approvals,
 component composition, and internal admin workflow passed their staging gates.
 M5 is **COMPLETE FOR SPRINT PROGRESSION**; M5C is
-**ACCEPTED / NARRATOR FOLLOW-UP DEFERRED**. M6 is **NEXT / NOT STARTED**.
+**ACCEPTED / NARRATOR FOLLOW-UP DEFERRED**. M6 is **PLANNING COMPLETE / IMPLEMENTATION NOT STARTED**.
 M5A/M5B are **COMPLETE / STAGING PASS / FORMALLY CLOSED**; see
 [M5 closeout](sprint-8.8-m5-closeout.md). M6 build/deploy/restore, later
 registered-site routing/ingestion, EMD conversion, and full public
