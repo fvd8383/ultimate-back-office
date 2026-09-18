@@ -1,6 +1,49 @@
 # Sprint 8.8 M5 — Customer Preview / Feedback / Approval Contract
 
-## Current M5C customer-approval title clarification
+## Current M5 closeout — 2026-09-17
+
+**M5 COMPLETE FOR SPRINT PROGRESSION** under the product-owner acceptance decision.
+**M5C ACCEPTED / NARRATOR FOLLOW-UP DEFERRED**.
+
+| Milestone | Current status |
+| --- | --- |
+| M5A | COMPLETE / STAGING PASS / FORMALLY CLOSED |
+| M5B | COMPLETE / STAGING PASS / FORMALLY CLOSED |
+| M5C | ACCEPTED / NARRATOR FOLLOW-UP DEFERRED |
+| M5 | COMPLETE FOR SPRINT PROGRESSION |
+| M6 | NEXT / NOT STARTED |
+| Production | UNAUTHORIZED / NOT DEPLOYED |
+
+Authoritative deployed application SHA: `70a3051f73874e7268b9c1bba45bf19d41f9432a`.
+Latest deployed title-regression PASS SHA-256:
+`de1e215f7716e550a6ab993872cb50eaaf7d4a2d5a2dc03c4159fb9a569368c7`.
+These are existing evidence references; this documentation closeout does not access staging.
+
+Further Windows Narrator validation is intentionally deferred. The product owner
+accepts the implemented behavior as sufficient for the current product stage based
+on the completed structural/accessibility-tree, keyboard, responsive/zoom, regression,
+and recorded Narrator evidence. Feedback and customer-approval title/detail tests
+passed. The later operator continuation also recorded changes-requested title,
+detailed receipt, and later changes-state PASS results before testing was stopped.
+Those completed observations are preserved; the remaining terminal-approval,
+error/recovery, iframe, and combined trap checks were not executed in that continuation.
+
+See [M5 closeout](sprint-8.8-m5-closeout.md) for the immutable evidence chain,
+completed observations, and **M5C Narrator Follow-Up** backlog. The original requested
+follow-up scope includes the changes flow and both terminal states; completed changes
+checks are historical PASS evidence, and any future revalidation remains optional.
+Remaining checks may resume later without blocking M6 development unless a future
+release requirement makes them mandatory. This acceptance does not establish full
+accessibility validation. No known application accessibility failure remains from
+completed cases; deferred checks are validation items, not established defects.
+
+Migrations 023/024 are unchanged; 025 is absent. No application, deployment,
+configuration, provider, domain, public-runtime, or production change occurs here.
+M6 implementation has not started. Sprint 8.8 remains **IN PROGRESS**.
+This current decision supersedes earlier closure prerequisites; dated snapshots and
+historical failure/tooling-block reports below retain their original verdicts.
+
+## Customer-approval title clarification — 2026-09-17 (historical pre-deployment snapshot)
 
 **M5C APPROVAL TITLE CLARIFICATION IMPLEMENTED LOCALLY / REVIEW REQUIRED**.
 M5C, M5 and Sprint 8.8 remain **IN PROGRESS**; M6 remains **NOT STARTED**.
@@ -90,15 +133,18 @@ The immutable four-report evidence chain is:
 
 ## 1. Status and authoritative baseline
 
-**M5 IN PROGRESS — M5A COMPLETE / STAGING PASS / FORMALLY CLOSED; M5B COMPLETE / STAGING PASS / FORMALLY CLOSED; M5C IMPLEMENTED LOCALLY / REVIEW REQUIRED.**
-M1–M4 remain COMPLETE / STAGING PASS / FORMALLY CLOSED. M6–M8 remain NOT STARTED.
+**M5 COMPLETE FOR SPRINT PROGRESSION**. M5A/M5B are
+**COMPLETE / STAGING PASS / FORMALLY CLOSED**;
+**M5C ACCEPTED / NARRATOR FOLLOW-UP DEFERRED**.
+M1–M4 remain COMPLETE / STAGING PASS / FORMALLY CLOSED.
+**M6 NEXT / NOT STARTED**; M7–M8 remain NOT STARTED.
 Sprint 8.8 remains IN PROGRESS. Production remains UNAUTHORIZED / NOT DEPLOYED.
 M5B is deployed and validated on `8cd63146713ef8fef26fd2861e960ac64ee1387a`.
 The [M5B closeout](sprint-8.8-m5b-closeout.md) records the four-report evidence chain,
 48/48 deployed standalone suites, 258/72/118 focused assertions, 189/189 PHP lint,
 real-MySQL concurrency/replay/security gates, and completed authenticated browser
 mutation validation. This documentation export does not authorize another deployment,
-M5C/M6 implementation, or production.
+M6 implementation or production.
 
 Authoritative planning baseline: `c2efc5d210b9c6528414f9096acddd815f7e8985`
 in `fvd8383/ultimate-back-office`. The session initially found clean local `main` at
@@ -126,10 +172,13 @@ completed legacy Website Manager is not evidence of M5 completion.
 Throughout the original contract, “existing” describes inspected planning-baseline
 code and “must” or “proposed” records the locked design. The M5A service and route names
 are now implemented. M5B's previously proposed mutation boundaries are implemented
-and staging validated as recorded above. Full integrated browser/accessibility QA and
-the final integrated real-MySQL concurrency/eligibility/integrity run remain M5C work;
-M5B's focused real-MySQL and customer-mutation browser gates passed but do not replace
-that final M5C gate.
+and staging validated as recorded above. The original M5 contract required final
+integrated browser/accessibility QA and real-MySQL concurrency/eligibility/integrity
+gates. Later server/browser/MySQL gates were executed and are preserved in the
+[M5 closeout evidence](sprint-8.8-m5-closeout.md). Remaining Windows Narrator follow-up
+is intentionally deferred under the product-owner acceptance decision; no additional
+mandatory M5C validation gate blocks M6 progression. This acceptance does not
+constitute a full accessibility-validation PASS.
 
 ## 2. Repository audit and evidence inventory
 
@@ -611,8 +660,13 @@ the failed action. Customer DTOs contain no internal reasons or actor identifier
 The M5A subsets below have deployed executable coverage recorded in the M5A closeout.
 M5B mutation requirements have deployed fixture/DOM/source, real-MySQL
 mutation/concurrency, and focused authenticated browser coverage. Full integrated
-responsive/accessibility/browser QA and the final real-MySQL concurrency, eligibility,
-and integrity run remain mandatory M5C work.
+responsive/accessibility/browser and final real-MySQL evidence are recorded in
+[M5 closeout](sprint-8.8-m5-closeout.md). Remaining Narrator scenarios are intentionally
+deferred under the product-owner acceptance decision; they are not passed gates.
+
+The coverage matrix and execution instructions below preserve the original planning
+requirements. They do not impose additional M5C validation prerequisites for M6
+progression under the current product-owner acceptance decision.
 
 | Layer | Required executable coverage |
 | --- | --- |
@@ -634,7 +688,9 @@ Do not require every concurrent call to succeed or silently retry decisions.
 Check canonical composition hashes and row counts before/after GET and feedback;
 verify approval alone never changes published pointers/build/domain/LeadHub rows.
 Required cases that cannot execute must be NOT EXECUTABLE/BLOCKED with a reason.
-The final customer-facing browser gate cannot inherit M4's nonblocking browser waiver.
+The original contract did not permit the final customer-facing browser gate to inherit
+M4's nonblocking browser waiver. That historical requirement does not override the
+current acceptance decision and its non-blocking Narrator follow-up.
 
 ## 16. Staging authentication and browser validation
 
@@ -680,8 +736,9 @@ bypass. No dedicated session-minting endpoint is proposed. A test-only browser r
 may automate these same login forms with ephemeral secrets outside the repository;
 it must not modify auth code or environment configuration. This paragraph records the
 pre-validation planning constraint; M5B's focused browser and real-MySQL gates later
-passed. M5C still requires its complete browser matrix and final integrated real-MySQL
-concurrency/eligibility/integrity run before formal M5 closeout.
+passed. Later M5C server/browser evidence and the product-owner acceptance decision
+are recorded in [M5 closeout](sprint-8.8-m5-closeout.md); remaining Narrator validation
+is intentionally deferred and does not block M6 development.
 
 ## 17. Recommended implementation passes and exit gates
 
@@ -693,7 +750,7 @@ data model until the final QA pass. Begin browser validation in M5A, not at clos
 | --- | --- | --- |
 | **M5A — Customer review/preview foundation** | Website Manager integration, business/review resolver and safe DTO, issued-review selection, immutable inert preview, navigation and status. No new customer domain mutation. Establish designated staging login strategy. | Service/read/render/route tests; zero domain writes on GET; tenant/role/private-data gates; early authenticated responsive/keyboard preview smoke after approved deployment, or explicitly blocked evidence. |
 | **M5B — Feedback, permitted input and decisions** | Versioned bounded feedback namespace, input requests, exact presentation binding, narrow transactional authorization extension, existing approve/reject delegation, CSRF/303 on integrated manager, admin visibility and stale handling. | Actual service/view tests, M2/M3/M4 regressions, replay/rollback/security coverage; no lifecycle duplication or legacy cutover; focused authorized MySQL/browser mutation validation. |
-| **M5C — Integrated customer QA and closeout** | Responsive/accessibility/console corrections, complete authenticated browser matrix, final real-MySQL concurrency/eligibility/integrity run, evidence and cleanup. | All mandatory customer-facing gates executable and passed, no unresolved tenant/approval/data-loss/security issues, no schema/runtime cutover, evidence-backed review/merge/staging closeout. |
+| **M5C — Integrated customer QA and closeout** | Responsive/accessibility/console corrections, authenticated browser and real-MySQL evidence, cleanup, and acceptance record. | ACCEPTED / NARRATOR FOLLOW-UP DEFERRED by product-owner decision; completed gates remain authoritative, deferred validation is explicitly tracked, and M5 is complete for sprint progression. No full accessibility validation claim or runtime cutover. |
 
 M5A is **COMPLETE / STAGING PASS / FORMALLY CLOSED** on merged/deployed SHA
 `ee8c670a6dc8bc19ecb0786dff62abfea645aff3`. Its deployed gate passes 45/45
@@ -702,10 +759,12 @@ standalone suites, focused behavior/view/scope results of 103/40/59 assertions, 
 zero-domain-mutation, concurrency, normal OTP-authenticated HTTP/DOM, legacy CSRF and
 303 PRG, private-data, and cleanup gates passed. Browser-only responsive/keyboard,
 console, and network smoke is explicitly NOT EXECUTABLE because no browser runtime or
-interactive operator was available; M5A permits blocked evidence, while the complete
-mandatory customer browser matrix remains an M5C exit gate. See
+interactive operator was available in that M5A run. M5A permitted blocked evidence;
+later M5C browser evidence and deferred Narrator follow-up are recorded in the
+[M5 closeout](sprint-8.8-m5-closeout.md). See
 [M5A closeout](sprint-8.8-m5a-closeout.md). M5B is **COMPLETE / STAGING PASS / FORMALLY CLOSED** and M5C is
-**IMPLEMENTED LOCALLY / REVIEW REQUIRED**; M5 and Sprint 8.8 remain in progress.
+**ACCEPTED / NARRATOR FOLLOW-UP DEFERRED**; M5 is **COMPLETE FOR SPRINT PROGRESSION**.
+M6 is **NEXT / NOT STARTED**; Sprint 8.8 remains in progress.
 
 ## 18. Reconciliation, implementation prerequisites and planning verification
 
@@ -717,13 +776,16 @@ comments are internal and overwritten on decision; independent feedback needs bo
 metadata persistence; M4 pointer-only link disabling needs keyboard-safe rendering;
 legacy uploads are not a reusable generic media pipeline.
 
-No schema or approval-state-machine gap blocks implementation of the selected scope.
+At the original planning baseline, no schema or approval-state-machine gap blocked
+implementation of the selected scope.
 The metadata limits and request-only input are deliberate first-customer constraints.
 Full media fidelity, uploads or an unbounded discussion system would require revisiting
 this scope; they are not silently promised. Safe designated staging actors/login and
-executable browser/race fixtures remain later validation prerequisites. The separate
+executable browser/race fixtures were prerequisites for that later validation. The separate
 M5A implementation instruction authorized only the read-only customer review and
-preview foundation.
+preview foundation. Later completed server/browser/MySQL validation and the accepted,
+deferred Narrator follow-up are recorded in [M5 closeout](sprint-8.8-m5-closeout.md);
+no additional M5C validation prerequisite blocks M6 progression.
 
 Planning verification: all ten required documents exist at the authoritative SHA;
 relevant implementation paths are inventoried above. At the start of the planning

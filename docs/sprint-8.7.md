@@ -332,7 +332,9 @@ Pricing P1, Pricing P2, and the dedicated staging validation in
 belongs to pricing and is applied and validated on staging. The gate is cleared.
 Sprint 8.8 M1–M4 are **COMPLETE / STAGING PASS / FORMALLY CLOSED**.
 Sprint 8.8 remains **IN PROGRESS**. See `docs/sprint-8.8.md` for its milestone record and
-current roadmap. Within that Website Platform sequence, M5 is **NEXT / NOT STARTED**.
+current roadmap. Within that Website Platform sequence, M5 is **COMPLETE FOR SPRINT PROGRESSION**; M5C is
+**ACCEPTED / NARRATOR FOLLOW-UP DEFERRED**. M6 is **NEXT / NOT STARTED**.
+See [M5 closeout](sprint-8.8-m5-closeout.md) for acceptance and deferred validation.
 Production remains **UNAUTHORIZED / NOT DEPLOYED**.
 
 ## Sprint 8.8 - Website Platform And Component CMS
@@ -412,6 +414,7 @@ The Milestone 7 documentation-only closeout and the subsequent pricing P1/P2
 implementation and staging gate are complete. Sprint 8.8 M1, M2,
 M3, M4A, M4B, M4C, and M4 overall are **COMPLETE / STAGING PASS / FORMALLY CLOSED**.
 Sprint 8.8 remains **IN PROGRESS**. See `docs/sprint-8.8.md` for the Website
-Platform milestone record and current roadmap. Within that sequence, M5 is
-**NEXT / NOT STARTED**. The separately numbered Sprint 8.9 communications workstream
+Platform milestone record and current roadmap. M5 is **COMPLETE FOR SPRINT PROGRESSION**;
+M5C is **ACCEPTED / NARRATOR FOLLOW-UP DEFERRED**. M6 is **NEXT / NOT STARTED**;
+see [M5 closeout](sprint-8.8-m5-closeout.md). The separately numbered Sprint 8.9 communications workstream
 retains its roadmap above. Production remains **UNAUTHORIZED / NOT DEPLOYED**.

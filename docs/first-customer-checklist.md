@@ -12,7 +12,7 @@ New module development is paused until 247SP is launch-ready. EMD, SSP, TUHWD, a
 
 1. Sprint 8.7: Shared Business Profile and Website Platform Alignment — COMPLETE
 2. 247SP First-Customer Pricing Implementation and staging gate — COMPLETE / PASS
-3. Sprint 8.8: Website Platform and Component CMS — IN PROGRESS; M1–M4 COMPLETE / STAGING PASS / FORMALLY CLOSED; M5 NEXT / NOT STARTED
+3. Sprint 8.8: Website Platform and Component CMS — IN PROGRESS; M1–M4 and M5A/M5B COMPLETE / STAGING PASS / FORMALLY CLOSED; M5 COMPLETE FOR SPRINT PROGRESSION; M5C ACCEPTED / NARRATOR FOLLOW-UP DEFERRED; M6 NEXT / NOT STARTED
 4. Sprint 8.9: Communications Core Foundation
 5. Sprint 8.10: Telephony and AI Receptionist
 6. Later Sprint: Messaging and Website Chat
@@ -185,6 +185,10 @@ New module development is paused until 247SP is launch-ready. EMD, SSP, TUHWD, a
 
 # Remaining Critical Path
 
+The next Website Platform milestone is **M6 NEXT / NOT STARTED**: build/deployment/restore,
+followed by the M7/M8 scope in [Sprint 8.8](sprint-8.8.md). M5 progression does not
+complete the launch requirements below.
+
 - [ ] Stripe payment collection
 - [ ] 247SP lead capture creating LeadHub records
 - [ ] Unified conversation inbox for website forms, AI chat, calls, texts, AI receptionist activity, and supported email lead activity
@@ -263,14 +267,19 @@ The Site Platform foundation, composition, and internal workflow
 through M4 are **COMPLETE / STAGING PASS / FORMALLY CLOSED**, on final M4
 deployed/validated SHA `d33589da5eebbf8e2ae0dc203837d6667abd1f71`.
 Sprint 8.8 remains **IN PROGRESS**. See `docs/sprint-8.8-m4-closeout.md`.
-M5 is **NEXT / NOT STARTED** for customer
-preview/feedback/approval UI. Public publisher/restore lifecycle, registered-site
+M5 is **COMPLETE FOR SPRINT PROGRESSION**; M5C is
+**ACCEPTED / NARRATOR FOLLOW-UP DEFERRED**. M6 is **NEXT / NOT STARTED**.
+M5A/M5B are **COMPLETE / STAGING PASS / FORMALLY CLOSED**; see
+[M5 closeout](sprint-8.8-m5-closeout.md) for the product-owner acceptance decision
+and deferred validation. Production remains **UNAUTHORIZED / NOT DEPLOYED**;
+M5 completion does not establish first-customer readiness.
+Public build/deploy/restore lifecycle, registered-site
 ingestion, legacy runtime cutover, DataForSEO, unified inbox, communications services, AI
 receptionist, texting, chat, usage metering, and conversion workflows remain planned.
 
 Major Remaining Milestones:
 
-1. Website Platform M5 customer workflow, then later publishing/deployment/routing/ingestion and public runtime validation; migrations 023/024 and internal work through M4 are complete in staging, with production UNAUTHORIZED / NOT DEPLOYED
+1. Website Platform M6 build/deployment/restore, followed by the outstanding M7 Registered-Site LeadHub + Domain/Routing + EMD Compatibility and M8 Full Staging Validation + Closeout in the [Sprint 8.8 plan](sprint-8.8.md); M5 is COMPLETE FOR SPRINT PROGRESSION, M5C is ACCEPTED / NARRATOR FOLLOW-UP DEFERRED, and production remains UNAUTHORIZED / NOT DEPLOYED
 2. Sprint 8.9 communications core, Vendasta professional email, Twilio foundation, and LeadHub timeline
 3. Sprint 8.10 telephony and AI receptionist
 4. Later messaging, website chat, unified inbox, usage, and overages required by the sold product

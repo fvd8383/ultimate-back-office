@@ -204,8 +204,9 @@ Deferred items remain outside Sprint 8.5 and should be handled by future sprints
 
 Sprint 8.7 and its Milestone 7 documentation-only closeout are COMPLETE. Milestone 6 is
 merged at `fa9228eefbbba94523781599e74ca04e0dbadb22`. Pricing P1/P2 and the dedicated
-pricing staging gate are also COMPLETE / PASS. The generic CMS, publisher, DataForSEO,
-communications runtime, and planned website migrations remain future work.
+pricing staging gate are also COMPLETE / PASS. Generic composition and customer
+workflow are implemented through M5. Public build/deploy/restore, later runtime
+work, DataForSEO, communications runtime, and later migrations remain outstanding.
 
 Sprint 8.7 Milestone 5 is COMPLETE / PASS. The final validated/deployed `main` state
 after its fixes is `ea81194e7d853782f927fdf58ed65eecd6473a7f`; final successful
@@ -217,8 +218,12 @@ pricing gate is cleared. Sprint 8.8 M1–M4 are **COMPLETE / STAGING PASS / FORM
 CLOSED**; Sprint 8.8 remains **IN PROGRESS**. Final M4 deployed/validated SHA:
 `d33589da5eebbf8e2ae0dc203837d6667abd1f71`; see `docs/sprint-8.8-m4-closeout.md`.
 Migrations 023 and 024 were applied and validated in staging. The wider Website
-Platform sequence remains in `docs/sprint-8.8.md`: M5 is **NEXT / NOT STARTED** for
-customer workflow; later public/runtime work remains outstanding. Production is
+Platform sequence remains in [Sprint 8.8](sprint-8.8.md): M5 is **COMPLETE FOR SPRINT PROGRESSION**; M5C is
+**ACCEPTED / NARRATOR FOLLOW-UP DEFERRED**. M6 is **NEXT / NOT STARTED**.
+M5A/M5B are **COMPLETE / STAGING PASS / FORMALLY CLOSED**; the
+[M5 closeout](sprint-8.8-m5-closeout.md) records acceptance and deferred validation.
+M6 build/deploy/restore and later public/runtime work remain outstanding;
+first-customer readiness is not implied. Production is
 **UNAUTHORIZED / NOT DEPLOYED**. Sprint 8.9 communications planning remains separately
 in `docs/sprint-8.9.md`.
 

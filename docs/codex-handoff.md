@@ -1,6 +1,49 @@
 # Codex Handoff
 
-## Current M5C customer-approval title clarification
+## Current M5 closeout — 2026-09-17
+
+**M5 COMPLETE FOR SPRINT PROGRESSION** under the product-owner acceptance decision.
+**M5C ACCEPTED / NARRATOR FOLLOW-UP DEFERRED**.
+
+| Milestone | Current status |
+| --- | --- |
+| M5A | COMPLETE / STAGING PASS / FORMALLY CLOSED |
+| M5B | COMPLETE / STAGING PASS / FORMALLY CLOSED |
+| M5C | ACCEPTED / NARRATOR FOLLOW-UP DEFERRED |
+| M5 | COMPLETE FOR SPRINT PROGRESSION |
+| M6 | NEXT / NOT STARTED |
+| Production | UNAUTHORIZED / NOT DEPLOYED |
+
+Authoritative deployed application SHA: `70a3051f73874e7268b9c1bba45bf19d41f9432a`.
+Latest deployed title-regression PASS SHA-256:
+`de1e215f7716e550a6ab993872cb50eaaf7d4a2d5a2dc03c4159fb9a569368c7`.
+These are existing evidence references; this documentation closeout does not access staging.
+
+Further Windows Narrator validation is intentionally deferred. The product owner
+accepts the implemented behavior as sufficient for the current product stage based
+on the completed structural/accessibility-tree, keyboard, responsive/zoom, regression,
+and recorded Narrator evidence. Feedback and customer-approval title/detail tests
+passed. The later operator continuation also recorded changes-requested title,
+detailed receipt, and later changes-state PASS results before testing was stopped.
+Those completed observations are preserved; the remaining terminal-approval,
+error/recovery, iframe, and combined trap checks were not executed in that continuation.
+
+See [M5 closeout](sprint-8.8-m5-closeout.md) for the immutable evidence chain,
+completed observations, and **M5C Narrator Follow-Up** backlog. The original requested
+follow-up scope includes the changes flow and both terminal states; completed changes
+checks are historical PASS evidence, and any future revalidation remains optional.
+Remaining checks may resume later without blocking M6 development unless a future
+release requirement makes them mandatory. This acceptance does not establish full
+accessibility validation. No known application accessibility failure remains from
+completed cases; deferred checks are validation items, not established defects.
+
+Migrations 023/024 are unchanged; 025 is absent. No application, deployment,
+configuration, provider, domain, public-runtime, or production change occurs here.
+M6 implementation has not started. Sprint 8.8 remains **IN PROGRESS**.
+This current decision supersedes earlier closure prerequisites; dated snapshots and
+historical failure/tooling-block reports below retain their original verdicts.
+
+## Customer-approval title clarification — 2026-09-17 (historical pre-deployment snapshot)
 
 **M5C APPROVAL TITLE CLARIFICATION IMPLEMENTED LOCALLY / REVIEW REQUIRED**.
 M5C, M5 and Sprint 8.8 remain **IN PROGRESS**; M6 remains **NOT STARTED**.
@@ -112,12 +155,12 @@ STAGING PASS / FORMALLY CLOSED** on final deployed and validated SHA
 **COMPLETE / STAGING PASS / FORMALLY CLOSED** on merged, deployed, and validated SHA
 `557cc34fe4cf3ab56cdcb59fd7c623c495fd8eaf`. M4C is **COMPLETE / STAGING PASS /
 FORMALLY CLOSED** on PR #112 merge and final deployed/validated SHA
-`d33589da5eebbf8e2ae0dc203837d6667abd1f71`. M5 is **IN PROGRESS**; M5A is
-**COMPLETE / STAGING PASS / FORMALLY CLOSED** on deployed/validated SHA
-`ee8c670a6dc8bc19ecb0786dff62abfea645aff3`, M5B is **COMPLETE / STAGING PASS / FORMALLY CLOSED**, and M5C
-is **IMPLEMENTED LOCALLY / REVIEW REQUIRED**.
+`d33589da5eebbf8e2ae0dc203837d6667abd1f71`. M5 is **COMPLETE FOR SPRINT PROGRESSION**;
+M5A/M5B are **COMPLETE / STAGING PASS / FORMALLY CLOSED**; M5C is
+**ACCEPTED / NARRATOR FOLLOW-UP DEFERRED**. M6 is **NEXT / NOT STARTED**.
+The accepted deployed application SHA is `70a3051f73874e7268b9c1bba45bf19d41f9432a`.
 Production remains **UNAUTHORIZED / NOT DEPLOYED**. M4's exit gate is complete;
-M5–M8 customer/public/runtime work and the full M1–M8 sprint exit gate remain required
+M6–M8 public/runtime work and the full M1–M8 sprint exit gate remain required
 before Sprint 8.8 closes.
 See [M4C closeout](sprint-8.8-m4c-closeout.md) and
 [overall M4 closeout](sprint-8.8-m4-closeout.md).
@@ -132,10 +175,13 @@ passes 45/45 standalone suites, with M5A behavior/view/scope results of 103/40/5
 assertions. Repository-wide PHP lint passes 180/180. Final staging validation passed
 MySQL 8.4.8 native-prepare authorization, issued-review, M3 integrity,
 zero-domain-mutation, concurrency, normal OTP-authenticated HTTP/DOM, retained legacy
-CSRF/303 PRG, private-data, and cleanup gates. Browser-only responsive/accessibility
-smoke is explicitly NOT EXECUTABLE because no browser runtime/operator was available;
-the M5A contract permits blocked evidence, while M5C retains the mandatory complete
-browser gate. The authoritative report is
+CSRF/303 PRG, private-data, and cleanup gates. At M5A closeout, browser-only
+responsive/accessibility smoke was NOT EXECUTABLE because no browser runtime/operator
+was available; the then-current contract deferred the mandatory complete browser
+gate to M5C. Later M5C browser/server/MySQL validation was executed and recorded in the
+[M5 closeout](sprint-8.8-m5-closeout.md). Only the explicitly deferred Windows Narrator
+follow-up remains, and it is non-blocking for M6 under the product-owner acceptance
+decision. The authoritative M5A report is
 `ubo-sprint-8.8-m5a-final-validation-20260911T234520Z/SPRINT-8.8-M5A-STAGING-FINAL-VALIDATION.md`,
 SHA-256 `284133b11b7285c34abfa9972b2215532b0c842b5e7f8901b32b07990bb201a7`.
 No migration/provider/production action occurred during M5A closeout.
@@ -151,7 +197,8 @@ remain unchanged and 025 remains absent. See the [M5B local implementation recor
 for security findings and file inventory. The [M5B closeout](sprint-8.8-m5b-closeout.md)
 records passed real-MySQL/concurrency/replay/HTTP and authenticated browser mutation
 gates, including approval, changes, stale-tab, populated tenant denial, and forged input.
-All 81 table counts reconciled after cleanup. M5C is IMPLEMENTED LOCALLY / REVIEW REQUIRED; M6 is NOT STARTED.
+All 81 table counts reconciled after cleanup. M5C is **ACCEPTED / NARRATOR FOLLOW-UP DEFERRED**;
+M5 is **COMPLETE FOR SPRINT PROGRESSION**; M6 is **NEXT / NOT STARTED**.
 
 M4B was merged through PR #110, “Sprint 8.8 M4B: add composition editor and admin
 preview,” at `557cc34fe4cf3ab56cdcb59fd7c623c495fd8eaf`. It adds the structured
@@ -313,12 +360,11 @@ empty authored drafts. It preserves all legacy website/customer runtime boundari
 and adds no migration, provider action, review/approval UI, generic preview, or public
 cutover. M4A, M4B, M4C, and M4 overall are
 **COMPLETE / STAGING PASS / FORMALLY CLOSED**. Sprint 8.8 remains **IN PROGRESS**.
-M5 is **IN PROGRESS**. M5A's customer-authenticated read-only preview foundation is
-**COMPLETE / STAGING PASS / FORMALLY CLOSED**. M5B feedback/change requests and
-customer approval UI are also **COMPLETE / STAGING PASS / FORMALLY CLOSED**. M5C still
-requires integrated customer-workflow and browser validation, the final real-MySQL
-concurrency/eligibility/integrity run, private-data/lifecycle confirmation, evidence,
-cleanup, and formal M5 closeout.
+M5 is **COMPLETE FOR SPRINT PROGRESSION**. M5A/M5B are
+**COMPLETE / STAGING PASS / FORMALLY CLOSED**. M5C is
+**ACCEPTED / NARRATOR FOLLOW-UP DEFERRED**. The [M5 closeout](sprint-8.8-m5-closeout.md)
+records completed validation, immutable evidence, and the non-blocking follow-up
+backlog. M6 is **NEXT / NOT STARTED**.
 Build/deployment, domain/routing, LeadHub ingestion, and legacy runtime cutover remain
 later milestones. Administrative `approved` does not mean published, live, deployed,
 domain-active, or production-ready. The contract is

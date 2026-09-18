@@ -2104,9 +2104,10 @@ Existing 247SP website storage uses `247sp_templates`, `247sp_template_assignmen
 The shared component composition and internal 247SP/EMD site lifecycle workflow
 through M4 are **COMPLETE / STAGING PASS / FORMALLY CLOSED**, on final M4 deployed/validated SHA
 `d33589da5eebbf8e2ae0dc203837d6667abd1f71`. Sprint 8.8 remains **IN PROGRESS**.
-M5 is **NEXT / NOT STARTED**;
-customer/public/runtime work remains outstanding and production is **UNAUTHORIZED /
-NOT DEPLOYED**. See `docs/sprint-8.8-m4-closeout.md`.
+M5 is **COMPLETE FOR SPRINT PROGRESSION**; M5C is
+**ACCEPTED / NARRATOR FOLLOW-UP DEFERRED**. M6 is **NEXT / NOT STARTED**.
+Public build/deploy/restore and later runtime work remain outstanding; production
+is **UNAUTHORIZED / NOT DEPLOYED**. See [M5 closeout](sprint-8.8-m5-closeout.md). See `docs/sprint-8.8-m4-closeout.md`.
 Sprint 8.7 Milestone 6 completed the implementation-ready schema design in
 `docs/sprint-8.7-milestone-6-website-platform-audit.md`. That document supersedes the
 earlier conceptual field list in this plan.

@@ -1,6 +1,49 @@
 # Sprint 8.8 M5C — Local integrated customer QA corrections
 
-## Current customer-approval title clarification — 2026-09-17
+## Current M5 closeout — 2026-09-17
+
+**M5 COMPLETE FOR SPRINT PROGRESSION** under the product-owner acceptance decision.
+**M5C ACCEPTED / NARRATOR FOLLOW-UP DEFERRED**.
+
+| Milestone | Current status |
+| --- | --- |
+| M5A | COMPLETE / STAGING PASS / FORMALLY CLOSED |
+| M5B | COMPLETE / STAGING PASS / FORMALLY CLOSED |
+| M5C | ACCEPTED / NARRATOR FOLLOW-UP DEFERRED |
+| M5 | COMPLETE FOR SPRINT PROGRESSION |
+| M6 | NEXT / NOT STARTED |
+| Production | UNAUTHORIZED / NOT DEPLOYED |
+
+Authoritative deployed application SHA: `70a3051f73874e7268b9c1bba45bf19d41f9432a`.
+Latest deployed title-regression PASS SHA-256:
+`de1e215f7716e550a6ab993872cb50eaaf7d4a2d5a2dc03c4159fb9a569368c7`.
+These are existing evidence references; this documentation closeout does not access staging.
+
+Further Windows Narrator validation is intentionally deferred. The product owner
+accepts the implemented behavior as sufficient for the current product stage based
+on the completed structural/accessibility-tree, keyboard, responsive/zoom, regression,
+and recorded Narrator evidence. Feedback and customer-approval title/detail tests
+passed. The later operator continuation also recorded changes-requested title,
+detailed receipt, and later changes-state PASS results before testing was stopped.
+Those completed observations are preserved; the remaining terminal-approval,
+error/recovery, iframe, and combined trap checks were not executed in that continuation.
+
+See [M5 closeout](sprint-8.8-m5-closeout.md) for the immutable evidence chain,
+completed observations, and **M5C Narrator Follow-Up** backlog. The original requested
+follow-up scope includes the changes flow and both terminal states; completed changes
+checks are historical PASS evidence, and any future revalidation remains optional.
+Remaining checks may resume later without blocking M6 development unless a future
+release requirement makes them mandatory. This acceptance does not establish full
+accessibility validation. No known application accessibility failure remains from
+completed cases; deferred checks are validation items, not established defects.
+
+Migrations 023/024 are unchanged; 025 is absent. No application, deployment,
+configuration, provider, domain, public-runtime, or production change occurs here.
+M6 implementation has not started. Sprint 8.8 remains **IN PROGRESS**.
+This current decision supersedes earlier closure prerequisites; dated snapshots and
+historical failure/tooling-block reports below retain their original verdicts.
+
+## Customer-approval title clarification — 2026-09-17 (historical pre-deployment snapshot)
 
 **M5C APPROVAL TITLE CLARIFICATION IMPLEMENTED LOCALLY / REVIEW REQUIRED**.
 M5C and M5 remain **IN PROGRESS**; M6 remains **NOT STARTED**. Production remains
