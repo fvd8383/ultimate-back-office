@@ -287,7 +287,7 @@ applies to new operations only; it never silently changes existing budgets or cl
 | Columns | Mutability and purpose |
 | --- | --- |
 | build_job_id ID; attempt_number BIGINT UNSIGNED; attempt_kind VARCHAR(16); execution_number INT UNSIGNED?; recovery_number BIGINT UNSIGNED?; worker_id key; lease_token_hash hash; correlation_id key | I; monotonically numbered claim across both kinds and hashed 256-bit secret token. |
-| recovery_of_attempt_id ID?; recovery_trigger VARCHAR(16)?; operator_request_key uuid?; recovery_authorized_by_user_id ID?; recovery_actor_type VARCHAR(24)?; recovery_reason_code VARCHAR(64)? | I; exact original execution being resolved; automatic/operator trigger and operator request evidence. Optional actor FK uses SET NULL, with actor type retained. |
+| recovery_of_attempt_id ID?; recovery_trigger VARCHAR(16)?; operator_request_key uuid?; recovery_authorized_by_user_id ID?; recovery_actor_type VARCHAR(24)?; recovery_reason_code VARCHAR(64)? | I except actor FK may become NULL on user deletion; exact original execution, trigger and operator request evidence. Nullable actor FK to users(id) uses ON DELETE SET NULL, with actor type retained; excluded from every CHECK, insertion rules enforced by service below. |
 | status VARCHAR(24); leased_at DATETIME(6); deadline_at DATETIME(6); lease_expires_at DATETIME(6); heartbeat_at DATETIME(6); started_at DATETIME(6)?; completed_at DATETIME(6)? | I lease start/deadline; M expiry/heartbeat; W start/completion/terminal status. |
 | candidate_storage_key VARCHAR(500)?; candidate_artifact_hash hash?; external_reference VARCHAR(191)? | W; bounded private artifact receipt; no raw OS paths/URLs. |
 | failure_category VARCHAR(40)?; failure_code VARCHAR(64)?; safe_summary VARCHAR(500)? | W terminal result. |
@@ -302,16 +302,55 @@ jobs; FK `(recovery_of_attempt_id,build_job_id,site_id)` to this table's
 `running`, `succeeded`, `failed`, `expired`, `abandoned`. Lease token never appears in
 DTO history, artifact, event metadata or logs.
 
-Shared attempt-shape CHECK: attempt_kind IN (execution,recovery). Execution requires
-execution_number IS NOT NULL and BETWEEN 1 AND 3, recovery_number NULL and all recovery
-fields NULL. Recovery requires execution_number NULL, recovery_number IS NOT NULL and
-positive, non-NULL recovery_of_attempt_id, non-NULL recovery_trigger in automatic/operator,
-non-NULL recovery_actor_type and recovery_reason_code. Required nullable branch members
-use explicit IS NOT NULL guards so SQL CHECK's UNKNOWN result cannot admit missing data. Automatic
-requires operator_request_key and recovery_authorized_by_user_id NULL and actor type
-system; operator requires non-NULL operator_request_key and actor type internal_admin
-or super_admin. The service requires a currently authorized non-NULL operator user at
-claim; later actor deletion may SET NULL without invalidating historical shape.
+Shared attempt-shape CHECK references **only** attempt_kind, execution_number,
+recovery_number, recovery_of_attempt_id, recovery_trigger, operator_request_key,
+recovery_actor_type and recovery_reason_code. Its predicates are:
+
+- attempt_kind IN (execution,recovery).
+- Execution branch: execution_number IS NOT NULL and BETWEEN 1 AND 3;
+  recovery_number, recovery_of_attempt_id, recovery_trigger, operator_request_key,
+  recovery_actor_type and recovery_reason_code each IS NULL.
+- Recovery branch: execution_number IS NULL; recovery_number IS NOT NULL and positive;
+  recovery_of_attempt_id, recovery_trigger, recovery_actor_type and recovery_reason_code
+  each IS NOT NULL; recovery_trigger IN (automatic,operator). Automatic requires
+  operator_request_key IS NULL and recovery_actor_type=system. Operator requires
+  operator_request_key IS NOT NULL and recovery_actor_type IN (internal_admin,super_admin).
+
+The branches are alternatives selected by attempt_kind; their requirements are
+conjoined, with explicit IS NOT NULL guards so SQL CHECK's UNKNOWN result cannot admit
+missing required data. Existing numbered-attempt uniqueness, lease timing, statuses,
+same-parent/site ownership and execution/recovery budget constraints remain unchanged.
+
+**CHECK/FK boundary:** recovery_authorized_by_user_id is nullable and retains its FK
+to users(id) ON DELETE SET NULL. It appears in **no CHECK expression**, including an
+IS NULL test for execution/automatic claims or a blanket test over recovery fields.
+MySQL 8.4 prohibits combining CHECK references and foreign-key referential actions on
+the same column ([CHECK restrictions](https://dev.mysql.com/doc/refman/8.4/en/create-table-check-constraints.html)).
+Allowing NULL in an operator branch alone does not address that DDL restriction.
+The FK still enforces that any non-NULL reference names an existing user; current
+authorization and insertion shape for this actor column belong to the service.
+Do not add NOT NULL, remove the FK or replace SET NULL with RESTRICT.
+
+**Service insertion rules, both attempt tables:** before inserting an attempt,
+incrementing any counter, assigning ownership or issuing a lease/fence, validate the
+trusted worker context and actor fields within the existing locked claim transaction.
+Operator recovery requires a non-NULL authenticated operator with current permitted
+authority, a valid operator_request_key and allowlisted reason under section 8. The
+service derives recovery_authorized_by_user_id from that authenticated operator.
+Automatic recovery and ordinary execution must insert NULL in this column. Reject
+forged overrides or inconsistent actor fields, including a supplied operator reference
+on an automatic/execution claim; do not merely rely on the FK/CHECK or silently coerce
+the input. These are creation-time service requirements, not historical-row CHECKs.
+
+The existing historical-NULL allowance remains: after a valid operator claim, deleting
+its user may SET NULL without invalidating the attempt. Preserve its operator trigger,
+actor type, request key, reason, original execution reference and audit history, along
+with ownership/counters. The service cannot transfer or rewrite that identity. A NULL
+historical FK neither changes the attempt to automatic nor grants new authority;
+history/replay still requires current caller authorization, and any new operator claim
+requires its own current authenticated operator. Recovery does not depend on restoring
+the deleted historical user. This does not alter the original build-requester policy.
+
 Service also verifies recovery_of_attempt_id identifies an earlier **execution** row
 of the same parent. A recovery of a crashed recovery keeps that original execution
 reference; it gets a new recovery_number/attempt_number, not a reused token.
@@ -408,7 +447,10 @@ Columns: `deployment_id ID`, `attempt_number BIGINT UNSIGNED`, `worker_id key`,
 
 Also include the exact attempt_kind, execution_number, recovery_number and all six
 recovery authority/reference fields from section 5.2, with the same types/NULL rules.
-Same immutability/lease/status/shape CHECKs as build attempts. `receipt_json` is bounded
+Same immutability/lease/status/shape CHECKs as build attempts, including the complete
+exclusion of recovery_authorized_by_user_id from CHECK expressions and the separate
+service-enforced insertion rules. Its nullable users(id) ON DELETE SET NULL FK and
+historical-NULL behavior are retained. `receipt_json` is bounded
 16KiB structured phase evidence, never provider output; finalized once per attempt.
 Phase observations before finalization go to append-only site_events/health checks
 and external journal. UNIQUE `(deployment_id,attempt_number)`,
@@ -786,6 +828,13 @@ intent conflicts. Current operator authorization is required for this history re
 No operator request resets automatic/execution counters or re-enables the scheduler.
 All worker_context and operator identity values come from authenticated CLI/service
 context; a submitted user ID or a customer browser cannot forge this authority.
+Both claim services enforce section 5.2's actor insertion rules before any attempt,
+counter or lease/fence allocation: current non-NULL authenticated operator for an
+operator claim; NULL recovery_authorized_by_user_id for automatic recovery/ordinary
+execution. The actor FK has no CHECK predicate. Its later SET NULL action preserves
+historical evidence, not reusable permission: it cannot authorize another caller's
+history/replay, a new recovery/execution or production action, or transfer the original
+build requester. Existing current caller/worker, budget, ownership and grant gates apply.
 
 Recovery binds server-side to the original execution row and immutable parent source,
 reserved release key/release, site, target, environment, binding version and recorded
@@ -1547,11 +1596,11 @@ unchanged publication pointer/history and safe events, not merely exception text
 | C11 | Recovery attempt 4 crashes; later recovery resumes | Original execution reference unchanged; next claim has greater total/recovery number, fresh token/deadline/fence; old recovery renew/result/helper mutation rejected; prior rows preserved. | Real MySQL + multi-process fault |
 | C12 | Recovery cannot determine/restore external state; both automatic claims fail | recovery_status and target blocked, operation reconciliation_required, slot retained, execution_count=3, no fourth execution. Later current authorized operator key claims one bounded recovery without schema/counter reset; duplicate operator key creates no second claim; another failure stays blocked. | Service/authorization + real MySQL/helper fault |
 | C13 | Third first-deployment activation fails with no prior release | Fresh recovery verifies uncommitted result and exact candidate, then removes only its link and verifies configured 503/absence; current DB pointer NULL, no fabricated history. Unknown compensation remains blocked. | Real MySQL + Apache/process fault |
-| S01 | Clean install and upgrade 023/024 to proposed 025 | Exact types/indexes/CHECK/FKs, ownership and uniqueness; no historical row/content change. | Real MySQL |
-| S02 | Cross-site FK insert, competing execution/recovery claims, invalid counters/kinds, pointer to other target | Ownership/UNIQUE/shape/budget CHECKs reject invalid rows; execution 4 prohibited while total attempt 4/recovery 1 is valid; original-execution and current-owner checks enforced by locked service; transaction rollback leaves no partial counts. | Real MySQL |
-| S03 | History deletion, NULL actors, index limits and query plans | RESTRICT history, SET NULL optional actor; bounded indexed claims/history; MySQL 8.4 referenced-key rules pass. | Real MySQL |
-| U01 | Customer/business-admin request to internal routes/CLI impersonation | Denied; no command/DB side effect. | Authorization + HTTP |
-| U02 | CSRF/replayed request/stale pointer/admin demotion | Denied or idempotent as specified; POST303GET receipts correct and safe. | HTTP/browser + DB |
+| S01 | Clean install and upgrade 023/024 to proposed 025 | Exact types/indexes/CHECK/FKs, ownership and uniqueness; no historical row/content change. MySQL 8.4 must accept DDL for both attempt tables with nullable recovery actor ON DELETE SET NULL FK and zero CHECK references to that column. | Future real MySQL 8.4 DDL |
+| S02 | Cross-site FK insert, competing execution/recovery claims, invalid counters/kinds, pointer to other target | Ownership/UNIQUE/compatible shape/budget CHECKs reject invalid rows; execution 4 prohibited while total attempt 4/recovery 1 is valid. FK rejects nonexistent non-NULL actor IDs; claim-time actor shape/authorization is service-enforced (U01), not a CHECK. Original-execution/current-owner checks and rollback preserve counts. | Real MySQL + locked service |
+| S03 | History deletion, NULL actors, index limits and query plans | For each build/deployment attempt table, create valid operator recovery then delete its user in an isolated fixture where other FKs permit: actor FK becomes NULL; attempt, operator trigger/type/key/reason, original execution reference, audit history, ownership and counters stay intact. Retain history RESTRICT, indexed access and MySQL 8.4 referenced-key checks. | Future real MySQL deletion/FK fixtures |
+| U01 | Customer/business-admin access/CLI impersonation; invalid recovery actors | Deny existing unauthorized routes. For operator recovery in both services, missing/NULL authenticated operator, inactive/insufficient operator or forged actor fields deny before attempt/counter/lease/fence creation. Automatic/execution claims reject injected operator actor references even if the user exists; their service-generated actor FK is NULL. | Authorization/HTTP + fake DB behavior; real MySQL service gate |
+| U02 | CSRF/replayed request/stale pointer/admin demotion; historical recovery actor deletion | Denied or idempotent as specified; POST303GET receipts correct and safe. After S03 deletion, NULL history grants no replay/recovery/execution/production authority to another caller: current access/claim/grant checks still apply; no trigger conversion or original-requester transfer. | HTTP/browser + service/DB |
 | U03 | Internal history/status on mobile/keyboard, errors and drift | Clear environment/current vs observed state; escaped bounded text, accessible focus/receipts. | Browser |
 
 Retain all existing M2–M5 suites and PHP lint as regression gates in implementation
@@ -1573,6 +1622,13 @@ business-only roles, retries, races, post-claim loss, independent exhausted-budg
 recovery, committed success and substitution. Fake DB tests cover decisions/effect
 counts; real MySQL must prove authorization/FK locks and competing transactions at
 M6B, with output/adoption faults integrated at M6C/M6D. These are planned gates only.
+
+S01–S03 and U01/U02 are parameterized for **both** site_build_attempts and
+site_deployment_attempts. They separate future MySQL 8.4 DDL/deletion proof from strict
+service authorization at insertion and current access after deletion. A valid historical
+operator row with NULL actor must survive the fixture; a new unauthenticated operator
+claim must be rejected before allocation. No additional matrix IDs are added: the
+count remains **77 planned cases**, not executed schema/service PASS results.
 
 ## 25. Recommended submilestones and PR sequence
 
@@ -1633,14 +1689,22 @@ Planning validation PASS: 90 relative Markdown links and one referenced anchor a
 seven changed documents; balanced fences; current-status consistency and unchanged
 M5/production/deployed-SHA invariants; `git diff --check`; documentation-only changed
 paths; absent migration 025; byte-identical 023/024 against the audit baseline.
-The prior correction separates execution/recovery authority and scoped request identity/
+The earlier correction separates execution/recovery authority and scoped request identity/
 payload replay. Completed automated review of `00c3cfd11acdf46b86d14004987bc896d6b595f9`
-identified the B17 requester/claim contradiction. This correction preserves B17's denial
+identified the B17 requester/claim contradiction. The B17 correction preserves its denial
 and aligns sections 3/5/6/8/20/23/24: current original-requester authorization at every
 ordinary claim and new-success acceptance, deterministic queue cancellation, independent
 safe recovery and preserved committed success. Source inspection confirmed the existing
 SiteAuthorizationPolicy actorContext locking path; no application tests were run.
-Only this plan changed from that reviewed head. Supporting PR documents remain accurate.
+The subsequent review of `4655ccc1f8976737e450ae748a69af2ebd893b87` raised nullable
+historical recovery actors. The plan already allowed a non-NULL authorized operator at
+claim and NULL after deletion; that distinction was not missing. This correction removes
+all recovery_authorized_by_user_id references from the shared CHECK to respect MySQL
+8.4's CHECK/referential-action restriction, preserves its nullable SET NULL FK, and
+spells out service insertion rules and both-table deletion/authority fixtures. No
+database failure was reproduced and no migration/schema execution PASS is claimed.
+Only this plan changed from that latest reviewed head. Supporting PR documents remain
+accurate; B17 and the previous execution/recovery/replay contracts are preserved.
 The implementation matrix defines 77 future cases. The temporary local documentation
 validator is outside the repository and is not application code or an M6 implementation.
 No application suite, real MySQL, staging HTTP/SSH, provider, Apache or production
