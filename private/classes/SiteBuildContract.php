@@ -22,6 +22,8 @@ final class SiteBuildContract
         'input_mismatch' => ['input_invalid', 'Build input identity does not match.'],
         'artifact_invalid' => ['integrity', 'Artifact verification failed.'],
         'builder_unavailable' => ['configuration', 'The reviewed builder is unavailable.'],
+        'policy_unsupported' => ['configuration', 'The persisted worker policy is unsupported.'],
+        'execution_exhausted' => ['configuration', 'The recorded execution limit has been reached.'],
         'storage_unavailable' => ['transient_storage', 'Artifact storage is temporarily unavailable.'],
         'network_unavailable' => ['transient_network', 'Artifact transport is temporarily unavailable.'],
         'lease_expired' => ['lease_lost', 'The worker lease expired.'],
@@ -72,13 +74,26 @@ final class SiteBuildContract
     }
     public static function policy(array $job): array
     {
-        if ($job['worker_policy_version'] !== self::POLICY_VERSION
-            || CanonicalJson::hash(self::decode($job['worker_policy_json'], 4096)) !== CanonicalJson::hash(self::POLICY)
-            || (int) $job['max_execution_attempts'] < 1 || (int) $job['max_execution_attempts'] > 3
-            || (int) $job['max_automatic_recoveries'] < 0 || (int) $job['max_automatic_recoveries'] > 2) {
+        if (self::policyFailure($job) !== null) {
             throw new SiteServiceException('conflict', 'The persisted worker policy is unsupported.');
         }
         return self::POLICY;
+    }
+    /** Pure persisted-value validation: no authority, database or dependency errors are classified here. */
+    public static function policyFailure(array $job): ?string
+    {
+        if (($job['worker_policy_version'] ?? null) !== self::POLICY_VERSION
+            || !is_string($job['worker_policy_json'] ?? null)
+            || !in_array($job['max_execution_attempts'] ?? null, [1,2,3,'1','2','3'], true)
+            || !in_array($job['max_automatic_recoveries'] ?? null, [0,1,2,'0','1','2'], true)) {
+            return 'policy_unsupported';
+        }
+        try {
+            $digest = CanonicalJson::hash(self::decode($job['worker_policy_json'], 4096));
+        } catch (SiteServiceException | JsonException) {
+            return 'policy_unsupported';
+        }
+        return $digest === CanonicalJson::hash(self::POLICY) ? null : 'policy_unsupported';
     }
     public static function builder(array $builder): array
     {

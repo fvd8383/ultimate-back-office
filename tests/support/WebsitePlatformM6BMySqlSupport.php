@@ -156,6 +156,8 @@ final class M6NativeStatement extends PDOStatement
             if(trim((string)fgets(STDIN))!=='RELEASE_QUEUE')throw new RuntimeException('Missing queue barrier release.');
         }
         if(str_starts_with($this->sql,'INSERT INTO site_events')&&($params['event_type']??'')==='site_build_started')$this->owner->claimed=true;
+        if(str_starts_with($this->sql,'INSERT INTO site_events')&&($params['event_type']??'')==='site_build_failed'
+            &&($params['reason']??'')==='policy_unsupported')$this->owner->retired=true;
         return $result;
     }
     public function fetch(int $mode=PDO::FETCH_DEFAULT,int $cursorOrientation=PDO::FETCH_ORI_NEXT,int $cursorOffset=0):mixed{return $this->inner->fetch($mode,$cursorOrientation,$cursorOffset);}
@@ -166,12 +168,15 @@ final class M6NativeStatement extends PDOStatement
 final class M6NativeConnection extends PDO
 {
     public bool $claimed=false; public bool $holdClaim=false; public bool $holdQueue=false; public ?string $faultTable=null;
+    public bool $retired=false; public bool $holdRetirement=false;
     public function __construct(public PDO $inner){}
     public function prepare(string $query,array $options=[]):PDOStatement|false{return new M6NativeStatement($this,$this->inner->prepare($query,$options),$query);}
     public function beginTransaction():bool{return $this->inner->beginTransaction();}
     public function inTransaction():bool{return $this->inner->inTransaction();}
     public function rollBack():bool{return $this->inner->rollBack();}
     public function commit():bool{
+        if($this->holdRetirement&&$this->retired){echo "RETIREMENT_LOCKED\n";flush();
+            if(trim((string)fgets(STDIN))!=='RELEASE_RETIREMENT')throw new RuntimeException('Missing retirement barrier release.');$this->holdRetirement=false;}
         if($this->holdClaim&&$this->claimed){echo "CLAIM_LOCKED\n";flush();if(trim((string)fgets(STDIN))!=='RELEASE')throw new RuntimeException('Missing claim barrier release.');$this->holdClaim=false;}
         return $this->inner->commit();
     }

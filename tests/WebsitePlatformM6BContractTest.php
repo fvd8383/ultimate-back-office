@@ -50,4 +50,31 @@ $row=$db->tables['site_build_jobs'][$job['id']];
 $row['safe_summary']='PRIVATE-SQL-ERROR'; $row['input_manifest_json']='PRIVATE-SNAPSHOT'; $row['lease_token_hash']='PRIVATE-TOKEN';
 $safe=json_encode(SiteBuildContract::job($row));
 m6c(!str_contains($safe,'PRIVATE-'),'DTO ignores private keys and stored free-text summary');
+// One pure compatibility classifier drives both queue disposition and strict execution denial.
+$supported=['worker_policy_version'=>SiteBuildContract::POLICY_VERSION,'worker_policy_json'=>CanonicalJson::encode(SiteBuildContract::POLICY),
+    'max_execution_attempts'=>3,'max_automatic_recoveries'=>2];
+m6c(SiteBuildContract::policyFailure($supported)===null&&SiteBuildContract::policy($supported)===SiteBuildContract::POLICY,'Supported policy has no failure and retains strict execution contract');
+foreach([1,2,3,'1','2','3']as$limit){
+    $row=array_replace($supported,['max_execution_attempts'=>$limit,'max_automatic_recoveries'=>'0',
+        'worker_policy_json'=>json_encode(array_reverse(SiteBuildContract::POLICY,true),JSON_THROW_ON_ERROR)]);
+    m6c(SiteBuildContract::policyFailure($row)===null,'PDO integer/string limits and reordered semantic policy stay supported');
+}
+foreach([['worker_policy_version'=>'historical'],['worker_policy_json'=>'null'],['worker_policy_json'=>'{}'],
+    ['worker_policy_json'=>'{"value":1e400}'],['worker_policy_json'=>str_repeat(' ',4097).'{}'],
+    ['max_execution_attempts'=>4],['max_automatic_recoveries'=>3],['max_execution_attempts'=>1.5],
+    ['max_automatic_recoveries'=>'garbage'],['worker_policy_json'=>null]]as$override){
+    $row=array_replace($supported,$override);$before=$row;
+    m6c(SiteBuildContract::policyFailure($row)==='policy_unsupported'&&$row===$before,'Pure classification preserves unsupported persisted evidence');
+    m6cd(fn()=>SiteBuildContract::policy($row));
+}
+foreach(['policy_unsupported','execution_exhausted']as$code){
+    $failure=SiteBuildContract::failure($code);
+    m6c($failure['failure_category']==='configuration'&&$failure['failure_code']===$code&&strlen($failure['safe_summary'])<100,'Fixed bounded configuration failure cannot become transient retry');
+}
+$db=WebsitePlatformM6BDatabase::fixture();$job=$db->request();$claim=$db->claim();$receipt=$db->receipt($claim,'sealed');
+$db->tables['site_build_jobs'][$job['id']]['worker_policy_json']='{}';$before=$db->snapshot();
+m6cd(fn()=>SiteBuildService::renewBuildLease($claim['lease']));
+m6cd(fn()=>SiteBuildService::completeBuildSuccess($claim['lease'],$receipt));
+m6cd(fn()=>SiteBuildService::claimBuildRecovery($job['id'],[]));
+m6c($before===$db->snapshot(),'Renewal, completion and recovery cannot substitute default policy or mutate ownership/history');
 echo "Website platform M6B contract: $assertions assertions passed.\n";

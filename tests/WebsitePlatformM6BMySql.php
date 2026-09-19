@@ -227,6 +227,79 @@ try{
     $c=SiteBuildService::claimBuild([]);
     SiteBuildService::completeBuildFailure($c['lease'],['code'=>'artifact_invalid']+$runtime->receipt(m6mysqlJob($db,(int)$retried['id']),$c['lease']['attempt_id'],'safe_absence'));
 
+    // Policy-only P1: 25 independent eligible sources, identical current builder contract.
+    // These are native fixtures/processes, but remain NOT EXECUTED until local prerequisites exist.
+    $policyRows=[];
+    for($i=0;$i<25;$i++){
+        $pf=m6mysqlFixture($db);$pj=m6mysqlRequest($pf);$runtime=m6mysqlWire($db);
+        $source=SiteBuildStore::transaction(fn($pdo)=>SiteRevisionManager::lockBuildEligibility($pdo,$pf['site_id'],$pf['revision_id'],$pf['hash']));
+        $row=m6mysqlJob($db,(int)$pj['id']);
+        mysqlCheck(SiteBuildContract::builderMatches($row,SiteBuildContract::recordedInput($source,$row),$runtime->builderIdentity()),'Policy fixture input and full builder contract are compatible');
+        $version=$i%3===0?'build-worker-old':SiteBuildContract::POLICY_VERSION;
+        $json=$i%3===2?'null':CanonicalJson::encode(array_replace(SiteBuildContract::POLICY,$i%3===1?['lease_seconds'=>121]:[]));
+        $db->prepare('UPDATE site_build_jobs SET worker_policy_version=?, worker_policy_json=? WHERE id=?')->execute([$version,$json,$pj['id']]);
+        $policyRows[]=m6mysqlJob($db,(int)$pj['id']);
+    }
+    $pf=m6mysqlFixture($db);$pj=m6mysqlRequest($pf);$runtime=m6mysqlWire($db);
+    $ordered=json_encode(array_reverse(SiteBuildContract::POLICY,true),JSON_THROW_ON_ERROR|JSON_PRETTY_PRINT);
+    $db->prepare('UPDATE site_build_jobs SET worker_policy_json=? WHERE id=?')->execute([$ordered,$pj['id']]);
+    $policyEventCount=static fn():int=>(int)$db->query("SELECT COUNT(*) FROM site_events WHERE event_type='site_build_failed' AND reason='policy_unsupported'")->fetchColumn();
+    $eventBase=$policyEventCount();
+    mysqlCheck(SiteBuildService::claimBuild([])===null&&$policyEventCount()===$eventBase+20,'Native policy batch retires only 20 candidates in one invocation');
+    // Freeze both selected batches, then hold A's first retirement transaction before commit.
+    $a=mysqlStart($database,['action'=>'claim_queue_hold','fixture'=>$pf,'hold_retirement'=>true,'observed'=>true]);
+    $b=mysqlStart($database,['action'=>'claim_queue_hold','fixture'=>$pf,'observed'=>true]);
+    mysqlSend($a,'GO');mysqlSend($b,'GO');
+    mysqlCheck(mysqlLine($a)==='QUEUE_SELECTED'&&mysqlLine($b)==='QUEUE_SELECTED','Policy claimers selected the same five incompatible rows and compatible row');
+    mysqlSend($a,'RELEASE_QUEUE');mysqlCheck(mysqlLine($a)==='RETIREMENT_LOCKED','A holds policy retirement and audit before commit');
+    mysqlSend($b,'RELEASE_QUEUE');mysqlWaitLock($monitor,$b['connection_id'],$a['connection_id']);
+    mysqlSend($a,'RELEASE_RETIREMENT');$ra=mysqlResult($a);$rb=mysqlResult($b);
+    $claims=array_values(array_filter([$ra['claim'],$rb['claim']],static fn($value)=>$value!==null));
+    mysqlCheck(count($claims)===1&&$claims[0]['lease']['job_id']===(int)$pj['id'],'Exactly one compatible lease after overlapping policy retirement transactions');
+    mysqlCheck($ra['prepared']===0&&$rb['prepared']===0&&$ra['verified']===0&&$rb['verified']===0,'Native policy contention invokes no external preparation or verification');
+    mysqlCheck($policyEventCount()===$eventBase+25,'Native policy contention produces exactly 25 failure events');
+    $eventQuery=$db->prepare("SELECT COUNT(*) FROM site_events WHERE site_id=? AND event_type='site_build_failed' AND reason='policy_unsupported'");
+    $attemptQuery=$db->prepare('SELECT COUNT(*) FROM site_build_attempts WHERE build_job_id=?');
+    foreach($policyRows as$beforeRow){
+        $retired=m6mysqlJob($db,(int)$beforeRow['id']);$eventQuery->execute([$beforeRow['site_id']]);$attemptQuery->execute([$beforeRow['id']]);
+        mysqlCheck($retired['status']==='failed'&&$retired['failure_code']==='policy_unsupported'&&$retired['failure_category']==='configuration'
+            &&$retired['next_attempt_at']===null&&$retired['completed_at']!==null&&(int)$retired['lock_version']===(int)$beforeRow['lock_version']+1
+            &&(int)$eventQuery->fetchColumn()===1&&(int)$attemptQuery->fetchColumn()===0,'Native policy retirement has one event, no attempt, and a terminal disposition');
+        foreach(['status','failure_category','failure_code','safe_summary','next_attempt_at','completed_at','updated_at','lock_version']as$key){unset($beforeRow[$key],$retired[$key]);}
+        mysqlCheck($beforeRow===$retired,'Native retirement preserves policy JSON/version, limits, all counters and identity');
+    }
+    $before=m6mysqlSnapshot($db);SiteBuildService::claimBuild([]);mysqlCheck($before===m6mysqlSnapshot($db),'Native repeated policy poll has no effects');
+    $pc=$claims[0];$policySuccess=SiteBuildService::completeBuildSuccess($pc['lease'],
+        $runtime->receipt(m6mysqlJob($db,(int)$pj['id']),$pc['lease']['attempt_id'],'sealed'));
+    $db->prepare('UPDATE site_build_jobs SET worker_policy_version=?, worker_policy_json=? WHERE id=?')->execute(['historical-policy','{}',$pj['id']]);
+    $db->prepare('UPDATE site_approvals SET revoked_at=UTC_TIMESTAMP() WHERE site_id=?')->execute([$pf['site_id']]);
+    $before=m6mysqlSnapshot($db);$worker=mysqlStart($database,['action'=>'request_observed','fixture'=>$pf,'actor'=>$pf['operator']]);mysqlSend($worker,'GO');$historical=mysqlResult($worker);
+    mysqlCheck($historical['job']===$policySuccess['job']+['existing'=>true,'replayed'=>true,'release'=>$policySuccess['release']]
+        &&$historical['prepared']===0&&$historical['verified']===0&&$before===m6mysqlSnapshot($db),'Native historical success ignores obsolete policy without any effects');
+
+    // Native audit FK failure must roll back the prior policy terminal UPDATE as well.
+    $pf=m6mysqlFixture($db);$pj=m6mysqlRequest($pf);
+    $db->prepare('UPDATE site_build_jobs SET worker_policy_json=? WHERE id=?')->execute(['{}',$pj['id']]);
+    $wrapper=new M6NativeConnection($db);$wrapper->faultTable='site_events';m6mysqlWire($wrapper);$before=m6mysqlSnapshot($db);
+    try{SiteBuildService::claimBuild([]);throw new RuntimeException('Expected policy audit FK failure');}
+    catch(SiteServiceException $e){mysqlCheck($e->classification()==='database_failure','Policy audit constraint error is not compatibility');}
+    mysqlCheck($before===m6mysqlSnapshot($db),'Native policy update/event roll back together');
+    m6mysqlWire($db);SiteBuildService::claimBuild([]);
+    // JSON syntax and scalar limit CHECKs reject these fake-only defensive test states.
+    mysqlReject($db,fn()=>$db->prepare('UPDATE site_build_jobs SET max_execution_attempts=0 WHERE id=?')->execute([$pj['id']]),[3819]);
+    mysqlReject($db,fn()=>$db->prepare('UPDATE site_build_jobs SET worker_policy_json=? WHERE id=?')->execute(['{bad',$pj['id']]),[3140]);
+
+    // Concrete candidate-audit issue: supported exhausted limit + safely settled retry is representable.
+    $pf=m6mysqlFixture($db);$pj=m6mysqlRequest($pf);$runtime=m6mysqlWire($db);$pc=SiteBuildService::claimBuild([]);
+    SiteBuildService::completeBuildFailure($pc['lease'],['code'=>'storage_unavailable']
+        +$runtime->receipt(m6mysqlJob($db,(int)$pj['id']),$pc['lease']['attempt_id'],'safe_absence'));
+    $db->prepare('UPDATE site_build_jobs SET max_execution_attempts=1, next_attempt_at=UTC_TIMESTAMP(6)-INTERVAL 1 SECOND WHERE id=?')->execute([$pj['id']]);
+    $beforeRow=m6mysqlJob($db,(int)$pj['id']);$attempts=$db->query('SELECT * FROM site_build_attempts ORDER BY id')->fetchAll();
+    SiteBuildService::claimBuild([]);$retired=m6mysqlJob($db,(int)$pj['id']);
+    mysqlCheck($retired['status']==='failed'&&$retired['failure_code']==='execution_exhausted'&&$retired['next_attempt_at']===null,'Native exhausted safe queue is removed from due selection');
+    foreach(['status','failure_category','failure_code','safe_summary','next_attempt_at','completed_at','updated_at','lock_version']as$key){unset($beforeRow[$key],$retired[$key]);}
+    mysqlCheck($beforeRow===$retired&&$attempts===$db->query('SELECT * FROM site_build_attempts ORDER BY id')->fetchAll(),'Native exhausted queue preserves limits, counters, attempts and receipts');
+
     foreach(['deactivate','delete','grant','scope','name']as$revocation){
         foreach(['revocation_first','claim_first']as$order){
             $f=m6mysqlFixture($db);$runtime=m6mysqlWire($db);$runtime->operator=$f['operator'];$j=m6mysqlRequest($f);

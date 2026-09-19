@@ -21,7 +21,10 @@ try {
             return m6mysqlRequest($payload['fixture'],$payload['actor']);})(),
         'request_lost_ack'=>(function()use($payload){m6mysqlRequest($payload['fixture'],$payload['actor']);echo "COMMITTED\n";flush();exit(0);})(),
         'claim'=>SiteBuildService::claimBuild([]),
-        'claim_queue_hold'=>(function()use($connection,$payload){$connection->holdQueue=true;$connection->holdClaim=$payload['hold_claim']??false;return SiteBuildService::claimBuild([]);})(),
+        'claim_queue_hold'=>(function()use($connection,$payload,$runtime){
+            $connection->holdQueue=true;$connection->holdClaim=$payload['hold_claim']??false;$connection->holdRetirement=$payload['hold_retirement']??false;
+            $claim=SiteBuildService::claimBuild([]);
+            return ($payload['observed']??false)?['claim'=>$claim,'prepared'=>$runtime->prepared,'verified'=>$runtime->verified]:$claim;})(),
         'claim_hold'=>(function()use($connection){$connection->holdClaim=true;return SiteBuildService::claimBuild([]);})(),
         'revoke'=>(function()use($pdo,$payload){echo "REVOCATION_START\n";flush();m6mysqlRevoke($pdo,$payload['fixture'],$payload['kind']);return ['revoked'=>true];})(),
         default=>throw new RuntimeException('Unknown worker test action.'),

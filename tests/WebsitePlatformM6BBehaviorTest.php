@@ -260,4 +260,177 @@ m6deny(fn()=>$db->request(),'database_failure');$snap=$db->snapshot();$retried=$
 m6b($retried['existing']&&$retried['replayed']&&$snap===$db->snapshot()&&$db->events('site_build_requested')===1
     &&$db->tables['site_build_jobs'][$retried['id']]['requested_by_user_id']===1,'P2 M uncertain commit propagates; explicit lost-response retry preserves one operation and original requester');
 
+// PR #126 policy P1: only the FIRST job's persisted policy is incompatible.
+/** Valid persisted peer with distinct canonical input, unchanged current builder/profile/options.
+ * Direct fixture insertion avoids request-history ambiguity; it is not concurrency evidence. */
+function m6bQueuePeer(WebsitePlatformM6BDatabase $db,array $seed,int $ordinal):array {
+    $manifest=SiteBuildContract::decode($seed['input_manifest_json']);
+    $projection=array_intersect_key($manifest,array_flip(['public_facts','public_composition','ordered_asset_digests']));
+    $projection['public_facts']['fixture_ordinal']=$ordinal;
+    $source=['site'=>$db->read->base->sites[10],'revision'=>$db->read->base->revisions[100]];
+    $row=array_replace($seed,SiteBuildContract::input($source,$projection,$db->runtime->builderIdentity()),[
+        'job_key'=>SiteServiceSupport::uuidV4(),'release_key'=>SiteServiceSupport::uuidV4()]);
+    unset($row['id']);$row['id']=SiteBuildStore::insert($db,'site_build_jobs',$row);
+    m6b(SiteBuildContract::builderMatches($row,SiteBuildContract::recordedInput($source,$row),$db->runtime->builderIdentity()),
+        'Queue peer has a valid unique input and matching current builder');
+    return $row;
+}
+function m6bRetired(WebsitePlatformM6BDatabase $db,array $before,string $code='policy_unsupported'):void {
+    $after=$db->tables['site_build_jobs'][$before['id']];
+    m6b($after['status']==='failed'&&$after['failure_code']===$code&&$after['failure_category']==='configuration'
+        &&$after['next_attempt_at']===null&&$after['completed_at']===$db->now&&$after['updated_at']===$db->now
+        &&$after['lock_version']===$before['lock_version']+1,'Safe retirement has fixed failure, DB times and one lock increment');
+    $events=array_filter($db->read->base->events,static fn($e)=>$e['event_type']==='site_build_failed'&&$e['reason']===$code
+        &&json_decode($e['metadata_json'],true)['build_job_id']===$before['id']);
+    m6b(count($events)===1,'Exactly one bounded failure event for this job/disposition');
+    foreach(['status','failure_category','failure_code','safe_summary','next_attempt_at','completed_at','updated_at','lock_version']as$key){unset($before[$key],$after[$key]);}
+    m6b($before===$after,'Retirement preserves every identity/input/requester/policy/limit/counter/ownership field');
+}
+// Candidate audit: a safely settled retry with a supported, exhausted limit is SQL-representable.
+$db=WebsitePlatformM6BDatabase::fixture();$exhausted=$db->request();$lease=$db->claim();
+SiteBuildService::completeBuildFailure($lease['lease'],['code'=>'storage_unavailable']+$db->receipt($lease,'safe_absence'));
+$db->tables['site_build_jobs'][$exhausted['id']]['max_execution_attempts']=1;$db->advance(30);
+$budgetBefore=$db->tables['site_build_jobs'][$exhausted['id']];$attempts=$db->tables['site_build_attempts'];
+$snap=$db->snapshot();SiteBuildService::claimBuild([]);
+m6b($db->tables['site_build_jobs'][$exhausted['id']]['status']==='failed',
+    'Candidate audit: exhausted safe queue must retire; unchanged_due_queue='.($snap===$db->snapshot()?'yes':'no'));
+m6bRetired($db,$budgetBefore,'execution_exhausted');
+m6b($attempts===$db->tables['site_build_attempts'],'Exhausted queue preserves original settled attempt, deadline and receipt');
+$snap=$db->snapshot();SiteBuildService::claimBuild([]);m6b($snap===$db->snapshot(),'Exhausted candidate cannot stay due or repeat its event');
+
+$db=WebsitePlatformM6BDatabase::fixture();$old=$db->request();
+$db->runtime->projectionOverrides=['public_facts'=>['name'=>'Second compatible synthetic input']];
+$current=$db->request(2);
+$source=['site'=>$db->read->base->sites[10],'revision'=>$db->read->base->revisions[100]];
+foreach([$old,$current]as$queued){
+    $row=$db->tables['site_build_jobs'][$queued['id']];
+    m6b(SiteBuildContract::builderMatches($row,SiteBuildContract::recordedInput($source,$row),$db->runtime->builderIdentity())
+        &&SiteBuildContract::policy($row)===SiteBuildContract::POLICY,'Policy fixture has compatible input/profile/options/registry/toolchain/builder');
+}
+$db->tables['site_build_jobs'][$old['id']]['worker_policy_version']='build-worker-unsupported';
+$policyBefore=$db->tables['site_build_jobs'][$old['id']];$prepared=$db->runtime->prepared;
+$snap=$db->snapshot();$caught=null;$claim=null;
+try{$claim=SiteBuildService::claimBuild([]);}catch(SiteServiceException $e){$caught=$e->classification();}
+m6b($caught===null&&($claim['lease']['job_id']??null)===$current['id'],
+    'Policy-only P1: later compatible job must be leased; caught='.($caught??'none').'; unchanged_due_queue='.($snap===$db->snapshot()?'yes':'no'));
+m6bRetired($db,$policyBefore);
+m6b(count($db->tables['site_build_attempts'])===1&&$db->events('site_build_started')===1&&$db->runtime->prepared===$prepared
+    &&$db->runtime->verified===0&&$claim['input']['build_input_hash']===$current['build_input_hash'],'Only compatible job gets an attempt/lease/BuildInput; no external work');
+$snap=$db->snapshot();SiteBuildService::claimBuild([]);m6b($snap===$db->snapshot(),'Repeated poll does not duplicate policy retirement');
+m6deny(fn()=>SiteBuildService::retryBuild(2,$old['id'],SiteServiceSupport::uuidV4()),'conflict');
+m6b($snap===$db->snapshot(),'Unsupported policy cannot enter transient retry or rewrite its limits');
+
+// Valid JSON scalars/arrays/incomplete objects, unsupported bounds inside JSON and oversized JSON are SQL-representable.
+$badPayloads=[CanonicalJson::encode(array_replace(SiteBuildContract::POLICY,['lease_seconds'=>121])),
+    'null','[]','{"lease_seconds":0}',CanonicalJson::encode(array_replace(SiteBuildContract::POLICY,['execution_timeout_seconds'=>0])),
+    CanonicalJson::encode(['padding'=>str_repeat('x',4100)])];
+foreach($badPayloads as$payload){
+    $db=WebsitePlatformM6BDatabase::fixture();$job=$db->request();$db->tables['site_build_jobs'][$job['id']]['worker_policy_json']=$payload;
+    $before=$db->tables['site_build_jobs'][$job['id']];$prepared=$db->runtime->prepared;
+    m6b(SiteBuildService::claimBuild([])===null,'Invalid/unsupported policy payload returns no lease');m6bRetired($db,$before);
+    m6b($db->tables['site_build_attempts']===[]&&$db->events('site_build_started')===0&&$db->runtime->prepared===$prepared
+        &&$db->runtime->verified===0,'Policy payload failure has no execution or external effects');
+}
+// Defensive fake-only rows: native JSON syntax and CHECK constraints prohibit these stored states.
+foreach([['worker_policy_json'=>'{bad'],['max_execution_attempts'=>0],['max_execution_attempts'=>4],
+    ['max_automatic_recoveries'=>-1],['max_automatic_recoveries'=>3]]as$invalid){
+    $db=WebsitePlatformM6BDatabase::fixture();$job=$db->request();
+    $before=$db->tables['site_build_jobs'][$job['id']]=array_replace($db->tables['site_build_jobs'][$job['id']],$invalid);
+    m6b(SiteBuildService::claimBuild([])===null,'Defensive fake-only malformed JSON/column bounds fail closed');m6bRetired($db,$before);
+}
+$db=WebsitePlatformM6BDatabase::fixture();$job=$db->request();
+$ordered=json_encode(array_reverse(SiteBuildContract::POLICY,true),JSON_THROW_ON_ERROR|JSON_PRETTY_PRINT);
+$db->tables['site_build_jobs'][$job['id']]['worker_policy_json']=$ordered;
+$db->tables['site_build_jobs'][$job['id']]['max_execution_attempts']=1;$db->tables['site_build_jobs'][$job['id']]['max_automatic_recoveries']=0;
+m6b($db->claim()['lease']['job_id']===$job['id']&&$db->events('site_build_failed')===0,'Semantic policy comparison accepts reordered JSON and lower supported limits');
+m6b($db->tables['site_build_jobs'][$job['id']]['worker_policy_json']===$ordered,'Supported stored JSON is never rewritten');
+
+$db=WebsitePlatformM6BDatabase::fixture();$first=$db->request();$seed=$db->tables['site_build_jobs'][$first['id']];$beforeRows=[$seed];
+for($i=1;$i<25;$i++)$beforeRows[]=m6bQueuePeer($db,$seed,$i);
+$compatible=m6bQueuePeer($db,$seed,25);
+foreach($beforeRows as&$row){$row['worker_policy_version']='build-worker-old';$db->tables['site_build_jobs'][$row['id']]=$row;}unset($row);
+m6b(SiteBuildService::claimBuild([])===null&&$db->events('site_build_failed')===20,'Policy first poll retires exactly the bounded 20 candidates');
+m6b($db->tables['site_build_attempts']===[]&&array_sum(array_column($db->tables['site_build_jobs'],'attempt_count'))===0,'Policy batch consumes no execution/recovery/total attempt budget');
+m6b($db->claim()['lease']['job_id']===$compatible['id']&&$db->events('site_build_failed')===25,'Policy next poll reaches compatible work after 25 retirements');
+foreach($beforeRows as$row)m6bRetired($db,$row);
+$snap=$db->snapshot();SiteBuildService::claimBuild([]);m6b($snap===$db->snapshot(),'No duplicate policy batch event/attempt on repeat polling');
+
+$db=WebsitePlatformM6BDatabase::fixture();$first=$db->request();$seed=$db->tables['site_build_jobs'][$first['id']];
+$badInput=m6bQueuePeer($db,$seed,1);$badPolicy=m6bQueuePeer($db,$seed,2);$compatible=m6bQueuePeer($db,$seed,3);
+$db->tables['site_build_jobs'][$first['id']]['builder_code_sha']=str_repeat('b',40);
+// Recompute the first job's legitimate old-builder identity; do not conflate it with input corruption.
+$db->tables['site_build_jobs'][$first['id']]['idempotency_key']=CanonicalJson::hash(['site_key'=>$db->read->base->sites[10]['site_key'],
+    'revision_id'=>100,'build_input_hash'=>$seed['build_input_hash'],'builder_version'=>$seed['builder_version'],'builder_code_sha'=>str_repeat('b',40)]);
+$db->tables['site_build_jobs'][$badInput['id']]['build_input_hash']=str_repeat('f',64);
+$db->tables['site_build_jobs'][$badPolicy['id']]['worker_policy_json']='{}';
+m6b($db->claim()['lease']['job_id']===$compatible['id'],'Mixed builder/input/policy batch progresses to compatible work');
+m6b(array_column(array_slice($db->tables['site_build_jobs'],0,3),'failure_code')===['builder_unavailable','input_mismatch','policy_unsupported']
+    &&$db->events('site_build_failed')===3&&count($db->tables['site_build_attempts'])===1,'Mixed rejection classes remain distinct without extra attempts');
+
+foreach(['dirty','untrusted','unidentified','unavailable','database','changed-worker']as$case){
+    $db=WebsitePlatformM6BDatabase::fixture();$job=$db->request();$db->tables['site_build_jobs'][$job['id']]['worker_policy_json']='{}';
+    if($case==='dirty')$db->runtime->clean=false;
+    elseif($case==='untrusted')$db->runtime->trusted=false;
+    elseif($case==='unidentified')$db->runtime->builderOverrides=['builder_code_sha'=>'unknown'];
+    elseif($case==='unavailable')(new ReflectionProperty(SiteBuildService::class,'dependencies'))->setValue(null,null);
+    elseif($case==='database')$db->failAuthorization=true;
+    else $db->onSql=function($sql)use($db):void{if(str_contains($sql,'SELECT * FROM site_build_jobs')&&str_contains($sql,'FOR UPDATE'))$db->runtime->trusted=false;};
+    $snap=$db->snapshot();m6deny(fn()=>SiteBuildService::claimBuild([]));
+    m6b($snap===$db->snapshot(),'Global/current worker failure cannot retire unsupported-policy jobs: '.$case);
+}
+foreach(['audit','update','unexpected']as$case){
+    $db=WebsitePlatformM6BDatabase::fixture();$job=$db->request();$db->tables['site_build_jobs'][$job['id']]['worker_policy_json']='{}';
+    if($case==='audit')$db->failTable='site_events';
+    else $db->onSql=function($sql)use($case):void{if(str_starts_with($sql,'UPDATE site_build_jobs')){
+        if($case==='unexpected')throw new LogicException('Synthetic unexpected failure');throw new PDOException('Synthetic SQL failure');}};
+    $snap=$db->snapshot();m6deny(fn()=>SiteBuildService::claimBuild([]),'database_failure');
+    m6b($snap===$db->snapshot(),'Policy retirement and audit roll back atomically; no catch-all classification: '.$case);
+}
+foreach([1205,1213]as$driverCode){
+    $db=WebsitePlatformM6BDatabase::fixture();$job=$db->request();$db->tables['site_build_jobs'][$job['id']]['worker_policy_json']='{}';
+    $before=$db->tables['site_build_jobs'][$job['id']];$once=false;
+    $db->onSql=function($sql)use(&$once,$driverCode):void{if(!$once&&str_starts_with($sql,'INSERT INTO site_events')){
+        $once=true;$e=new PDOException('Synthetic rolled-back conflict');$e->errorInfo=['40001',$driverCode,'synthetic'];throw $e;}};
+    SiteBuildService::claimBuild([]);m6bRetired($db,$before);
+    m6b($once&&$db->tables['site_build_attempts']===[],'Known rolled-back DB conflict retries the locked retirement without consuming attempts');
+}
+$db=WebsitePlatformM6BDatabase::fixture();$job=$db->request();$db->tables['site_build_jobs'][$job['id']]['worker_policy_json']='{}';
+$before=$db->tables['site_build_jobs'][$job['id']];$db->loseCommitAck=true;
+m6deny(fn()=>SiteBuildService::claimBuild([]),'database_failure');m6bRetired($db,$before);
+$snap=$db->snapshot();SiteBuildService::claimBuild([]);m6b($snap===$db->snapshot(),'Uncertain commit propagates; explicit next poll cannot duplicate committed policy failure');
+
+$db=WebsitePlatformM6BDatabase::fixture();$job=$db->request();$claim=$db->claim();
+SiteBuildService::completeBuildFailure($claim['lease'],['code'=>'storage_unavailable']+$db->receipt($claim,'safe_absence'));
+$db->tables['site_build_jobs'][$job['id']]['worker_policy_json']='{}';$db->advance(30);
+$before=$db->tables['site_build_jobs'][$job['id']];$attempts=$db->tables['site_build_attempts'];$receipts=$db->runtime->receipts;$events=$db->read->base->events;
+SiteBuildService::claimBuild([]);m6bRetired($db,$before);
+m6b($attempts===$db->tables['site_build_attempts']&&$receipts===$db->runtime->receipts
+    &&array_slice($db->read->base->events,0,count($events),true)===$events,'Policy retirement preserves previous attempts/deadlines/receipt evidence and audit history');
+
+$db=WebsitePlatformM6BDatabase::fixture();$job=$db->request();$db->tables['site_build_jobs'][$job['id']]['worker_policy_json']='{}';$db->read->users[1]['status']='inactive';
+SiteBuildService::claimBuild([]);$snap=$db->snapshot();SiteBuildService::claimBuild([]);
+m6b($db->events('site_build_cancelled')===1&&$db->events('site_build_failed')===0&&$snap===$db->snapshot(),'B17 cancellation retains precedence over unsupported policy and remains one-time');
+
+foreach(['active','unresolved','blocked']as$case){
+    $db=WebsitePlatformM6BDatabase::fixture();$job=$db->request();$claim=$db->claim();
+    if($case!=='active')SiteBuildService::completeBuildFailure($claim['lease'],['code'=>'outcome_unknown']+$db->receipt($claim,'unknown'));
+    // SQL-representable inconsistency: a due status with an existing owner or unresolved effects.
+    $db->tables['site_build_jobs'][$job['id']]['status']='retry_wait';$db->tables['site_build_jobs'][$job['id']]['worker_policy_json']='{}';
+    if($case==='blocked')$db->tables['site_build_jobs'][$job['id']]['recovery_status']='blocked';
+    $before=$db->tables['site_build_jobs'][$job['id']];$attempts=$db->tables['site_build_attempts'];$verified=$db->runtime->verified;
+    SiteBuildService::claimBuild([]);$after=$db->tables['site_build_jobs'][$job['id']];
+    m6b($after['status']==='reconciliation_required'&&$after['failure_code']==='outcome_unknown'&&$after['next_attempt_at']===null
+        &&$after['recovery_status']===($case==='blocked'?'blocked':'required')&&$db->events('site_build_failed')===0,'Uncertain effects retain required/blocked recovery, never false policy safe-failure: '.$case);
+    foreach(['status','failure_category','failure_code','safe_summary','next_attempt_at','completed_at','updated_at','lock_version','recovery_status','next_recovery_at']as$key){unset($before[$key],$after[$key]);}
+    m6b($before===$after&&$attempts===$db->tables['site_build_attempts'],'Unresolved policy case preserves ownership/identity/policy/budgets/attempts');
+    $snap=$db->snapshot();SiteBuildService::claimBuild([]);m6deny(fn()=>SiteBuildService::claimBuildRecovery($job['id'],[]),'conflict');
+    m6b($snap===$db->snapshot()&&$verified===$db->runtime->verified,'No fallback-policy recovery or repeated ordinary-queue effects');
+}
+[$db,$job,$success]=m6bSuccessfulFixture();$db->tables['site_build_jobs'][$job['id']]['worker_policy_version']='historical-policy';
+$db->tables['site_build_jobs'][$job['id']]['worker_policy_json']='{}';$db->read->base->approvals[700]['revoked_at']='2026-09-19';
+$snap=$db->snapshot();$prepared=$db->runtime->prepared;$verified=$db->runtime->verified;$replay=$db->request(2);
+$expected=$success['job']+['existing'=>true,'replayed'=>true,'release'=>$success['release']];
+m6b($replay===$expected,'Historical unsupported policy does not invalidate exact authorized committed success replay');
+m6b($snap===$db->snapshot()&&$prepared===$db->runtime->prepared&&$verified===$db->runtime->verified,'History-only replay never prepares/verifies/rewrites policy or allocates effects');
+
 echo "Website platform M6B behavior: $assertions assertions passed.\n";

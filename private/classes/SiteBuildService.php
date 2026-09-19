@@ -189,7 +189,10 @@ final class SiteBuildService
                     self::event($db, $job, 'site_build_failed', SiteServiceSupport::systemActor(), [], 'source_not_eligible');
                     return null;
                 }
-                $incompatibility = self::inputFailure($job, $source, $builder);
+                $incompatibility = self::inputFailure($job, $source, $builder) ?? SiteBuildContract::policyFailure($job);
+                if ($incompatibility === null && (int) $job['execution_count'] >= (int) $job['max_execution_attempts']) {
+                    $incompatibility = 'execution_exhausted';
+                }
                 if ($incompatibility !== null) {
                     $oldStatus = $job['status'];
                     $job = self::updateJob($db, $job, SiteBuildContract::failure($incompatibility) + [
@@ -198,8 +201,6 @@ final class SiteBuildService
                         'previous_status' => $oldStatus, 'next_status' => 'failed'], $incompatibility);
                     return null;
                 }
-                SiteBuildContract::policy($job);
-                if ((int) $job['execution_count'] >= (int) $job['max_execution_attempts']) return null;
                 return self::allocate($db, $job, 'execution', $worker, $now, null, null);
             });
             if ($claim !== null) return $claim;

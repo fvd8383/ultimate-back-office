@@ -230,15 +230,16 @@ deployment rows are rollback-only schema fixtures, not grants or activation.
 
 Environment: Windows desktop, installed PHP 8.4.24. All **56/56 standalone suites**
 passed (50 existing plus six new). After the PR #126 corrections below, the six M6B
-suites pass **483 assertions** (395 at the initial reviewed head, plus 88 correction
-assertions). All 56 suites and all tracked PHP lint were rerun for the correction:
+suites pass **743 assertions** (395 at the initial reviewed head, 88 in the first
+correction, and 260 in the policy correction). All 56 suites and all tracked PHP lint
+were rerun for the policy correction:
 
 | Suite | Assertions passed |
 | --- | ---: |
-| M6B behavior | 174 |
+| M6B behavior | 401 |
 | M6B authorization | 83 |
 | M6B recovery | 49 |
-| M6B contract | 25 |
+| M6B contract | 58 |
 | M6B schema contract, static only | 110 |
 | M6B scope | 42 |
 
@@ -453,3 +454,158 @@ statuses remain unchanged. Updated validation totals appear in the executed-chec
 section. The correction SHA, both review replies and the single new-head review
 request/state are reported with the task result. No new PR, deployment, remote
 migration, staging/production access, M6C generation or Narrator action is authorized.
+
+## PR #126 persisted-policy queue correction
+
+The next completed review of `94953504ee350e8d45ec8aed4c5133c54c14600c` raised
+[P1: retire jobs with unsupported persisted policies](https://github.com/fvd8383/ultimate-back-office/pull/126#discussion_r4054877005).
+That exact clean branch head was confirmed before editing. The implementation baseline
+remains `5baae28c9af68cca7694a912d7f35c87c50c9dc5`; this correction uses the existing
+branch and PR #126. No successful-request replay code or migrations were changed.
+
+### Reproduced before changing application behavior
+
+A standalone behavior regression first created two valid queued inputs with the same
+current builder version/SHA, registry, toolchain, profile and options. It validated
+both stored canonical input identities, then changed only the first job's persisted
+policy version. The second input was independently compatible. Running that regression
+against the prior application code actually failed with `caught=conflict;
+unchanged_due_queue=yes`: policy validation rolled back, preserved the due row and
+aborted the poll before the compatible lease. This is executed standalone evidence,
+not a MySQL or concurrency reproduction.
+
+The focused candidate audit also reproduced a separate silent stall: a safely settled
+`retry_wait` row with execution count 1 and supported maximum 1 was skipped without a
+terminal transition. The regression failed with `unchanged_due_queue=yes` before the
+service changed. This row satisfies the migration's counter/limit constraints, although
+normal completion already avoids scheduling exhausted budgets. A full batch of such
+persisted rows could keep later work outside the scan. The narrow correction gives
+this case the fixed configuration failure `execution_exhausted`; it never raises or
+resets the limit. Both previously failing regressions now pass.
+
+Before-fix outputs and the subsequent suite/lint logs are retained in the temporary
+local evidence directory `ubo-m6b-policy-977a88b461ef400ca91d1bc39b6edac7` under the
+development user's Windows TEMP directory. No generated test evidence is committed.
+
+### Policy classification and exact disposition
+
+`SiteBuildContract::policyFailure` is a pure persisted-value classifier. It validates
+the recorded version, bounded decodable JSON, semantic canonical policy digest, and
+supported scalar limits. Native PDO integer/string representations are accepted;
+arbitrary coercions are not. The strict `policy` method delegates to this classifier
+and still throws for unsupported values. Execution allocation, renewal, completion
+and recovery retain strict validation and their existing authority/token checks.
+The helper performs no database or infrastructure calls and uses no exception-message
+matching. Only bounded decode/canonicalization errors are classified as policy failure.
+
+After current worker confirmation, locked ownership/due-state checks, safe-queue proof,
+original-requester authorization and source/input eligibility, `claimBuild` classifies
+unsupported policy as `policy_unsupported` in the `configuration` category. The fixed
+safe summary is "The persisted worker policy is unsupported." Builder and input
+failures retain their distinct `builder_unavailable` and `input_mismatch` codes.
+
+The existing terminal transaction sets `status=failed`, clears `next_attempt_at`,
+records DB-derived completion/update timestamps, increments the lock version once and
+appends one bounded `site_build_failed` event. It commits before continuing the same
+maximum-20 candidate loop. Repeat polls and locked competing claimers see terminal
+state and cannot repeat the transition. No attempt, lease, token, BuildInput, start
+event, preparation, verification or provider/artifact work is allocated for that job.
+
+Every other job field is preserved: job/release identities, original requester, source
+snapshot, canonical input/idempotency/builder, stored policy version/JSON, limits,
+counters and current-attempt reference. Existing attempts, their deadlines, receipts
+and previous events remain unchanged. Configuration failures do not enter the transient
+storage/network retry path. Unsupported policy is never rewritten to executable defaults.
+
+### Focused audit of the complete candidate path
+
+| Candidate check | Disposition and boundary |
+| --- | --- |
+| Worker authentication and current builder identity before selection; worker reconfirmation under locks | Global unavailable/dirty/unidentified/untrusted infrastructure propagates without candidate retirement. |
+| Site/input/ascending authorization/job/current-attempt locks | Existing FK/ownership and immutable-identity checks remain fail-closed. Unexpected missing/changed ownership is an integrity error, not a policy classification. Requester FK races use bounded fresh-transaction retry. |
+| Locked status/due recheck after another worker changes a selected row | Bounded skip: an active owner, terminal result or future retry no longer qualifies as currently due. |
+| Existing ownership or unresolved effects on a still-queued row | Existing durable `reconciliation_required` / required-or-blocked recovery removes ordinary scheduling. Attempts, tokens, deadlines and stored policy remain intact; strict recovery refuses unsupported policy and allocates no fallback recovery. |
+| Original requester unauthorized or deleted | B17 commits its one-time cancellation before policy classification. |
+| Expected source lifecycle, approval, supersession, association/module, asset/rights, registry/composition validation rejection | Existing `source_not_eligible` terminal transaction; operational database errors and unexpected exceptions still propagate. |
+| Canonical input, identity and current builder comparison | Existing `input_mismatch` / `builder_unavailable` safe terminal dispositions. |
+| Persisted policy version, payload or limits | New specific `policy_unsupported` terminal disposition. |
+| Supported but exhausted execution limit on a safely queued row | Newly reproduced `execution_exhausted` terminal disposition; no budget mutation. |
+| Allocation, persistence, audit and commit | Allocation retains strict policy validation. Database/audit failures roll back; known 1205/1213 conflicts retain bounded retries and fresh locks. Uncertain commit propagates; a later poll resolves the committed terminal state. Unexpected exceptions are not swallowed or relabelled. |
+
+The audit found the policy throw and exhausted-limit skip as the two concrete remaining
+expected job-local queue stalls. No other lifecycle, recovery execution, history-replay
+or architecture redesign is included. Current successful history remains an immutable,
+authorized replay even with obsolete policy metadata; it receives no new eligibility
+or policy gate and causes no preparation, verification, policy rewrite or other effect.
+
+### Regression and native-harness coverage
+
+Behavior regressions cover policy-only version mismatch before compatible work;
+same-version changed payload; valid JSON null/array/incomplete/oversized payloads and
+invalid policy values; reordered supported JSON with lower valid limits; 25 incompatible
+rows across bounded polls; event-once and unchanged counter/identity/policy snapshots;
+mixed builder/input/policy classes; global failures; audit/update/unexpected-error
+rollback; simulated 1205/1213 retry and uncertain commit; prior settled-attempt/receipt
+preservation; B17 precedence; active/unresolved/blocked effects; exhausted-limit
+retirement; and exact historical success replay after approval revocation.
+
+Malformed JSON syntax and scalar column limits outside schema bounds are explicitly
+labelled **defensive fake-only rows**, because native JSON/CHECK enforcement prohibits
+them. Valid JSON with an unsupported version, shape or payload is SQL-representable.
+Contract regressions separately exercise pure classification, canonical ordering,
+PDO scalar representations, safe fixed codes and strict renewal/completion/recovery
+denial. Earlier P1/P2 and B17–B26 coverage remains present and executed.
+
+The isolated native harness adds 25 policy-only incompatible jobs on independently
+eligible sources and a compatible job with reordered policy JSON. Two independent PHP
+processes freeze the same remaining queue batch. The first holds its retirement and
+audit before commit; the second must visibly wait on the first connection's InnoDB
+lock before release. Assertions require one failure per job, zero retired-job attempts
+and unchanged counters/evidence, one compatible lease, and effect-free repeat polls.
+Additional native cases cover exact obsolete-policy success replay, audit-FK rollback,
+real JSON/CHECK rejection of fake-only states, and supported exhausted-budget retirement.
+
+**Real MySQL/concurrency: NOT EXECUTED.** The known-blocked harness was not rerun.
+The outstanding prerequisites remain a local Docker CLI/engine, an existing
+operator-provided `mysql:8.4` image and usable PDO MySQL. No software/image installation,
+php.ini/host change, database/container creation, remote substitute or SQL execution
+occurred. Syntax checks and synthetic tests do not establish native locking or DDL
+behavior. Actual database validation remains an outstanding acceptance gate.
+
+### Exact policy-correction inventory and unchanged status
+
+The policy correction changes these eight existing files relative to prior head
+`94953504ee350e8d45ec8aed4c5133c54c14600c`:
+
+| Correction file | Purpose |
+| --- | --- |
+| `private/classes/SiteBuildContract.php` | Pure policy classifier, authoritative strict validator, two fixed configuration codes. |
+| `private/classes/SiteBuildService.php` | Safe policy/exhausted-budget disposition in the existing bounded candidate loop. |
+| `tests/WebsitePlatformM6BBehaviorTest.php` | Before-fix reproductions, queue progression and preservation/rollback/history regressions. |
+| `tests/WebsitePlatformM6BContractTest.php` | Pure/strict policy consistency and lifecycle denial regressions. |
+| `tests/WebsitePlatformM6BMySql.php` | Policy-only batch/contention, replay, constraints/rollback and exhausted-limit native cases. |
+| `tests/support/WebsitePlatformM6BMySqlSupport.php` | Native precommit retirement barrier. |
+| `tests/support/WebsitePlatformM6BMySqlWorker.php` | Barrier wiring and preparation/verification observations from independent claim processes. |
+| `docs/sprint-8.8-m6b-local-implementation.md` | Finding, reproduced failures, audit, evidence, limitations and exact inventory. |
+
+The complete PR inventory remains 35 files. Migrations 001–024 match the implementation
+baseline and all 001–025 match the prior head. Canonical migration 025 SHA-256 remains
+`dab585dc29aac11153f92703c65d3883aeea73a1b2283157cfa9d2f2ece85cb0`.
+Migration 025 is **NOT APPLIED TO STAGING OR PRODUCTION**.
+
+Validation executed for this correction: **56/56 standalone PHP suites**, **743 M6B
+assertions** (behavior 401, authorization 83, recovery 49, contract 58, static schema
+110, scope 42), **211/211 tracked PHP lint**, and PowerShell harness syntax passed.
+Five current Markdown documents passed 84 relative-link checks, one referenced anchor,
+balanced fences, current statuses and the complete 35-file inventory/checksum checks.
+The eight-file correction inventory was separately compared with the prior head.
+Working, staged and committed diff checks are required before reporting the final SHA;
+their completed results accompany the task result. Real MySQL remains unexecuted.
+
+Statuses remain M6A **ARCHITECTURE REVIEWED / MERGED**, M6B **IMPLEMENTED LOCALLY /
+REVIEW REQUIRED**, M6 **IN PROGRESS**, M6C–M6G **NOT STARTED**, M5 **COMPLETE FOR SPRINT
+PROGRESSION**, M5C **ACCEPTED / NARRATOR FOLLOW-UP DEFERRED**, and Production
+**UNAUTHORIZED / NOT DEPLOYED**. No staging/production access, deployment, remote
+migration, M6C generation/publishing, application route/worker/scheduler, resumed
+Narrator work, new PR, merge or auto-merge occurred. The commit SHA, policy-thread reply
+and single new-head review request/state are reported with the task result.
