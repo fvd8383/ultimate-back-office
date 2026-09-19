@@ -13,6 +13,8 @@ final class WebsitePlatformM6BDependencies implements SiteBuildDependencies
     public array $receipts = [];
     public int $prepared = 0;
     public int $verified = 0;
+    public array $builderOverrides = [];
+    public array $projectionOverrides = [];
     public $duringVerify = null;
     public $duringPrepare = null;
     public static function wire(): self
@@ -30,9 +32,9 @@ final class WebsitePlatformM6BDependencies implements SiteBuildDependencies
     public function builderIdentity(): array
     {
         if (!$this->clean) throw new SiteServiceException('conflict', 'Fixture builder is unidentified.');
-        return ['builder_version' => 'synthetic-m6b-v1', 'builder_code_sha' => str_repeat('a', 40),
+        return array_replace(['builder_version' => 'synthetic-m6b-v1', 'builder_code_sha' => str_repeat('a', 40),
             'registry_manifest_digest' => CanonicalJson::hash(ComponentRegistry::manifest()),
-            'toolchain_contract' => ['canonicalization' => 1, 'runtime' => 'synthetic-php8', 'static_bundle' => str_repeat('b',64)]];
+            'toolchain_contract' => ['canonicalization' => 1, 'runtime' => 'synthetic-php8', 'static_bundle' => str_repeat('b',64)]], $this->builderOverrides);
     }
     public function prepareInput(array $lockedSource): array
     {
@@ -43,8 +45,8 @@ final class WebsitePlatformM6BDependencies implements SiteBuildDependencies
             'byte_size' => $a['byte_size'], 'mime_type' => $a['mime_type']], $lockedSource['composition']['assets']);
         usort($assets, static fn ($a, $b): int => strcmp($a['usage_key'], $b['usage_key']));
         // A deterministic synthetic projection, not the M6C public projector.
-        return ['public_facts' => ['name' => 'Synthetic café'], 'public_composition' => ['synthetic' => true],
-            'ordered_asset_digests' => $assets];
+        return array_replace(['public_facts' => ['name' => 'Synthetic café'], 'public_composition' => ['synthetic' => true],
+            'ordered_asset_digests' => $assets], $this->projectionOverrides);
     }
     public function verifyOutcome(array $job, array $producerAttempt, array $hint): array
     {

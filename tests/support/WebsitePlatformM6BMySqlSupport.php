@@ -151,6 +151,10 @@ final class M6NativeStatement extends PDOStatement
             else $params['result']='invalid';
         }
         $result=$this->inner->execute($params);
+        if($this->owner->holdQueue&&str_contains($this->sql,"status IN ('requested','retry_wait')")){
+            $this->owner->holdQueue=false;echo "QUEUE_SELECTED\n";flush();
+            if(trim((string)fgets(STDIN))!=='RELEASE_QUEUE')throw new RuntimeException('Missing queue barrier release.');
+        }
         if(str_starts_with($this->sql,'INSERT INTO site_events')&&($params['event_type']??'')==='site_build_started')$this->owner->claimed=true;
         return $result;
     }
@@ -161,7 +165,7 @@ final class M6NativeStatement extends PDOStatement
 }
 final class M6NativeConnection extends PDO
 {
-    public bool $claimed=false; public bool $holdClaim=false; public ?string $faultTable=null;
+    public bool $claimed=false; public bool $holdClaim=false; public bool $holdQueue=false; public ?string $faultTable=null;
     public function __construct(public PDO $inner){}
     public function prepare(string $query,array $options=[]):PDOStatement|false{return new M6NativeStatement($this,$this->inner->prepare($query,$options),$query);}
     public function beginTransaction():bool{return $this->inner->beginTransaction();}

@@ -27,6 +27,25 @@ final class SiteBuildService
         $correlation = self::correlation($input['correlation_id'] ?? null);
         SiteAuthorizationPolicy::requireInternalAdmin($actingUserId);
         $builder = self::external(static fn (): array => SiteBuildContract::builder(self::dependencies()->builderIdentity()));
+        $identity = null;
+        $replay = static function () use ($actingUserId, $siteId, $revisionId, $hash, $builder, &$identity): ?array {
+            return self::successfulRequest($actingUserId, $siteId, $revisionId, $hash, $builder, $identity);
+        };
+        if (($existing = $replay()) !== null) return $existing;
+        try {
+            return self::newBuildRequest($actingUserId, $siteId, $revisionId, $hash, $builder, $correlation, $replay, $identity);
+        } catch (SiteServiceException $e) {
+            // A winner may commit between the history preflight and an eligibility transaction.
+            // Resolve it under fresh locks before returning a new-build gate denial; DB errors propagate.
+            if (in_array($e->classification(), ['invalid_transition','conflict','stale_write'], true)
+                && ($existing = $replay()) !== null) return $existing;
+            throw $e;
+        }
+    }
+
+    private static function newBuildRequest(int $actingUserId, int $siteId, int $revisionId, string $hash,
+        array $builder, string $correlation, callable $replay, ?array &$identity): array
+    {
         // Read immutable source under owner locks, then project outside the intent transaction.
         $source = SiteBuildStore::transaction(static function (object $db) use ($siteId, $revisionId, $hash, $actingUserId): array {
             $source = SiteRevisionManager::lockBuildEligibility($db, $siteId, $revisionId, $hash);
@@ -44,7 +63,14 @@ final class SiteBuildService
             }
             $existing = SiteBuildStore::one($db, 'SELECT * FROM site_build_jobs WHERE idempotency_key = :identity FOR UPDATE',
                 ['identity' => $identity['idempotency_key']]);
-            if ($existing !== null) return self::jobDTO($db, $existing) + ['existing' => true];
+            if ($existing !== null) {
+                $manifest = SiteBuildContract::recordedInput($locked, $existing);
+                if (!SiteBuildContract::builderMatches($existing, $manifest, $builder)) {
+                    throw new SiteServiceException('conflict', 'The recorded build does not match this request.');
+                }
+                return $existing['status'] === 'succeeded' ? self::successfulRequestDTO($db, $existing)
+                    : self::jobDTO($db, $existing) + ['existing' => true, 'replayed' => true];
+            }
             $now = SiteBuildStore::now($db);
             $job = $identity + [
                 'site_id' => (int) $locked['site']['id'], 'revision_id' => (int) $locked['revision']['id'],
@@ -64,8 +90,69 @@ final class SiteBuildService
             ];
             $job['id'] = SiteBuildStore::insert($db, 'site_build_jobs', $job);
             self::event($db, $job, 'site_build_requested', $actor);
-            return self::jobDTO($db, $job) + ['existing' => false];
-        }, true);
+            return self::jobDTO($db, $job) + ['existing' => false, 'replayed' => false];
+        }, true, $replay);
+    }
+
+    /** History-only lookup. Stored canonical evidence must establish ONE deterministic input. */
+    private static function successfulRequest(int $actingUserId, int $siteId, int $revisionId, string $hash,
+        array $builder, ?array $expectedIdentity): ?array
+    {
+        return SiteBuildStore::transaction(static function (object $db) use (
+            $actingUserId, $siteId, $revisionId, $hash, $builder, $expectedIdentity
+        ): ?array {
+            $site = SiteManager::lockSite($db, $siteId);
+            $revision = SiteRevisionManager::lockRevision($db, $revisionId);
+            self::actors($db, [$actingUserId], true);
+            if ((int) $revision['site_id'] !== $siteId || $revision['snapshot_hash'] !== $hash) {
+                throw new SiteServiceException('conflict', 'The requested source identity does not match.');
+            }
+            $source = ['site' => $site, 'revision' => $revision];
+            // Current locking read: no pre-lock consistent snapshot, no latest-success fallback.
+            // Include non-success rows so inconsistent deterministic inputs cannot hide behind status.
+            $jobs = SiteBuildStore::rows($db, 'SELECT * FROM site_build_jobs WHERE site_id = :site_id
+                AND revision_id = :revision_id AND snapshot_hash = :snapshot_hash AND build_profile = :build_profile
+                AND builder_version = :builder_version AND builder_code_sha = :builder_code_sha ORDER BY id LIMIT 101 FOR UPDATE',
+                ['site_id' => $siteId, 'revision_id' => $revisionId, 'snapshot_hash' => $hash,
+                    'build_profile' => SiteBuildContract::PROFILE, 'builder_version' => $builder['builder_version'],
+                    'builder_code_sha' => $builder['builder_code_sha']]);
+            if (count($jobs) > 100) throw new SiteServiceException('conflict', 'Build history cannot be matched unambiguously.');
+            $matches = [];
+            foreach ($jobs as $job) {
+                try { $manifest = SiteBuildContract::recordedInput($source, $job); }
+                catch (SiteServiceException) { throw new SiteServiceException('conflict', 'Stored build identity is inconsistent.'); }
+                if (SiteBuildContract::builderMatches($job, $manifest, $builder)) $matches[] = $job;
+            }
+            if (count($matches) > 1) throw new SiteServiceException('conflict', 'Build input history is ambiguous.');
+            if ($matches === [] || $matches[0]['status'] !== 'succeeded') return null;
+            $job = $matches[0];
+            if ($expectedIdentity !== null && ($job['idempotency_key'] !== $expectedIdentity['idempotency_key']
+                || $job['build_input_hash'] !== $expectedIdentity['build_input_hash'])) {
+                throw new SiteServiceException('conflict', 'Prepared input conflicts with recorded input.');
+            }
+            // The owning site/revision locks protect the immutable aggregate. Both established
+            // snapshot representations are supported; this does not check current rights/approvals.
+            if (SiteRevisionSnapshotHasher::hashStoredRevision($db, $revisionId) !== $hash
+                && SiteRevisionSnapshotHasher::hashStoredRevision($db, $revisionId, SiteRevisionSnapshotHasher::MODE_LEGACY_M1) !== $hash) {
+                throw new SiteServiceException('conflict', 'Stored source content does not match its snapshot.');
+            }
+            return self::successfulRequestDTO($db, $job);
+        });
+    }
+
+    private static function successfulRequestDTO(object $db, array $job): array
+    {
+        $release = self::releaseRow($db, $job);
+        if ($release === null || (int) $release['source_revision_id'] !== (int) $job['revision_id']) {
+            throw new SiteServiceException('conflict', 'The recorded release identity is inconsistent.');
+        }
+        foreach (['release_key','build_input_hash','builder_version','builder_code_sha','build_profile'] as $key) {
+            if ($release[$key] !== $job[$key]) throw new SiteServiceException('conflict', 'The recorded release identity is inconsistent.');
+        }
+        if ($release['source_snapshot_hash'] !== $job['snapshot_hash']) {
+            throw new SiteServiceException('conflict', 'The recorded release source is inconsistent.');
+        }
+        return self::jobDTO($db, $job) + ['existing' => true, 'replayed' => true, 'release' => SiteBuildContract::release($release)];
     }
 
     /** @return ?array Execution lease and immutable private BuildInput, after commit only. */
@@ -102,7 +189,15 @@ final class SiteBuildService
                     self::event($db, $job, 'site_build_failed', SiteServiceSupport::systemActor(), [], 'source_not_eligible');
                     return null;
                 }
-                self::assertInput($job, $source, $builder);
+                $incompatibility = self::inputFailure($job, $source, $builder);
+                if ($incompatibility !== null) {
+                    $oldStatus = $job['status'];
+                    $job = self::updateJob($db, $job, SiteBuildContract::failure($incompatibility) + [
+                        'status' => 'failed', 'next_attempt_at' => null, 'completed_at' => $now], $now);
+                    self::event($db, $job, 'site_build_failed', SiteServiceSupport::systemActor(), [
+                        'previous_status' => $oldStatus, 'next_status' => 'failed'], $incompatibility);
+                    return null;
+                }
                 SiteBuildContract::policy($job);
                 if ((int) $job['execution_count'] >= (int) $job['max_execution_attempts']) return null;
                 return self::allocate($db, $job, 'execution', $worker, $now, null, null);
@@ -712,18 +807,19 @@ final class SiteBuildService
     }
     private static function assertInput(array $job, array $source, ?array $builder = null): void
     {
-        $manifest = SiteBuildContract::decode($job['input_manifest_json']);
-        if ((int) $job['association_id'] !== $source['association_id'] || (int) $job['business_id'] !== $source['business_id']
-            || $manifest['source_snapshot_hash'] !== $source['revision']['snapshot_hash']
-            || CanonicalJson::hash($manifest) !== $job['build_input_hash']
-            || $job['build_profile'] !== SiteBuildContract::PROFILE
-            || CanonicalJson::hash(SiteBuildContract::decode($job['build_options_json'], 4096)) !== CanonicalJson::hash(SiteBuildContract::OPTIONS)
-            || ($builder !== null && ($builder['builder_version'] !== $job['builder_version']
-                || $builder['builder_code_sha'] !== $job['builder_code_sha']
-                || $builder['registry_manifest_digest'] !== $manifest['registry_manifest_digest']
-                || CanonicalJson::hash($builder['toolchain_contract']) !== CanonicalJson::hash($manifest['toolchain_contract'])))) {
+        if (self::inputFailure($job, $source, $builder) !== null) {
             throw new SiteServiceException('conflict', 'The stored build input or reviewed builder does not match.');
         }
+    }
+    /** Pure stored-value comparison only: database/global dependency failures never become job failures. */
+    private static function inputFailure(array $job, array $source, ?array $builder): ?string
+    {
+        try { $manifest = SiteBuildContract::recordedInput($source, $job); }
+        catch (SiteServiceException) { return 'input_mismatch'; }
+        if ((int) $job['association_id'] !== $source['association_id'] || (int) $job['business_id'] !== $source['business_id']) {
+            return 'input_mismatch';
+        }
+        return $builder !== null && !SiteBuildContract::builderMatches($job, $manifest, $builder) ? 'builder_unavailable' : null;
     }
     private static function safeQueue(array $job, ?array $attempt): bool
     {

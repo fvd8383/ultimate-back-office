@@ -8,11 +8,20 @@ try {
     $pdo=m6mysqlConnect($identity,$argv[1]);
     $connection=new M6NativeConnection($pdo);
     $runtime=m6mysqlWire($connection);$runtime->operator=$payload['fixture']['operator'];
+    $runtime->builderOverrides=$payload['builder']??[];
     echo 'READY '.(int)$pdo->query('SELECT CONNECTION_ID()')->fetchColumn()."\n";flush();
     if(trim((string)fgets(STDIN))!=='GO')throw new RuntimeException('Missing start barrier.');
     $result=match($payload['action']){
         'request'=>m6mysqlRequest($payload['fixture'],$payload['actor']),
+        'request_observed'=>(function()use($payload,$runtime){$job=m6mysqlRequest($payload['fixture'],$payload['actor']);
+            return ['job'=>$job,'prepared'=>$runtime->prepared,'verified'=>$runtime->verified];})(),
+        'request_prepare_hold'=>(function()use($payload,$runtime){
+            $runtime->duringPrepare=function()use($runtime):void{$runtime->duringPrepare=null;echo "INPUT_PREPARED\n";flush();
+                if(trim((string)fgets(STDIN))!=='RELEASE_INPUT')throw new RuntimeException('Missing input barrier release.');};
+            return m6mysqlRequest($payload['fixture'],$payload['actor']);})(),
+        'request_lost_ack'=>(function()use($payload){m6mysqlRequest($payload['fixture'],$payload['actor']);echo "COMMITTED\n";flush();exit(0);})(),
         'claim'=>SiteBuildService::claimBuild([]),
+        'claim_queue_hold'=>(function()use($connection,$payload){$connection->holdQueue=true;$connection->holdClaim=$payload['hold_claim']??false;return SiteBuildService::claimBuild([]);})(),
         'claim_hold'=>(function()use($connection){$connection->holdClaim=true;return SiteBuildService::claimBuild([]);})(),
         'revoke'=>(function()use($pdo,$payload){echo "REVOCATION_START\n";flush();m6mysqlRevoke($pdo,$payload['fixture'],$payload['kind']);return ['revoked'=>true];})(),
         default=>throw new RuntimeException('Unknown worker test action.'),

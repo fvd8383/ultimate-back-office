@@ -120,6 +120,33 @@ final class SiteBuildContract
                 'revision_id' => (int) $source['revision']['id'], 'build_input_hash' => $hash,
                 'builder_version' => $builder['builder_version'], 'builder_code_sha' => $builder['builder_code_sha']])];
     }
+    /** Recompute stored canonical evidence, not current public eligibility or file health. */
+    public static function recordedInput(array $source, array $job): array
+    {
+        $manifest = self::decode($job['input_manifest_json']);
+        self::keys($manifest, ['contract_version','source_snapshot_hash','public_composition','public_facts',
+            'ordered_asset_digests','output_profile','output_options','registry_manifest_digest','toolchain_contract'],
+            ['contract_version','source_snapshot_hash','public_composition','public_facts','ordered_asset_digests',
+                'output_profile','output_options','registry_manifest_digest','toolchain_contract']);
+        $builder = self::builder(['builder_version' => $job['builder_version'], 'builder_code_sha' => $job['builder_code_sha'],
+            'registry_manifest_digest' => $manifest['registry_manifest_digest'], 'toolchain_contract' => $manifest['toolchain_contract']]);
+        $identity = self::input($source, array_intersect_key($manifest,
+            array_flip(['public_composition','public_facts','ordered_asset_digests'])), $builder);
+        if ((int) $job['site_id'] !== (int) $source['site']['id'] || (int) $job['revision_id'] !== (int) $source['revision']['id']
+            || $job['snapshot_hash'] !== $source['revision']['snapshot_hash'] || $job['build_profile'] !== self::PROFILE
+            || CanonicalJson::hash(self::decode($job['build_options_json'], 4096)) !== CanonicalJson::hash(self::OPTIONS)
+            || CanonicalJson::encode($manifest) !== $identity['input_manifest_json']
+            || $job['build_input_hash'] !== $identity['build_input_hash'] || $job['idempotency_key'] !== $identity['idempotency_key']) {
+            throw new SiteServiceException('conflict', 'Stored build identity is inconsistent.');
+        }
+        return $manifest;
+    }
+    public static function builderMatches(array $job, array $manifest, array $builder): bool
+    {
+        return $job['builder_version'] === $builder['builder_version'] && $job['builder_code_sha'] === $builder['builder_code_sha']
+            && $manifest['registry_manifest_digest'] === $builder['registry_manifest_digest']
+            && CanonicalJson::hash($manifest['toolchain_contract']) === CanonicalJson::hash($builder['toolchain_contract']);
+    }
     public static function hint(array $hint): array
     {
         self::keys($hint, ['receipt_key'], ['receipt_key']);

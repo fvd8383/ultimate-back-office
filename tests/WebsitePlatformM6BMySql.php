@@ -145,6 +145,88 @@ try{
     // Actual constraint rejection and actor SET NULL in BOTH attempt tables.
     require __DIR__.'/support/WebsitePlatformM6BMySqlSchemaCases.php';
 
+    // PR #126 P1: bounded progression plus two claimers holding the same stale candidate batch.
+    $q=m6mysqlFixture($db);$runtime=m6mysqlWire($db);$oldJobs=[];
+    for($i=0;$i<25;$i++){$runtime->builderOverrides=['builder_code_sha'=>sha1('old-builder-'.$i)];$oldJobs[]=m6mysqlRequest($q);}
+    $runtime->builderOverrides=[];$compatible=m6mysqlRequest($q);$beforeRows=[];
+    foreach($oldJobs as$old)$beforeRows[$old['id']]=m6mysqlJob($db,(int)$old['id']);
+    mysqlCheck(SiteBuildService::claimBuild([])===null,'P1 first poll is bounded to 20 incompatible candidates');
+    $countFailure=$db->prepare("SELECT COUNT(*) FROM site_events WHERE site_id=? AND event_type='site_build_failed'");
+    $countFailure->execute([$q['site_id']]);mysqlCheck((int)$countFailure->fetchColumn()===20,'P1 first batch commits 20 retirement events');
+    $a=mysqlStart($database,['action'=>'claim_queue_hold','fixture'=>$q,'hold_claim'=>true]);
+    $b=mysqlStart($database,['action'=>'claim_queue_hold','fixture'=>$q]);
+    mysqlSend($a,'GO');mysqlSend($b,'GO');
+    mysqlCheck(mysqlLine($a)==='QUEUE_SELECTED'&&mysqlLine($b)==='QUEUE_SELECTED','P1 independent claimers selected the same remaining batch before mutation');
+    mysqlSend($a,'RELEASE_QUEUE');mysqlCheck(mysqlLine($a)==='CLAIM_LOCKED','P1 first claimer retired old jobs and holds compatible execution locks');
+    mysqlSend($b,'RELEASE_QUEUE');mysqlWaitLock($monitor,$b['connection_id'],$a['connection_id']);
+    mysqlSend($a,'RELEASE');$claimed=mysqlResult($a);$loser=mysqlResult($b);
+    mysqlCheck($claimed['lease']['job_id']===(int)$compatible['id']&&$loser===null,'P1 exactly one compatible claim after stale candidate contention');
+    $countFailure->execute([$q['site_id']]);mysqlCheck((int)$countFailure->fetchColumn()===25,'P1 contention cannot duplicate old-builder retirement events');
+    foreach($beforeRows as$id=>$beforeRow){
+        $retired=m6mysqlJob($db,(int)$id);
+        mysqlCheck($retired['status']==='failed'&&$retired['failure_code']==='builder_unavailable'&&$retired['next_attempt_at']===null,'P1 definite native terminal disposition');
+        foreach(['status','failure_category','failure_code','safe_summary','next_attempt_at','completed_at','updated_at','lock_version']as$key){unset($beforeRow[$key],$retired[$key]);}
+        mysqlCheck($beforeRow===$retired,'P1 native identity/input/requester/counters remain unchanged');
+    }
+    $before=m6mysqlSnapshot($db);SiteBuildService::claimBuild([]);mysqlCheck($before===m6mysqlSnapshot($db),'P1 repeated polling has no additional effects');
+    $success=SiteBuildService::completeBuildSuccess($claimed['lease'],$runtime->receipt(m6mysqlJob($db,(int)$compatible['id']),$claimed['lease']['attempt_id'],'sealed'));
+
+    // P2 native history with revoked approvals, a newer material revision and a deleted original requester.
+    $db->prepare("UPDATE site_approvals SET revoked_at=UTC_TIMESTAMP() WHERE site_id=?")->execute([$q['site_id']]);
+    m6mysqlInsert($db,'site_revisions',['site_id'=>$q['site_id'],'revision_number'=>2,'materiality'=>'material',
+        'snapshot_schema_version'=>1,'facts_snapshot_json'=>'{}','source_references_json'=>'{}','snapshot_hash'=>str_repeat('e',64)]);
+    m6mysqlRevoke($db,$q,'delete');$before=m6mysqlSnapshot($db);
+    $a=mysqlStart($database,['action'=>'request_observed','fixture'=>$q,'actor'=>$q['operator']]);
+    $b=mysqlStart($database,['action'=>'request_observed','fixture'=>$q,'actor'=>$q['operator']]);
+    mysqlSend($a,'GO');mysqlSend($b,'GO');$ra=mysqlResult($a);$rb=mysqlResult($b);
+    foreach([$ra,$rb]as$observed)mysqlCheck($observed['job']['id']===(int)$compatible['id']&&$observed['job']['replayed']
+        &&$observed['job']['release']['id']===$success['release']['id']&&$observed['prepared']===0&&$observed['verified']===0,'P2 concurrent historical replay returns exact result without external work');
+    mysqlCheck($before===m6mysqlSnapshot($db),'P2 native history/replay cannot mutate jobs, events, approvals or pointers');
+    try{m6mysqlRequest($q,$q['requester']);throw new RuntimeException('Expected revoked caller denial');}
+    catch(SiteServiceException $e){mysqlCheck($e->classification()==='unauthorized','P2 current caller authority remains mandatory');}
+    $runtime->builderOverrides=['builder_code_sha'=>str_repeat('f',40)];
+    try{m6mysqlRequest($q,$q['operator']);throw new RuntimeException('Expected new-build gate denial');}
+    catch(SiteServiceException $e){mysqlCheck($e->classification()==='invalid_transition','P2 a different builder cannot borrow historical success');}
+    $runtime->builderOverrides=[];
+    $releaseId=$success['release']['id'];$row=m6mysqlJob($db,(int)$compatible['id']);
+    $db->prepare('UPDATE site_releases SET build_input_hash=? WHERE id=?')->execute([str_repeat('f',64),$releaseId]);
+    $corrupt=m6mysqlSnapshot($db);
+    try{m6mysqlRequest($q,$q['operator']);throw new RuntimeException('Expected corrupt release denial');}
+    catch(SiteServiceException $e){mysqlCheck($e->classification()==='conflict','P2 stored release must match canonical job identity');}
+    mysqlCheck($corrupt===m6mysqlSnapshot($db),'P2 corrupt evidence rejection has no mutation');
+    $db->prepare('UPDATE site_releases SET build_input_hash=? WHERE id=?')->execute([$row['build_input_hash'],$releaseId]);
+    $ambiguous=$row;unset($ambiguous['id']);
+    $ambiguous=array_replace($ambiguous,['job_key'=>SiteServiceSupport::uuidV4(),'release_key'=>SiteServiceSupport::uuidV4(),
+        'status'=>'failed','current_attempt_id'=>null,'attempt_count'=>0,'execution_count'=>0,'recovery_count'=>0,'automatic_recovery_count'=>0]);
+    $manifest=SiteBuildContract::decode($ambiguous['input_manifest_json']);$manifest['public_facts']=['different'=>'input'];
+    $ambiguous['input_manifest_json']=CanonicalJson::encode($manifest);$ambiguous['build_input_hash']=CanonicalJson::hash($manifest);
+    $siteKey=SiteBuildStore::one($db,'SELECT site_key FROM sites WHERE id=:id',['id'=>$q['site_id']])['site_key'];
+    $ambiguous['idempotency_key']=CanonicalJson::hash(['site_key'=>$siteKey,'revision_id'=>$q['revision_id'],
+        'build_input_hash'=>$ambiguous['build_input_hash'],'builder_version'=>$ambiguous['builder_version'],'builder_code_sha'=>$ambiguous['builder_code_sha']]);
+    m6mysqlInsert($db,'site_build_jobs',$ambiguous);$before=m6mysqlSnapshot($db);
+    try{m6mysqlRequest($q,$q['operator']);throw new RuntimeException('Expected ambiguous input denial');}
+    catch(SiteServiceException $e){mysqlCheck($e->classification()==='conflict','P2 multiple deterministic inputs reject instead of choosing a success');}
+    mysqlCheck($before===m6mysqlSnapshot($db),'P2 ambiguity rejection has no effects');
+
+    // P2 M: a separate process completes the winner while another request waits outside SQL.
+    $f=m6mysqlFixture($db);$runtime=m6mysqlWire($db);
+    $pending=mysqlStart($database,['action'=>'request_prepare_hold','fixture'=>$f,'actor'=>$f['requester']]);
+    mysqlSend($pending,'GO');mysqlCheck(mysqlLine($pending)==='INPUT_PREPARED','P2 outer request is paused outside its intent transaction');
+    $winner=m6mysqlRequest($f,$f['operator']);$c=SiteBuildService::claimBuild([]);
+    SiteBuildService::completeBuildSuccess($c['lease'],$runtime->receipt(m6mysqlJob($db,(int)$winner['id']),$c['lease']['attempt_id'],'sealed'));
+    $db->prepare("UPDATE site_approvals SET revoked_at=UTC_TIMESTAMP() WHERE site_id=?")->execute([$f['site_id']]);
+    $before=m6mysqlSnapshot($db);mysqlSend($pending,'RELEASE_INPUT');$replay=mysqlResult($pending);
+    mysqlCheck($replay['replayed']&&$replay['id']===(int)$winner['id'],'P2 native winner survives approval change before losing intent transaction');
+    mysqlCheck($before===m6mysqlSnapshot($db),'P2 concurrent winner keeps one operation and original requester');
+
+    $f=m6mysqlFixture($db);$runtime=m6mysqlWire($db);
+    $lost=mysqlStart($database,['action'=>'request_lost_ack','fixture'=>$f,'actor'=>$f['requester']]);mysqlSend($lost,'GO');
+    mysqlCheck(mysqlLine($lost)==='COMMITTED','P2 request process committed but withheld its result DTO');
+    $before=m6mysqlSnapshot($db);$retried=m6mysqlRequest($f,$f['operator']);
+    mysqlCheck($retried['existing']&&$retried['replayed']&&$before===m6mysqlSnapshot($db),'P2 lost-response retry reuses one native operation without transferring ownership');
+    $c=SiteBuildService::claimBuild([]);
+    SiteBuildService::completeBuildFailure($c['lease'],['code'=>'artifact_invalid']+$runtime->receipt(m6mysqlJob($db,(int)$retried['id']),$c['lease']['attempt_id'],'safe_absence'));
+
     foreach(['deactivate','delete','grant','scope','name']as$revocation){
         foreach(['revocation_first','claim_first']as$order){
             $f=m6mysqlFixture($db);$runtime=m6mysqlWire($db);$runtime->operator=$f['operator'];$j=m6mysqlRequest($f);

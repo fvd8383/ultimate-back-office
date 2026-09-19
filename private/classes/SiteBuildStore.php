@@ -47,8 +47,9 @@ final class SiteBuildStore
             throw new LogicException('Not a build-owned table.');
         }
     }
-    /** Retry only known rolled-back lock conflicts, never an uncertain commit. */
-    public static function transaction(callable $callback, bool $duplicateRetry = false): mixed
+    /** Retry only known rolled-back conflicts, never an uncertain commit.
+     * An optional request-winner lookup runs AFTER rollback and BEFORE retrying gates. */
+    public static function transaction(callable $callback, bool $duplicateRetry = false, ?callable $afterRollback = null): mixed
     {
         for ($try = 0; ; $try++) {
             $retry = false;
@@ -61,7 +62,9 @@ final class SiteBuildStore
                     }
                 });
             } catch (SiteServiceException $e) {
-                if ((!$retry && $e->classification() !== 'stale_write') || $try >= 2) throw $e;
+                if (!$retry && $e->classification() !== 'stale_write') throw $e;
+                if ($afterRollback !== null && ($recorded = $afterRollback()) !== null) return $recorded;
+                if ($try >= 2) throw $e;
             }
         }
     }

@@ -112,7 +112,9 @@ final class WebsitePlatformM6BDatabase extends PDO
         }
         if (preg_match('/FROM (site_build_jobs|site_build_attempts|site_releases) WHERE /', $n, $m)) {
             $table = $m[1]; $rows = array_values($this->tables[$table]);
-            foreach (['id' => 'id','site_id' => 'site_id','identity' => 'idempotency_key','job_id' => 'build_job_id','request_key' => 'operator_request_key'] as $param => $column) {
+            foreach (['id' => 'id','site_id' => 'site_id','identity' => 'idempotency_key','job_id' => 'build_job_id','request_key' => 'operator_request_key',
+                'revision_id' => 'revision_id','snapshot_hash' => 'snapshot_hash','build_profile' => 'build_profile',
+                'builder_version' => 'builder_version','builder_code_sha' => 'builder_code_sha'] as $param => $column) {
                 if (array_key_exists($param, $p)) $rows = array_values(array_filter($rows, static fn ($r): bool => ($r[$column] ?? null) === $p[$param]));
             }
             if (str_contains($n, "status IN ('requested','retry_wait')")) {
@@ -123,6 +125,7 @@ final class WebsitePlatformM6BDatabase extends PDO
                 $r['created_at'] < $p['cursor_time'] || ($r['created_at'] === $p['same_time'] && $r['id'] < $p['cursor_id'])));
             if (str_contains($n, 'ORDER BY attempt_number DESC')) usort($rows, static fn ($a,$b): int => $b['attempt_number'] <=> $a['attempt_number']);
             elseif (str_contains($n, 'ORDER BY created_at DESC')) usort($rows, static fn ($a,$b): int => [$b['created_at'],$b['id']] <=> [$a['created_at'],$a['id']]);
+            elseif (str_contains($n, 'ORDER BY id')) usort($rows, static fn ($a,$b): int => $a['id'] <=> $b['id']);
             if (preg_match('/LIMIT (\d+)/', $n, $limit)) $rows = array_slice($rows, 0, (int) $limit[1]);
             return [$rows, 0];
         }

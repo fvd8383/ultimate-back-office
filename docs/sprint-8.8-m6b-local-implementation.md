@@ -229,11 +229,13 @@ deployment rows are rollback-only schema fixtures, not grants or activation.
 ## Executed local checks and 77-case mapping
 
 Environment: Windows desktop, installed PHP 8.4.24. All **56/56 standalone suites**
-passed (50 existing plus six new). The six new suites passed **395 assertions**:
+passed (50 existing plus six new). After the PR #126 corrections below, the six M6B
+suites pass **483 assertions** (395 at the initial reviewed head, plus 88 correction
+assertions). All 56 suites and all tracked PHP lint were rerun for the correction:
 
 | Suite | Assertions passed |
 | --- | ---: |
-| M6B behavior | 86 |
+| M6B behavior | 174 |
 | M6B authorization | 83 |
 | M6B recovery | 49 |
 | M6B contract | 25 |
@@ -334,3 +336,120 @@ authorization. Nothing in this record authorizes those actions.
 
 The final commit/PR URL and actual automated-review state are reported with the task
 result rather than embedded self-referentially in the commit that creates this record.
+
+## PR #126 completed-review corrections
+
+The correction starts from reviewed head
+`78e2838d01ae2a51fa8f8cc02ed335d1ee67282e` on the existing branch and PR.
+The clean local checkout and GitHub head matched. PR #126 remained open, non-draft,
+unmerged, with auto-merge disabled. The completed review reported
+[P1 queue progression](https://github.com/fvd8383/ultimate-back-office/pull/126#discussion_r4054753149)
+and [P2 successful request replay](https://github.com/fvd8383/ultimate-back-office/pull/126#discussion_r4054753155).
+Neither correction changes migration 025 or reopens the reviewed architecture.
+
+Exactly ten existing files change relative to that head; the correction adds/removes
+no files. The complete PR inventory above remains 35 files.
+
+| Corrected file | Change |
+| --- | --- |
+| `private/classes/SiteBuildService.php` | Safe candidate retirement, exact historical request lookup and race resolution. |
+| `private/classes/SiteBuildContract.php` | Recompute recorded canonical input/key and compare the complete builder contract. |
+| `private/classes/SiteBuildStore.php` | Optional winner lookup after known rollback and before retrying request gates. |
+| `tests/WebsitePlatformM6BBehaviorTest.php` | P1 A–F / P2 G–M regressions, snapshots, effect counts and simulated races. |
+| `tests/WebsitePlatformM6BMySql.php` | Native queue contention, historical replay, identity rejection and request races. |
+| `tests/support/WebsitePlatformM6BDatabase.php` | New bounded query matching and explicit ID ordering. |
+| `tests/support/WebsitePlatformM6BDependencies.php` | Isolated synthetic builder/projection variants. |
+| `tests/support/WebsitePlatformM6BMySqlSupport.php` | Queue-selection barrier around actual PDO results. |
+| `tests/support/WebsitePlatformM6BMySqlWorker.php` | Test-process barriers, effect observations and withheld response. |
+| `docs/sprint-8.8-m6b-local-implementation.md` | Correction record and updated evidence totals. |
+
+### P1: disposition and bounded progression
+
+Trusted worker and valid clean current builder identification remain prerequisites.
+Under existing locks, B17 cancellation and unsafe-prior-effect handling retain precedence.
+A pure comparison validates the candidate's recorded canonical input/key and then its
+builder version/SHA/registry/toolchain against the valid current builder. Inconsistent
+stored input yields `input_mismatch`; a definite builder incompatibility yields
+`builder_unavailable`. No SQL/dependency exceptions enter that pure comparison.
+
+For a safely queued candidate, one transaction sets failed, clears ordinary scheduling,
+and records one bounded system failure event. Identity, requester, input, reserved release,
+counters and previous attempts are retained; no new attempt, token, lease or BuildInput
+is allocated. Commit then advances the loop. Selection remains **LIMIT 20**: 25 old jobs
+take one poll for 20 retirements and a second for the remaining five and compatible work.
+Repeated/stale observations recheck locked state; audit failure rolls retirement back.
+
+Dirty/unknown/untrusted current infrastructure fails closed without mass retirement.
+Database errors, deadlocks and uncertain commits retain their established handling.
+An executing owner or unresolved effects remains reconciliation-required. No builder
+substitution, identity rewrite or budget reset occurs.
+
+### P2: exact matching using existing schema
+
+1. Validate the request/caller and obtain the trusted current builder identity. In a
+   fresh transaction, lock the explicit site and revision through existing owners,
+   then resolve current caller authorization. Require exact ownership and expected hash.
+2. Use a current locking job read scoped by site, revision, snapshot hash, fixed profile,
+   builder version and reviewed SHA, using the existing revision/site index. Read at
+   most 101 rows and reject overflow above 100. Include non-success rows in ambiguity
+   detection; never select an arbitrary/latest successful job.
+3. Decode bounded stored evidence and reconstruct the complete canonical manifest from
+   its recorded projection/ordered digests, immutable source hash, fixed profile/options
+   and registry/toolchain. Recompute the build-input hash and the reviewed idempotency
+   hash including site key/revision. Require equality with persisted evidence and compare
+   the complete builder contract with the current trusted builder.
+4. Require exactly one matching input and a succeeded job. Multiple deterministic inputs
+   conflict, even if one is not successful. When a racing request has already prepared
+   input, its exact hash/key must also match the winner.
+5. Recompute the immutable source aggregate hash under its owning locks, supporting the
+   established generic and legacy representations. Verify the committed release's source
+   revision/hash, release key, build-input hash, builder version/SHA and profile against
+   the job. Return its safe DTO with `existing=true`, `replayed=true`, and safe release.
+
+The API accepts no caller-projected input/digest. Immutable source and complete
+builder/profile/options define deterministic projection; stored canonical evidence
+identifies that operation without preparing input or inspecting artifacts again.
+A future projector change must change builder/toolchain identity. Changed source or
+builder/registry/toolchain is a new gated request; a different profile is rejected by
+the current fixed-profile allowlist. Coherently changed job input that disagrees with
+its committed release, or multiple inputs for one contract, conflicts safely.
+
+Exact success history requires current caller authorization, not current content
+approval/freshness/lifecycle or the original requester's continued authority. Foreign
+ownership, wrong hash and corrupt/ambiguous evidence are rejected. History creates no
+job/attempt/lease/event/preparation/verification/publication effects and confers no
+current deployment, artifact-health or deployability guarantee.
+
+Without an exact success, unchanged `lockBuildEligibility` and all new-build checks
+apply. If a winner commits between preflight and a later gate, a fresh locked lookup
+resolves that exact winner before propagating a new-build denial. After known duplicate/
+lock-conflict rollback, the optional store callback reauthorizes and compares the winner
+before retrying gates. Uncertain commit errors still propagate as database failures;
+a subsequent explicit retry resolves the recorded operation. Retries remain bounded.
+
+### Correction evidence and outstanding real-MySQL gate
+
+Behavior coverage adds P1 A–F and P2 G–M using snapshots and effect counters: batches
+beyond 20, repeat polling, global failures, unresolved effects, audit rollback, retained
+retry attempts, B17 precedence, revoked approvals/newer material revisions, deleted
+requester/current reader, changed builder/source/profile, corrupt input/release,
+ambiguous matches, mid-preparation winner, duplicate-key rollback with fresh caller
+authorization and lost commit acknowledgement. Fake interleavings prove behavior only.
+
+The native harness additionally freezes two independent claimers after selecting the
+same stale candidate batch and requires an observed InnoDB lock wait before release.
+It checks one retirement event per old job and one compatible lease. Other new cases
+concurrently replay after revocation/supersession/requester deletion, reject current
+caller or changed/corrupt/ambiguous identity, pause input preparation while another
+connection completes a winner, and withhold a committed request response before retry.
+
+**Real MySQL/concurrency remains NOT EXECUTED.** Missing local prerequisites remain;
+the known-blocked harness was not repeatedly rerun. No installation, image pull, service,
+php.ini change, SQL execution, database or container creation occurred. Existing local
+Docker, an operator-provided `mysql:8.4` image and PDO MySQL remain prerequisites.
+
+Migration 025 retains its recorded checksum; 001–024 and all milestone/production
+statuses remain unchanged. Updated validation totals appear in the executed-checks
+section. The correction SHA, both review replies and the single new-head review
+request/state are reported with the task result. No new PR, deployment, remote
+migration, staging/production access, M6C generation or Narrator action is authorized.
