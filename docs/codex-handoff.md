@@ -1,5 +1,11 @@
 # Codex Handoff
 
+Current M6 planning: **PLANNING COMPLETE / IMPLEMENTATION NOT STARTED**. See the
+[M6 implementation plan](sprint-8.8-m6-implementation-plan.md) for the repository audit,
+proposed migration 025, service/artifact/publisher contracts and validation gates.
+Migration 025 remains absent. M5 acceptance and historical evidence are unchanged;
+earlier M6 NEXT/NOT STARTED references record the M5 handoff. No deployment is authorized.
+
 ## Current M5 closeout — 2026-09-17
 
 **M5 COMPLETE FOR SPRINT PROGRESSION** under the product-owner acceptance decision.
@@ -11,7 +17,7 @@
 | M5B | COMPLETE / STAGING PASS / FORMALLY CLOSED |
 | M5C | ACCEPTED / NARRATOR FOLLOW-UP DEFERRED |
 | M5 | COMPLETE FOR SPRINT PROGRESSION |
-| M6 | NEXT / NOT STARTED |
+| M6 | PLANNING COMPLETE / IMPLEMENTATION NOT STARTED |
 | Production | UNAUTHORIZED / NOT DEPLOYED |
 
 Authoritative deployed application SHA: `70a3051f73874e7268b9c1bba45bf19d41f9432a`.
@@ -157,7 +163,7 @@ STAGING PASS / FORMALLY CLOSED** on final deployed and validated SHA
 FORMALLY CLOSED** on PR #112 merge and final deployed/validated SHA
 `d33589da5eebbf8e2ae0dc203837d6667abd1f71`. M5 is **COMPLETE FOR SPRINT PROGRESSION**;
 M5A/M5B are **COMPLETE / STAGING PASS / FORMALLY CLOSED**; M5C is
-**ACCEPTED / NARRATOR FOLLOW-UP DEFERRED**. M6 is **NEXT / NOT STARTED**.
+**ACCEPTED / NARRATOR FOLLOW-UP DEFERRED**. M6 is **PLANNING COMPLETE / IMPLEMENTATION NOT STARTED**.
 The accepted deployed application SHA is `70a3051f73874e7268b9c1bba45bf19d41f9432a`.
 Production remains **UNAUTHORIZED / NOT DEPLOYED**. M4's exit gate is complete;
 M6–M8 public/runtime work and the full M1–M8 sprint exit gate remain required
@@ -198,7 +204,7 @@ for security findings and file inventory. The [M5B closeout](sprint-8.8-m5b-clos
 records passed real-MySQL/concurrency/replay/HTTP and authenticated browser mutation
 gates, including approval, changes, stale-tab, populated tenant denial, and forged input.
 All 81 table counts reconciled after cleanup. M5C is **ACCEPTED / NARRATOR FOLLOW-UP DEFERRED**;
-M5 is **COMPLETE FOR SPRINT PROGRESSION**; M6 is **NEXT / NOT STARTED**.
+M5 is **COMPLETE FOR SPRINT PROGRESSION**; M6 is **PLANNING COMPLETE / IMPLEMENTATION NOT STARTED**.
 
 M4B was merged through PR #110, “Sprint 8.8 M4B: add composition editor and admin
 preview,” at `557cc34fe4cf3ab56cdcb59fd7c623c495fd8eaf`. It adds the structured
@@ -364,7 +370,7 @@ M5 is **COMPLETE FOR SPRINT PROGRESSION**. M5A/M5B are
 **COMPLETE / STAGING PASS / FORMALLY CLOSED**. M5C is
 **ACCEPTED / NARRATOR FOLLOW-UP DEFERRED**. The [M5 closeout](sprint-8.8-m5-closeout.md)
 records completed validation, immutable evidence, and the non-blocking follow-up
-backlog. M6 is **NEXT / NOT STARTED**.
+backlog. M6 is **PLANNING COMPLETE / IMPLEMENTATION NOT STARTED**.
 Build/deployment, domain/routing, LeadHub ingestion, and legacy runtime cutover remain
 later milestones. Administrative `approved` does not mean published, live, deployed,
 domain-active, or production-ready. The contract is

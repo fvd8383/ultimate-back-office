@@ -1,5 +1,11 @@
 # Sprint 8.8 — Website Platform And Component CMS
 
+Current M6 planning: **PLANNING COMPLETE / IMPLEMENTATION NOT STARTED**. See the
+[M6 implementation plan](sprint-8.8-m6-implementation-plan.md) for the repository audit,
+proposed migration 025, service/artifact/publisher contracts and validation gates.
+Migration 025 remains absent. M5 acceptance and historical evidence are unchanged;
+earlier M6 NEXT/NOT STARTED references record the M5 handoff. No deployment is authorized.
+
 ## Current M5 closeout — 2026-09-17
 
 **M5 COMPLETE FOR SPRINT PROGRESSION** under the product-owner acceptance decision.
@@ -11,7 +17,7 @@
 | M5B | COMPLETE / STAGING PASS / FORMALLY CLOSED |
 | M5C | ACCEPTED / NARRATOR FOLLOW-UP DEFERRED |
 | M5 | COMPLETE FOR SPRINT PROGRESSION |
-| M6 | NEXT / NOT STARTED |
+| M6 | PLANNING COMPLETE / IMPLEMENTATION NOT STARTED |
 | Production | UNAUTHORIZED / NOT DEPLOYED |
 
 Authoritative deployed application SHA: `70a3051f73874e7268b9c1bba45bf19d41f9432a`.
@@ -148,7 +154,7 @@ deployed, and validated SHA `557cc34fe4cf3ab56cdcb59fd7c623c495fd8eaf`, and M4C 
 deployed/validated SHA `d33589da5eebbf8e2ae0dc203837d6667abd1f71`.
 M5 is **COMPLETE FOR SPRINT PROGRESSION**; M5A and M5B are
 **COMPLETE / STAGING PASS / FORMALLY CLOSED**; M5C is
-**ACCEPTED / NARRATOR FOLLOW-UP DEFERRED**. M6 is **NEXT / NOT STARTED**.
+**ACCEPTED / NARRATOR FOLLOW-UP DEFERRED**. M6 is **PLANNING COMPLETE / IMPLEMENTATION NOT STARTED**.
 See the [M5 closeout](sprint-8.8-m5-closeout.md) for the acceptance decision.
 Production is **UNAUTHORIZED / NOT DEPLOYED**. The detailed
 completion records are `docs/sprint-8.8-m1-closeout.md`,
@@ -163,7 +169,8 @@ milestones, M1–M8. M1–M4 are complete and formally closed; M5 is complete fo
 sprint progression, and M6–M8 remain required before Sprint 8.8 closes.
 The completed M4 exit gate covers the internal administrative
 workflow, and M5B completed the customer review, feedback, and approval UI. Outstanding
-work begins with M6 build/deployment/restore planning and later public generic sites,
+work begins with review of the completed M6 build/deployment/restore plan, then separately
+authorized implementation and later public generic sites,
 domain/routing, LeadHub ingestion, legacy runtime cutover, and production authorization
 in later milestones. Historical migrations remain immutable, and the customer
 Website Manager is not a drag-and-drop builder. The authoritative architecture is
@@ -530,7 +537,7 @@ build/deployment, domain routing, LeadHub ingestion, legacy runtime cutover, or
 production activation. M4C and M4 are **COMPLETE / STAGING PASS /
 FORMALLY CLOSED**. Sprint 8.8 remains **IN PROGRESS**; M5 is
 **COMPLETE FOR SPRINT PROGRESSION** with M5C
-**ACCEPTED / NARRATOR FOLLOW-UP DEFERRED**. M6 is **NEXT / NOT STARTED**;
+**ACCEPTED / NARRATOR FOLLOW-UP DEFERRED**. M6 is **PLANNING COMPLETE / IMPLEMENTATION NOT STARTED**;
 production is **UNAUTHORIZED / NOT DEPLOYED**.
 
 The local M4C gate is **42/42 standalone suites PASS**, including focused M4C behavior,
@@ -620,7 +627,7 @@ from service or source-contract coverage.
 
 Status: **COMPLETE FOR SPRINT PROGRESSION**. M5A and M5B are
 **COMPLETE / STAGING PASS / FORMALLY CLOSED**. M5C is
-**ACCEPTED / NARRATOR FOLLOW-UP DEFERRED**. M6 is **NEXT / NOT STARTED**.
+**ACCEPTED / NARRATOR FOLLOW-UP DEFERRED**. M6 is **PLANNING COMPLETE / IMPLEMENTATION NOT STARTED**.
 M6–M8 remain required before Sprint 8.8 closes; see [M5 closeout](sprint-8.8-m5-closeout.md).
 
 M5A adds a customer-only read boundary, an allowlisted issued-review DTO, a dedicated
@@ -646,7 +653,7 @@ and completed authenticated browser mutation validation. This validation/closeou
 performed no deployment or migration and changed no application/provider/public runtime.
 M5C server/browser gates and completed Narrator observations are recorded in
 [M5 closeout](sprint-8.8-m5-closeout.md). Remaining Narrator validation is deferred
-by product-owner decision; M6 is **NEXT / NOT STARTED**.
+by product-owner decision; M6 is **PLANNING COMPLETE / IMPLEMENTATION NOT STARTED**.
 
 ### Deliverables
 
@@ -669,8 +676,11 @@ business/site or cause publication.
 
 ## M6 — Build / Deployment / Restore
 
-Status: **NEXT / NOT STARTED**. M5 is complete for sprint progression; this closeout
-does not start M6 implementation or authorize deployment.
+Status: **PLANNING COMPLETE / IMPLEMENTATION NOT STARTED**. The
+[M6 implementation plan](sprint-8.8-m6-implementation-plan.md) records the completed
+repository architecture audit, proposed migration 025 and M6A–M6G sequence. M5 is
+complete for sprint progression. Planning does not authorize implementation,
+migration execution, staging access, deployment or production work.
 
 ### Deliverables
 
@@ -787,7 +797,7 @@ are formally closed. The final integrated M4 real-MySQL gate passed on
 retained. This completes M4's internal administrative workflow exit gate, not the
 Sprint 8.8 M1–M8 exit gate. M5 is **COMPLETE FOR SPRINT PROGRESSION**; M5A/M5B
 are **COMPLETE / STAGING PASS / FORMALLY CLOSED**; M5C is
-**ACCEPTED / NARRATOR FOLLOW-UP DEFERRED**. M6 is **NEXT / NOT STARTED**;
+**ACCEPTED / NARRATOR FOLLOW-UP DEFERRED**. M6 is **PLANNING COMPLETE / IMPLEMENTATION NOT STARTED**;
 M6–M8 work remains required before Sprint 8.8 closes. Deferred Narrator follow-up
 is non-blocking unless a future release requirement makes it mandatory.
 Production remains **UNAUTHORIZED / NOT DEPLOYED**, and M4 does not establish
