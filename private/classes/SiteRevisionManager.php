@@ -735,6 +735,93 @@ final class SiteRevisionManager
         });
     }
 
+    /**
+     * @internal One M6 source gate. Caller starts a fresh transaction, with no
+     * consistent reads before these locks. Returns private immutable DB input.
+     * Metadata validation is NOT verification of stored file bytes (M6C).
+     */
+    public static function lockBuildEligibility(object $connection, int $siteId, int $revisionId, string $expectedHash): array
+    {
+        if (!$connection->inTransaction()) {
+            throw new SiteServiceException('conflict', 'Build eligibility requires its owning transaction.');
+        }
+        require_once __DIR__ . '/SiteApprovalManager.php';
+        $site = SiteManager::lockSite($connection, $siteId);
+        if ($site['purpose'] !== '247sp') {
+            throw new SiteServiceException('future_gate_required', 'This site purpose requires a future build policy.');
+        }
+        // active/published remain gated until the later guarded publication owner exists.
+        if ($site['lifecycle_status'] !== 'approved') {
+            throw new SiteServiceException('invalid_transition', 'The site is not approved for building.');
+        }
+        $revision = self::lockRevision($connection, $revisionId);
+        self::assertLockedRevisionSite($revision, $siteId);
+        if (!hash_equals(SiteServiceSupport::assertSnapshotHash($expectedHash), (string) $revision['snapshot_hash'])
+            || $revision['lifecycle_status'] !== 'internally_approved' || $revision['review_ready_at'] === null
+            || !in_array($revision['materiality'], ['material', 'non_material'], true)) {
+            throw new SiteServiceException('invalid_transition', 'The exact approved revision is required.');
+        }
+        $successors = $connection->prepare(
+            '/* site-m6:build-successors */ SELECT id, materiality, lifecycle_status FROM site_revisions
+             WHERE site_id = :site_id AND revision_number > :revision_number ORDER BY revision_number FOR UPDATE'
+        );
+        $successors->execute(['site_id' => $siteId, 'revision_number' => (int) $revision['revision_number']]);
+        $newer = $successors->fetchAll();
+        $refs = json_decode((string) $revision['source_references_json'], true, 64, JSON_THROW_ON_ERROR);
+        $facts = json_decode((string) $revision['facts_snapshot_json'], true, 64, JSON_THROW_ON_ERROR);
+        // Authored snapshots bind source references; canonical legacy snapshots
+        // bind their reference-only facts. Both are immutable, hashed stored data.
+        $businessId = $refs['business']['business_id'] ?? $facts['business_id'] ?? null;
+        if (!is_int($businessId) || $businessId < 1) {
+            throw new SiteServiceException('conflict', 'Stored source business identity is required.');
+        }
+        self::assertSnapshotBusinessAssociation($connection, $site, ['business_id' => $businessId]);
+        $association = $connection->prepare(
+            "/* site-m6:build-association */ SELECT id, business_id FROM site_business_associations
+             WHERE site_id = :site_id AND association_role = 'customer' AND status = 'active' FOR UPDATE"
+        );
+        $association->execute(['site_id' => $siteId]);
+        $associations = $association->fetchAll();
+        if (count($associations) !== 1 || (int) $associations[0]['business_id'] !== $businessId) {
+            throw new SiteServiceException('conflict', 'The current customer association is required.');
+        }
+        $assets = $connection->prepare(
+            '/* site-m6:build-assets */ SELECT a.*, (a.rights_expires_at IS NULL OR a.rights_expires_at > UTC_TIMESTAMP(6)) AS rights_current
+             FROM site_assets a INNER JOIN site_revision_assets sra ON sra.asset_id = a.id AND sra.site_id = a.site_id
+             WHERE sra.revision_id = :revision_id AND sra.site_id = :site_id ORDER BY a.id FOR UPDATE'
+        );
+        $assets->execute(['revision_id' => $revisionId, 'site_id' => $siteId]);
+        $assetRows = $assets->fetchAll();
+        $registry = $connection->prepare(
+            'SELECT cd.id, cv.id AS variant_id FROM component_definitions cd
+             INNER JOIN component_variants cv ON cv.component_definition_id = cd.id ORDER BY cd.id, cv.id FOR SHARE'
+        );
+        $registry->execute(); $registry->fetchAll();
+        // All mutable inputs are locked before existing owners perform consistent reads.
+        $approvals = SiteApprovalManager::lockedBuildApprovals($connection, $revision);
+        SiteServiceSupport::assertNoNewerMaterialRevision($connection, $revision);
+        foreach ($newer as $row) {
+            if ($row['materiality'] === 'undetermined' || in_array($row['lifecycle_status'], ['internally_approved', 'published'], true)) {
+                throw new SiteServiceException('invalid_transition', 'A newer revision prevents this build.');
+            }
+        }
+        foreach ($assetRows as $asset) {
+            if ($asset['lifecycle_status'] !== 'ready' || (int) $asset['rights_current'] !== 1
+                || !in_array($asset['rights_classification'], SiteCompositionValidator::RIGHTS_ALLOWED, true)
+                || ($asset['business_id'] !== null && (int) $asset['business_id'] !== $businessId)
+                || preg_match('/^[a-f0-9]{64}$/D', (string) $asset['checksum_sha256']) !== 1
+                || (int) $asset['byte_size'] < 0 || trim((string) $asset['mime_type']) === ''
+                || trim((string) $asset['storage_key']) === '') {
+                throw new SiteServiceException('conflict', 'Public asset metadata or rights are not eligible.');
+            }
+        }
+        $composition = SiteCompositionValidator::validateStoredRevision(
+            $connection, $site, $revision, SiteCompositionValidator::MODE_RENDER_READ
+        );
+        return ['site' => $site, 'revision' => $revision, 'composition' => $composition,
+            'business_id' => $businessId, 'association_id' => (int) $associations[0]['id'], 'approvals' => $approvals];
+    }
+
     private static function validatedSnapshotInput(array $input): array
     {
         $version = (int) ($input['snapshot_schema_version'] ?? 0);

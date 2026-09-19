@@ -424,6 +424,28 @@ final class SiteApprovalManager
         });
     }
 
+    /** @internal Site/revision locks must already be held; no publication authority. */
+    public static function lockedBuildApprovals(object $connection, array $revision): array
+    {
+        if (!$connection->inTransaction()) {
+            throw new SiteServiceException('conflict', 'Build eligibility requires its owning transaction.');
+        }
+        $statement = $connection->prepare(
+            '/* site-m6:build-approvals */ SELECT id, revision_id, approval_type, state, revoked_at
+             FROM site_approvals WHERE site_id = :site_id ORDER BY id FOR UPDATE'
+        );
+        $statement->execute(['site_id' => (int) $revision['site_id']]);
+        $internal = array_values(array_filter($statement->fetchAll(), static fn (array $row): bool =>
+            (int) $row['revision_id'] === (int) $revision['id'] && $row['approval_type'] === 'internal'
+            && $row['state'] === 'approved' && $row['revoked_at'] === null
+        ));
+        $customer = SiteServiceSupport::effectiveCustomerApproval($connection, $revision);
+        if (count($internal) !== 1 || $customer === null) {
+            throw new SiteServiceException('invalid_transition', 'Current customer and internal approvals are required.');
+        }
+        return ['internal_approval_id' => (int) $internal[0]['id'], 'customer_approval_id' => $customer];
+    }
+
     /**
      * Advisory read model for admin workflow presentation. Mutation methods still
      * perform every authorization, lock, lifecycle, and approval check themselves.

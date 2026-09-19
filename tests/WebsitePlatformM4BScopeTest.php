@@ -1,6 +1,7 @@
 <?php
 
 declare(strict_types=1);
+require_once __DIR__ . '/support/WebsitePlatformM6BScope.php';
 
 $root = dirname(__DIR__);
 $assertions = 0;
@@ -49,7 +50,7 @@ $baseline = 'e848012415b06a4e122933e9368b905c9d7f0c44';
 foreach (['database/migrations', 'public/marketing', 'private/classes/SiteGenerator.php', 'private/classes/WebsiteManager.php',
     'public/app/admin/websites.php', 'public/app/admin/website.php', 'public/app/admin/website-editor.php',
     'infrastructure', 'private/classes/domains', 'public/accounts'] as $path) {
-    exec('git -C ' . escapeshellarg($root) . ' diff --quiet ' . $baseline . ' -- ' . escapeshellarg($path), $output, $status);
+    exec('git -C ' . escapeshellarg($root) . ' diff --quiet ' . $baseline . ' -- ' . escapeshellarg($path) . m6bScopeExclusions(), $output, $status);
     checkM4BScope($status === 0, 'Protected path unchanged: ' . $path);
 }
 checkM4BScope(str_contains($customerManager, 'SiteGenerator::websiteForBusiness(') && str_contains($customerManager, 'WebsiteManager::saveWebsiteManager('), 'M5A retains the legacy customer manager runtime and save boundary.');

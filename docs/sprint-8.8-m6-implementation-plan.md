@@ -1,10 +1,11 @@
 # Sprint 8.8 M6 — Build, Deployment, and Restore Implementation Plan
 
-Status: **M6 PLANNING COMPLETE / IMPLEMENTATION NOT STARTED**.
-Planning began as **M6 PLANNING / ARCHITECTURE AUDIT IN PROGRESS** and this document
-records the completed repository audit and proposed implementation contracts.
-Architecture review remains required before the separately authorized implementation
-PRs; the completed review's B17 finding is addressed by the contract below.
+Status: **M6 IN PROGRESS**. **M6A — ARCHITECTURE REVIEWED / MERGED** (PR #125).
+**M6B — IMPLEMENTED LOCALLY / REVIEW REQUIRED**. **M6C–M6G — NOT STARTED**.
+This is the merged architecture contract. The separately authorized
+[M6B implementation record](sprint-8.8-m6b-local-implementation.md) records the code,
+standalone evidence and **NOT EXECUTED** local real-MySQL/concurrency gate.
+Migration 025 exists locally/in the PR and is **NOT APPLIED TO STAGING OR PRODUCTION**.
 
 ## 1. Authority and boundaries
 
@@ -12,6 +13,7 @@ PRs; the completed review's B17 finding is addressed by the contract below.
 | --- | --- |
 | Repository | `fvd8383/ultimate-back-office` |
 | Repository audit baseline | `5c9fee700b83bd04589d612b8bc4e8eea975499a` |
+| M6B implementation baseline / merged PR #125 | `5baae28c9af68cca7694a912d7f35c87c50c9dc5` |
 | Deployed application baseline | `70a3051f73874e7268b9c1bba45bf19d41f9432a` |
 | Why different | PR #124 merged M5 documentation closeout; its diff from the deployed application contains documentation only and requires no staging deployment. |
 | M5A / M5B | COMPLETE / STAGING PASS / FORMALLY CLOSED |
@@ -19,16 +21,17 @@ PRs; the completed review's B17 finding is addressed by the contract below.
 | M5 | COMPLETE FOR SPRINT PROGRESSION |
 | Sprint 8.8 | IN PROGRESS |
 | Production | UNAUTHORIZED / NOT DEPLOYED |
-| Migrations | 023 and 024 immutable; 025 absent, proposed for M6 |
+| Migrations | 023 and 024 immutable; 025 created by M6B, not applied to staging or production |
 
 The [merged M6 scope](sprint-8.8.md#m6--build--deployment--restore) is authoritative.
-The [M5 closeout](sprint-8.8-m5-closeout.md) and its evidence are unchanged. This task
-does not implement, migrate, deploy, or access staging/production. The deployed SHA is
+The [M5 closeout](sprint-8.8-m5-closeout.md) and its evidence are unchanged. The historical
+M6A task was documentation only; M6B implements the separately authorized persistence
+slice without staging/production access, migration or deployment. The deployed SHA is
 existing user-supplied/repository evidence, not a new remote observation.
 
-All new names, paths, configuration, schema, and methods below are **proposals**, not
-claims that these facilities exist. Repository evidence is sufficient to design a
-bounded adapter; actual host capabilities require the explicit future gate in section
+Names and contracts below originated as reviewed M6A proposals. The M6B record
+identifies the implemented persistence slice; later artifact, deployment and control
+facilities remain unimplemented. Actual host capabilities require the future gate in section
 18. No customer DNS, Host-to-site resolution, LeadHub ingestion, domain conversion,
 EMD launch, or legacy runtime cutover is added to M6. Those remain M7/M8.
 
@@ -81,8 +84,8 @@ implemented. Do not create fake customer approvals/businesses to bypass this bou
 
 Add one locked eligibility method to **SiteRevisionManager**, calling existing
 SiteManager, SiteApprovalManager and SiteServiceSupport rules. SiteBuildService calls
-it; it must not copy their lifecycle SQL. This is a proposed M6 implementation change,
-not a method present today.
+it; it must not copy their lifecycle SQL. M6B implements this boundary as
+`SiteRevisionManager::lockBuildEligibility` with `SiteApprovalManager::lockedBuildApprovals`.
 
 | Gate | Required rule |
 | --- | --- |
@@ -522,7 +525,8 @@ approved one-time operation, not wrapped in a fictitious transactional migration
 
 Follow existing static PHP service/associative-array conventions, with explicit
 allowlists and PHPDoc array shapes, rather than a framework or generic job platform.
-The proposed service is `private/classes/SiteBuildService.php`.
+The M6B persistence service is `private/classes/SiteBuildService.php`; external
+execution remains fail-closed until the separately implemented M6C dependencies exist.
 
 | Proposed operation | Inputs and output | Boundary |
 | --- | --- | --- |
@@ -1632,21 +1636,23 @@ count remains **77 planned cases**, not executed schema/service PASS results.
 
 ## 25. Recommended submilestones and PR sequence
 
-Every row is a separate reviewable PR/gate. File names are proposed; no files/classes
-in this table are created by this planning task unless marked documentation.
+Every row is a separate reviewable PR/gate. M6A is reviewed/merged. M6B is implemented
+locally/review required, with real-MySQL validation NOT EXECUTED. M6C–M6G are not started.
+The table retains the reviewed scope; see the M6B record for its actual file inventory.
 
 | Milestone | Scope and expected files/classes | Migration | Local exit gate | Staging exit gate | Depends on |
 | --- | --- | --- | --- | --- | --- |
-| M6A — Architecture contract | This document; current sprint/handoff/roadmap links; review unresolved host prerequisites and schema contract. | Proposal only; 025 absent. | Markdown/link/fence/status/diff checks, docs-only diff. | None; no access/deploy. | M5 progression complete. |
-| M6B — Persistence and jobs | `025_site_build_deployment.sql`; SiteBuildService, locked SiteRevisionManager eligibility and shared authorization helpers; proposed `WebsitePlatformM6MigrationTest.php`, `WebsitePlatformM6BuildServiceTest.php`, DB fixtures. | Create 025 once; additive nine tables and two ownership indexes. | Fake DB behavior + fresh/upgrade real MySQL gate where available; idempotency/lease/failure tests; PHP lint and existing suites. No external publisher. | Separate approved app deploy/migration; exact schema/ownership/uniqueness/concurrency/cleanup PASS before M6 closeout. | Reviewed M6A. |
+| M6A — Architecture contract | This document; current sprint/handoff/roadmap links; review unresolved host prerequisites and schema contract. | Historical M6A proposal only; M6B subsequently creates 025. | Markdown/link/fence/status/diff checks, docs-only diff. | None; no access/deploy. | M5 progression complete. |
+| M6B — Persistence and jobs | `025_site_build_deployment.sql`; SiteBuildService, locked SiteRevisionManager eligibility and private contract/store helpers; six `WebsitePlatformM6B*Test.php` suites, isolated MySQL harness and fixtures. | Create 025 once; additive nine tables and two ownership indexes. | Fake DB behavior + fresh/upgrade real MySQL gate where available; idempotency/lease/failure tests; PHP lint and existing suites. No external publisher. | Separate approved app deploy/migration; exact schema/ownership/uniqueness/concurrency/cleanup PASS before M6 closeout. | Reviewed M6A. |
 | M6C — Artifact builder | `SiteArtifactBuilder.php`, `SiteArtifactValidator.php`, `SiteArtifactStore.php`, `LocalSiteArtifactStore.php`, `SitePublicRenderContext.php`; page render extension, repository static CSS; `scripts/site-build-worker.php`; artifact/hash/privacy tests. | Uses 025. | B01–B26 as applicable, deterministic multi-page artifacts, all external I/O outside transactions, immutable/fault tests. | Approved isolated staging build-only fixture validates assets/permissions/bytes without activation. | M6B. |
 | M6D — Deployment state and authority | `SitePublisher.php`, `SiteDeploymentService.php`, publisher factory/fake adapter; SiteManager pointer owner, SiteApprovalManager production grants and revision publication gate; `scripts/site-deployment-worker.php`, `scripts/reconcile-site-jobs.php`; deployment/restore/concurrency tests. | Uses 025; schema corrections before applying it or later additive migration if already applied, never rewrite history. | D/R/C unit + real MySQL native-prepare pointer/fence/grant tests, production deny default. | Approved DB-only fixtures prove pointer and approval transactions; no real activation until M6E. | M6B; M6C for real artifact integration. |
 | M6E — Apache adapter and host contract | `ApacheDigitalOceanSitePublisher.php`, HTTP checker, restricted `infrastructure/deployment/ubo-site-publish`, Apache example and service supervision examples; bounded staging runbook. | No new migration expected. | Disposable Linux/Apache same-filesystem fixture, fencing/malicious path/config/kill/health/restore tests; no app-wrapper reuse. | Explicit infrastructure approval; section 18 preflight PASS, exact staging binding enabled, real publish/restore/fault/reconciliation PASS with external/DB evidence. | M6C/M6D. |
 | M6F — Internal controls | `SiteDeploymentAdminWorkflow.php`, proposed `public/app/admin/site-deployments.php`, private history view; links from site/review; `scripts/manage-site-releases.php` for controlled operator actions. | None. | Role/CSRF/replay/expected-pointer/escaping tests, accessible status and read-only customer boundaries. | Separately approved authenticated internal browser build/staging publish/restore/history gates; customer denials; no production controls enabled. | M6D/M6E. |
 | M6G — Integrated validation/closeout | Proposed `docs/sprint-8.8-m6-staging-validation.md`, `docs/sprint-8.8-m6-closeout.md`; required fixes in focused PRs. | Reconcile applied 025, no rerun; future correction number if needed. | All required regression/lint, fault/concurrency tests and final scoped diff. | Final exact-SHA real-MySQL + external runtime + browser matrix, safe logs, synthetic cleanup and baseline reconciliation, retained known-good restore; production remains unauthorized. | M6B–M6F. |
 
-M6A is planning, not implementation start. After its review, the next implementation
-task is M6B under a new explicit instruction. Staging-only contract/profile can close
+PR #125 merged the reviewed M6A architecture. A subsequent explicit instruction
+authorized local M6B implementation; review and the real-MySQL gate remain outstanding.
+Staging-only contract/profile can close
 M6 with production denied; live production release and registered-site form routing
 remain separately gated later. Do not claim all of Sprint 8.8 or first-customer
 readiness from M6 completion.
@@ -1679,6 +1685,10 @@ production approval. Existing `publicly_deployed=false` becomes an environment-a
 internal read model only when real evidence exists.
 
 ## 27. Planning deliverable and validation record
+
+The following is the **historical pre-merge M6A record**. PR #125 subsequently
+merged at the M6B baseline above. Its old approval instructions and absent-025
+statements do not override the authorized M6B task or current status.
 
 This document is the architecture/schema/API/security/test/submilestone deliverable.
 Current planning pointers in the sprint, handoff, roadmap and architecture documents

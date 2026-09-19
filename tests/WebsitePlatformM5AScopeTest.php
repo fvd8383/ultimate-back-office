@@ -1,6 +1,7 @@
 <?php
 
 declare(strict_types=1);
+require_once __DIR__ . '/support/WebsitePlatformM6BScope.php';
 
 $root = dirname(__DIR__);
 $assertions = 0;
@@ -39,7 +40,7 @@ foreach (['database/migrations/023_website_platform_foundation.sql', 'database/m
     'public/app/247sp/business-profile.php', 'infrastructure', 'private/classes/domains'] as $path) {
     checkM5AScope(m5aGitQuiet($root, $baseline, $path), 'M5A protected path remains unchanged: ' . $path);
 }
-checkM5AScope(glob($root . '/database/migrations/02[5-9]_*.sql') === [], 'Migration 025+ remains absent.');
+checkM5AScope(m6bOnlyMigration025($root), 'Only the separately authorized M6B migration 025 may exist after 024.');
 
 checkM5AScope(str_contains($manager, 'SiteCustomerReviewWorkflow::workspaceWithForms('), 'Website Manager delegates generic customer reads to the M5A workflow.');
 checkM5AScope(str_contains($manager, 'WebsiteManager::saveWebsiteManager(') && str_contains($manager, 'SiteGenerator::websiteForBusiness('), 'Website Manager retains the legacy save and generated-site readers.');

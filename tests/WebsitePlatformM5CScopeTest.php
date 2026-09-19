@@ -1,6 +1,7 @@
 <?php
 
 declare(strict_types=1);
+require_once __DIR__ . '/support/WebsitePlatformM6BScope.php';
 $root = dirname(__DIR__);
 $baseline = 'a2288b041ce7ff116fed839c7702fd64b9767770';
 $assertions = 0;
@@ -44,13 +45,13 @@ checkM5CScope($replacements === 1, 'Exactly one approval-prefix match arm is cor
 checkM5CScope(m5cBaseline($routePath) === $restoredRoute, 'The entire route differs only by the approval-prefix output string: all other titles, conditions, auth, CSRF, POST dispatch, 303, errors and legacy behavior unchanged');
 checkM5CScope(!preg_match('/\$_(?:GET|POST|SESSION)|\$customerReview|\$business|\$user|metadata|feedback\[|header\s*\(|echo\b|require\b|include\b/i', $titleBlock), 'Title block does not read request data, business content or metadata, or affect routing');
 foreach (['private/classes', 'database', 'infrastructure', 'public/accounts', 'public/webhooks', 'shared'] as $path) {
-    exec('git -C ' . escapeshellarg($root) . ' diff --quiet ' . escapeshellarg($baseline) . ' -- ' . escapeshellarg($path), $unused, $status);
+    exec('git -C ' . escapeshellarg($root) . ' diff --quiet ' . escapeshellarg($baseline) . ' -- ' . escapeshellarg($path) . m6bScopeExclusions(), $unused, $status);
     checkM5CScope($status === 0, 'Protected security/lifecycle/schema/runtime tree unchanged: ' . $path);
 }
-checkM5CScope(glob($root . '/database/migrations/025*') === [], 'Migration 025 absent');
+checkM5CScope(m6bOnlyMigration025($root), 'Only the separately authorized M6B migration 025 may exist after 024.');
 $correctionBaseline = $baseline;
 foreach (['private/classes', 'database', 'infrastructure', 'public/accounts', 'public/webhooks', 'shared', 'private/views', 'public/app/assets/js', 'public/app/assets/css'] as $path) {
-    exec('git -C ' . escapeshellarg($root) . ' diff --quiet ' . escapeshellarg($correctionBaseline) . ' -- ' . escapeshellarg($path), $unused, $status);
+    exec('git -C ' . escapeshellarg($root) . ' diff --quiet ' . escapeshellarg($correctionBaseline) . ' -- ' . escapeshellarg($path) . m6bScopeExclusions(), $unused, $status);
     checkM5CScope($status === 0, 'Approval-title clarification preserves merged backend/view/asset baseline: ' . $path);
 }
 $assetPath = 'public/app/assets/js/customer-review-status.js';
@@ -62,6 +63,6 @@ checkM5CScope(str_contains($js, "receipt.textContent === ''"), 'One-time populat
 checkM5CScope(str_contains($js, 'receipts.length !== 1') && str_contains($js, 'sources.length !== 1'), 'Exactly one receipt and one source required');
 checkM5CScope(substr_count($js, 'requestAnimationFrame(') === 1 && substr_count($js, 'setTimeout(') === 1, 'Single rendered-frame/later-task cycle retained');
 $appChanges = [];
-exec('git -C ' . escapeshellarg($root) . ' diff --name-only ' . escapeshellarg($correctionBaseline) . ' -- . ":(exclude)tests" ":(exclude)docs"', $appChanges, $status);
-checkM5CScope($status === 0 && $appChanges === [$routePath], 'Only the Website Manager approval-prefix output string may change outside tests/docs');
+exec('git -C ' . escapeshellarg($root) . ' diff --name-only ' . escapeshellarg($correctionBaseline) . ' -- . ":(exclude)tests" ":(exclude)docs"' . m6bScopeExclusions(), $appChanges, $status);
+checkM5CScope($status === 0 && $appChanges === [$routePath], 'Only the historical Website Manager title change and exact authorized M6B paths may differ');
 echo "Website platform M5C scope: $assertions assertions passed.\n";

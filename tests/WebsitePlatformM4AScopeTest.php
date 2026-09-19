@@ -1,6 +1,7 @@
 <?php
 
 declare(strict_types=1);
+require_once __DIR__ . '/support/WebsitePlatformM6BScope.php';
 
 error_reporting(E_ALL);
 
@@ -67,7 +68,7 @@ foreach ($immutableHashes as $path => $expectedHash) {
     $canonical = is_string($contents) ? str_replace(["\r\n", "\r"], "\n", $contents) : '';
     assertM4AScope(hash('sha256', $canonical) === $expectedHash, "{$path} must remain unchanged.");
 }
-assertM4AScope(glob($root . '/database/migrations/025*') === [], 'M4A must add no migration 025 or later.');
+assertM4AScope(m6bOnlyMigration025($root), 'Only the separately authorized M6B migration 025 may exist after 024.');
 assertM4AScope(!str_contains($siteRoute, 'SiteCompositionRenderer::render'), 'M4A detail delegates preview to the separate M4B route.');
 assertM4AScope(!is_file($root . '/public/app/admin/site-editor.php'), 'M4A must add no generic composition editor route.');
 assertM4AScope(str_contains($customerManager, 'WebsiteManager::saveWebsiteManager('), 'M5A must retain the legacy Website Manager save service.');
