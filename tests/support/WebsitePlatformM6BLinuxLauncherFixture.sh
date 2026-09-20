@@ -168,6 +168,23 @@ DOCKER
         # Exercise the real run/trap flow with process-local doubles; no Docker, systemd or SQL.
         rmdir "$scratch"
         m6_init
+        signal_name=TERM; signal_point=''
+        if [[ $scenario == run-signal-* ]]; then
+            signal_point=${scenario#run-signal-}; signal_name=${signal_point%%-*}; signal_point=${signal_point#*-}
+        fi
+        fixture_await() {
+            local end=$((SECONDS + 10))
+            until "$@"; do (( SECONDS < end )) || { printf 'Fixture barrier timed out\n' >&2; exit 97; }; command sleep 0.01; done
+        }
+        fixture_signal() {
+            local delivered=$signal_name
+            if [[ $signal_point == repeated && -f $fixture/signalled ]]; then
+                [[ $signal_name != TERM ]] && delivered=TERM || delivered=INT
+            fi
+            printf 'signal-%s\n' "$delivered" >> "$log"
+            : > "$fixture/signalled"
+            builtin kill -"$delivered" "$fixture_main_pid"
+        }
         base=$fixture; mkdir -p "$base/evidence" "$base/tmp"; repo=$(realpath "${BASH_SOURCE[0]%/*}/../..")
         expected_sha=cccccccccccccccccccccccccccccccccccccccc; migration_hash=eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee
         digest=sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd; platform=linux/amd64; socket=/run/user/1001/docker.sock; endpoint=unix://$socket
@@ -189,16 +206,21 @@ DOCKER
             printf '%s\n' "$1" >> "$log"
             case $1 in
                 version) echo 'Docker fixture';;
-                create) echo aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa;;
+                create) touch "$fixture/owned-container"; echo aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa;;
                 start) [[ $scenario != run-partial-start ]];;
                 inspect)
                     if [[ $* == *SizeRw* ]]; then echo 1024
-                    elif [[ $* == *OOMKilled* ]]; then echo false
+                    elif [[ $* == *OOMKilled* ]]; then
+                        [[ ! -f $fixture/signalled ]] || printf 'UNEXPECTED phase after signal\n' >> "$log"
+                        echo false
                     elif [[ $scenario == run-foreign && -f $fixture/test-done ]]; then cat "$fixture/foreign.json"
                     elif [[ $# == 3 ]]; then cat "$fixture/inspection.json"
                     else cat "$fixture/container.json"; fi;;
                 logs) printf 'database diagnostic %s %s\n' "$token" "$password";;
-                rm) [[ $scenario != run-cleanup-failure ]];;
+                rm)
+                    if [[ $signal_point == repeated ]]; then fixture_signal; fi
+                    [[ $scenario != run-cleanup-failure && $signal_point != cleanup-failure ]] || return 1
+                    rm -f "$fixture/owned-container";;
                 *) return 97;;
             esac
         }
@@ -212,28 +234,94 @@ DOCKER
                 *LoadState*) [[ -f $fixture/unit ]] && echo loaded || echo not-found;;
                 *Description*) [[ ! -f $fixture/unit ]] || echo "M6B validation $token";;
                 *MemorySwapMax*) echo 0;; *MemoryMax*) echo 1073741824;; *TasksMax*) echo 32;; *KillMode*) echo control-group;;
-                *Result*) case $scenario in run-timeout) echo timeout;; run-resource) echo oom-kill;; *) echo success;; esac;;
-                stop*) printf 'stop-unit\n' >> "$log"; touch "$fixture/stopped";;
+                *Result*)
+                    [[ ! -f $fixture/signalled ]] || printf 'UNEXPECTED phase after signal\n' >> "$log"
+                    if [[ $signal_point == status ]]; then fixture_signal; fi
+                    case $scenario in run-timeout) echo timeout;; run-resource) echo oom-kill;; *) echo success;; esac;;
+                stop*)
+                    printf 'stop-unit\n' >> "$log"
+                    if [[ $signal_point == cleanup || $signal_point == repeated ]]; then fixture_signal; fi
+                    touch "$fixture/stopped";;
                 *ActiveState*) [[ -f $fixture/stopped ]] && echo inactive || echo active;;
                 *) return 97;;
             esac
         }
         systemctl() { echo 'systemd fixture'; }
+        sha256sum() {
+            if [[ $signal_point == evidence && ! -f $fixture/signalled ]]; then fixture_signal; fi
+            command sha256sum "$@"
+        }
         # Git Bash cannot provide Linux FIFOs/systemd. Model the stream with a gated private file.
         mkfifo() { touch "${@: -1}"; }
         eval "$(declare -f m6_redact | sed '1s/m6_redact/m6_fixture_redact/')"
-        m6_redact() { if [[ ! -f $fixture/test-done ]]; then for i in {1..100}; do [[ ! -f $fixture/test-done ]] || break; sleep 0.05; done; fi; m6_fixture_redact; }
+        m6_redact() {
+            if [[ ! -f $fixture/collector.pid ]]; then
+                trap 'rm -f "$fixture/owned-collector"' EXIT
+                echo "$BASHPID" > "$fixture/collector.pid"
+                touch "$fixture/owned-collector"
+            fi
+            if [[ ! -f $fixture/test-done ]]; then for i in {1..100}; do [[ ! -f $fixture/test-done ]] || break; sleep 0.05; done; fi
+            m6_fixture_redact
+        }
         timeout() { shift 2; "$@"; }
         systemd-run() {
+            trap 'rm -f "$fixture/owned-supervisor"' EXIT
+            echo "$BASHPID" > "$fixture/supervisor.pid"
+            touch "$fixture/owned-supervisor"
             touch "$fixture/unit"
             for i in {1..100}; do [[ ! -f $scratch/go && ! -f $fixture/stopped ]] || break; sleep 0.05; done
+            case $signal_point in
+                active|sleep-race|repeated|cleanup-failure)
+                    touch "$fixture/active"
+                    fixture_await test -f "$fixture/release";;
+            esac
             printf 'synthetic result %s %s\n' "$password" "$token"
             touch "$fixture/test-done"
+            if [[ -n $signal_point ]]; then
+                touch "$fixture/completing"
+                [[ $signal_point != before ]] || fixture_await test -f "$fixture/release"
+            fi
             if [[ $scenario == run-interrupt ]]; then builtin kill -TERM "$fixture_main_pid"; return 143; fi
             case $scenario in run-test-failure) return 17;; run-timeout) return 124;; run-resource) return 137;; *) return 0;; esac
         }
-        # No process groups exist in this fake supervisor; refuse group signals in the fixture.
-        kill() { [[ $* != *--* ]] || return 0; builtin kill "$@"; }
+        # The fake supervisor is one shell, not a GNU timeout process group.
+        kill() {
+            if [[ $* == *--* ]]; then builtin kill "$1" "${3#-}" 2>/dev/null; return; fi
+            if [[ $1 == -0 && ${2:-} == "${supervisor:-}" && ${test_exit:-} == NO_COMPLETED_RESULT && ! -f $fixture/signalled ]]; then
+                case $signal_point in
+                    active|before|repeated|cleanup-failure)
+                        if [[ $signal_point == before ]]; then fixture_await test -f "$fixture/completing"
+                        else fixture_await test -f "$fixture/active"; fi
+                        fixture_signal
+                        [[ $signal_point != before ]] || touch "$fixture/release";;
+                    after)
+                        fixture_await test -f "$fixture/completing"
+                        fixture_exited() { ! builtin kill -0 "$supervisor" 2>/dev/null; }
+                        fixture_await fixture_exited
+                        fixture_signal;;
+                esac
+            fi
+            builtin kill "$@"
+        }
+        wait() {
+            if [[ ${1:-} == "${supervisor:-}" && $signal_point == wait && ! -f $fixture/signalled ]]; then
+                fixture_signal
+                # Model Bash wait interrupted before it delivers the cached child status.
+                [[ $signal_name != TERM ]] && return 130 || return 143
+            fi
+            if [[ ${1:-} == "${collector:-}" && $signal_point == collector && ! -f $fixture/signalled ]]; then fixture_signal; fi
+            local code=0
+            builtin wait "$@" || code=$?
+            if ! builtin kill -0 "$1" 2>/dev/null; then
+                [[ $1 != "${supervisor:-}" ]] || rm -f "$fixture/owned-supervisor"
+                [[ $1 != "${collector:-}" ]] || rm -f "$fixture/owned-collector"
+            fi
+            return "$code"
+        }
+        sleep() {
+            if [[ $BASHPID == "$fixture_main_pid" && $signal_point == sleep-race && ! -f $fixture/signalled && $1 == 1 ]]; then fixture_signal; fi
+            command sleep "$@"
+        }
         fixture_main_pid=$$
         if [[ $scenario == run-headroom ]]; then m6_budget() { return 1; }; fi
         if [[ $scenario == run-mount-loss ]]; then volume_ready=1; m6_volume_ok() { [[ ! -f $fixture/test-done ]]; }; fi

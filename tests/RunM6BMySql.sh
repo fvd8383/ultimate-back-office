@@ -19,8 +19,35 @@ m6_init() {
     container_attempted=0; unit_attempted=0; collector=''; supervisor=''; container_id=''; evidence=''; scratch=''; disk_scratch=''; php_cg=''
     cli_config=''; cli_identity=''; failure=prerequisite; test_exit=NOT_EXECUTED; volume_uuid=''; volume_mount_id=''; volume_ready=0; evidence_safe=1; base_fd=''; evidence_path=''
     trap m6_finish EXIT
-    trap 'failure=interrupted; exit 130' INT
-    trap 'failure=interrupted; exit 143' TERM
+    interrupt_status=''
+    # No exit, command substitution or cleanup in signal traps. The first signal wins.
+    trap 'interrupt_status=${interrupt_status:-130}' INT
+    trap 'interrupt_status=${interrupt_status:-143}' TERM
+}
+m6_checkpoint() {
+    if [[ -n ${interrupt_status:-} ]]; then failure=interrupted; exit "$interrupt_status"; fi
+}
+m6_collect_child() {
+    # Never enter an unbounded wait after checking the signal flag: poll to confirmed
+    # termination first. A signal in the check/sleep gap costs at most one short sleep.
+    while kill -0 "$1" 2>/dev/null; do
+        m6_checkpoint
+        (( SECONDS < $2 )) || { failure=timeout; exit 124; }
+        sleep 0.1
+    done
+    m6_checkpoint
+    child_exit=0
+    wait "$1" || child_exit=$?
+    m6_checkpoint
+}
+m6_reap_stopped() {
+    # Cleanup keeps the recording traps installed; interrupted waits cannot skip it.
+    local end=$((SECONDS + 2))
+    while kill -0 "$1" 2>/dev/null; do
+        (( SECONDS < end )) || return 1
+        sleep 0.05
+    done
+    wait "$1" 2>/dev/null || :
 }
 m6_cli_config() {
     # Registered trap already owns the lifecycle, including partial creation and check-only.
@@ -285,7 +312,7 @@ m6_cleanup_container() {
 }
 m6_finish() {
     local status=$? cleanup=PASS
-    trap - EXIT INT TERM
+    trap - EXIT
     set +e
     if [[ ${volume_ready:-0} == 1 ]] && ! m6_volume_ok; then evidence_safe=0; failure=infrastructure_volume_identity; status=2; fi
     m6_stop_unit || cleanup=FAILED_unit_ownership_or_stop
@@ -295,9 +322,15 @@ m6_finish() {
         kill -TERM -- "-$supervisor" 2>/dev/null
         sleep 0.2
         kill -KILL -- "-$supervisor" 2>/dev/null
-        wait "$supervisor" 2>/dev/null
     fi
-    if [[ -n ${collector:-} ]]; then kill -TERM "$collector" 2>/dev/null; wait "$collector" 2>/dev/null; fi
+    if [[ -n ${supervisor:-} ]]; then m6_reap_stopped "$supervisor" || cleanup=FAILED_local_supervisor_stop; fi
+    if [[ -n ${collector:-} ]]; then
+        kill -TERM "$collector" 2>/dev/null
+        if ! m6_reap_stopped "$collector"; then
+            kill -KILL "$collector" 2>/dev/null
+            m6_reap_stopped "$collector" || cleanup=FAILED_local_collector_stop
+        fi
+    fi
     # Never run another PHP guard while an un-stopped test tree may still contain three PHP processes.
     if [[ $cleanup == PASS ]]; then m6_cleanup_container || cleanup=FAILED_orphan_requires_operator_review; fi
     m6_remove_cli_config || cleanup=FAILED_client_config_removal
@@ -313,12 +346,26 @@ m6_finish() {
         [[ $disk_scratch == "$storage_base/tmp/run."* && ! -L $disk_scratch && $(stat -c '%u:%a' "$disk_scratch") == "$uid:700" ]] && rmdir -- "$disk_scratch" || cleanup=FAILED_disk_scratch_removal
     fi
     [[ $cleanup == PASS ]] || status=2
-    if [[ -n ${evidence:-} && $evidence_safe == 1 ]]; then
-        printf 'Test exit: %s\nFailure class: %s\nCleanup: %s\nOverall: %s\n' "${test_exit:-NOT_EXECUTED}" "${failure:-prerequisite_or_startup}" "$cleanup" "$([[ $status == 0 && $cleanup == PASS ]] && echo PASS || echo NON_SUCCESS)" >> "$evidence/report.txt"
-    fi
     unset MYSQL_ROOT_PASSWORD M6B_MYSQL_PASSWORD M6B_MYSQL_RUN_TOKEN token password
+    local header='' published_interrupt overall
+    [[ -z ${evidence:-} || $evidence_safe != 1 ]] || header=$(< "$evidence/report.txt")
+    # Publishing can itself be interrupted. First-signal state changes at most once,
+    # so a signal during checksumming causes one corrected publication, not a retry loop.
+    while :; do
+        published_interrupt=${interrupt_status:-}
+        if [[ -n $published_interrupt ]]; then failure=interrupted; status=$published_interrupt; fi
+        [[ $cleanup == PASS ]] || status=2
+        overall=NON_SUCCESS; [[ $status != 0 || $cleanup != PASS ]] || overall=PASS
+        if [[ -n ${evidence:-} && $evidence_safe == 1 ]]; then
+            printf '%s\nTest exit: %s\nFailure class: %s\nInterruption exit: %s\nCleanup: %s\nOverall: %s\n' "$header" "${test_exit:-NOT_EXECUTED}" "${failure:-prerequisite_or_startup}" "${interrupt_status:-NONE}" "$cleanup" "$overall" > "$evidence/report.txt"
+            if ! (cd "$evidence" && sha256sum report.txt test-output.txt mysql-tail.txt 2>/dev/null > SHA256SUMS); then
+                cleanup=FAILED_evidence_checksum; status=2
+                printf '%s\nTest exit: %s\nFailure class: %s\nInterruption exit: %s\nCleanup: %s\nOverall: NON_SUCCESS\n' "$header" "${test_exit:-NOT_EXECUTED}" "${failure:-prerequisite_or_startup}" "${interrupt_status:-NONE}" "$cleanup" > "$evidence/report.txt"
+            fi
+        fi
+        [[ $published_interrupt != "${interrupt_status:-}" ]] || break
+    done
     if [[ -n ${evidence:-} && $evidence_safe == 1 ]]; then
-        (cd "$evidence" && sha256sum report.txt test-output.txt mysql-tail.txt 2>/dev/null > SHA256SUMS) || status=2
         printf 'Private evidence: %s\n' "${evidence_path:-$evidence}"
     fi
     [[ -z ${base_fd:-} ]] || exec {base_fd}<&-
@@ -326,10 +373,11 @@ m6_finish() {
         # Do not open/create replacement evidence or temporary files beneath a lost mount.
         local emergency
         emergency=$(mktemp "$runtime_dir/ubo-m6b-failure.XXXXXXXX")
-        printf 'Overall: NON_SUCCESS\nFailure: infrastructure_volume_identity\nTest exit: %s\nCleanup: %s\nCode SHA: %s\nContainer ID: %s\nVolume evidence unavailable; operator review required.\n' "${test_exit:-NOT_EXECUTED}" "$cleanup" "$expected_sha" "${container_id:-unknown}" > "$emergency"
+        printf 'Overall: NON_SUCCESS\nFailure: %s\nInfrastructure: infrastructure_volume_identity\nInterruption exit: %s\nTest exit: %s\nCleanup: %s\nCode SHA: %s\nContainer ID: %s\nVolume evidence unavailable; operator review required.\n' "$failure" "${interrupt_status:-NONE}" "${test_exit:-NOT_EXECUTED}" "$cleanup" "$expected_sha" "${container_id:-unknown}" > "$emergency"
         sha256sum "$emergency" > "$emergency.sha256"
         printf 'Volume identity lost; runtime diagnostic: %s\n' "$emergency" >&2
     fi
+    if [[ -n ${interrupt_status:-} && $cleanup == PASS ]]; then status=$interrupt_status; fi
     exit "$status"
 }
 m6_budget() {
@@ -346,6 +394,7 @@ m6_budget() {
     [[ $(stat -c %d "$docker_root") == "$(stat -c %d "$evidence")" || $(m6_free "$evidence") -ge $disk_floor ]]
 }
 m6_run() {
+    m6_checkpoint
     failure=startup
     local started=$SECONDS remaining gate_end result code
     m6_volume_ok || m6_fail volume_identity_before_creation
@@ -367,13 +416,17 @@ m6_run() {
     export M6B_MYSQL_RUN_TOKEN=$token M6B_MYSQL_IMAGE_ID=$image_id MYSQL_ROOT_PASSWORD=$password
     unit="ubo-m6b-$token.service"
     m6_volume_ok || { failure=infrastructure_volume_identity; exit 2; }
+    m6_checkpoint
     container_attempted=1
     container_id=$(m6_docker create --pull=never --platform "$platform" --name "ubo-m6b-$token" --label "ubo.m6b.owner=$token" --label ubo.m6b.launcher=linux-v1 --publish 127.0.0.1::3306 --network bridge --ipc private --cgroupns private --security-opt no-new-privileges=true --cpus 1 --memory 1536m --memory-swap 1536m --pids-limit 128 --tmpfs /var/lib/mysql:rw,nosuid,size=1073741824 --log-driver local --log-opt max-size=1m --log-opt max-file=2 --log-opt compress=false --env MYSQL_ROOT_PASSWORD --env MYSQL_ROOT_HOST=% "$image_id" --skip-log-bin 2>/dev/null) || m6_fail container_create
+    m6_checkpoint
     [[ $container_id =~ ^[a-f0-9]{64}$ ]] || { container_id=''; m6_fail container_create_identity; }
     export M6B_MYSQL_CONTAINER_ID=$container_id
     printf 'Container ID: %s\n' "$container_id" >> "$evidence/report.txt"
     m6_docker inspect "$container_id" 2>/dev/null | m6_guard owner >/dev/null || m6_fail container_owner
+    m6_checkpoint
     m6_docker start "$container_id" >/dev/null 2>&1 || m6_fail container_start
+    m6_checkpoint
     port=$(m6_docker inspect "$container_id" "$image_id" 2>/dev/null | m6_guard container "$digest" "$platform") || m6_fail container_controls
     m6_cgroup
     printf 'Observed: rootless Linux, cgroup v2/systemd, delegated cpu/memory/pids; owned image/container; loopback; tmpfs; bounded logs\n' >> "$evidence/report.txt"
@@ -382,32 +435,40 @@ m6_run() {
     printf 'export M6B_DOCKER_CONFIG=%q TMPDIR=%q TMP=%q TEMP=%q\n' "$cli_config" "$disk_scratch" "$disk_scratch" "$disk_scratch" >> "$scratch/credentials"
     remaining=$((1200 - SECONDS + started)); (( remaining > 0 )) || { failure=timeout; exit 124; }
     [[ $(m6_system show "$unit" -p LoadState --value 2>/dev/null) == not-found ]] || m6_fail unit_already_exists
+    m6_checkpoint
     unit_attempted=1
     mkfifo -m 600 "$scratch/stream"
     m6_redact < "$scratch/stream" > "$evidence/test-output.txt" & collector=$!
     timeout --kill-after=12s "${remaining}s" systemd-run --user --unit "$unit" --description "M6B validation $token" --service-type=exec --wait --pipe --quiet --property="RuntimeMaxSec=${remaining}s" --property=TimeoutStopSec=10s --property=KillMode=control-group --property=SendSIGKILL=yes --property=CPUQuota=100% --property=MemoryMax=1G --property=MemorySwapMax=0 --property=TasksMax=32 --property=LimitFSIZE=4M --property=LimitCORE=0 --working-directory="$repo" \
             /usr/bin/env -i "PATH=$PATH" "HOME=$account_home" "XDG_RUNTIME_DIR=/run/user/$uid" /bin/bash -c 'set +x; set -eu; for i in {1..100}; do [[ -f $1/go ]] && break; sleep 0.1; done; [[ -f $1/go ]]; source "$1/credentials"; exec "$2" -d memory_limit=256M -d max_execution_time=0 "$3/tests/WebsitePlatformM6BMySql.php"' _ "$scratch" "$php" "$repo" > "$scratch/stream" 2>&1 & supervisor=$!
     gate_end=$((SECONDS + 8))
-    until m6_owned_unit; do (( SECONDS < gate_end )) || m6_fail supervisor_unavailable; sleep 0.1; done
+    until m6_owned_unit; do m6_checkpoint; (( SECONDS < gate_end )) || m6_fail supervisor_unavailable; sleep 0.1; done
+    m6_checkpoint
     [[ $(m6_system show "$unit" -p MemoryMax --value) == 1073741824 && $(m6_system show "$unit" -p MemorySwapMax --value) == 0 && $(m6_system show "$unit" -p TasksMax --value) == 32 && $(m6_system show "$unit" -p KillMode --value) == control-group ]] || m6_fail supervisor_limits
     m6_php_cgroup
     printf 'Observed PHP supervisor: MemoryMax=1073741824 MemorySwapMax=0 TasksMax=32 KillMode=control-group; deadline=%ss\n' "$remaining" >> "$evidence/report.txt"
     m6_volume_ok || { failure=infrastructure_volume_identity; exit 2; }
+    m6_checkpoint
     test_exit=NO_COMPLETED_RESULT
     : > "$scratch/go"
     failure=test_failure
     while kill -0 "$supervisor" 2>/dev/null; do
+        m6_checkpoint
         if (( SECONDS - started >= 1200 )); then failure=timeout; exit 124; fi
         if [[ -f $scratch/output-limit ]]; then failure=output_budget; exit 2; fi
         m6_budget || { [[ $failure == infrastructure_volume_identity ]] || failure=headroom_or_storage_budget_or_inspection; exit 2; }
+        m6_checkpoint
         sleep 1
     done
-    test_exit=0; wait "$supervisor" || test_exit=$?; supervisor=''
-    wait "$collector" || { failure=output_collector; exit 2; }; collector=''
+    m6_collect_child "$supervisor" "$((started + 1200))"; test_exit=$child_exit; supervisor=''
+    m6_collect_child "$collector" "$((started + 1200))"; code=$child_exit; collector=''
+    [[ $code == 0 ]] || { failure=output_collector; exit 2; }
     [[ $test_exit =~ ^[0-9]+$ && $test_exit -le 255 ]] || m6_fail supervisor_exit
     result=$(m6_system show "$unit" -p Result --value 2>/dev/null) || result=unknown
+    m6_checkpoint
     # Successful transient units can be garbage-collected after systemd-run releases its reference.
     if [[ $test_exit == 0 && $(m6_system show "$unit" -p LoadState --value 2>/dev/null) == not-found ]]; then result=success; fi
+    m6_checkpoint
     [[ $test_exit != 124 ]] || { failure=timeout; exit 124; }
     printf 'Supervisor result: %s\nContainer memory events: ' "$result" >> "$evidence/report.txt"
     tr '\n' ' ' < "$cg/memory.events" >> "$evidence/report.txt"; printf '\nContainer PID events: ' >> "$evidence/report.txt"; tr '\n' ' ' < "$cg/pids.events" >> "$evidence/report.txt"; printf '\n' >> "$evidence/report.txt"
@@ -415,6 +476,7 @@ m6_run() {
     [[ $(< "$evidence/test-output.txt") != *'Allowed memory size of'* ]] || { failure=resource_exhaustion; exit 2; }
     if [[ $(m6_docker inspect "$container_id" --format '{{.State.OOMKilled}}' 2>/dev/null) != false ]] || [[ $(cat "$cg/memory.events") =~ (oom_kill|oom)[[:space:]]+[1-9] ]] || [[ $(cat "$cg/pids.events") =~ max[[:space:]]+[1-9] ]]; then failure=resource_exhaustion; exit 2; fi
     [[ ! -f $scratch/output-limit ]] || { failure=output_budget; exit 2; }
+    m6_checkpoint
     [[ $test_exit != 0 ]] || failure=none
     exit "$test_exit"
 }
@@ -431,7 +493,7 @@ m6_main() {
         esac
     done
     [[ -n $mode && $expected_sha =~ ^[a-f0-9]{40}$ && $expected_host =~ ^[a-zA-Z0-9-]+$ && $expected_user =~ ^[a-z_][a-z0-9_-]*$ && $digest =~ ^sha256:[a-f0-9]{64}$ && $platform =~ ^linux/(amd64|arm64)$ && -n $php && -n $socket ]] || m6_fail required_explicit_arguments
-    m6_init; m6_preflight
+    m6_init; m6_preflight; m6_checkpoint
     if [[ $mode == --check-only ]]; then printf 'Prerequisites accepted. NOT EXECUTED: container, credentials, SQL, migrations, workers.\n'; exit 0; fi
     m6_run
 }

@@ -2,6 +2,7 @@
 
 Date: 2026-09-19. **M6B — IMPLEMENTED LOCALLY / REAL-MYSQL VALIDATION PENDING**.
 Linux launcher: **CORRECTIONS IMPLEMENTED / REVIEW REQUIRED**.
+Latest correction: [deterministic supervisor interruption](#deterministic-supervisor-interruption-correction--2026-09-20).
 Shared-staging volume/setup **OPERATOR-REPORTED COMPLETE**; real MySQL **NOT EXECUTED**.
 See [Linux validation host modes and prerequisites](sprint-8.8-m6b-linux-validation.md).
 This is local implementation evidence, not staging validation or formal M6 closeout.
@@ -813,3 +814,103 @@ work occurred. No new PR, merge or auto-merge is authorized. Current statuses re
 **M6B — IMPLEMENTED LOCALLY / REAL-MYSQL VALIDATION PENDING**,
 **Linux launcher — CORRECTIONS IMPLEMENTED / REVIEW REQUIRED**, M6 **IN PROGRESS**,
 and Production **UNAUTHORIZED / NOT DEPLOYED**.
+
+## Deterministic supervisor interruption correction — 2026-09-20
+
+This correction starts from clean local and PR head
+`88d27a179f48fa0404d27ed24ad10a312f335aa2`, on the existing branch and PR #126.
+It addresses [the completed TERM review finding](https://github.com/fvd8383/ultimate-back-office/pull/126#discussion_r4058088240).
+The review's **8 failures in 13 attempts** are reviewer evidence, not a local result.
+
+Actual unchanged-code reproduction used Windows Git Bash **5.3.15(2)-release
+(x86_64-pc-cygwin)** and PHP **8.4.24 CLI, ZTS Visual C++ 2022 x64**. The original
+launcher suite passed **499 assertions / 91 scenarios**. A separate **13/13** isolated
+`run-interrupt` repetitions passed; this runtime did **not** reproduce the reported
+unexpected-EOF parser error or wrong `test_failure` classification. That flaky case
+is retained and strengthened, not removed or relabeled as a reproduced failure.
+
+With the launcher still byte-unchanged from that head, a controlled signal injected
+at the owned-unit stop boundary **did** reproduce interrupted cleanup: PHP reported
+native child exit **3840** after SIGTERM, the command log ended at `stop-unit` /
+`signal-TERM`, and the owned fake container and temporary files remained, without a
+final verdict. This is a distinct deterministic local failure, not the reviewer's
+parser-error reproduction. The corrected case returns **143**, records `interrupted`,
+and finishes ownership-limited cleanup.
+
+The traps now only record the first interruption code. Main-flow checkpoints prevent
+later success/test-failure classification from taking precedence and prevent another
+test phase after observed interruption. Both child-status collection and cleanup
+confirm child termination before `wait`; a signal-interrupted wait is handled explicitly
+under `set -e`. Polling uses the original absolute 1200-second run deadline, short
+sleeps and bounded cleanup reaping. Signals remain recorded during cleanup instead
+of reverting to default termination, and repeated mixed signals never invoke cleanup
+again. SIGINT/SIGTERM retain **130/143** on successful cleanup; failed cleanup returns
+**2** while retaining the original interruption reason/code separately. Publication
+rechecks first-signal state after checksumming, so a signal at that boundary updates
+the verdict and manifest together. No admission threshold or workload cap changes.
+
+The fixture uses bounded, acknowledged marker barriers before/after supervisor
+completion and process-local command adapters for active execution, child-status
+collection, status command substitution, the flag-check/sleep gap, cleanup and evidence
+publication. Both signals cover these boundaries, repeated mixed signals and interruption
+followed by cleanup failure. It asserts exactly one cleanup, no next phase, correct
+signal/non-success classification, no trap/parser errors, secret-safe diagnostics,
+matching final evidence checksums, simulated container removal and independently probed
+termination of the actual owned fixture child PIDs. Normal success, genuine failure,
+the existing flaky completion case, and all previous safety regressions remain enabled.
+An optional exact `--case` filter permits focused reproduction; the default suite
+always runs every case.
+
+Exactly **five existing files** change in this correction; the whole PR remains
+**40 files (26 additions, 14 modifications)**:
+
+| Modified file | Purpose |
+| --- | --- |
+| `tests/RunM6BMySql.sh` | Record-only traps, main-flow checkpoints, bounded status collection/cleanup and interruption evidence. |
+| `tests/support/WebsitePlatformM6BLinuxLauncherFixture.sh` | Controlled signal barriers and owned-process/container doubles. |
+| `tests/WebsitePlatformM6BLinuxLauncherTest.php` | Boundary, classification, cleanup, process-liveness and evidence assertions. |
+| `docs/sprint-8.8-m6b-linux-validation.md` | Signal and cleanup operating contract. |
+| `docs/sprint-8.8-m6b-local-implementation.md` | Exact reproduction, scope and validation record. |
+
+Final Windows-local validation: **57/57 available standalone PHP suites passed**
+(the 56 existing suites and the complete corrected launcher suite). Launcher coverage
+is **1088 assertions across 113 isolated Bash scenarios**, including **22 controlled
+signal cases**. The six existing M6B suites retain **743 assertions**, for **1831 M6B
+assertions total**. All **213 tracked PHP files** passed lint, followed by a final
+lint of the changed test assertion. Both Bash files passed syntax checking; the
+unchanged PowerShell launcher parsed with zero errors. The two changed Markdown
+documents passed **11 relative links, two referenced anchors**, balanced fences and
+status/checksum checks. Exact five-file correction / 40-file PR inventories and
+preserved-file comparisons passed. Ten safety/resource functions and Docker/supervisor
+resource/deadline command lines match the prior head exactly. Working, staged and
+committed diff checks are included in final commit verification.
+
+Supplementary corrected-code repetitions: **13/13** isolated runs of the unchanged
+`run-interrupt` scenario passed with its stronger classification/cleanup/process and
+checksum assertions (**56 assertions per focused invocation**). These repetitions
+are separate from the deterministic boundary matrix and are not added to suite totals.
+The first broad validation pass exposed a new test-adapter parsing mistake: Git Bash
+marks binary SHA-256 entries with `*`. Actual hashes matched; the assertion now accepts
+that marker as well as Linux's text format. The complete launcher suite was rerun
+after that test-only correction; other standalone suites were unaffected.
+
+Application code, migrations 001–025, the Windows launcher, native SQL scenario/worker,
+Linux guard and PHP MySQL support are unchanged from `88d27a179f48fa0404d27ed24ad10a312f335aa2`.
+Migration 025 remains
+`dab585dc29aac11153f92703c65d3883aeea73a1b2283157cfa9d2f2ece85cb0`.
+Resource admission and reserve functions, Docker resource arguments, PHP supervisor
+limits, the 1200-second deadline, and SQL acceptance scenarios remain unchanged.
+P1 unloaded-unit/descendant checks, private client configuration, exact container
+environment verification, volume identity/pinned storage and rootless isolation remain
+covered by the full regression suite.
+
+All execution is Windows-local PHP/Git Bash with isolated command doubles. Real
+Linux/systemd/container/MySQL validation remains **NOT EXECUTED**. No staging/production
+access, resize, installation, host configuration, container/database creation or
+execution, migration, deployment, M6C or Narrator work occurred. No new PR, merge or
+auto-merge is authorized. The review reply and single exact-new-head review request
+are linked in the task result; review approval is not claimed.
+
+M6B remains **IMPLEMENTED LOCALLY / REAL-MYSQL VALIDATION PENDING**; Linux launcher
+**CORRECTIONS IMPLEMENTED / REVIEW REQUIRED**; M6 **IN PROGRESS**; Production
+**UNAUTHORIZED / NOT DEPLOYED**.

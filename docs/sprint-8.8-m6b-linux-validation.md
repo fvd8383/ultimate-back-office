@@ -12,6 +12,31 @@ application review of `19dc550` did not approve the Linux launcher.
 
 ## Completed-review corrections
 
+[P2: deterministic supervisor interruption](https://github.com/fvd8383/ultimate-back-office/pull/126#discussion_r4058088240)
+is addressed with minimal SIGINT/SIGTERM traps that only record the first signal.
+The main flow checks that state before starting or collecting another phase and
+after status command substitutions. Child collection polls to confirmed termination
+before calling `wait`, handles a signal-interrupted wait without `set -e` losing its
+reason, and uses the existing absolute run deadline. A signal between a flag check
+and a monitor sleep therefore cannot cause an unbounded wait.
+
+Cleanup keeps the recording traps installed, stops the owned unit and local children
+once, and bounds local reaping after TERM/KILL. It retains all ownership and descendant
+cgroup checks below. A recorded interruption takes precedence over normal/test-failure
+classification: SIGINT returns **130**, SIGTERM **143** when cleanup succeeds.
+Cleanup failure remains separately reported and returns **2**, retaining `interrupted`
+and the original signal code in private evidence. Repeated mixed signals keep the first
+code and do not restart cleanup. Evidence publication checks for a signal during
+checksumming and refreshes the final verdict and checksum when necessary.
+
+Windows-local command doubles cover controlled active/before/after-completion barriers,
+child waits, status command substitution, the check/sleep gap, cleanup, repeated signals,
+cleanup failure and evidence publication for both signals. The original `run-interrupt`
+case remains enabled. The exact local baseline reproduction and current validation
+counts are recorded in the [implementation record](sprint-8.8-m6b-local-implementation.md#deterministic-supervisor-interruption-correction--2026-09-20).
+These results do not establish real Linux/systemd/MySQL PASS. Resource admission and
+workload limits are unchanged by this signal correction.
+
 [P1: unloaded transient units](https://github.com/fvd8383/ultimate-back-office/pull/126#discussion_r4055419657)
 is addressed by capturing unit ownership and cgroup identity before stopping, then
 reading an explicit LoadState/ActiveState/Description/ControlGroup snapshot.
