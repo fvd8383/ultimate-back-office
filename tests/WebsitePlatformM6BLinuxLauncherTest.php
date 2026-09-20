@@ -58,9 +58,13 @@ $cases=['identity-valid'=>0,'identity-host'=>2,'identity-user'=>2,'identity-root
     'space-boundary'=>0,'space-cpu-below'=>2,'space-memory-below'=>2,'space-boot-below'=>2,'space-volume-below'=>2,'space-reserve-boundary'=>0,'space-reserve-memory'=>2,'space-reserve-boot'=>2,'space-reserve-volume'=>2];
 foreach(['TERM'=>143,'INT'=>130]as$signal=>$status){
     foreach(['active','before','after','wait','collector','status','sleep-race','cleanup','repeated','cleanup-failure','evidence']as$point){
-        $cases['run-signal-'.$signal.'-'.$point]=$point==='cleanup-failure'?2:$status;
+        $cases['run-signal-'.$signal.'-'.$point]=match($point){'cleanup-failure'=>2,'evidence'=>0,default=>$status};
     }
+    foreach(['boundary'=>$status,'boundary-publish-failure'=>2,'accepted-published'=>$status,'report'=>0,'published'=>0,'exit'=>0,'published-failure'=>17]as$point=>$expected)$cases['run-signal-'.$signal.'-'.$point]=$expected;
 }
+foreach(['report-failure','checksum-failure','checksum-permanent','timeout']as$point)$cases['run-publish-'.$point]=2;
+foreach(['0700'=>0,'0710'=>0,'0711'=>2,'0750'=>2,'0730'=>2,'0770'=>2,'1700'=>2,'2700'=>2,'4700'=>2]as$mode=>$expected)$cases['permission-docker-'.$mode]=$expected;
+foreach(['base','checkouts','evidence','tmp','owner','group','other-path','symlink','mount','change-docker','change-base']as$case)$cases['permission-'.$case]=2;
 // A focused reproduction never replaces or removes cases from the default full suite.
 if(isset($argv[1])){
     if($argc!==3||$argv[1]!=='--case'||!array_key_exists($argv[2],$cases))throw new RuntimeException('Use --case with an existing scenario');
@@ -73,6 +77,7 @@ foreach($cases as$case=>$expected){
     $inspected=$container;if($case==='run-env-injected')$inspected['Config']['Env'][]='HTTP_PROXY=PROXY_CREDENTIAL_SENTINEL';
     file_put_contents($dir.'/inspection.json',json_encode([$inspected,$image],JSON_THROW_ON_ERROR));
     $foreign=$container;$foreign['Config']['Labels']['ubo.m6b.owner']='foreign';file_put_contents($dir.'/foreign.json',json_encode([$foreign],JSON_THROW_ON_ERROR));
+    $started=microtime(true);
     $process=proc_open([$bash,__DIR__.'/support/WebsitePlatformM6BLinuxLauncherFixture.sh',$case,$dir,str_replace('\\','/',PHP_BINARY)],
         [0=>['pipe','r'],1=>['pipe','w'],2=>['pipe','w']],$pipes,null,null,['bypass_shell'=>true]);
     if(!is_resource($process))throw new RuntimeException('Bash fixture unavailable');
@@ -102,23 +107,36 @@ foreach($cases as$case=>$expected){
         if(in_array($case,['cleanup-foreign','cleanup-unknown','cleanup-failed'],true))launcherCheck(str_contains($report,'Test exit: 0')&&str_contains($report,'Overall: NON_SUCCESS'),'Cleanup failure overrides SQL success');
     }
     if(str_starts_with($case,'run-')){
-        launcherCheck($case==='run-mount-loss'?!is_file($evidence.'/SHA256SUMS'):is_file($evidence.'/SHA256SUMS'),'Full lifecycle manifest '.$case);
+        $uncommitted=in_array($case,['run-mount-loss','run-publish-checksum-permanent'],true);
+        $lateSignal=preg_match('/^run-signal-(TERM|INT)-(evidence|report|published|published-failure|exit)$/D',$case)===1;
+        $publicationFailure=str_starts_with($case,'run-publish-')||str_ends_with($case,'-boundary-publish-failure');
+        $acceptedSignal=(str_starts_with($case,'run-signal-')&&!$lateSignal)||$case==='run-interrupt';
+        launcherCheck($uncommitted?!is_file($evidence.'/SHA256SUMS'):is_file($evidence.'/SHA256SUMS'),'Full lifecycle manifest '.$case);
         launcherCheck(glob($dir.'/runtime/ubo-m6b.*')===[],'Full lifecycle scratch cleanup '.$case);
         launcherCheck($case==='run-foreign'?!str_contains($commands,"rm\n"):str_contains($commands,"rm\n"),'Full lifecycle ownership cleanup '.$case);
         if($case==='run-mount-loss'){
             $emergency=array_values(array_filter(glob($dir.'/runtime/ubo-m6b-failure.*'),static fn(string $path):bool=>!str_ends_with($path,'.sha256')));
             launcherCheck(count($emergency)===1&&is_file($emergency[0].'.sha256')&&str_contains(file_get_contents($emergency[0]),'infrastructure_volume_identity')&&!str_contains($report,'Overall:'),'Mount loss preserves old evidence and writes only runtime diagnostic with checksum');
-        }else launcherCheck(str_contains($report,in_array($case,['run-success','run-unload'],true)?'Overall: PASS':'Overall: NON_SUCCESS'),'Full lifecycle verdict '.$case);
+        }else{
+            $success=in_array($case,['run-success','run-unload'],true)||($lateSignal&&$expected===0);
+            launcherCheck(str_contains($report,$success?'Overall: PASS':'Overall: NON_SUCCESS'),'Full lifecycle verdict '.$case);
+            launcherCheck(str_contains($report,'Exit status: '.$exit), 'Report/process exit agreement '.$case);
+            launcherCheck(substr_count($commands,"publish-attempt\n")===($publicationFailure?2:1),'Bounded publication attempts '.$case);
+        }
         $output=file_get_contents($evidence.'/test-output.txt');launcherCheck(!str_contains($output,$token)&&!str_contains($output,'abcdef0123456789abcdef'),'Full lifecycle redaction '.$case);
-        if(str_starts_with($case,'run-signal-')||$case==='run-interrupt'){
-            launcherCheck(str_contains($report,'Failure class: interrupted'),'Interruption remains primary '.$case);
-            $signalExit=str_contains($case,'-INT-')?130:143;
+        if(str_starts_with($case,'run-signal-')||$case==='run-interrupt'||$publicationFailure){
+            $failureClass=$acceptedSignal?'interrupted':($publicationFailure?'evidence_publication':($expected===17?'test_failure':'none'));
+            launcherCheck(str_contains($report,'Failure class: '.$failureClass),'Correct final failure class '.$case);
+            $signalExit=$acceptedSignal?(str_contains($case,'-INT-')?130:143):'NONE';
             launcherCheck(str_contains($report,'Interruption exit: '.$signalExit),'First signal exit retained '.$case);
             if(str_ends_with($case,'-repeated'))launcherCheck(substr_count($commands,'signal-')===3,'Repeated mixed signals delivered '.$case);
+            if(str_ends_with($case,'-accepted-published'))launcherCheck(substr_count($commands,'signal-')===2,'Accepted and late mixed signals delivered '.$case);
+            if($lateSignal)launcherCheck(substr_count($commands,'signal-')===1,'Late signal actually delivered '.$case);
             launcherCheck(substr_count($commands,"stop-unit\n")===1&&substr_count($commands,"rm\n")===1,'Exactly one owned cleanup '.$case);
             $cleanupFailure=str_ends_with($case,'-cleanup-failure');
             launcherCheck(str_contains($report,$cleanupFailure?'Cleanup: FAILED_orphan_requires_operator_review':'Cleanup: PASS'),'Separate cleanup verdict '.$case);
-            foreach(explode("\n",trim(file_get_contents($evidence.'/SHA256SUMS')))as$line){
+            launcherCheck(str_contains($report,'Publication: '.($publicationFailure?'FAILED':'PASS')),'Separate publication status '.$case);
+            foreach($uncommitted?[]:explode("\n",trim(file_get_contents($evidence.'/SHA256SUMS')))as$line){
                 [$hash,$name]=preg_split('/\s+/',$line,2);
                 $name=ltrim($name,'*'); // Git Bash marks binary checksum entries with '*'.
                 launcherCheck(in_array($name,['report.txt','test-output.txt','mysql-tail.txt'],true)&&hash_file('sha256',$evidence.'/'.$name)===$hash,'Final evidence checksum '.$case);
@@ -126,6 +144,10 @@ foreach($cases as$case=>$expected){
             launcherCheck(is_file($dir.'/owned-container')===$cleanupFailure,'Owned simulated container removal '.$case);
             launcherCheck(!is_file($dir.'/owned-supervisor')&&!is_file($dir.'/owned-collector'),'Owned simulated children removed '.$case);
             $pids=[];foreach(['supervisor','collector']as$child){$pid=trim(file_get_contents($dir.'/'.$child.'.pid'));launcherCheck(ctype_digit($pid),'Recorded child PID');$pids[]=$pid;}
+            if($case==='run-publish-timeout'){
+                launcherCheck(microtime(true)-$started<45,'Publication watchdog bounded despite an ignored TERM');
+                foreach(explode(' ',trim(file_get_contents($dir.'/publisher.pids')))as$pid){launcherCheck(ctype_digit($pid),'Recorded publication PID');$pids[]=$pid;}
+            }
             $probe=proc_open([$bash,'-c','for pid in "$@"; do if kill -0 "$pid" 2>/dev/null; then exit 1; fi; done','fixture-probe',...$pids],[0=>['pipe','r'],1=>['pipe','w'],2=>['pipe','w']],$probePipes,null,null,['bypass_shell'=>true]);
             foreach($probePipes as$pipe)fclose($pipe);
             launcherCheck(proc_close($probe)===0,'No remaining owned fixture processes '.$case);

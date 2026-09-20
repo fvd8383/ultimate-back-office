@@ -26,14 +26,37 @@ cgroup checks below. A recorded interruption takes precedence over normal/test-f
 classification: SIGINT returns **130**, SIGTERM **143** when cleanup succeeds.
 Cleanup failure remains separately reported and returns **2**, retaining `interrupted`
 and the original signal code in private evidence. Repeated mixed signals keep the first
-code and do not restart cleanup. Evidence publication checks for a signal during
-checksumming and refreshes the final verdict and checksum when necessary.
+code and do not restart cleanup. The final publication boundary below supersedes
+the earlier republish-on-signal loop.
+
+[P2: final evidence signal race](https://github.com/fvd8383/ultimate-back-office/pull/126#discussion_r4058219312)
+is addressed with an explicit outcome-freezing boundary after cleanup attempts and
+evidence preparation have settled. Until that boundary, first-signal recording stays
+active, including throughout cleanup. A single `trap '' INT TERM` then ends acceptance
+of new INT/TERM signals. The frozen interruption, cleanup and exit statuses drive the
+final report. Signals during final report/checksum generation, after publication or
+immediately before exit are deliberately outside the acceptance window: they cannot
+change just the evidence or just the exit code. This is a defined finalization policy,
+not a claim that Bash can atomically rewrite filesystem evidence until process exit.
+
+Final report writing, checksumming, manifest publication and the path notice run in
+one subprocess under a **5-second deadline plus a 1-second forced-kill allowance**.
+Publication failure forces exit 2 and permits exactly one equally bounded failure
+publication: at most two attempts / 12 seconds of watchdog allowance, with no signal
+retry loop or sleep in production finalization. Cleanup is never restarted. An
+already accepted signal retains its reason/code if publication fails; cleanup and
+publication results are separate fields. The report includes the process `Exit status`.
+The manifest is removed before writing and published by rename only after successful
+checksumming. A missing/invalid manifest marks evidence **uncommitted**, even if a
+partial report contains PASS text; persistent storage errors cannot establish PASS.
+INT/TERM are ignored only in this bounded final section. Earlier execution, supervisor,
+collection and cleanup signal behavior is retained.
 
 Windows-local command doubles cover controlled active/before/after-completion barriers,
 child waits, status command substitution, the check/sleep gap, cleanup, repeated signals,
 cleanup failure and evidence publication for both signals. The original `run-interrupt`
 case remains enabled. The exact local baseline reproduction and current validation
-counts are recorded in the [implementation record](sprint-8.8-m6b-local-implementation.md#deterministic-supervisor-interruption-correction--2026-09-20).
+counts are recorded in the [implementation record](sprint-8.8-m6b-local-implementation.md#docker-data-root-and-final-evidence-correction--2026-09-20).
 These results do not establish real Linux/systemd/MySQL PASS. Resource admission and
 workload limits are unchanged by this signal correction.
 
@@ -74,18 +97,35 @@ The client's temporary config is separate from the rootless **daemon** configura
 
 ## Operator-reported setup and supported layouts
 
-The operator reports that resizing, attaching the volume and configuring rootless
-Docker are complete on **ubo-stage-app**, for **codex-validation**. This is
-**user-reported infrastructure**, not independently verified runtime evidence.
-This desktop correction did not access a host or repeat any setup. A dedicated
-validation server is an alternative, not a requirement for the configured shared host.
+The operator supplied a completed inspection at **2026-09-20T21:23:19Z** on
+**ubo-stage-app**, as **codex-validation**, UID **1000**. These measurements are
+**operator-supplied**, not observations made by this desktop task:
+
+| Item | Reported observation | Existing admission requirement |
+| --- | --- | --- |
+| Available CPUs | 4 | 4 |
+| MemAvailable | 7610155008 bytes | 4563402752 bytes |
+| Volume free | 24222400512 bytes | 10737418240 bytes |
+| Boot free | 2941308928 bytes | 1073741824 bytes |
+
+Capacity **qualified at inspection**. Recheck it with Docker running before separately
+authorized execution; no resizing proposal or lowered gate follows from this task.
+The volume UUID was reported as `7d255792-0283-4773-b7a1-20596ed0d8fa`. The Docker user
+service was **installed, stopped and disabled**, with its socket absent while stopped;
+it is not reported missing, and this launcher never starts it. PHP was reported at
+`/usr/bin/php8.3`, version **8.3.6**, with PDO MySQL and `proc_open` available.
+The deployed application was reported clean at
+`70a3051f73874e7268b9c1bba45bf19d41f9432a`, with Apache active. APP_ENV remains
+independently unconfirmed. Actual Docker engine version and approved cached-image
+digest remain later runtime observations. No host access or setup occurred here.
+A dedicated validation server remains a supported alternative.
 
 Select `--host-mode shared-staging --layout volume` for the reported arrangement:
 
 ```text
 /mnt/ubo_stage_testdata/                            actual mounted filesystem
   codex-validation/                               test-user-owned, 0700
-    docker/                                       rootless daemon data-root, 0700
+    docker/                                       rootless daemon data-root, 0700 or 0710
     checkouts/                                    independent full-history clone, 0700
     evidence/                                     private retained evidence, 0700
       mysql-image-pin.txt                         operator's image identity record
@@ -104,6 +144,21 @@ be executable. Helper success cannot override a path/UUID mismatch.
 DockerRootDir must equal exactly
 `/mnt/ubo_stage_testdata/codex-validation/docker`. Symlink escapes and nested mounts
 are rejected; no home-directory symlink is used to disguise the volume.
+
+Only that exact Docker data-root path accepts **0700 or 0710**, with the verified
+test-user UID and the intended **codex-validation owning group**. Group read/write,
+all other-user access, special bits, wrong owner/group, different paths, symlinks and
+unexpected mounts are rejected. The enclosing `codex-validation` base, `checkouts`,
+`evidence`, `tmp` and private runtime/client directories retain **0700**. The reported
+Docker directory was `codex-validation:codex-validation` / **0710**; the other three
+workspace directories were reported **0700**. Initial, recurring and cleanup mount
+checks apply this same distinction. No Docker data-directory contents are traversed or changed.
+
+For upstream context, Moby's
+[`setupDaemonRoot` at docker-v29.1.3](https://raw.githubusercontent.com/moby/moby/docker-v29.1.3/daemon/daemon_unix.go)
+initializes daemon-root ownership/permissions with 0710. This source reference does
+**not** identify the installed host engine version. The launcher neither chmods/chowns
+Docker storage nor changes daemon configuration, storage location or contents.
 
 The initial UUID and mount ID are retained and rechecked before resource creation,
 during execution and during cleanup. A directory descriptor pins the verified
@@ -145,10 +200,9 @@ configuration is sourced and no arbitrary DSN fallback exists.
 
 ## Conservative resource decision
 
-No smaller shared-host profile or automatic fallback is added. The old suggestion
-of **2 vCPU / 4 GiB total RAM** is not equivalent to this admission gate.
-The shared profile retains the workload caps and four-CPU requirement; available-memory
-admission is tightened from 4 GiB to **4.25 GiB** to account explicitly for overhead.
+The established shared-conservative gate is unchanged: **four available CPUs** and
+**4.25 GiB MemAvailable**, with the existing workload caps and overhead allowance.
+No smaller profile, automatic fallback or resizing proposal is added by this correction.
 
 | Shared-conservative allocation | Amount |
 | --- | --- |
@@ -181,11 +235,11 @@ is monitored against 4 MiB; unexpected nonempty scratch during cleanup is report
 Check-only reports the selected profile/layout and actual versus required CPU,
 MemAvailable, boot, data and evidence space. Capacity is reported even if the
 operator intentionally left Docker stopped. The launcher then fails that prerequisite
-clearly and never starts or reconfigures the service. The actual configured host
-capacity, UID, UUID, digest and daemon behavior have **not** been verified here.
-A nominal 2-CPU/4-GiB host does not qualify. The required extra capacity is whatever
-is needed to reach four available CPUs and 4352 MiB MemAvailable after resident
-workloads; no resize or installation is requested/performed by this task.
+clearly and never starts or reconfigures the service. The completed operator-supplied
+inspection above qualifies against the unchanged capacity gate. This desktop task
+has not independently verified the measurements, UUID, UID, digest or running-daemon
+behavior. Capacity must be rechecked with Docker running before execution; this
+correction requests no resize, installation or host change.
 
 Rootless cgroup v2/systemd with delegated cpu/memory/pids is mandatory. Actual
 container and PHP cgroup limits are read before releasing the SQL gate. Other limits:
@@ -266,8 +320,9 @@ Historical pre-resize staging information remains **user-supplied evidence**:
 supplied SHA-256 `1d82275194a5c67d784a64314692744fbfdc15192d88ca0ec929366fa0423059`.
 It reported one CPU, about 962 MiB RAM, no swap, about 3.15 GiB free disk and no runtime.
 It was not downloaded or independently hash-verified here. APP_ENV remains
-independently unconfirmed. The operator's later completed-setup report supersedes
-that description as a report of intent/configuration, not as measured validation.
+independently unconfirmed. The completed operator inspection at 2026-09-20T21:23:19Z
+supersedes that old capacity/runtime description with operator-supplied measurements.
+It does not establish this desktop task's host access, kernel isolation or MySQL PASS.
 
 No staging/production access, host setup, resize, installation, image download,
 container/database creation, migration, deployment, M6C or Narrator work occurred.

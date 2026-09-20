@@ -2,7 +2,7 @@
 
 Date: 2026-09-19. **M6B — IMPLEMENTED LOCALLY / REAL-MYSQL VALIDATION PENDING**.
 Linux launcher: **CORRECTIONS IMPLEMENTED / REVIEW REQUIRED**.
-Latest correction: [deterministic supervisor interruption](#deterministic-supervisor-interruption-correction--2026-09-20).
+Latest correction: [Docker data-root and final evidence](#docker-data-root-and-final-evidence-correction--2026-09-20).
 Shared-staging volume/setup **OPERATOR-REPORTED COMPLETE**; real MySQL **NOT EXECUTED**.
 See [Linux validation host modes and prerequisites](sprint-8.8-m6b-linux-validation.md).
 This is local implementation evidence, not staging validation or formal M6 closeout.
@@ -913,4 +913,135 @@ are linked in the task result; review approval is not claimed.
 
 M6B remains **IMPLEMENTED LOCALLY / REAL-MYSQL VALIDATION PENDING**; Linux launcher
 **CORRECTIONS IMPLEMENTED / REVIEW REQUIRED**; M6 **IN PROGRESS**; Production
+**UNAUTHORIZED / NOT DEPLOYED**.
+
+## Docker data-root and final evidence correction — 2026-09-20
+
+This correction starts from clean branch and PR head
+`025a564600c500d97442a0e1c431b7a23cc3e3e0`. It addresses the separately identified
+Docker-directory permission mismatch and [the completed final-evidence signal review](https://github.com/fvd8383/ultimate-back-office/pull/126#discussion_r4058219312).
+The latter concerns signals accepted after publication; it is distinct from the
+previous supervisor-completion and cleanup-boundary findings.
+
+Actual local reproduction used **Git Bash 5.3.15(2)-release (x86_64-pc-cygwin)** and
+**PHP 8.4.24 CLI, ZTS Visual C++ 2022 x64**. With the old launcher, the simulated
+0710 Docker directory was rejected with **exit 2**. This was also checked against a
+saved exact baseline launcher using GNU stat's normalized `710` representation.
+The corrected exact-path check accepts it with **exit 0**. The original 0700 case
+remains enabled. Negative cases cover private base/checkouts/evidence/tmp at 0710,
+Docker group read/write and other-user access, special bits, wrong UID/group, a
+foreign DockerRootDir, symlink resolution, unexpected mounts, and permission changes
+between successive volume checks. These are metadata doubles, not host inspection.
+
+The Docker-specific rule applies only to `$base/docker`: it must retain the verified
+UID, the intended codex-validation owning group, exact resolved path and verified
+volume mount/device, with mode **0700 or 0710**. Its enclosing base and all workspace,
+runtime and client directories keep the strict **0700** rule. `m6_private` is unchanged.
+Initial admission, recurring volume checks and cleanup validation share this rule;
+DockerRootDir must still match exactly. The linked Moby initialization source in the
+[operating guide](sprint-8.8-m6b-linux-validation.md) provides 0710 context, without
+claiming that version is installed on the host. No chmod/chown, data traversal/move,
+daemon configuration change or service operation occurred.
+
+The final-evidence race was reproduced deterministically against the unchanged
+finalization flow for **both signals**: injection at the `Private evidence` notice
+returned **TERM 143 / INT 130**, while the final report still said **Interruption exit:
+NONE / Overall: PASS**. The retained manifests matched those PASS reports. These are
+actual local results, independently supporting the review; no reviewer reproduction
+count is presented as a local result.
+
+The selected policy now ends signal acceptance at one explicit builtin boundary,
+**after cleanup attempts and evidence preparation are settled**. All previously
+recorded first signals remain authoritative: INT **130**, TERM **143** when cleanup
+succeeds. Cleanup failure remains separate and forces non-success. After the boundary,
+INT/TERM are deliberately ignored through bounded final publication and exit; this
+includes report/checksum generation, the post-publication notice and the last step
+before exit. They cannot mutate only the exit status or only the evidence. The
+previous republish-on-signal loop and final late status override are removed.
+This does not promise atomic filesystem rewriting at every instant until shell exit.
+
+Publication performs all report/checksum/manifest/notice I/O in a subprocess with a
+**5-second timeout and 1-second forced-kill allowance**. Failure changes the outcome
+to exit **2** and permits exactly **one** equally bounded failure-publication attempt,
+for at most **12 seconds of watchdog allowance**. Signals cannot create extra attempts,
+and owned-resource cleanup is never restarted. `Cleanup`, `Publication`, accepted
+`Interruption exit` and final `Exit status` remain separate. An accepted interruption
+stays the primary reason even if publication fails. The manifest is invalidated first
+and committed by rename after hashing; missing/invalid manifests mean **uncommitted
+non-success evidence**, never PASS. A persistent checksum failure leaves a non-success
+report without a committed manifest. Mount-loss reporting still uses only the private
+runtime emergency path, never a replacement path on the boot disk beneath the volume.
+
+Controlled cases exercise acceptance immediately before the boundary, ignored signals
+during report writing/checksumming, after publication and immediately before exit,
+a genuine test failure followed by a late signal, an accepted signal followed by a
+late mixed signal, accepted interruption plus publication failure, report-write and
+checksum failures, permanent checksum failure and a deliberately hung publisher.
+The timeout case independently probes the publisher and sleeper PIDs as well as the
+existing owned supervisor/collector PIDs. All earlier supervisor, wait/status,
+cleanup, mixed-signal and original `run-interrupt` cases remain enabled. The earlier
+evidence-generation cases now assert the explicitly selected post-boundary policy;
+they were not removed. Tests check report/checksum/exit agreement, bounded attempt
+counts, one owned cleanup, no subsequent phase, and secret-safe output.
+
+The operator supplied completed inspection measurements at **2026-09-20T21:23:19Z**:
+ubo-stage-app / codex-validation, UID **1000**, **4 available CPUs**, MemAvailable
+**7610155008 bytes**, volume free **24222400512 bytes**, boot free **2941308928 bytes**.
+The volume `/mnt/ubo_stage_testdata` UUID was
+`7d255792-0283-4773-b7a1-20596ed0d8fa`; Docker storage was reported
+codex-validation:codex-validation / **0710**, with checkouts/evidence/tmp **0700**.
+The Docker user service was **installed, stopped, disabled**, with no socket while
+stopped. PHP `/usr/bin/php8.3` was reported as **8.3.6**, with PDO MySQL and `proc_open`.
+The deployed application was reported clean at
+`70a3051f73874e7268b9c1bba45bf19d41f9432a`, Apache active. APP_ENV remains independently
+unconfirmed. **Capacity qualified at that inspection** against unchanged gates; it
+must be rechecked with Docker running before separately authorized execution. These
+are operator-supplied measurements, not desktop-task observations. Actual engine
+version, kernel isolation and MySQL behavior remain unverified here. No resize or
+lowered gate is proposed.
+
+Exactly **five existing files** change; the complete PR remains **40 files (26
+additions, 14 modifications)**:
+
+| Modified file | Purpose |
+| --- | --- |
+| `tests/RunM6BMySql.sh` | Exact Docker data-root permission rule and bounded finalization policy. |
+| `tests/support/WebsitePlatformM6BLinuxLauncherFixture.sh` | Permission metadata and deterministic finalization/failure doubles. |
+| `tests/WebsitePlatformM6BLinuxLauncherTest.php` | Permission, report/checksum/exit, attempt-bound and owned-process regressions. |
+| `docs/sprint-8.8-m6b-linux-validation.md` | Permission contract, finalization boundary and completed operator inspection. |
+| `docs/sprint-8.8-m6b-local-implementation.md` | Actual reproduction, changed-file and validation record. |
+
+Final Windows-local validation: **57/57 available standalone PHP suites passed**,
+including **1741 launcher assertions across 151 isolated Bash scenarios**. The six
+existing M6B suites retain **743 assertions**, for **2484 M6B assertions total**.
+Focused corrected checks passed for 0710 acceptance, pre-boundary acceptance,
+post-publication/checksum signals and the publisher timeout before the full run.
+All **213 tracked PHP files** passed lint; both Bash files passed syntax checking;
+the unchanged PowerShell launcher parsed with zero errors. The two changed Markdown
+documents passed **12 relative links, two referenced anchors**, fences, statuses,
+canonical checksum and exact supplied measurement checks. The five-file correction
+and 40-file PR inventories, preserved-file comparisons, working/staged/committed
+diff checks are included in final commit verification. Actual Linux/systemd/container
+and MySQL execution remains unexecuted; these totals describe local command doubles.
+
+Application/services, migrations 001–025 and the Windows launcher remain unchanged
+from application-preservation baseline `19dc550081ad47f1c53e91cd9efa5a6d8cddf381`.
+Migration 025 remains
+`dab585dc29aac11153f92703c65d3883aeea73a1b2283157cfa9d2f2ece85cb0`.
+Native SQL scenarios/worker, PHP Linux guard and MySQL support are unchanged from
+`025a564600c500d97442a0e1c431b7a23cc3e3e0`. Seventeen preserved functions, the strict
+private-directory rule and Docker/supervisor resource/deadline command lines match
+that prior head. No CPU/memory/storage admission or runtime limits, SQL acceptance
+cases, endpoint/client-config/container-environment policy, owned-unit/container
+cleanup, production/web-root rejection or exact-SHA checkout requirements changed.
+
+All execution is Windows-local with command doubles. No staging/production access,
+host changes, resizing/reinstallation, service operations, containers, database
+connections, SQL, migrations, deployment, M6C or Narrator work occurred. Real Linux,
+rootless-container, kernel isolation and MySQL validation remain **NOT EXECUTED**.
+The existing PR stays open, non-draft and unmerged, with auto-merge disabled; the task
+result links the correction reply and one exact-new-head review request/state.
+
+M6B: **IMPLEMENTED LOCALLY / REAL-MYSQL VALIDATION PENDING**. Linux launcher:
+**CORRECTIONS IMPLEMENTED / REVIEW REQUIRED**. M6: **IN PROGRESS**. Production:
 **UNAUTHORIZED / NOT DEPLOYED**.

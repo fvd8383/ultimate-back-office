@@ -72,6 +72,7 @@ DOCKER
         layout=volume; host_mode=shared-staging; expected_host=ubo-stage-app; expected_user=codex-validation
         volume_mount=/mnt/ubo_stage_testdata; base="$volume_mount/codex-validation"
         m6_volume_directory() { [[ $scenario != volume-unsafe-directory ]]; }
+        m6_docker_directory() { [[ $1 == "$base/docker" ]] && m6_volume_directory "$base"; }
         timeout() { return 0; }
         # Metadata adapters model the operator-owned helper/marker without touching /etc or /mnt.
         m6_root_anchor() { [[ $scenario != volume-unsafe-marker ]]; }
@@ -90,6 +91,45 @@ DOCKER
         if [[ $scenario == volume-mount-loss ]]; then volume_mount_id=41; fi
         m6_volume_ok || exit 2
         if [[ $scenario == volume-wrong-docker-root ]]; then docker_root=/home/codex-validation/.local/share/docker; m6_docker_root; fi;;
+    permission-*)
+        host_mode=shared-staging; layout=volume; expected_host=ubo-stage-app
+        volume_mount="$fixture/volume"; base="$volume_mount/codex-validation"
+        mkdir -p "$base/docker" "$base/checkouts" "$base/evidence" "$base/tmp"
+        docker_mode=710; docker_owner=$uid; docker_group=codex-validation; private_mode=700; private_path=''
+        case $scenario in
+            permission-docker-0700) docker_mode=700;;
+            permission-docker-*) docker_mode=${scenario#permission-docker-}; docker_mode=${docker_mode#0};;
+            permission-owner) docker_owner=2000;; permission-group) docker_group=foreign;;
+            permission-base) private_path=$base; private_mode=710;;
+            permission-checkouts|permission-evidence|permission-tmp) private_path="$base/${scenario#permission-}"; private_mode=710;;
+        esac
+        m6_root_anchor() { return 0; }; m6_volume_helper() { return 0; }
+        stat() {
+            local path=${@: -1} mode=700 owner=$uid group=codex-validation
+            [[ $path != "$base/docker" ]] || { mode=$docker_mode; owner=$docker_owner; group=$docker_group; }
+            [[ $path != "$private_path" ]] || mode=$private_mode
+            case $2 in
+                %s) echo 37;; %d) [[ $path != / ]] && echo 2 || echo 1;;
+                %u) echo "$owner";; '%u:%a') echo "$owner:$mode";; '%u:%G:%a') echo "$owner:$group:$mode";; *) return 97;;
+            esac
+        }
+        cat() { echo aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee; }
+        realpath() { if [[ $scenario == permission-symlink && $1 == "$base/docker" ]]; then echo "$fixture/elsewhere"; else echo "$1"; fi; }
+        findmnt() {
+            case "${@: -1}" in
+                UUID) echo aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee;; ID) echo 42;;
+                TARGET) if [[ $scenario == permission-mount && $* == *"--target $base/docker"* ]]; then echo "$base/docker"; else echo "$volume_mount"; fi;;
+                *) return 97;;
+            esac
+        }
+        m6_volume_ok || exit 2
+        docker_root="$base/docker"
+        [[ $scenario != permission-other-path ]] || docker_root="$base/evidence"
+        m6_docker_root
+        # The same checks run again during monitoring and cleanup.
+        [[ $scenario != permission-change-docker ]] || docker_mode=770
+        [[ $scenario != permission-change-base ]] || { private_path=$base; private_mode=710; }
+        m6_volume_ok || exit 2;;
     space-*)
         host_mode=shared-staging; layout=volume; base=$fixture; docker_root=$fixture
         nproc() { [[ $scenario != space-cpu-below ]] && echo 4 || echo 3; }
@@ -178,7 +218,7 @@ DOCKER
         }
         fixture_signal() {
             local delivered=$signal_name
-            if [[ $signal_point == repeated && -f $fixture/signalled ]]; then
+            if [[ ( $signal_point == repeated || $signal_point == accepted-published ) && -f $fixture/signalled ]]; then
                 [[ $signal_name != TERM ]] && delivered=TERM || delivered=INT
             fi
             printf 'signal-%s\n' "$delivered" >> "$log"
@@ -249,6 +289,15 @@ DOCKER
         systemctl() { echo 'systemd fixture'; }
         sha256sum() {
             if [[ $signal_point == evidence && ! -f $fixture/signalled ]]; then fixture_signal; fi
+            if [[ $scenario == run-publish-checksum-failure || $scenario == run-publish-checksum-permanent || $signal_point == boundary-publish-failure ]]; then
+                if [[ ! -f $fixture/publication-failed || $scenario == run-publish-checksum-permanent ]]; then touch "$fixture/publication-failed"; return 1; fi
+            fi
+            if [[ $scenario == run-publish-timeout && ! -f $fixture/publication-failed ]]; then
+                touch "$fixture/publication-failed"
+                command sleep 30 & local sleeper=$!
+                echo "$BASHPID $sleeper" > "$fixture/publisher.pids"
+                builtin wait "$sleeper"
+            fi
             command sha256sum "$@"
         }
         # Git Bash cannot provide Linux FIFOs/systemd. Model the stream with a gated private file.
@@ -271,7 +320,7 @@ DOCKER
             touch "$fixture/unit"
             for i in {1..100}; do [[ ! -f $scratch/go && ! -f $fixture/stopped ]] || break; sleep 0.05; done
             case $signal_point in
-                active|sleep-race|repeated|cleanup-failure)
+                active|sleep-race|repeated|cleanup-failure|accepted-published)
                     touch "$fixture/active"
                     fixture_await test -f "$fixture/release";;
             esac
@@ -282,14 +331,14 @@ DOCKER
                 [[ $signal_point != before ]] || fixture_await test -f "$fixture/release"
             fi
             if [[ $scenario == run-interrupt ]]; then builtin kill -TERM "$fixture_main_pid"; return 143; fi
-            case $scenario in run-test-failure) return 17;; run-timeout) return 124;; run-resource) return 137;; *) return 0;; esac
+            case $scenario in run-test-failure|run-signal-*-published-failure) return 17;; run-timeout) return 124;; run-resource) return 137;; *) return 0;; esac
         }
         # The fake supervisor is one shell, not a GNU timeout process group.
         kill() {
             if [[ $* == *--* ]]; then builtin kill "$1" "${3#-}" 2>/dev/null; return; fi
             if [[ $1 == -0 && ${2:-} == "${supervisor:-}" && ${test_exit:-} == NO_COMPLETED_RESULT && ! -f $fixture/signalled ]]; then
                 case $signal_point in
-                    active|before|repeated|cleanup-failure)
+                    active|before|repeated|cleanup-failure|accepted-published)
                         if [[ $signal_point == before ]]; then fixture_await test -f "$fixture/completing"
                         else fixture_await test -f "$fixture/active"; fi
                         fixture_signal
@@ -323,6 +372,33 @@ DOCKER
             command sleep "$@"
         }
         fixture_main_pid=$$
+        printf() {
+            if [[ ( $signal_point == published* || $signal_point == accepted-published ) && $1 == 'Private evidence: %s\n' ]]; then fixture_signal; fi
+            if [[ $signal_point == report && $1 == '%s\n' && ${2:-} == *'Publication:'* && ! -f $fixture/signalled ]]; then fixture_signal; fi
+            if [[ $scenario == run-publish-report-failure && $1 == '%s\n' && ${2:-} == *'Publication:'* && ! -f $fixture/publication-failed ]]; then touch "$fixture/publication-failed"; return 1; fi
+            builtin printf "$@"
+        }
+        trap() {
+            if [[ $# == 3 && $1 == '' && $2 == INT && $3 == TERM ]]; then
+                if [[ $signal_point == boundary* ]]; then fixture_signal; fi
+                printf 'finalization-boundary\n' >> "$log"
+            fi
+            builtin trap "$@"
+        }
+        eval "$(declare -f m6_bounded_publish | sed '1s/m6_bounded_publish/m6_fixture_publish/')"
+        m6_bounded_publish() {
+            local code=0
+            printf 'publish-attempt\n' >> "$log"
+            export -f printf sha256sum fixture_signal
+            export signal_point signal_name fixture fixture_main_pid log scenario
+            m6_fixture_publish "$@" || code=$?
+            touch "$fixture/evidence-exit-signal-ready"
+            return "$code"
+        }
+        exit() {
+            if [[ $signal_point == exit && -f $fixture/evidence-exit-signal-ready ]]; then fixture_signal; fi
+            builtin exit "$@"
+        }
         if [[ $scenario == run-headroom ]]; then m6_budget() { return 1; }; fi
         if [[ $scenario == run-mount-loss ]]; then volume_ready=1; m6_volume_ok() { [[ ! -f $fixture/test-done ]]; }; fi
         m6_cli_config

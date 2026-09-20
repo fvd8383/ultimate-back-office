@@ -125,14 +125,25 @@ m6_volume_ok() {
         && $(findmnt -rn --mountpoint "$volume_mount" -o UUID) == "$actual_uuid" && $(stat -c %d "$volume_mount") != "$(stat -c %d /)" ]] || return 1
     mount_id=$(findmnt -rn --mountpoint "$volume_mount" -o ID)
     [[ $mount_id =~ ^[0-9]+$ && ( -z ${volume_uuid:-} || $volume_uuid == "$actual_uuid" ) && ( -z ${volume_mount_id:-} || $volume_mount_id == "$mount_id" ) ]] || return 1
-    for path in "$base" "$base/docker" "$base/checkouts" "$base/evidence" "$base/tmp"; do
+    for path in "$base" "$base/checkouts" "$base/evidence" "$base/tmp"; do
         m6_volume_directory "$path" || return 1
     done
+    m6_docker_directory "$base/docker" || return 1
     volume_uuid=$actual_uuid; volume_mount_id=$mount_id
 }
 m6_volume_helper() { [[ -x $1 ]] && timeout --kill-after=2s 15s "$1" >/dev/null 2>&1; }
 m6_volume_directory() {
     [[ -d $1 && ! -L $1 && $(realpath "$1") == "$1" && $(stat -c '%u:%a' "$1") == "$uid:700" \
+        && $(findmnt -rn --target "$1" -o TARGET) == "$volume_mount" && $(stat -c %d "$1") == "$(stat -c %d "$volume_mount")" ]]
+}
+m6_docker_directory() {
+    # Docker initializes its data root as 0710. This exception is exact-path only;
+    # the enclosing workspace remains private and the intended owning group is checked.
+    local metadata
+    [[ $1 == "$base/docker" ]] && m6_volume_directory "$base" || return 1
+    metadata=$(stat -c '%u:%G:%a' "$1") || return 1
+    [[ -d $1 && ! -L $1 && $(realpath "$1") == "$1" \
+        && ( $metadata == "$uid:$expected_user:700" || $metadata == "$uid:$expected_user:710" ) \
         && $(findmnt -rn --target "$1" -o TARGET) == "$volume_mount" && $(stat -c %d "$1") == "$(stat -c %d "$volume_mount")" ]]
 }
 m6_layout() {
@@ -145,7 +156,7 @@ m6_layout() {
 }
 m6_docker_root() {
     [[ $(realpath "$docker_root") == "$docker_root" && $(stat -c %u "$docker_root") == "$uid" ]] || m6_fail rootless_data_owner
-    if [[ $layout == volume ]]; then [[ $docker_root == "$base/docker" ]] || m6_fail wrong_volume_docker_root
+    if [[ $layout == volume ]]; then [[ $docker_root == "$base/docker" ]] && m6_docker_directory "$docker_root" || m6_fail wrong_volume_docker_root
     else [[ $docker_root == "$account_home/"* ]] || m6_fail rootless_data_owner; fi
 }
 m6_pin_storage() {
@@ -190,7 +201,7 @@ m6_preflight() {
         case $key in GIT_*|APP_ENV|DB_*|DATABASE_URL|MYSQL_*|M6B_*|AWS_*|STRIPE_*|OPENAI_API_KEY|PHPRC|PHP_INI_SCAN_DIR|BASH_ENV|ENV|LD_PRELOAD|LD_LIBRARY_PATH)
             m6_fail inherited_configuration_refused;; esac
     done
-    for tool in git docker timeout realpath stat sha256sum df du flock mktemp mkfifo systemctl systemd-run getent nproc findmnt sed head tail tr date sleep env hostname uname id cat rm rmdir; do command -v "$tool" >/dev/null || m6_fail missing_tool; done
+    for tool in git docker timeout realpath stat sha256sum df du flock mktemp mkfifo systemctl systemd-run getent nproc findmnt sed head tail tr date sleep env hostname uname id cat rm rmdir mv; do command -v "$tool" >/dev/null || m6_fail missing_tool; done
     [[ $php == /* && -f $php && -x $php && $(realpath "$php") == "$php" ]] || m6_fail explicit_php_executable;
     uid=$(id -u); runtime_dir="/run/user/$uid"; m6_identity; m6_private "$runtime_dir"
     account_home=$(getent passwd "$uid"); account_home=${account_home#*:*:*:*:*:}; account_home=${account_home%%:*}
@@ -310,6 +321,21 @@ m6_cleanup_container() {
     if [[ ${evidence_safe:-1} == 1 ]]; then m6_docker logs --tail 200 "$verified" 2>&1 | m6_redact > "$evidence/mysql-tail.txt" || true; fi
     m6_docker rm --force "$verified" >/dev/null 2>&1 || return 1
 }
+m6_write_evidence() {
+    # Runs only in the bounded publication subprocess. The manifest is the commit marker.
+    local directory=$1 report=$2 manifest=$3 content=$4 notice=$5
+    shift 5
+    cd "$directory" || return 1
+    rm -f -- "$manifest" "$manifest.pending" || return 1
+    printf '%s\n' "$content" > "$report" || return 1
+    sha256sum "$report" "$@" > "$manifest.pending" || return 1
+    mv -f -- "$manifest.pending" "$manifest" || return 1
+    printf 'Private evidence: %s\n' "$notice" || return 1
+}
+m6_bounded_publish() {
+    export -f m6_write_evidence
+    command timeout --kill-after=1s 5s /bin/bash -c 'm6_write_evidence "$@"' _ "$@"
+}
 m6_finish() {
     local status=$? cleanup=PASS
     trap - EXIT
@@ -347,37 +373,37 @@ m6_finish() {
     fi
     [[ $cleanup == PASS ]] || status=2
     unset MYSQL_ROOT_PASSWORD M6B_MYSQL_PASSWORD M6B_MYSQL_RUN_TOKEN token password
-    local header='' published_interrupt overall
-    [[ -z ${evidence:-} || $evidence_safe != 1 ]] || header=$(< "$evidence/report.txt")
-    # Publishing can itself be interrupted. First-signal state changes at most once,
-    # so a signal during checksumming causes one corrected publication, not a retry loop.
-    while :; do
-        published_interrupt=${interrupt_status:-}
-        if [[ -n $published_interrupt ]]; then failure=interrupted; status=$published_interrupt; fi
-        [[ $cleanup == PASS ]] || status=2
-        overall=NON_SUCCESS; [[ $status != 0 || $cleanup != PASS ]] || overall=PASS
-        if [[ -n ${evidence:-} && $evidence_safe == 1 ]]; then
-            printf '%s\nTest exit: %s\nFailure class: %s\nInterruption exit: %s\nCleanup: %s\nOverall: %s\n' "$header" "${test_exit:-NOT_EXECUTED}" "${failure:-prerequisite_or_startup}" "${interrupt_status:-NONE}" "$cleanup" "$overall" > "$evidence/report.txt"
-            if ! (cd "$evidence" && sha256sum report.txt test-output.txt mysql-tail.txt 2>/dev/null > SHA256SUMS); then
-                cleanup=FAILED_evidence_checksum; status=2
-                printf '%s\nTest exit: %s\nFailure class: %s\nInterruption exit: %s\nCleanup: %s\nOverall: NON_SUCCESS\n' "$header" "${test_exit:-NOT_EXECUTED}" "${failure:-prerequisite_or_startup}" "${interrupt_status:-NONE}" "$cleanup" > "$evidence/report.txt"
-            fi
-        fi
-        [[ $published_interrupt != "${interrupt_status:-}" ]] || break
-    done
+    local header='' directory='' report=report.txt manifest=SHA256SUMS notice='' content overall publication=PASS emergency
+    local -a extra_files=()
     if [[ -n ${evidence:-} && $evidence_safe == 1 ]]; then
-        printf 'Private evidence: %s\n' "${evidence_path:-$evidence}"
+        header=$(< "$evidence/report.txt") || { failure=evidence_read; status=2; }
+        directory=$evidence; notice=${evidence_path:-$evidence}; extra_files=(test-output.txt mysql-tail.txt)
     fi
-    [[ -z ${base_fd:-} ]] || exec {base_fd}<&-
     if [[ $evidence_safe == 0 ]]; then
         # Do not open/create replacement evidence or temporary files beneath a lost mount.
-        local emergency
-        emergency=$(mktemp "$runtime_dir/ubo-m6b-failure.XXXXXXXX")
-        printf 'Overall: NON_SUCCESS\nFailure: %s\nInfrastructure: infrastructure_volume_identity\nInterruption exit: %s\nTest exit: %s\nCleanup: %s\nCode SHA: %s\nContainer ID: %s\nVolume evidence unavailable; operator review required.\n' "$failure" "${interrupt_status:-NONE}" "${test_exit:-NOT_EXECUTED}" "$cleanup" "$expected_sha" "${container_id:-unknown}" > "$emergency"
-        sha256sum "$emergency" > "$emergency.sha256"
-        printf 'Volume identity lost; runtime diagnostic: %s\n' "$emergency" >&2
+        emergency=$(mktemp "$runtime_dir/ubo-m6b-failure.XXXXXXXX") || status=2
+        if [[ -n $emergency ]]; then
+            directory=$runtime_dir; report=${emergency##*/}; manifest="$report.sha256"; notice=$emergency
+            printf -v header 'Infrastructure: infrastructure_volume_identity\nCode SHA: %s\nContainer ID: %s\nVolume evidence unavailable; operator review required.' "$expected_sha" "${container_id:-unknown}"
+        fi
     fi
-    if [[ -n ${interrupt_status:-} && $cleanup == PASS ]]; then status=$interrupt_status; fi
+    # Finalization boundary: cleanup attempts are settled. Accept every recorded signal
+    # before this single builtin, then ignore INT/TERM only through bounded publication
+    # and exit. There is no post-publication status mutation or republish-on-signal loop.
+    trap '' INT TERM
+    if [[ -n ${interrupt_status:-} ]]; then failure=interrupted; status=$interrupt_status; fi
+    [[ $cleanup == PASS ]] || status=2
+    overall=NON_SUCCESS; [[ $status != 0 ]] || overall=PASS
+    printf -v content '%s\nTest exit: %s\nFailure class: %s\nInterruption exit: %s\nCleanup: %s\nPublication: %s\nExit status: %s\nOverall: %s' "$header" "${test_exit:-NOT_EXECUTED}" "${failure:-prerequisite_or_startup}" "${interrupt_status:-NONE}" "$cleanup" "$publication" "$status" "$overall"
+    if [[ -n $directory ]] && ! m6_bounded_publish "$directory" "$report" "$manifest" "$content" "$notice" "${extra_files[@]}"; then
+        # One bounded failure publication, never an unbounded retry. No valid manifest
+        # means evidence is uncommitted, even if a partial report contains PASS text.
+        status=2; publication=FAILED
+        [[ -n ${interrupt_status:-} ]] || failure=evidence_publication
+        printf -v content '%s\nTest exit: %s\nFailure class: %s\nInterruption exit: %s\nCleanup: %s\nPublication: FAILED\nExit status: 2\nOverall: NON_SUCCESS' "$header" "${test_exit:-NOT_EXECUTED}" "$failure" "${interrupt_status:-NONE}" "$cleanup"
+        m6_bounded_publish "$directory" "$report" "$manifest" "$content" "$notice" "${extra_files[@]}" || :
+    fi
+    [[ -z ${base_fd:-} ]] || exec {base_fd}<&-
     exit "$status"
 }
 m6_budget() {
