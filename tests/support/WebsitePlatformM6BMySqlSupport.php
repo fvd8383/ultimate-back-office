@@ -41,12 +41,16 @@ function m6mysqlIdentity(): array
             &&filetype($socket)==='socket'&&fileowner($socket)===posix_geteuid(),'socket_owner');
         m6linuxRequire(!getenv('DOCKER_HOST')&&!getenv('DOCKER_CONTEXT')&&!getenv('DOCKER_TLS_VERIFY')&&!getenv('DOCKER_CERT_PATH'),'docker_override');
         m6linuxRequire(ini_get('memory_limit')==='256M','php_memory_limit');
-        $command=['docker','--host','unix://'.$socket];
+        $clientConfig=(string)getenv('M6B_DOCKER_CONFIG');
+        m6linuxRequire(!getenv('DOCKER_CONFIG'),'inherited_client_config');
+        m6linuxClientConfig($clientConfig,posix_geteuid());
+        $command=['docker','--config',$clientConfig,'--host','unix://'.$socket];
         $inspect=static fn(array $args):array=>json_decode(m6mysqlProcess(array_merge($command,$args)),true,32,JSON_THROW_ON_ERROR);
         m6linuxEngine($inspect(['info','--format','{{json .}}']),$platform);
         $image=$inspect(['image','inspect','docker.io/library/mysql@'.$digest])[0];
         m6linuxRequire(m6linuxImage($image,$digest,$platform)===getenv('M6B_MYSQL_IMAGE_ID'),'image_id_changed');
         $container=$inspect(['inspect',$id])[0];
+        m6linuxEnvironment($container,$image,(string)getenv('M6B_MYSQL_PASSWORD'));
         m6linuxRequire(m6linuxContainer($container,$token,(string)getenv('M6B_MYSQL_IMAGE_ID'),$id)===$port,'port_changed');
         return ['token'=>$token,'id'=>$id,'port'=>(int)$port,'hostname'=>$container['Config']['Hostname']];
     }

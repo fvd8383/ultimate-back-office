@@ -2,8 +2,8 @@
 
 Status: **M6 IN PROGRESS**. **M6A — ARCHITECTURE REVIEWED / MERGED** (PR #125).
 **M6B — IMPLEMENTED LOCALLY / REAL-MYSQL VALIDATION PENDING**. **M6C–M6G — NOT STARTED**.
-Linux tooling: **REVIEW REQUIRED**; [host modes and prerequisites](sprint-8.8-m6b-linux-validation.md).
-Dedicated host **NOT PROVISIONED**; shared-staging setup/resize **NOT AUTHORIZED**.
+Linux tooling: **CORRECTIONS IMPLEMENTED / REVIEW REQUIRED**; [host modes and prerequisites](sprint-8.8-m6b-linux-validation.md).
+Shared-staging volume/setup: **OPERATOR-REPORTED COMPLETE**, runtime verification pending.
 This is the merged architecture contract. The separately authorized
 [M6B implementation record](sprint-8.8-m6b-local-implementation.md) records the code,
 standalone evidence and **NOT EXECUTED** local real-MySQL/concurrency gate.

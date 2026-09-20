@@ -1,8 +1,8 @@
 # Sprint 8.8 M6B — Local persistence and jobs implementation
 
 Date: 2026-09-19. **M6B — IMPLEMENTED LOCALLY / REAL-MYSQL VALIDATION PENDING**.
-Linux tooling: **REVIEW REQUIRED**. Dedicated host **NOT PROVISIONED**;
-shared-staging setup/resize **NOT AUTHORIZED**. Real MySQL **NOT EXECUTED**.
+Linux launcher: **CORRECTIONS IMPLEMENTED / REVIEW REQUIRED**.
+Shared-staging volume/setup **OPERATOR-REPORTED COMPLETE**; real MySQL **NOT EXECUTED**.
 See [Linux validation host modes and prerequisites](sprint-8.8-m6b-linux-validation.md).
 This is local implementation evidence, not staging validation or formal M6 closeout.
 
@@ -690,3 +690,126 @@ it was not downloaded or independently hash-verified. The current status is
 **UNAUTHORIZED / NOT DEPLOYED**. Real MySQL remains **NOT EXECUTED**. No staging or
 production access, container/database creation, migration execution, M6C/Narrator
 work, new PR, merge or auto-merge occurred.
+
+## Linux review corrections and operator-reported volume setup — 2026-09-20
+
+This correction starts from clean branch head
+`ddc0d749ede346e5da26e9d2e81b02bce5f6851d`, on the existing
+`codex/sprint-8.8-m6b-persistence-jobs` branch and PR #126. The completed launcher
+review contained two findings, independently of the earlier clean application review:
+[P1, unloaded transient units](https://github.com/fvd8383/ultimate-back-office/pull/126#discussion_r4055419657)
+and [P2, inherited Docker client configuration](https://github.com/fvd8383/ultimate-back-office/pull/126#discussion_r4055419662).
+Both are corrected in test tooling; the exact new SHA, replies and single new-head
+review request/state accompany the task result. They do not establish Linux execution.
+
+P1 now captures ownership and cgroup identity before stopping. A complete systemd
+metadata snapshot distinguishes an explicitly absent unit from arbitrary command
+failure, a foreign/replaced unit, active unit or inaccessible manager. A successful
+owned stop followed by explicit `LoadState=not-found` proceeds to container cleanup.
+The recorded cgroup must be removed under accessible ancestry or report
+`cgroup.events populated=0`, including descendants; unreadable or populated state
+fails closed. Original test result and cleanup result remain separate. Uncontrolled
+test trees prevent additional PHP guards and guessed container removal.
+
+P2 now creates an empty private Docker CLI configuration after registering cleanup.
+Every daemon-facing invocation pins both config and endpoint, including PHP and
+cleanup. Existing user config, contexts, proxy values and credential helpers are not
+copied or modified. Endpoint overrides are checked before contacting a daemon.
+Actual container environment is compared to the inspected approved image defaults
+plus only the exact generated test additions; unexpected/missing/duplicate entries
+fail without exposing their values. The rootless daemon configuration and service
+are never modified or started automatically. Check-only cleans its temporary client
+configuration and creates no database credentials, container, SQL connection or worker.
+
+The operator now reports the resize, attached volume and rootless Docker setup as
+complete on `ubo-stage-app`, for `codex-validation`. This **supersedes the prior
+setup-pending banner as an operator report**, not as independently measured evidence.
+No remote access or setup was performed in this correction. Actual UID, available
+resources, mounted UUID, cached digest and daemon behavior remain unverified here.
+A dedicated host remains an alternative, not a requirement for shared staging.
+
+The explicit `--host-mode shared-staging --layout volume` path is
+`/mnt/ubo_stage_testdata/codex-validation`, with private `docker`, `checkouts`,
+`evidence` and `tmp` directories. The root-owned protected marker
+`/etc/ubo-validation/volume.uuid` and helper `/usr/local/bin/ubo-test-volume-check`
+anchor checks of the actual mountpoint, UUID, device and mount ID. Directory
+ownership, private permissions, resolved paths and mount identity must match, and
+DockerRootDir must equal the volume's `docker` path. Missing/wrong mounts fail before
+storage creation. Rechecks precede creation/SQL and run throughout execution/cleanup.
+A pinned directory descriptor prevents writes falling back to the boot disk after
+unmount/overmount. Mount loss stops the run, preserves existing volume evidence and
+uses only a small private runtime emergency report/checksum when necessary.
+
+The existing dedicated home layout remains supported, with no home-symlink disguise
+for external storage. Runtime CLI config, credentials and FIFO/gate files are the
+explicit small `/run/user/<verified-uid>` exception. Disk-backed temporary data and
+evidence use the approved storage tree. The operator's image record is reported at
+`evidence/mysql-image-pin.txt`; no digest or UID was invented or read from the host.
+
+No smaller profile was justified or added. Shared-conservative retains four available
+CPUs, MySQL 1536 MiB (including its 1024 MiB tmpfs), PHP aggregate 1024 MiB and the
+1536 MiB operating-reserve floor. Admission is strengthened from 4096 to **4352 MiB
+MemAvailable**: 1536 + 1024 + 256 MiB external engine/supervisor allowance + 1536 MiB
+staging reserve. Two one-CPU test quotas leave two CPU-equivalents on a qualifying
+four-CPU host. A nominal two-CPU/four-GiB-total host does not qualify, and the configured
+host is not claimed to qualify. No automatic profile fallback, larger limits, longer
+timeouts or reduced SQL acceptance cases were introduced.
+
+Volume admission is 10 GiB free with a 4 GiB runtime floor and a monitored 6 GiB test
+budget. Boot requires a separate **1 GiB** operating reserve, not 10 GiB. Shared
+Docker/evidence capacity is counted once. Check-only prints actual versus required
+CPU, memory, root/data/evidence space and profile/layout, even if Docker is stopped.
+The [operating contract](sprint-8.8-m6b-linux-validation.md) gives separate complete
+later check-only and run commands, host/user responsibilities and all boundaries.
+
+This correction changes exactly **11 existing files**; the whole PR remains
+**40 files: 26 additions and 14 modifications**:
+
+| Modified in this correction | Purpose |
+| --- | --- |
+| `tests/RunM6BMySql.sh` | Unit cleanup, isolated client config, explicit volume layout, mount identity and capacity admission. |
+| `tests/support/WebsitePlatformM6BLinuxGuard.php` | Private client-config validation and exact image/container environment comparison. |
+| `tests/support/WebsitePlatformM6BMySqlSupport.php` | Propagate the isolated CLI config to native PHP inspection. |
+| `tests/support/WebsitePlatformM6BLinuxLauncherFixture.sh` | Process-scoped unit/client/mount/resource doubles and lifecycle regressions. |
+| `tests/WebsitePlatformM6BLinuxLauncherTest.php` | Environment, cleanup, volume and admission/reserve assertions. |
+| `docs/sprint-8.8-m6b-linux-validation.md` | Corrected operating contract and explicit later invocations. |
+| `docs/sprint-8.8-m6b-local-implementation.md` | This correction's exact scope and evidence record. |
+| `docs/codex-handoff.md` | Current operator-reported setup/correction status. |
+| `docs/first-customer-checklist.md` | Current operator-reported setup/correction status. |
+| `docs/sprint-8.8.md` | Current operator-reported setup/correction status. |
+| `docs/sprint-8.8-m6-implementation-plan.md` | Current operator-reported setup/correction status. |
+
+Final Windows-local validation: **57/57 standalone PHP suites passed**, consisting
+of the 56 existing suites and the expanded launcher suite. The six existing M6B
+suites retain **743 assertions**; the launcher has **499 assertions across 91
+isolated Bash scenarios**, for **1242 M6B assertions total**. These include normal
+exit, timeout, interruption, headroom abort, stop/unload and absent units, foreign or
+replaced units, manager failure, descendant-populated/unreadable cgroups, genuine
+stop failure, private client-config success/signal/failure cleanup, proxy sentinels,
+unexpected container environment, volume identity/ownership/path/mount-loss cases,
+and exact admission/reserve boundaries. No sentinel appeared in retained diagnostics.
+
+**213/213 PHP lint**, both Bash files' syntax and unchanged PowerShell launcher
+syntax passed. Six current Markdown documents passed **95 relative links**, one
+referenced anchor, balanced fences, status/migration-checksum checks and the complete
+40-file inventory comparison. The exact 11-file correction inventory was compared
+with the prior head. Working, staged and committed diff checks are part of final
+commit verification. Fake-command and Git Bash results do not establish real Linux,
+systemd, rootless-container, mount or MySQL behavior; those layers remain unexecuted.
+
+Application services, public routes, deployment wrappers and migrations 001–025
+remain unchanged from `19dc550081ad47f1c53e91cd9efa5a6d8cddf381`. Migration 025's
+canonical hash remains `dab585dc29aac11153f92703c65d3883aeea73a1b2283157cfa9d2f2ece85cb0`.
+The Windows launcher, native SQL scenario file and independent SQL worker are also
+unchanged from `ddc0d749`; no business assertion or MySQL version/native-prepare check
+was weakened. The historical deployed SHA is still reported evidence only:
+`70a3051f73874e7268b9c1bba45bf19d41f9432a`.
+
+Actual Linux/systemd/container/MySQL execution remains **NOT EXECUTED**. The desktop
+work used the current Windows development/Git identity, never root, ubo-deploy or
+codex-validation. No staging/production access, installation, resize, host change,
+image download, container/database creation, migration, deployment, M6C or Narrator
+work occurred. No new PR, merge or auto-merge is authorized. Current statuses remain
+**M6B — IMPLEMENTED LOCALLY / REAL-MYSQL VALIDATION PENDING**,
+**Linux launcher — CORRECTIONS IMPLEMENTED / REVIEW REQUIRED**, M6 **IN PROGRESS**,
+and Production **UNAUTHORIZED / NOT DEPLOYED**.

@@ -32,6 +32,43 @@ function m6linuxImage(array $image, string $digest, string $platform): string
     m6linuxRequire(is_int($image['Size'] ?? null) && $image['Size'] >= 0 && $image['Size'] <= 4 * 1024 ** 3, 'image_storage_budget');
     return $image['Id'];
 }
+function m6linuxClientConfig(string $path, int $uid): void
+{
+    m6linuxRequire(preg_match('~^/run/user/'. $uid .'/ubo-m6b-cli\.[a-zA-Z0-9]{8}$~D', $path) === 1
+        && realpath($path) === $path && !is_link($path) && fileowner($path) === $uid
+        && (fileperms($path) & 0777) === 0700, 'client_config_directory');
+    $file = $path . '/config.json';
+    m6linuxRequire(is_file($file) && !is_link($file) && fileowner($file) === $uid && (fileperms($file) & 0777) === 0600
+        && filesize($file) <= 4 && trim((string) file_get_contents($file)) === '{}'
+        && array_values(array_diff(scandir($path), ['.', '..'])) === ['config.json'], 'client_config_contents');
+}
+function m6linuxEnvironment(array $container, array $image, string $password): void
+{
+    $parse = static function ($entries): array {
+        m6linuxRequire(is_array($entries), 'container_environment');
+        $map = [];
+        foreach ($entries as $entry) {
+            m6linuxRequire(is_string($entry) && str_contains($entry, '='), 'container_environment');
+            [$key, $value] = explode('=', $entry, 2);
+            m6linuxRequire(preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/D', $key) === 1 && !array_key_exists($key, $map), 'container_environment');
+            $map[$key] = $value;
+        }
+        return $map;
+    };
+    $expected = $parse($image['Config']['Env'] ?? []);
+    m6linuxRequire(preg_match('/^[a-f0-9]{64}$/D', $password) === 1, 'test_credentials');
+    $expected['MYSQL_ROOT_PASSWORD'] = $password; $expected['MYSQL_ROOT_HOST'] = '%';
+    $actual = $parse($container['Config']['Env'] ?? null);
+    ksort($expected); ksort($actual);
+    // Compare to pinned-image defaults, not an arbitrary generic environment allowlist. Never echo entries.
+    m6linuxRequire($actual === $expected, 'container_environment');
+}
+function m6linuxLaunchContainer(array $rows, string $digest, string $platform): string
+{
+    m6linuxRequire(count($rows) === 2 && m6linuxImage($rows[1], $digest, $platform) === getenv('M6B_MYSQL_IMAGE_ID'), 'container_image');
+    m6linuxEnvironment($rows[0], $rows[1], (string) getenv('MYSQL_ROOT_PASSWORD'));
+    return m6linuxContainer($rows[0], (string) getenv('M6B_MYSQL_RUN_TOKEN'), (string) getenv('M6B_MYSQL_IMAGE_ID'), (string) getenv('M6B_MYSQL_CONTAINER_ID'));
+}
 function m6linuxOwner(array $container, string $token, string $imageId, ?string $expectedId): string
 {
     $id = $container['Id'] ?? '';
@@ -84,7 +121,7 @@ if (isset($_SERVER['SCRIPT_FILENAME']) && realpath($_SERVER['SCRIPT_FILENAME']) 
             'engine' => m6linuxEngine($row, $argv[2] ?? ''),
             'image' => m6linuxImage($row, $argv[2] ?? '', $argv[3] ?? ''),
             'owner' => m6linuxOwner($row, (string) getenv('M6B_MYSQL_RUN_TOKEN'), (string) getenv('M6B_MYSQL_IMAGE_ID'), getenv('M6B_MYSQL_CONTAINER_ID') ?: null),
-            'container' => m6linuxContainer($row, (string) getenv('M6B_MYSQL_RUN_TOKEN'), (string) getenv('M6B_MYSQL_IMAGE_ID'), (string) getenv('M6B_MYSQL_CONTAINER_ID')),
+            'container' => m6linuxLaunchContainer($data, $argv[2] ?? '', $argv[3] ?? ''),
             default => throw new RuntimeException('M6B guard: unknown_mode'),
         };
         echo $result . "\n";

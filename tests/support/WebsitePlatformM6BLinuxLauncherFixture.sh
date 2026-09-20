@@ -3,8 +3,13 @@
 set -Eeuo pipefail
 export PATH="/usr/bin:/bin:$PATH"
 source "${BASH_SOURCE[0]%/*}/../RunM6BMySql.sh"
+if command -v cygpath >/dev/null; then
+    # Model Linux absolute paths even when this Git Bash realpath emits C:/... paths.
+    realpath() { local resolved; resolved=$(command realpath "$@") || return; cygpath -u "$resolved"; }
+fi
 scenario=$1; fixture=$(realpath "$2"); test_php=$3
 uid=1001; expected_user=codex-validation; expected_host=ubo-m6b-validate; host_mode=dedicated
+layout=home; cli_config=''; cli_identity=''; disk_scratch=''; base_fd=''; evidence_safe=1; volume_uuid=''; volume_mount_id=''; boot_floor=1073741824
 token=0123456789abcdef0123456789abcdef; password=abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789
 container_id=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 image_id=sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
@@ -18,6 +23,90 @@ uname() { echo Linux; }
 id() { echo codex-validation; }
 hostname() { echo "$expected_host"; }
 case $scenario in
+    unit-*)
+        unit="ubo-m6b-$token.service"; unit_attempted=1; php_cg="$fixture/cgroup"; mkdir -p "$php_cg"
+        printf 'populated 0\nfrozen 0\n' > "$php_cg/cgroup.events"
+        m6_group_path() { [[ $1 == "/user.slice/user-$uid.slice/app.slice/$unit" ]] || return 1; echo "$php_cg"; }
+        if [[ $scenario == unit-populated-descendant ]]; then mkdir "$php_cg/child"; printf 'populated 1\n' > "$php_cg/cgroup.events"; fi
+        if [[ $scenario == unit-unreadable ]]; then cat() { return 1; }; fi
+        m6_system() {
+            if [[ $1 == stop ]]; then
+                printf 'stop-unit\n' >> "$log"
+                [[ $scenario != unit-stop-failure ]] || return 1
+                touch "$fixture/stopped"
+                if [[ $scenario == unit-unload-removed ]]; then rm "$php_cg/cgroup.events"; rmdir "$php_cg"; fi
+                return 0
+            fi
+            [[ $scenario != unit-manager-inaccessible && $scenario != unit-arbitrary-failure ]] || return 1
+            if [[ $scenario == unit-absent || ( $scenario == unit-unload* && -f $fixture/stopped ) ]]; then
+                printf 'LoadState=not-found\nActiveState=inactive\nDescription=%s\nControlGroup=\n' "$unit"; return 1
+            fi
+            description="M6B validation $token"; state=active
+            [[ ! -f $fixture/stopped ]] || state=inactive
+            [[ $scenario != unit-still-running ]] || state=active
+            [[ $scenario != unit-foreign && ! ( $scenario == unit-replaced && -f $fixture/stopped ) ]] || description=foreign
+            printf 'LoadState=loaded\nActiveState=%s\nDescription=%s\nControlGroup=/user.slice/user-%s.slice/app.slice/%s\n' "$state" "$description" "$uid" "$unit"
+        }
+        m6_stop_unit || exit 2;;
+    client-*)
+        m6_init; account_home=$fixture; endpoint=unix:///run/user/1001/docker.sock
+        mkdir -p "$fixture/bin" "$fixture/user-docker"
+        printf '{"proxies":{"default":{"httpProxy":"PROXY_CREDENTIAL_SENTINEL"}}}\n' > "$fixture/user-docker/config.json"
+        export DOCKER_CONFIG="$fixture/user-docker" HTTP_PROXY=PROXY_CREDENTIAL_SENTINEL https_proxy=PROXY_CREDENTIAL_SENTINEL FIXTURE_LOG="$log"
+        stat() { if [[ $2 == '%u:%a' ]]; then echo "$uid:700"; else command stat "$@"; fi; }
+        cat > "$fixture/bin/docker" <<'DOCKER'
+#!/usr/bin/env bash
+set -eu
+[[ $1 == --config && $(< "$2/config.json") == '{}' && $3 == --host && $4 == unix:///run/user/1001/docker.sock ]]
+[[ -z ${DOCKER_CONFIG:-}${DOCKER_HOST:-}${DOCKER_CONTEXT:-}${HTTP_PROXY:-}${https_proxy:-} ]]
+printf 'isolated-client %s\n' "$5" >> "$FIXTURE_LOG"
+DOCKER
+        chmod +x "$fixture/bin/docker"; export PATH="$fixture/bin:$PATH"
+        m6_cli_config
+        m6_docker info
+        if [[ $scenario == client-create ]]; then m6_docker create; fi
+        if [[ $scenario == client-cleanup-failure ]]; then touch "$cli_config/unexpected"; fi
+        if [[ $scenario == client-signal ]]; then kill -TERM $$; fi
+        exit 0;;
+    volume-*)
+        layout=volume; host_mode=shared-staging; expected_host=ubo-stage-app; expected_user=codex-validation
+        volume_mount=/mnt/ubo_stage_testdata; base="$volume_mount/codex-validation"
+        m6_volume_directory() { [[ $scenario != volume-unsafe-directory ]]; }
+        timeout() { return 0; }
+        # Metadata adapters model the operator-owned helper/marker without touching /etc or /mnt.
+        m6_root_anchor() { [[ $scenario != volume-unsafe-marker ]]; }
+        stat() { case $2 in %s) echo 37;; %d) [[ $3 == / ]] && echo 1 || echo 2;; %u) echo 1001;; *) return 97;; esac; }
+        cat() { echo aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee; }
+        realpath() { [[ $scenario != volume-symlink ]] && echo "$1" || echo /var/www/ubo-repo; }
+        findmnt() {
+            case "${@: -1}" in
+                TARGET) [[ $scenario != volume-missing ]] && echo "$volume_mount" || echo /;;
+                UUID) [[ $scenario != volume-wrong-uuid ]] && echo aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee || echo ffffffff-bbbb-cccc-dddd-eeeeeeeeeeee;;
+                ID) echo 42;; *) return 97;;
+            esac
+        }
+        # Executability is a separate filesystem leaf in production; the fixture has no host helper.
+        m6_volume_helper() { return 0; }
+        if [[ $scenario == volume-mount-loss ]]; then volume_mount_id=41; fi
+        m6_volume_ok || exit 2
+        if [[ $scenario == volume-wrong-docker-root ]]; then docker_root=/home/codex-validation/.local/share/docker; m6_docker_root; fi;;
+    space-*)
+        host_mode=shared-staging; layout=volume; base=$fixture; docker_root=$fixture
+        nproc() { [[ $scenario != space-cpu-below ]] && echo 4 || echo 3; }
+        m6_available_memory() { [[ $scenario != space-memory-below ]] && echo 4563402752 || echo 4563402751; }
+        stat() { echo 2; }
+        m6_free() {
+            if [[ $1 == / ]]; then [[ $scenario != space-boot-below ]] && echo 1073741824 || echo 1073741823
+            else [[ $scenario != space-volume-below ]] && echo 10737418240 || echo 10737418239; fi
+        }
+        m6_headroom
+        if [[ $scenario == space-reserve* ]]; then
+            evidence=$fixture; container_id=test; image_bytes=1024
+            m6_volume_ok() { return 0; }; m6_docker() { echo 0; }
+            m6_available_memory() { [[ $scenario != space-reserve-memory ]] && echo 1610612736 || echo 1610612735; }
+            m6_free() { if [[ $1 == / ]]; then [[ $scenario != space-reserve-boot ]] && echo 1073741824 || echo 1073741823; else [[ $scenario != space-reserve-volume ]] && echo 4294967296 || echo 4294967295; fi; }
+            m6_budget || exit 2
+        fi;;
     identity-*)
         case $scenario in
             identity-host) hostname() { echo unexpected; };;
@@ -56,11 +145,7 @@ case $scenario in
         unset DOCKER_HOST DOCKER_CONTEXT DOCKER_TLS_VERIFY DOCKER_CERT_PATH DOCKER_API_VERSION
         realpath() { echo "$1"; }
         stat() { [[ $2 == '%F:%u' ]] && echo socket:1001 || echo 1001:700; }
-        docker() {
-            printf '%s\n' "$*" >> "$log"
-            case "$*" in 'context show') echo rootless;; 'context inspect rootless --format {{.Endpoints.docker.Host}}') [[ $scenario != endpoint-remote ]] && echo unix:///run/user/1001/docker.sock || echo ssh://remote;; *) return 97;; esac
-        }
-        case $scenario in endpoint-ambiguous) export DOCKER_HOST=unix:///run/user/1001/docker.sock DOCKER_CONTEXT=rootless;; endpoint-conflict) export DOCKER_HOST=tcp://elsewhere;; endpoint-rootful) stat() { echo socket:0; };; esac
+        case $scenario in endpoint-ambiguous) export DOCKER_HOST=unix:///run/user/1001/docker.sock DOCKER_CONTEXT=rootless;; endpoint-remote) export DOCKER_HOST=ssh://remote;; endpoint-context) export DOCKER_CONTEXT=rootless;; endpoint-conflict) export DOCKER_HOST=tcp://elsewhere;; endpoint-rootful) stat() { echo socket:0; };; esac
         m6_endpoint;;
     delegation-*)
         stat() { [[ $1 == -f ]] && echo cgroup2fs || echo 1001; }
@@ -69,9 +154,9 @@ case $scenario in
         m6_delegation;;
     headroom-*)
         base=$fixture; docker_root=$fixture
-        m6_available_memory() { [[ $scenario != headroom-memory ]] && echo 4294967296 || echo 1024; }
+        m6_available_memory() { [[ $scenario != headroom-memory ]] && echo 4563402752 || echo 1024; }
         m6_free() { [[ $scenario != headroom-disk ]] && echo 10737418240 || echo 1024; }
-        getconf() { [[ $scenario != headroom-cpu ]] && echo 4 || echo 2; }
+        nproc() { [[ $scenario != headroom-cpu ]] && echo 4 || echo 2; }
         [[ $scenario == headroom-dedicated ]] || host_mode=shared-staging
         m6_headroom;;
     cgroup-*)
@@ -82,13 +167,18 @@ case $scenario in
     run-*)
         # Exercise the real run/trap flow with process-local doubles; no Docker, systemd or SQL.
         rmdir "$scratch"
-        base=$fixture; mkdir -p "$base/evidence"; repo=$(realpath "${BASH_SOURCE[0]%/*}/../..")
+        m6_init
+        base=$fixture; mkdir -p "$base/evidence" "$base/tmp"; repo=$(realpath "${BASH_SOURCE[0]%/*}/../..")
         expected_sha=cccccccccccccccccccccccccccccccccccccccc; migration_hash=eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee
-        digest=$image_id; platform=linux/amd64; socket=/run/user/1001/docker.sock; endpoint=unix://$socket
+        digest=sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd; platform=linux/amd64; socket=/run/user/1001/docker.sock; endpoint=unix://$socket
         account_home=$fixture; docker_root=$fixture; disk_floor=1073741824; memory_floor=268435456; image_bytes=1024
         fake_php() { case "$*" in *'random_bytes(16)'*) printf '%s' "$token";; *'random_bytes(32)'*) printf '%s' "$password";; *) echo 'PHP fixture';; esac; }
         php=fake_php
+        nproc() { echo 4; }
         flock() { return 0; }
+        stat() { if [[ $2 == '%u:%a' ]]; then echo "$uid:700"; else command stat "$@"; fi; }
+        m6_pin_storage() { storage_base=$base; }
+        m6_group_path() { [[ $1 == "/user.slice/user-$uid.slice/"*"/$unit" ]] || return 1; echo "$fixture/cgroup"; }
         m6_available_memory() { echo 4294967296; }; m6_free() { echo 10737418240; }
         m6_guard() {
             local path="$repo/tests/support/WebsitePlatformM6BLinuxGuard.php"
@@ -105,16 +195,20 @@ case $scenario in
                     if [[ $* == *SizeRw* ]]; then echo 1024
                     elif [[ $* == *OOMKilled* ]]; then echo false
                     elif [[ $scenario == run-foreign && -f $fixture/test-done ]]; then cat "$fixture/foreign.json"
+                    elif [[ $# == 3 ]]; then cat "$fixture/inspection.json"
                     else cat "$fixture/container.json"; fi;;
                 logs) printf 'database diagnostic %s %s\n' "$token" "$password";;
                 rm) [[ $scenario != run-cleanup-failure ]];;
                 *) return 97;;
             esac
         }
-        m6_cgroup() { cg="$fixture/cgroup"; mkdir -p "$cg"; printf 'oom 0\noom_kill 0\n' > "$cg/memory.events"; printf 'max 0\n' > "$cg/pids.events"; }
+        m6_cgroup() { cg="$fixture/cgroup"; mkdir -p "$cg"; printf 'populated 0\n' > "$cg/cgroup.events"; printf 'oom 0\noom_kill 0\n' > "$cg/memory.events"; printf 'max 0\n' > "$cg/pids.events"; }
         m6_php_cgroup() { php_cg=$cg; : > "$php_cg/cgroup.procs"; [[ $scenario != run-supervisor-limit ]] || m6_fail php_limits_not_effective; }
         m6_system() {
             case "$*" in
+                *'-p LoadState -p ActiveState -p Description -p ControlGroup')
+                    if [[ ( $scenario == run-unload || $scenario == run-timeout || $scenario == run-headroom || $scenario == run-interrupt ) && -f $fixture/stopped ]]; then printf 'LoadState=not-found\nActiveState=inactive\nDescription=%s\nControlGroup=\n' "$unit"; return 1; fi
+                    printf 'LoadState=loaded\nActiveState=%s\nDescription=M6B validation %s\nControlGroup=/user.slice/user-%s.slice/app.slice/%s\n' "$([[ -f $fixture/stopped ]] && echo inactive || echo active)" "$token" "$uid" "$unit";;
                 *LoadState*) [[ -f $fixture/unit ]] && echo loaded || echo not-found;;
                 *Description*) [[ ! -f $fixture/unit ]] || echo "M6B validation $token";;
                 *MemorySwapMax*) echo 0;; *MemoryMax*) echo 1073741824;; *TasksMax*) echo 32;; *KillMode*) echo control-group;;
@@ -135,13 +229,21 @@ case $scenario in
             for i in {1..100}; do [[ ! -f $scratch/go && ! -f $fixture/stopped ]] || break; sleep 0.05; done
             printf 'synthetic result %s %s\n' "$password" "$token"
             touch "$fixture/test-done"
+            if [[ $scenario == run-interrupt ]]; then builtin kill -TERM "$fixture_main_pid"; return 143; fi
             case $scenario in run-test-failure) return 17;; run-timeout) return 124;; run-resource) return 137;; *) return 0;; esac
         }
         # No process groups exist in this fake supervisor; refuse group signals in the fixture.
         kill() { [[ $* != *--* ]] || return 0; builtin kill "$@"; }
+        fixture_main_pid=$$
+        if [[ $scenario == run-headroom ]]; then m6_budget() { return 1; }; fi
+        if [[ $scenario == run-mount-loss ]]; then volume_ready=1; m6_volume_ok() { [[ ! -f $fixture/test-done ]]; }; fi
+        m6_cli_config
         m6_run;;
     check-only)
-        m6_preflight() { printf 'prerequisites\n' >> "$log"; }
+        m6_preflight() {
+            stat() { if [[ $2 == '%u:%a' ]]; then echo "$uid:700"; else command stat "$@"; fi; }
+            m6_cli_config; printf 'prerequisites\n' >> "$log"
+        }
         m6_run() { printf 'UNEXPECTED credentials container SQL workers\n' >> "$log"; exit 97; }
         m6_main --check-only --expected-sha cccccccccccccccccccccccccccccccccccccccc --expected-host ubo-m6b-validate --expected-user codex-validation --php /usr/bin/php --docker-socket /run/user/1001/docker.sock --image-digest sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb --platform linux/amd64;;
     cleanup-*|exit-*|partial-start)

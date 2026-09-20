@@ -1,186 +1,248 @@
 # M6B isolated Linux MySQL validation
 
 **M6B — IMPLEMENTED LOCALLY / REAL-MYSQL VALIDATION PENDING**.
-Linux launcher/security changes: **REVIEW REQUIRED**. Real Linux/container/MySQL
-execution: **NOT EXECUTED**. M6 **IN PROGRESS**; M6C–M6G **NOT STARTED**;
-Production **UNAUTHORIZED / NOT DEPLOYED**.
+Linux launcher: **CORRECTIONS IMPLEMENTED / REVIEW REQUIRED**.
+Actual Linux/systemd/container/MySQL execution: **NOT EXECUTED**.
+M6 **IN PROGRESS**; M6C–M6G **NOT STARTED**; Production **UNAUTHORIZED / NOT DEPLOYED**.
 
-The earlier [clean review of application head 19dc550](https://github.com/fvd8383/ultimate-back-office/pull/126#issuecomment-5745751056)
-does not approve this new launcher. Work remains in [PR #126](https://github.com/fvd8383/ultimate-back-office/pull/126).
-The [implementation record](sprint-8.8-m6b-local-implementation.md) distinguishes
-standalone test evidence from the unexecuted real-MySQL gate.
+Work remains in [PR #126](https://github.com/fvd8383/ultimate-back-office/pull/126).
+The [implementation record](sprint-8.8-m6b-local-implementation.md) records executed
+local tests separately from the unexecuted real-MySQL gate. The earlier clean
+application review of `19dc550` did not approve the Linux launcher.
 
-## Host choice and setup authority
+## Completed-review corrections
 
-No host access, provisioning, resizing, purchase, installation, image download,
-container creation, database creation or migration execution was authorized or
-performed in this tooling task. The dedicated host has **NOT BEEN PROVISIONED**.
-An operator may separately authorize either of these future arrangements:
+[P1: unloaded transient units](https://github.com/fvd8383/ultimate-back-office/pull/126#discussion_r4055419657)
+is addressed by capturing unit ownership and cgroup identity before stopping, then
+reading an explicit LoadState/ActiveState/Description/ControlGroup snapshot.
+A successfully stopped unit may disappear. Explicit `LoadState=not-found` can prove
+absence even when systemctl exits nonzero; a failed command without that metadata
+cannot. Already absent, owned stopped/unloaded, still active, replaced/foreign,
+inaccessible-manager and failed/indeterminate-stop outcomes remain distinct.
 
-| Host mode | Exact allowed hostname | User | Prerequisites before execution |
-| --- | --- | --- | --- |
-| `dedicated` (default) | `ubo-m6b-validate` | Explicit non-root test user, proposed `codex-validation`; never `ubo-deploy` | At least two CPUs, 3 GiB available memory, 6 GiB free on both Docker/evidence filesystems. Proposed host: 2 vCPU, 4 GiB RAM, 20+ GiB disk. |
-| `shared-staging` (explicit each run) | `ubo-stage-app` | Exactly `codex-validation` | At least four online CPUs, 4 GiB available memory and 10 GiB free on both filesystems, plus all identical isolation/resource guards. A resize/setup requires separate operator authorization. |
+A recorded cgroup that still exists must be accessible and report
+`cgroup.events: populated 0`, which includes descendants. Missing ancestry under
+an accessible parent is distinguished from unreadable ancestry. Safe termination
+allows ownership-verified container cleanup to continue after unit unloading.
+Uncertain termination prevents additional PHP inspection and container deletion;
+it produces a non-success cleanup result. No remain-after-exit workaround, broad
+process kill or guessed resource deletion is used. See the
+[kernel's cgroup v2 interface](https://www.kernel.org/doc/html/latest/admin-guide/cgroup-v2.html).
 
-The default rejects `ubo-stage-app`. `--host-mode shared-staging` opens only that
-exact host/user pairing. The closed hostname allowlist rejects production and
-unknown hosts even when supplied as `--expected-host`; it is not a generic bypass.
-Hostnames establish the selected role, not cryptographic attestation: the operator
-must verify the machine's role and must never rename a production host to pass a guard.
-Shared-staging execution does not confer access to the deployed checkout or database.
+[P2: Docker client configuration](https://github.com/fvd8383/ultimate-back-office/pull/126#discussion_r4055419662)
+is addressed with a new private, run-owned CLI configuration containing only
+`config.json` with `{}`. Every daemon command specifies both `--config` and the
+verified `--host unix://...` endpoint, including PHP inspection and cleanup.
+Inherited DOCKER_CONFIG and proxy variables are removed from launcher Docker
+commands; the existing client configuration is never read, copied, printed, edited
+or deleted. Explicit DOCKER_CONTEXT overrides are rejected, and DOCKER_HOST must be
+absent or exactly match the approved socket. The empty config needs no default context.
 
-The operator is responsible for the host choice, capacity and separately approved
-setup; a Linux CLI PHP with PDO MySQL and POSIX support; Git, Bash/GNU utilities;
-rootless Docker and its already-running user systemd service; cgroup v2/systemd
-with `cpu`, `memory`, and `pids` delegated; and an approved, cached official MySQL
-8.4 image with recorded digest, Linux platform and architecture. The operator
-must verify the actual image provenance/digest independently, arrange a user
-systemd session, and prepare a standalone full-history clone at a private path.
-Neither launcher mode installs, pulls, enables services, uses sudo, edits daemon
-settings/quotas, fetches, switches branches, cleans files or changes Docker context.
+Before SQL, the actual container environment must exactly equal the inspected,
+approved image's defaults plus the generated MYSQL_ROOT_PASSWORD and
+MYSQL_ROOT_HOST=% additions. Unexpected entries, duplicates, missing defaults or
+changed values fail without printing values. This preserves legitimate pinned-image
+defaults while excluding injected proxy credentials. Docker documents automatic
+[client proxy injection](https://docs.docker.com/engine/cli/proxy/).
+The client's temporary config is separate from the rootless **daemon** configuration:
+`~/.config/docker/daemon.json`, its data-root and installed service remain untouched.
 
-`codex-validation` runs its own rootless engine and the future tests. Existing
-staging/deployment identities and services remain untouched. This account must
-have no staging/production/provider credentials, application environment files or
-customer data. Do not add it to a privileged Docker group. Do not copy an existing
-deployment tree. Use a fresh standalone clone, not a worktree sharing `.git` metadata.
+## Operator-reported setup and supported layouts
 
-Required layout, owned by the test user (the three parent directories mode `0700`):
+The operator reports that resizing, attaching the volume and configuring rootless
+Docker are complete on **ubo-stage-app**, for **codex-validation**. This is
+**user-reported infrastructure**, not independently verified runtime evidence.
+This desktop correction did not access a host or repeat any setup. A dedicated
+validation server is an alternative, not a requirement for the configured shared host.
+
+Select `--host-mode shared-staging --layout volume` for the reported arrangement:
 
 ```text
-/home/codex-validation/m6b-validation/                  0700
-  checkouts/                                         0700
-    ultimate-back-office/                            standalone clean clone
-  evidence/                                          0700
-/run/user/<test-uid>/                                 0700
-  docker.sock                                        socket owned by test user
+/mnt/ubo_stage_testdata/                            actual mounted filesystem
+  codex-validation/                               test-user-owned, 0700
+    docker/                                       rootless daemon data-root, 0700
+    checkouts/                                    independent full-history clone, 0700
+    evidence/                                     private retained evidence, 0700
+      mysql-image-pin.txt                         operator's image identity record
+    tmp/                                          disk-backed test scratch, 0700
+/etc/ubo-validation/volume.uuid                    root-owned UUID identity anchor
+/usr/local/bin/ubo-test-volume-check               root-owned verification helper
+/run/user/<verified-test-uid>/docker.sock           owned rootless Unix socket
 ```
 
-These paths must resolve outside every web document root. The launcher resolves
-symlinks, restricts checkouts to the private home hierarchy, rejects `/var/www/*`
-(including `/var/www/ubo-repo`) and `www`/`public_html` descendants, checks standalone
-Git metadata, exact HEAD and clean tracked/untracked/ignored inputs. The operator
-must not configure that private hierarchy as a web document root. Required baseline
-history is `5baae28c9af68cca7694a912d7f35c87c50c9dc5`. Migrations 001–024 must
-match its blobs; 025 must hash to
+Before creating any validation files on that volume, the launcher independently
+checks the exact resolved mountpoint, filesystem UUID against the marker, distinct
+boot/volume devices, mount ID, and the resolved private directories' ownership,
+permissions, filesystem and mount identity. The marker and helper must be regular,
+root-owned, non-writable by the test user, with protected parents; the helper must
+be executable. Helper success cannot override a path/UUID mismatch.
+DockerRootDir must equal exactly
+`/mnt/ubo_stage_testdata/codex-validation/docker`. Symlink escapes and nested mounts
+are rejected; no home-directory symlink is used to disguise the volume.
+
+The initial UUID and mount ID are retained and rechecked before resource creation,
+during execution and during cleanup. A directory descriptor pins the verified
+storage tree before writes; evidence and TMPDIR paths use that descriptor so
+unmount/overmount cannot redirect writes onto the boot filesystem. Loss/change of
+mount identity stops the run and yields an infrastructure failure. No replacement
+evidence is created beneath an absent mountpoint. A small, private emergency report
+may remain under the verified runtime directory when volume evidence is unavailable.
+
+Small ephemeral CLI configuration, credentials, socket, FIFO and gate files remain
+under verified private `/run/user/<uid>`; these are the explicit runtime exception.
+Disk-backed PHP temporary data and retained evidence use the selected storage tree.
+Only run-owned temporary files/directories are removed; unexpected leftovers make
+cleanup fail rather than permitting broad deletion.
+
+Dedicated operation remains supported as `--host-mode dedicated --layout home`
+on exactly `ubo-m6b-validate`, with a selected non-root test user, never ubo-deploy.
+Its base is the resolved account home plus `/m6b-validation`, with private `checkouts`,
+`evidence` and `tmp` directories. DockerRootDir must resolve under that home.
+The prior shared-host home layout also remains available explicitly, subject to the
+same conservative shared-host gate; it is not substituted for volume mode automatically.
+
+Default mode rejects ubo-stage-app. Shared mode requires its exact hostname and the
+exact codex-validation identity. The closed host-role allowlist rejects production
+and unknown hosts. Names are role selection, not cryptographic host attestation:
+the operator must never rename a production host to satisfy a guard.
+
+All layouts require an exact operator-supplied reviewed SHA, clean tracked and
+untracked/ignored inputs, a standalone checkout outside all web roots, and independent
+Git metadata (no worktree, alternates or redirected work tree). `/var/www/ubo-repo`,
+other `/var/www` paths and `www`/`public_html` descendants remain rejected.
+Migrations 001–024 must match baseline `5baae28c9af68cca7694a912d7f35c87c50c9dc5`;
+canonical LF migration 025 must hash to
 `dab585dc29aac11153f92703c65d3883aeea73a1b2283157cfa9d2f2ece85cb0`.
-Use canonical LF checkout bytes. No normal application environment is sourced.
-Inherited database/application/provider and Git/PHP configuration overrides are rejected.
 
-## Explicit invocation
+No application environment, staging/production database or provider credentials,
+or customer data belongs in this account or checkout. No normal application
+configuration is sourced and no arbitrary DSN fallback exists.
 
-Run only after the exact new head has been reviewed and execution separately authorized.
-The operator supplies the final reviewed SHA and independently approved digest;
-the launcher deliberately does not embed its own commit SHA. Values below are
-placeholders, not approval of an image or execution on a host.
+## Conservative resource decision
+
+No smaller shared-host profile or automatic fallback is added. The old suggestion
+of **2 vCPU / 4 GiB total RAM** is not equivalent to this admission gate.
+The shared profile retains the workload caps and four-CPU requirement; available-memory
+admission is tightened from 4 GiB to **4.25 GiB** to account explicitly for overhead.
+
+| Shared-conservative allocation | Amount |
+| --- | --- |
+| MySQL hard memory cap, including database tmpfs | 1536 MiB; tmpfs at most 1024 MiB within that cap |
+| PHP unit aggregate hard cap | 1024 MiB; three PHP processes at most 256 MiB each, with remaining unit allowance for helpers |
+| Rootless engine / external supervisor growth allowance | 256 MiB planning allowance, not a measured or independently capped daemon allocation |
+| Additional staging/Apache operating reserve | 1536 MiB |
+| Required measured MemAvailable before run | **4352 MiB = 4.25 GiB = 4563402752 bytes** |
+
+The daemon must already be running; its existing resident memory and existing staging
+usage are already excluded from MemAvailable. The allowance covers additional
+overhead, with abort monitoring if host pressure consumes the reserve.
+MySQL and the PHP unit each have a one-CPU quota; four available CPUs leave two
+CPU-equivalents for staging and overhead. This is a bounded consumption policy,
+not a promise about performance or a reservation against other host activity.
+
+| Profile | CPU admission | Available memory admission | Data admission / runtime floor | Boot reserve |
+| --- | --- | --- | --- | --- |
+| dedicated-conservative | 2 available CPUs | 3 GiB | 6 GiB / 1 GiB | 1 GiB |
+| shared-staging-conservative | 4 available CPUs | 4.25 GiB | 10 GiB / 4 GiB | 1 GiB |
+
+Runtime MemAvailable floors remain 256 MiB dedicated and 1536 MiB shared.
+Volume mode requires only the **1 GiB boot operating reserve**, not 10 GiB boot
+free space. Docker/evidence capacity on the same filesystem is counted once, not
+summed as two independent pools. The 6 GiB run-storage allowance remains a monitored
+budget, not a filesystem quota: full cached-image size, writable layer, tmpfs
+reserve, bounded logs/evidence and scratch allowance are accounted for. Disk scratch
+is monitored against 4 MiB; unexpected nonempty scratch during cleanup is reported.
+
+Check-only reports the selected profile/layout and actual versus required CPU,
+MemAvailable, boot, data and evidence space. Capacity is reported even if the
+operator intentionally left Docker stopped. The launcher then fails that prerequisite
+clearly and never starts or reconfigures the service. The actual configured host
+capacity, UID, UUID, digest and daemon behavior have **not** been verified here.
+A nominal 2-CPU/4-GiB host does not qualify. The required extra capacity is whatever
+is needed to reach four available CPUs and 4352 MiB MemAvailable after resident
+workloads; no resize or installation is requested/performed by this task.
+
+Rootless cgroup v2/systemd with delegated cpu/memory/pids is mandatory. Actual
+container and PHP cgroup limits are read before releasing the SQL gate. Other limits:
+MySQL zero additional swap and 128 PIDs; PHP unit zero swap and 32 tasks; 4 MiB per-file
+limit; no core dumps; Docker logs two 1 MiB files; test output and diagnostic tail
+at most 2 MiB each. Deadline remains 1200 seconds plus bounded cleanup. No limit or
+timeout is automatically enlarged, and no SQL/concurrency acceptance case is skipped.
+Monitoring normally repeats each second between bounded inspections; concurrent
+host activity can change capacity between checks.
+
+## Later check-only invocation
+
+Only after review and separate authorization, verify/supply the following **nonsecret**
+shell variables: `reviewed_sha`, `php_bin` (resolved executable path), `validation_uid`
+(actual codex-validation UID), `image_digest` (approved sha256 digest), and
+`image_platform` (`linux/amd64` or `linux/arm64`). The operator's
+`evidence/mysql-image-pin.txt` is a reference to verify against the cached official
+image, not proof that this desktop task inspected it. No example UID or digest is invented.
 
 ```bash
-cd /home/codex-validation/m6b-validation/checkouts/ultimate-back-office
+cd /mnt/ubo_stage_testdata/codex-validation/checkouts/ultimate-back-office
 bash tests/RunM6BMySql.sh --check-only \
-  --host-mode dedicated \
-  --expected-host ubo-m6b-validate --expected-user codex-validation \
-  --expected-sha '<reviewed-40-hex-SHA>' --php /usr/bin/php8.4 \
-  --docker-socket /run/user/1001/docker.sock \
-  --image-digest 'sha256:<approved-64-hex-digest>' --platform linux/amd64
+  --host-mode shared-staging --layout volume \
+  --expected-host ubo-stage-app --expected-user codex-validation \
+  --expected-sha "$reviewed_sha" --php "$php_bin" \
+  --docker-socket "/run/user/$validation_uid/docker.sock" \
+  --image-digest "$image_digest" --platform "$image_platform"
 ```
 
-Use the resolved PHP binary path and actual test UID. For the separately authorized
-shared host, replace **both** `--host-mode dedicated` and `--expected-host
-ubo-m6b-validate` with `--host-mode shared-staging --expected-host ubo-stage-app`;
-the expected user must remain `codex-validation`. `linux/arm64` is supported only
-with matching engine and approved cached image metadata.
+Check-only creates no container, database credentials, connection, migration or test
+worker. It may create and remove only its private empty runtime CLI configuration;
+cleanup is registered before creation. Missing prerequisites are not application
+assertion failures. Success does not establish SQL PASS or effective per-container
+resource enforcement.
 
-`--check-only` verifies prerequisites and cached inspection metadata, then exits
-before generating credentials, creating a container, SQL connections, migrations
-or workers. Its success is not a SQL PASS or proof of effective per-container
-limits. It does not create a run evidence directory. Missing prerequisites produce
-explicit prerequisite diagnostics and nonzero exit, not application assertion failures.
+## Separate later run invocation
 
-To execute later, repeat the exact reviewed arguments with `--run` in place of
-`--check-only`. There is no implicit run mode or `--skip-safety` switch.
+**Not authorized or executed in this desktop task.** After an independently approved
+check and explicit execution authorization, with the same verified values:
 
-## Locality, resources and lifecycle
+```bash
+cd /mnt/ubo_stage_testdata/codex-validation/checkouts/ultimate-back-office
+bash tests/RunM6BMySql.sh --run \
+  --host-mode shared-staging --layout volume \
+  --expected-host ubo-stage-app --expected-user codex-validation \
+  --expected-sha "$reviewed_sha" --php "$php_bin" \
+  --docker-socket "/run/user/$validation_uid/docker.sock" \
+  --image-digest "$image_digest" --platform "$image_platform"
+```
 
-Before a daemon call the launcher resolves context/`DOCKER_HOST` selection and
-rejects remote, conflicting, ambiguous and TLS/API overrides. Every daemon command
-pins the verified `/run/user/<uid>/docker.sock` endpoint. It checks socket and daemon
-process ownership, rootless engine metadata, cgroup v2/systemd, delegated controllers,
-and engine warnings. It does not change persistent context. Linux PHP rechecks
-rootless engine, approved official digest/image ID/platform, container identity,
-ownership, limits, mounts and loopback port before any database connection.
+For the dedicated alternative use its home checkout, `--host-mode dedicated
+--layout home --expected-host ubo-m6b-validate`, and its verified user/UID; retain
+all other explicit parameters. Neither mode installs, pulls, starts services,
+uses sudo, changes daemon/client/host configuration, remounts volumes, fetches,
+switches branches, repairs checkouts or uses a skip-safety flag.
 
-Creation uses the already-inspected immutable image ID and `--pull=never`. One
-randomly named, labelled container receives fresh test-only credentials. It has
-no host-data, application, credential, device or socket mounts; no privileged mode,
-host network/PID/IPC or added capabilities; and uses `no-new-privileges`.
+## Evidence and preserved test validity
 
-| Control | Requested and checked |
-| --- | --- |
-| MySQL | 1 CPU, 1536 MiB memory, no additional swap, 128 PIDs |
-| Database | `/var/lib/mysql` tmpfs, maximum 1 GiB; **included within the 1536 MiB container memory limit** |
-| Docker logs | Local driver, two 1 MiB files, compression disabled |
-| PHP | 256 MiB per process, coordinator plus at most two independent workers; child settings propagated on Windows and Linux |
-| PHP process tree | Transient user systemd unit; aggregate 1 CPU, 1 GiB memory, zero swap, 32 tasks, file-size limit 4 MiB, no core dumps |
-| Wall clock | 1200 seconds from run setup, remaining time passed to systemd and GNU timeout; stop timeout 10 seconds and bounded external cleanup commands |
-| Output | At most 2 MiB test output, at most 2 MiB redacted container tail, private bounded credential file; Docker/PHP inspection output capped |
-| Storage | Conservative 6 GiB monitored budget: image size + writable layer + 1 GiB tmpfs reserve + Docker log caps + evidence/scratch allowance; **not a filesystem quota** |
+Private evidence contains the exact SHA/migration hash, selected layout/profile,
+mount identity, runtime versions, approved image identity, requested/observed limits,
+bounded redacted diagnostics, separate test result and cleanup result, and checksums.
+Cleanup failure prevents overall PASS. Unknown ownership is reported for operator
+review; cached images, unrelated resources and other runs are never deleted.
+Passwords, tokens, token-derived database-name prefixes and environment values are
+not printed or retained in diagnostics.
 
-The launcher reads the actual container and PHP cgroup CPU, memory, swap and PID
-files before releasing a gate that permits PHP/SQL to start. Ignored flags,
-unavailable controls or unknown cgroup layout fail closed. Limits are not increased
-automatically. Effective resource enforcement still needs validation on the selected
-Linux host; fake command tests cannot establish kernel behavior.
+The [Windows launcher](../tests/RunM6BMySql.ps1) and all application/migration code are
+unchanged. The native harness retains canonical fresh/upgrade migrations, MySQL 8.4
+verification, native prepares, schema/FK/CHECK/actor-deletion cases, independent
+authorization/queue/replay/rollback processes and synthetic artifact labels.
+The [launcher suite](../tests/WebsitePlatformM6BLinuxLauncherTest.php) uses only
+[isolated command doubles](../tests/support/WebsitePlatformM6BLinuxLauncherFixture.sh).
+Actual totals are in the implementation record. Fake commands and Git Bash syntax
+are **not actual Linux/systemd/container isolation or MySQL PASS**.
 
-While active, it checks writable-layer size, evidence size, free disk and available
-memory. Dedicated reserve floors are 1 GiB free disk and 256 MiB available RAM;
-shared-staging floors are 4 GiB and 1536 MiB respectively. Falling below a floor
-stops this run, without altering staging. Checks occur between bounded Docker
-inspections (normally one-second intervals; an inspection may take up to 15 seconds).
-Concurrent host activity can change headroom between checks. This is monitoring,
-not a reservation or quota, and shared execution still needs operator capacity planning.
+Historical pre-resize staging information remains **user-supplied evidence**:
+`ubo-m6b-isolation-preflight-20260919T232220Z/M6B-DROPLET-ISOLATION-PREFLIGHT.md`,
+supplied SHA-256 `1d82275194a5c67d784a64314692744fbfdc15192d88ca0ec929366fa0423059`.
+It reported one CPU, about 962 MiB RAM, no swap, about 3.15 GiB free disk and no runtime.
+It was not downloaded or independently hash-verified here. APP_ENV remains
+independently unconfirmed. The operator's later completed-setup report supersedes
+that description as a report of intent/configuration, not as measured validation.
 
-Timeout, signals, output/storage/headroom exhaustion, OOM/PID exhaustion and test
-failures return nonzero. Systemd kills only this run's control group; GNU timeout
-bounds its client tree. A trap installed before resource creation first stops the
-owned unit, then verifies exact container ID/name/labels/image before removal.
-Partial startup resolves only the generated name and verifies ownership. Unknown
-or foreign identity produces an orphan/cleanup failure for operator inspection;
-there is no guessed deletion, prune, killall or cached-image removal. Cleanup
-failure overrides overall PASS while preserving the separate test exit status.
-
-Private evidence is outside the checkout under `evidence/run-*`: SHA/migration hash,
-host mode/user, runtime versions, approved image digest/ID/platform, requested and
-observed controls, bounded redacted test/container output, exit/failure classification,
-cleanup result and `SHA256SUMS`. Credentials are removed from the private runtime
-directory; passwords, tokens, database-name token prefixes and environment dumps
-are excluded from evidence. Retained artifacts are synthetic test evidence only.
-
-The [Windows launcher](../tests/RunM6BMySql.ps1) is unchanged. The native PHP harness
-retains canonical fresh 001–025 and 001–024-to-025 upgrade cases, actual MySQL 8.4
-and isolation reporting, native prepares, real metadata/FK/CHECK/actor-deletion
-checks, independent barriers, queue retirement, policy/replay/races/rollback and
-synthetic artifact labels. Application worker behavior and migrations are unchanged.
-
-## Historical staging preflight and local verification
-
-User-supplied report only:
-`ubo-m6b-isolation-preflight-20260919T232220Z/M6B-DROPLET-ISOLATION-PREFLIGHT.md`.
-User-supplied SHA-256:
-`1d82275194a5c67d784a64314692744fbfdc15192d88ca0ec929366fa0423059`.
-It reports one vCPU, approximately 962 MiB RAM, no swap, approximately 3.15 GiB
-available disk and no container runtime. It was **not downloaded or independently
-hash-verified** here. `APP_ENV` remains **independently unconfirmed**. That reported
-configuration cannot pass either mode. This tooling task makes no claim that the
-host has since changed and authorizes no resize.
-
-Local validation uses [policy/launcher tests](../tests/WebsitePlatformM6BLinuxLauncherTest.php)
-and [process-scoped fake commands](../tests/support/WebsitePlatformM6BLinuxLauncherFixture.sh),
-existing Windows Git Bash syntax checks, standalone PHP suites, PHP lint, unchanged
-PowerShell syntax, documentation links/fences/status/inventory and Git diff checks.
-Actual totals are recorded in the implementation record after the checks complete.
-Bash syntax and fake lifecycle success are **not a Linux run, container isolation
-proof, real MySQL PASS, staging validation or M6 closeout**.
-
-Relevant primary references: [Docker rootless prerequisites](https://docs.docker.com/engine/security/rootless/),
-[rootless resource limits and delegation](https://docs.docker.com/engine/security/rootless/tips/),
-[systemd-run](https://www.freedesktop.org/software/systemd/man/latest/systemd-run.html).
+No staging/production access, host setup, resize, installation, image download,
+container/database creation, migration, deployment, M6C or Narrator work occurred.
