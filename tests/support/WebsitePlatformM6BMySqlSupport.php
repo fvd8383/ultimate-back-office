@@ -3,14 +3,27 @@
 declare(strict_types=1);
 require_once __DIR__ . '/WebsitePlatformM6BDependencies.php';
 require_once __DIR__ . '/WebsitePlatformM6BSql.php';
+require_once __DIR__ . '/WebsitePlatformM6BLinuxGuard.php';
 require_once dirname(__DIR__,2) . '/private/classes/SiteCompositionEditor.php';
 
 function m6mysqlProcess(array $command): string
 {
     $process=proc_open($command,[0=>['pipe','r'],1=>['pipe','w'],2=>['pipe','w']],$pipes,null,null,['bypass_shell'=>true]);
     if(!is_resource($process))throw new RuntimeException('Local process unavailable.');
-    fclose($pipes[0]);$out=stream_get_contents($pipes[1]);$error=stream_get_contents($pipes[2]);fclose($pipes[1]);fclose($pipes[2]);
-    if(proc_close($process)!==0)throw new RuntimeException('Local Docker identity inspection failed.');
+    fclose($pipes[0]);stream_set_blocking($pipes[1],false);stream_set_blocking($pipes[2],false);
+    $out='';$bytes=0;$end=microtime(true)+15;
+    do{
+        $out.=stream_get_contents($pipes[1]);$bytes+=strlen(stream_get_contents($pipes[2]));
+        $status=proc_get_status($process);
+        if(strlen($out)+$bytes>1048576||microtime(true)>$end){
+            proc_terminate($process,9);foreach([1,2]as$i)fclose($pipes[$i]);proc_close($process);
+            throw new RuntimeException('Local Docker inspection exceeded its time/output bound.');
+        }
+        if(!$status['running']&&feof($pipes[1])&&feof($pipes[2]))break;
+        usleep(10000);
+    }while(true);
+    fclose($pipes[1]);fclose($pipes[2]);$closed=proc_close($process);
+    if(($status['exitcode']>=0?$status['exitcode']:$closed)!==0)throw new RuntimeException('Local Docker identity inspection failed.');
     return $out;
 }
 /** Verify local engine AND exact newly created container BEFORE any SQL/connection. */
@@ -19,7 +32,23 @@ function m6mysqlIdentity(): array
     $token=getenv('M6B_MYSQL_RUN_TOKEN');$id=getenv('M6B_MYSQL_CONTAINER_ID');$port=getenv('M6B_MYSQL_PORT');
     if(!is_string($token)||!preg_match('/^[a-f0-9]{32}$/D',$token)||!is_string($id)||!preg_match('/^[a-f0-9]{64}$/D',$id)
         ||!is_string($port)||!ctype_digit($port)||(int)$port<1||(int)$port>65535||!getenv('M6B_MYSQL_PASSWORD')){
-        throw new RuntimeException('NOT EXECUTED: use tests/RunM6BMySql.ps1 with local Docker, mysql:8.4 and PDO MySQL.');
+        throw new RuntimeException('NOT EXECUTED: use the explicit tests/RunM6BMySql.ps1 or .sh launcher with local Docker and PDO MySQL.');
+    }
+    if(getenv('M6B_LINUX_RUN')==='1'){
+        $socket=(string)getenv('M6B_DOCKER_SOCKET');$platform=(string)getenv('M6B_IMAGE_PLATFORM');$digest=(string)getenv('M6B_IMAGE_DIGEST');
+        m6linuxRequire(PHP_OS_FAMILY==='Linux'&&function_exists('posix_geteuid')&&posix_geteuid()!==0,'linux_user');
+        m6linuxRequire($socket==='/run/user/'.posix_geteuid().'/docker.sock'&&realpath($socket)===$socket
+            &&filetype($socket)==='socket'&&fileowner($socket)===posix_geteuid(),'socket_owner');
+        m6linuxRequire(!getenv('DOCKER_HOST')&&!getenv('DOCKER_CONTEXT')&&!getenv('DOCKER_TLS_VERIFY')&&!getenv('DOCKER_CERT_PATH'),'docker_override');
+        m6linuxRequire(ini_get('memory_limit')==='256M','php_memory_limit');
+        $command=['docker','--host','unix://'.$socket];
+        $inspect=static fn(array $args):array=>json_decode(m6mysqlProcess(array_merge($command,$args)),true,32,JSON_THROW_ON_ERROR);
+        m6linuxEngine($inspect(['info','--format','{{json .}}']),$platform);
+        $image=$inspect(['image','inspect','docker.io/library/mysql@'.$digest])[0];
+        m6linuxRequire(m6linuxImage($image,$digest,$platform)===getenv('M6B_MYSQL_IMAGE_ID'),'image_id_changed');
+        $container=$inspect(['inspect',$id])[0];
+        m6linuxRequire(m6linuxContainer($container,$token,(string)getenv('M6B_MYSQL_IMAGE_ID'),$id)===$port,'port_changed');
+        return ['token'=>$token,'id'=>$id,'port'=>(int)$port,'hostname'=>$container['Config']['Hostname']];
     }
     $override=getenv('DOCKER_HOST');
     if($override!==false&&$override!==''&&!preg_match('~^(npipe://|unix://)~',$override))throw new RuntimeException('Remote DOCKER_HOST override refused.');

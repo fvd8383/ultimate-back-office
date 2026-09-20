@@ -15,7 +15,12 @@ function mysqlReject(PDO $db,callable $mutation,array $codes=[1452,3819,1048,106
 }
 function mysqlStart(string $database,array $payload):array{
     global $children;
-    $args=[PHP_BINARY];
+    $active=0;
+    foreach($children as$child)if(is_resource($child['process'])){
+        if(proc_get_status($child['process'])['running'])$active++;
+    }
+    if($active>=2)throw new RuntimeException('At most two independent PHP workers are permitted.');
+    $args=[PHP_BINARY,'-d','memory_limit=256M','-d','max_execution_time=0'];
     // Child inherits command-line extension settings without modifying php.ini.
     if(!in_array('mysql',PDO::getAvailableDrivers(),true))throw new RuntimeException('PDO MySQL unavailable');
     if(PHP_OS_FAMILY==='Windows'){
@@ -31,11 +36,24 @@ function mysqlStart(string $database,array $payload):array{
     $child['connection_id']=(int)$m[1];return $child;
 }
 function mysqlSend(array $child,string $message):void{fwrite($child['pipes'][0],$message."\n");fflush($child['pipes'][0]);}
+function mysqlClose(array $child):void{
+    if(!is_resource($child['process']))return;
+    if(proc_get_status($child['process'])['running']){
+        proc_terminate($child['process']);$end=microtime(true)+2;
+        do{if(!proc_get_status($child['process'])['running'])break;usleep(10000);}while(microtime(true)<$end);
+        if(proc_get_status($child['process'])['running'])proc_terminate($child['process'],9);
+    }
+    foreach($child['pipes']as$pipe)if(is_resource($pipe))fclose($pipe);
+    proc_close($child['process']);
+}
 function mysqlLine(array $child):string{
-    $deadline=microtime(true)+25;$buffer='';
+    $deadline=microtime(true)+25;$buffer='';$stderrBytes=0;
     do{
-        $line=fgets($child['pipes'][1]);
-        if($line!==false){$buffer.=$line;if(str_ends_with($buffer,"\n"))return trim($buffer);}
+        $line=fgets($child['pipes'][1],4097);
+        if($line!==false)$buffer.=$line;
+        $stderrBytes+=strlen(stream_get_contents($child['pipes'][2],65537));
+        if(strlen($buffer)>65536||$stderrBytes>65536)throw new RuntimeException('Worker output bound exceeded.');
+        if(str_ends_with($buffer,"\n"))return trim($buffer);
         if(!proc_get_status($child['process'])['running']&&feof($child['pipes'][1]))throw new RuntimeException('Worker exited before its barrier/result.');
         usleep(10000);
     }while(microtime(true)<$deadline);
@@ -44,7 +62,12 @@ function mysqlLine(array $child):string{
 function mysqlResult(array $child):mixed{
     $line=mysqlLine($child);
     if(!str_starts_with($line,'RESULT '))throw new RuntimeException('Independent worker failed: '.substr($line,0,80));
-    return json_decode(substr($line,7),true,64,JSON_THROW_ON_ERROR);
+    $result=json_decode(substr($line,7),true,64,JSON_THROW_ON_ERROR);
+    // Reap before another pair can start; the coordinator plus two workers is the hard cap.
+    $end=microtime(true)+2;
+    while(proc_get_status($child['process'])['running']&&microtime(true)<$end)usleep(10000);
+    if(proc_get_status($child['process'])['running'])throw new RuntimeException('Worker failed to exit after its result.');
+    mysqlClose($child);return $result;
 }
 function mysqlWaitLock(PDO $monitor,int $requesting,int $blocking):void{
     $query=$monitor->prepare('SELECT COUNT(*) FROM performance_schema.data_lock_waits w
@@ -360,13 +383,7 @@ try{
 }catch(Throwable $e){
     fwrite(STDERR,($e instanceof RuntimeException?$e->getMessage():get_class($e))."\n");$failed=true;
 }finally{
-    foreach($children as$child){
-        if(is_resource($child['process'])){
-            if(proc_get_status($child['process'])['running'])proc_terminate($child['process']);
-            foreach($child['pipes']as$pipe)if(is_resource($pipe))fclose($pipe);
-            proc_close($child['process']);
-        }
-    }
+    foreach($children as$child)mysqlClose($child);
     if(isset($db)&&$db->inTransaction())$db->rollBack();
     // DDL is not transactional. Only databases successfully created by THIS run are dropped.
     if($admin instanceof PDO)foreach($owned as$name){

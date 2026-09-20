@@ -1,7 +1,9 @@
 # First Customer Checklist
 
 Current M6: **IN PROGRESS**. **M6A — ARCHITECTURE REVIEWED / MERGED** (PR #125).
-**M6B — IMPLEMENTED LOCALLY / REVIEW REQUIRED**. **M6C–M6G — NOT STARTED**.
+**M6B — IMPLEMENTED LOCALLY / REAL-MYSQL VALIDATION PENDING**. **M6C–M6G — NOT STARTED**.
+Linux tooling: **REVIEW REQUIRED**; [host modes and prerequisites](sprint-8.8-m6b-linux-validation.md).
+Dedicated host **NOT PROVISIONED**; shared-staging setup/resize **NOT AUTHORIZED**.
 See the [M6B local implementation record](sprint-8.8-m6b-local-implementation.md)
 for scope and evidence, and the [reviewed M6 plan](sprint-8.8-m6-implementation-plan.md).
 Migration 025 exists locally/in the PR and is **NOT APPLIED TO STAGING OR PRODUCTION**.

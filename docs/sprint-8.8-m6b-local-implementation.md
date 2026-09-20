@@ -1,6 +1,9 @@
 # Sprint 8.8 M6B — Local persistence and jobs implementation
 
-Date: 2026-09-19. **M6B — IMPLEMENTED LOCALLY / REVIEW REQUIRED**.
+Date: 2026-09-19. **M6B — IMPLEMENTED LOCALLY / REAL-MYSQL VALIDATION PENDING**.
+Linux tooling: **REVIEW REQUIRED**. Dedicated host **NOT PROVISIONED**;
+shared-staging setup/resize **NOT AUTHORIZED**. Real MySQL **NOT EXECUTED**.
+See [Linux validation host modes and prerequisites](sprint-8.8-m6b-linux-validation.md).
 This is local implementation evidence, not staging validation or formal M6 closeout.
 
 ## Authority and status
@@ -22,7 +25,7 @@ use the current Windows development account. No remote development environment w
 | Milestone | Current status |
 | --- | --- |
 | M6A | ARCHITECTURE REVIEWED / MERGED |
-| M6B | IMPLEMENTED LOCALLY / REVIEW REQUIRED |
+| M6B | IMPLEMENTED LOCALLY / REAL-MYSQL VALIDATION PENDING |
 | M6 | IN PROGRESS |
 | M6C–M6G | NOT STARTED |
 | M5 | COMPLETE FOR SPRINT PROGRESSION |
@@ -38,7 +41,7 @@ Narrator work occurred. No merge or auto-merge is authorized.
 
 ## Complete changed-file inventory
 
-The implementation has 35 changed files: 21 additions and 14 modifications.
+The implementation has 40 changed files: 26 additions and 14 modifications.
 
 | Change | Path | Purpose |
 | --- | --- | --- |
@@ -57,6 +60,11 @@ The implementation has 35 changed files: 21 additions and 14 modifications.
 | Add | `tests/WebsitePlatformM6BScopeTest.php` | Exact application allowlist and immutable historical migrations. |
 | Add | `tests/WebsitePlatformM6BMySql.php` | Opt-in fresh/upgrade, real metadata/rejection and independent-process tests. |
 | Add | `tests/RunM6BMySql.ps1` | Disposable local Docker launcher and ownership-limited cleanup. |
+| Add | `tests/RunM6BMySql.sh` | Explicit Linux host modes, rootless limits, supervision, private evidence and cleanup. |
+| Add | `tests/WebsitePlatformM6BLinuxLauncherTest.php` | Pure policy guards and process-scoped fake launcher scenarios. |
+| Add | `tests/support/WebsitePlatformM6BLinuxGuard.php` | Shared Linux engine, digest, image and container inspection policy. |
+| Add | `tests/support/WebsitePlatformM6BLinuxLauncherFixture.sh` | Isolated fake command adapters; never contacts Docker/systemd/SQL. |
+| Add | `docs/sprint-8.8-m6b-linux-validation.md` | Future operator/test-user setup, invocations and honest validation boundaries. |
 | Add | `tests/support/WebsitePlatformM6BDatabase.php` | Behavioral fake PDO fixture using existing M2/M3/M5 inputs. |
 | Add | `tests/support/WebsitePlatformM6BDependencies.php` | Synthetic, explicitly bound evidence and private reflection test wiring. |
 | Add | `tests/support/WebsitePlatformM6BMySqlSupport.php` | Verified local connection, canonical migrations and synthetic native-PDO fixtures. |
@@ -609,3 +617,76 @@ PROGRESSION**, M5C **ACCEPTED / NARRATOR FOLLOW-UP DEFERRED**, and Production
 migration, M6C generation/publishing, application route/worker/scheduler, resumed
 Narrator work, new PR, merge or auto-merge occurred. The commit SHA, policy-thread reply
 and single new-head review request/state are reported with the task result.
+
+## Linux launcher and explicit shared-staging mode — current tooling update
+
+Prior head: `19dc550081ad47f1c53e91cd9efa5a6d8cddf381`. Its completed clean
+[application review](https://github.com/fvd8383/ultimate-back-office/pull/126#issuecomment-5745751056)
+is existing evidence only; the new Linux launcher/security changes require a new-head
+review in the same PR. The final commit SHA and single review request are recorded
+in the PR/task result rather than embedded as a self-referential launcher constant.
+
+The [Linux operating contract](sprint-8.8-m6b-linux-validation.md) documents both
+supported host modes. Dedicated operation defaults to `ubo-m6b-validate`.
+`ubo-stage-app` remains rejected by default and is accepted only by the explicit
+`shared-staging` mode with the exact `codex-validation` identity and higher verified
+headroom. Unknown/production hosts are rejected in both modes. No host was accessed,
+resized or provisioned, and the shared-host setup/resize remains unauthorized.
+The dedicated host remains **NOT PROVISIONED**.
+
+The new launcher checks the operator-supplied exact SHA, immutable canonical SQL,
+private standalone checkout, rootless Unix socket and daemon ownership, context
+selection, cached official digest/image/platform and enforceable cgroup limits.
+Before SQL, actual container and PHP cgroup values must match the requested limits.
+The 20-minute supervisor, three-PHP-process cap, bounded logs/storage monitoring,
+secret-safe private evidence and ownership-verified cleanup fail closed. Cleanup
+failure overrides overall PASS. Check-only exits before credentials/resources/SQL.
+
+Changes relative to the prior head are exactly these **12 files**:
+
+| Change in this update | Path |
+| --- | --- |
+| Added | `tests/RunM6BMySql.sh` |
+| Added | `tests/support/WebsitePlatformM6BLinuxGuard.php` |
+| Added | `tests/support/WebsitePlatformM6BLinuxLauncherFixture.sh` |
+| Added | `tests/WebsitePlatformM6BLinuxLauncherTest.php` |
+| Added | `docs/sprint-8.8-m6b-linux-validation.md` |
+| Modified | `tests/WebsitePlatformM6BMySql.php` |
+| Modified | `tests/support/WebsitePlatformM6BMySqlSupport.php` |
+| Modified | `docs/sprint-8.8-m6b-local-implementation.md` |
+| Modified | `docs/codex-handoff.md` |
+| Modified | `docs/first-customer-checklist.md` |
+| Modified | `docs/sprint-8.8.md` |
+| Modified | `docs/sprint-8.8-m6-implementation-plan.md` |
+
+The whole PR inventory is now **40 files: 26 additions and 14 modifications**.
+Application code and migrations 001–025 are unchanged from `19dc550`; the original
+Windows launcher is unchanged. Shared support changes concern Linux identity/image
+checks, bounded inspection/worker processes, propagated PHP memory limits and reaping.
+All canonical SQL scenarios and synthetic evidence distinctions remain intact.
+
+Actual Windows-local verification: **57/57 standalone PHP suites**, comprising
+the 56 existing suites plus the new launcher suite. Existing six M6B suites retain
+**743 assertions**; launcher policy/lifecycle adds **249 assertions across 52
+process-scoped Bash scenarios** (**992 M6B assertions total**). These cover host/user/root,
+default staging rejection and explicit shared mode, production rejection, SHA/dirty/
+history/hash/path, endpoint/image/delegation/limits/headroom, check-only, partial
+startup, timeout/interruption/test failure, foreign ownership, failed cleanup,
+exit-code propagation, output bounds and secret redaction.
+
+**213/213 PHP lint**, both Bash files' syntax, unchanged PowerShell launcher syntax,
+and six current Markdown documents' **94 relative links**, one referenced anchor,
+balanced fences, statuses, checksums and exact 40-file inventory passed. Working,
+staged and committed diff checks accompany the final commit verification. No software
+or images were installed; no actual Docker/systemd/Linux isolation or MySQL layer
+was executed. The fake lifecycle uses a gated file to model FIFO delivery on Windows;
+it cannot prove real kernel/resource/supervisor behavior.
+
+The historical staging preflight is recorded solely as user-supplied evidence in the
+Linux contract, including its supplied SHA-256 and **APP_ENV independently unconfirmed**;
+it was not downloaded or independently hash-verified. The current status is
+**M6B — IMPLEMENTED LOCALLY / REAL-MYSQL VALIDATION PENDING**, Linux tooling
+**REVIEW REQUIRED**, M6 **IN PROGRESS**, M6C–M6G **NOT STARTED**, Production
+**UNAUTHORIZED / NOT DEPLOYED**. Real MySQL remains **NOT EXECUTED**. No staging or
+production access, container/database creation, migration execution, M6C/Narrator
+work, new PR, merge or auto-merge occurred.
