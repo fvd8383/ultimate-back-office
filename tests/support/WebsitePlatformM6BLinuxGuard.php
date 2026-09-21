@@ -7,6 +7,26 @@ function m6linuxRequire(bool $condition, string $code): void
 {
     if (!$condition) throw new RuntimeException('M6B guard: ' . $code);
 }
+/** Keep JSON objects distinct from lists in the two inspected mount-list fields. */
+function m6linuxDecodeInspection(string $input, bool $engine = false): array
+{
+    $typed = json_decode($input, false, 32, JSON_THROW_ON_ERROR);
+    $data = json_decode($input, true, 32, JSON_THROW_ON_ERROR);
+    m6linuxRequire($engine ? $typed instanceof stdClass : is_array($typed), 'inspection_shape');
+    // Engine metadata is an object; container/image inspection is a list of objects.
+    // Associative decoding alone collapses {} and numeric-key objects into PHP lists.
+    if (is_array($typed)) foreach ($typed as $index => $row) {
+        m6linuxRequire($row instanceof stdClass, 'inspection_shape');
+        if (property_exists($row, 'Mounts') && $row->Mounts instanceof stdClass) {
+            $data[$index]['Mounts'] = $row->Mounts;
+        }
+        if (($row->HostConfig ?? null) instanceof stdClass && property_exists($row->HostConfig, 'Mounts')
+            && $row->HostConfig->Mounts instanceof stdClass) {
+            $data[$index]['HostConfig']['Mounts'] = $row->HostConfig->Mounts;
+        }
+    }
+    return $data;
+}
 function m6linuxPlatform(string $architecture): string
 {
     return match ($architecture) { 'amd64', 'x86_64' => 'linux/amd64', 'arm64', 'aarch64' => 'linux/arm64', default => '' };
@@ -69,6 +89,13 @@ function m6linuxLaunchContainer(array $rows, string $digest, string $platform): 
     m6linuxEnvironment($rows[0], $rows[1], (string) getenv('MYSQL_ROOT_PASSWORD'));
     return m6linuxContainer($rows[0], (string) getenv('M6B_MYSQL_RUN_TOKEN'), (string) getenv('M6B_MYSQL_IMAGE_ID'), (string) getenv('M6B_MYSQL_CONTAINER_ID'));
 }
+/** PHP harness reinspection after engine/image checks and before any connection. */
+function m6linuxMySqlIdentity(array $container, array $image, string $token, string $imageId, string $id, string $password, string $port): array
+{
+    m6linuxEnvironment($container, $image, $password);
+    m6linuxRequire(m6linuxContainer($container, $token, $imageId, $id) === $port, 'port_changed');
+    return ['token' => $token, 'id' => $id, 'port' => (int) $port, 'hostname' => $container['Config']['Hostname']];
+}
 function m6linuxOwner(array $container, string $token, string $imageId, ?string $expectedId): string
 {
     $id = $container['Id'] ?? '';
@@ -93,9 +120,13 @@ function m6linuxContainer(array $container, string $token, string $imageId, stri
     m6linuxRequire(($h['NanoCpus'] ?? 0) === 1000000000 && ($h['Memory'] ?? 0) === 1610612736
         && ($h['MemorySwap'] ?? -1) === 1610612736 && ($h['PidsLimit'] ?? 0) === 128, 'container_resource_request');
     m6linuxRequire(($h['Tmpfs'] ?? []) === ['/var/lib/mysql' => 'rw,nosuid,size=1073741824'], 'database_tmpfs');
-    $mounts = $container['Mounts'] ?? [];
-    m6linuxRequire(count($mounts) === 1 && ($mounts[0]['Type'] ?? '') === 'tmpfs'
-        && ($mounts[0]['Destination'] ?? '') === '/var/lib/mysql', 'container_mounts');
+    m6linuxRequire(!array_key_exists('Mounts', $h) || $h['Mounts'] === [], 'container_mount_requests');
+    m6linuxRequire(array_key_exists('Mounts', $container) && is_array($container['Mounts'])
+        && array_is_list($container['Mounts']), 'container_mounts');
+    $mounts = $container['Mounts'];
+    // --tmpfs may be reported only in HostConfig.Tmpfs, even while effectively mounted.
+    m6linuxRequire($mounts === [] || (count($mounts) === 1 && is_array($mounts[0])
+        && ($mounts[0]['Type'] ?? '') === 'tmpfs' && ($mounts[0]['Destination'] ?? '') === '/var/lib/mysql'), 'container_mounts');
     m6linuxRequire(($h['LogConfig']['Type'] ?? '') === 'local'
         && ($h['LogConfig']['Config']['max-size'] ?? '') === '1m'
         && ($h['LogConfig']['Config']['max-file'] ?? '') === '2'
@@ -113,9 +144,8 @@ if (isset($_SERVER['SCRIPT_FILENAME']) && realpath($_SERVER['SCRIPT_FILENAME']) 
     try {
         $input = stream_get_contents(STDIN, 1048577);
         m6linuxRequire(strlen($input) <= 1048576, 'inspection_size');
-        $data = json_decode($input, true, 32, JSON_THROW_ON_ERROR);
-        m6linuxRequire(is_array($data), 'inspection_shape');
         $mode = $argv[1] ?? '';
+        $data = m6linuxDecodeInspection($input, $mode === 'engine');
         $row = $mode === 'engine' ? $data : ($data[0] ?? []);
         $result = match ($mode) {
             'engine' => m6linuxEngine($row, $argv[2] ?? ''),

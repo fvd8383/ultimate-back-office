@@ -206,6 +206,7 @@ DOCKER
         m6_cgroup;;
     run-*)
         # Exercise the real run/trap flow with process-local doubles; no Docker, systemd or SQL.
+        eval "$(declare -f m6_cgroup | sed '1s/m6_cgroup/m6_fixture_real_cgroup/')"
         rmdir "$scratch"
         m6_init
         signal_name=TERM; signal_point=''
@@ -264,7 +265,16 @@ DOCKER
                 *) return 97;;
             esac
         }
-        m6_cgroup() { cg="$fixture/cgroup"; mkdir -p "$cg"; printf 'populated 0\n' > "$cg/cgroup.events"; printf 'oom 0\noom_kill 0\n' > "$cg/memory.events"; printf 'max 0\n' > "$cg/pids.events"; }
+        m6_cgroup() {
+            if [[ $scenario == run-mounts-empty ]]; then
+                # Invoke the production gate with an ineffective CPU limit from metadata doubles.
+                m6_system() { echo "/user.slice/user-$uid.slice/docker.scope"; }
+                realpath() { echo "$1"; }
+                cat() { if [[ $1 == /sys/fs/cgroup/*/cpu.max ]]; then echo 'max 100000'; else command cat "$@"; fi; }
+                m6_fixture_real_cgroup
+            fi
+            cg="$fixture/cgroup"; mkdir -p "$cg"; printf 'populated 0\n' > "$cg/cgroup.events"; printf 'oom 0\noom_kill 0\n' > "$cg/memory.events"; printf 'max 0\n' > "$cg/pids.events"
+        }
         m6_php_cgroup() { php_cg=$cg; : > "$php_cg/cgroup.procs"; [[ $scenario != run-supervisor-limit ]] || m6_fail php_limits_not_effective; }
         m6_system() {
             case "$*" in

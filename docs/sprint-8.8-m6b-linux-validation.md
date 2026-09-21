@@ -1,14 +1,90 @@
 # M6B isolated Linux MySQL validation
 
 **M6B — IMPLEMENTED LOCALLY / REAL-MYSQL VALIDATION PENDING**.
-Linux launcher: **CORRECTIONS IMPLEMENTED / REVIEW REQUIRED**.
-Actual Linux/systemd/container/MySQL execution: **NOT EXECUTED**.
+**M6B TMPFS GUARD CORRECTION — IMPLEMENTED / REVIEW REQUIRED**.
+**REAL-MYSQL VALIDATION — PENDING**.
+Actual Linux container/mount diagnostics: **OPERATOR-REPORTED EXECUTED**.
+MySQL/schema/concurrency and full effective-resource validation: **NOT EXECUTED**.
+The corrected full launcher has not yet been rerun on the droplet.
 M6 **IN PROGRESS**; M6C–M6G **NOT STARTED**; Production **UNAUTHORIZED / NOT DEPLOYED**.
 
 Work remains in [PR #126](https://github.com/fvd8383/ultimate-back-office/pull/126).
 The [implementation record](sprint-8.8-m6b-local-implementation.md) records executed
 local tests separately from the unexecuted real-MySQL gate. The earlier clean
 application review of `19dc550` did not approve the Linux launcher.
+
+## Confirmed tmpfs representation and current validation gate
+
+The initial full `--run` stopped before SQL at `container_controls`: the guard
+required exactly one top-level mount, but the operator's Docker **29.8.1**, rootless
+Linux engine reported `Mounts: []` for the approved `--tmpfs` request. The earlier
+`docker info` failure was a diagnostic-template error, not evidence that the engine
+or database application failed. This desktop correction fixes the inspection
+assumption; it does not change the container recipe, image selection or limits.
+
+The operator subsequently ran an inert diagnostic on ubo-stage-app with the same
+pinned image and tmpfs request, replacing the MySQL entrypoint with a read-only shell
+probe. Reported image ID:
+`sha256:7c07d11b694dcc7e2ef3de845075eca1a8b39868f85f519f938b54c432edc1cb`;
+repository digest:
+`mysql@sha256:85b9bf2e29cf836ecb8c2a15a935d4ba0c606631dff1dd79531a11983c638f2a`;
+platform **linux/amd64**. Before start and after exit, the sanitized projection was:
+
+```json
+{
+  "HostConfig": {
+    "Tmpfs": {"/var/lib/mysql": "rw,nosuid,size=1073741824"},
+    "Binds": null,
+    "VolumesFrom": null
+  },
+  "Config": {"Volumes": {"/var/lib/mysql": {}}},
+  "Mounts": []
+}
+```
+
+`HostConfig.Mounts` was **absent**. This projection is not a complete inspect fixture.
+The supplied probe output was:
+
+```text
+M6B_MOUNT_PROBE_BEGIN
+MOUNTINFO 581 569 0:61 / /var/lib/mysql rw,nosuid,nodev,noexec,relatime - tmpfs tmpfs rw,size=1048576k,uid=1000,gid=1000,inode64
+M6B_MOUNT_MATCHES=1
+M6B_MOUNT_PROBE_END
+```
+
+It confirms exactly one effective tmpfs at `/var/lib/mysql`, with rw/nosuid and
+**1048576 KiB = 1073741824 bytes = 1 GiB**. Attach/client, container and probe exits
+were all zero; no anonymous volumes or additional mount relationships were observed.
+No MySQL/database client, SQL, migrations or database acceptance cases ran in that
+probe. Mount IDs, device number and uid/gid are historical observations, not runtime
+acceptance constants or proof of every future run.
+
+Operator evidence report:
+`/mnt/ubo_stage_testdata/codex-validation/evidence/m6b-diagnostic-20260921T001708Z/M6B-ERROR-AND-EFFECTIVE-MOUNT-DIAGNOSTIC.md`.
+Operator-reported SHA-256:
+`72c3beac1e2b9a85b2d5589f76f69440378b66f76f7a89fa22cce07408abcc6a`.
+This desktop task did not download, independently hash-verify or rerun that diagnostic.
+
+The shared guard still requires exactly
+`HostConfig.Tmpfs={"/var/lib/mysql":"rw,nosuid,size=1073741824"}`. Top-level `Mounts`
+must be an explicitly present JSON list: either empty, or one tmpfs entry whose
+destination is exactly `/var/lib/mysql`. Missing/null/scalar/string/object values,
+including `{}` and numeric-key objects, are rejected. Extra/duplicate mounts, wrong
+type/destination, bind/named/anonymous volumes and missing/changed/extra Tmpfs entries
+are rejected. `HostConfig.Mounts` may be absent or exactly an empty JSON list `[]`;
+all other values, including competing mount specifications, are rejected. Forbidden
+`Binds` and `VolumesFrom` remain rejected. `Config.Volumes` is an image declaration;
+it neither proves an actual attachment nor overrides actual mount checks.
+
+Both the Bash CLI admission and PHP `m6mysqlIdentity()` reinspection use the shared
+JSON decoder, which retains object types for both mount-list fields, and the same
+`m6linuxContainer()` policy. Image, ownership, environment, isolation, logging,
+loopback and resource checks remain required. The next actual run must reverify all
+current runtime prerequisites, effective cgroup limits, MySQL/schema/concurrency,
+cleanup and committed evidence. This patch adds no diagnostic run or safety bypass.
+Migration 025 remains unapplied to working staging and production databases.
+Earlier blocked/incomplete reports keep their historical verdicts and missing-evidence
+history; neither the inert probe nor passing fixtures relabels them PASS.
 
 ## Completed-review corrections
 
@@ -116,8 +192,10 @@ it is not reported missing, and this launcher never starts it. PHP was reported 
 `/usr/bin/php8.3`, version **8.3.6**, with PDO MySQL and `proc_open` available.
 The deployed application was reported clean at
 `70a3051f73874e7268b9c1bba45bf19d41f9432a`, with Apache active. APP_ENV remains
-independently unconfirmed. Actual Docker engine version and approved cached-image
-digest remain later runtime observations. No host access or setup occurred here.
+independently unconfirmed. This stopped-service state is the earlier snapshot;
+the later operator diagnostic above supplies the engine/image observations. Current
+service state and all runtime gates must be rechecked for a later authorized run.
+No host access or setup occurred in this desktop correction.
 A dedicated validation server remains a supported alternative.
 
 Select `--host-mode shared-staging --layout volume` for the reported arrangement:
@@ -324,5 +402,7 @@ independently unconfirmed. The completed operator inspection at 2026-09-20T21:23
 supersedes that old capacity/runtime description with operator-supplied measurements.
 It does not establish this desktop task's host access, kernel isolation or MySQL PASS.
 
-No staging/production access, host setup, resize, installation, image download,
-container/database creation, migration, deployment, M6C or Narrator work occurred.
+During this desktop correction, no staging/production access, host setup, resize,
+installation, image download, container/database creation or execution, SQL,
+migration, deployment, M6C or Narrator work occurred. The separately supplied
+operator container/mount diagnostic is recorded above; real-MySQL validation is pending.

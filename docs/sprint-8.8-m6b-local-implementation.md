@@ -1,9 +1,13 @@
 # Sprint 8.8 M6B — Local persistence and jobs implementation
 
 Date: 2026-09-19. **M6B — IMPLEMENTED LOCALLY / REAL-MYSQL VALIDATION PENDING**.
-Linux launcher: **CORRECTIONS IMPLEMENTED / REVIEW REQUIRED**.
-Latest correction: [Docker data-root and final evidence](#docker-data-root-and-final-evidence-correction--2026-09-20).
+**M6B TMPFS GUARD CORRECTION — IMPLEMENTED / REVIEW REQUIRED**.
+**REAL-MYSQL VALIDATION — PENDING**.
+Latest correction: [Verified Docker tmpfs representation](#verified-docker-tmpfs-representation-correction).
 Shared-staging volume/setup **OPERATOR-REPORTED COMPLETE**; real MySQL **NOT EXECUTED**.
+Actual Linux container/mount diagnostics are now **OPERATOR-REPORTED EXECUTED**;
+the corrected full launcher has not yet been rerun. Earlier dated records retain
+their historical verdicts and the evidence available at those points.
 See [Linux validation host modes and prerequisites](sprint-8.8-m6b-linux-validation.md).
 This is local implementation evidence, not staging validation or formal M6 closeout.
 
@@ -1045,3 +1049,125 @@ result links the correction reply and one exact-new-head review request/state.
 M6B: **IMPLEMENTED LOCALLY / REAL-MYSQL VALIDATION PENDING**. Linux launcher:
 **CORRECTIONS IMPLEMENTED / REVIEW REQUIRED**. M6: **IN PROGRESS**. Production:
 **UNAUTHORIZED / NOT DEPLOYED**.
+
+## Verified Docker tmpfs representation correction
+
+This focused correction starts from clean branch/PR head
+`081f9a9e2c266163f8fd692635db0c5aafe96147` on
+`codex/sprint-8.8-m6b-persistence-jobs`. The initial full Linux `--run` stopped before
+SQL because `m6linuxContainer()` required one top-level mount even though the exact
+approved `HostConfig.Tmpfs` request was present. The operator's subsequent inert
+diagnostic confirmed that Docker can report `Mounts: []` while effectively mounting
+the requested tmpfs. The earlier `docker info` error was a diagnostic-template error,
+not evidence of engine or database application failure.
+
+The supplied report is
+`/mnt/ubo_stage_testdata/codex-validation/evidence/m6b-diagnostic-20260921T001708Z/M6B-ERROR-AND-EFFECTIVE-MOUNT-DIAGNOSTIC.md`,
+with operator-reported SHA-256
+`72c3beac1e2b9a85b2d5589f76f69440378b66f76f7a89fa22cce07408abcc6a`.
+Reported runtime: rootless Docker **29.8.1**, **linux/amd64**;
+image ID `sha256:7c07d11b694dcc7e2ef3de845075eca1a8b39868f85f519f938b54c432edc1cb`;
+repository digest
+`mysql@sha256:85b9bf2e29cf836ecb8c2a15a935d4ba0c606631dff1dd79531a11983c638f2a`.
+The [operating guide](sprint-8.8-m6b-linux-validation.md#confirmed-tmpfs-representation-and-current-validation-gate)
+records the supplied projection and literal probe output. `HostConfig.Mounts` was
+absent; `Binds`/`VolumesFrom` were null; `Config.Volumes` declared `/var/lib/mysql`;
+top-level `Mounts` was explicitly `[]` both before start and after exit. This was a
+sanitized projection, not a complete inspect record.
+
+The read-only shell probe replaced the MySQL entrypoint. It reported exactly one
+effective tmpfs at `/var/lib/mysql`, rw/nosuid, **1048576 KiB = 1073741824 bytes = 1 GiB**;
+attach/client, container and probe exits were all zero. No anonymous volumes or extra
+mount relationships were observed. No database client, SQL, migration or M6B database
+acceptance case ran. These are supplied runtime observations: this desktop task did
+not access the host, download/hash-verify the report or rerun the probe. Its mount IDs,
+device number and uid/gid are not new guard requirements.
+
+**Actual local before/after reproduction:** using the existing complete valid fixture
+with the observed projection applied, the old guard's real stdin/JSON CLI returned
+**exit 2 / `M6B guard rejected inspection: container_mounts`**. After correction it
+returns **exit 0 / port 33306** with no stderr. The fixture uses synthetic identity,
+image and credentials; it is not the incomplete supplied projection passed off as a
+full inspect record. The original single-tmpfs fixture still passes.
+
+The one shared mount rule retains the exact approved `HostConfig.Tmpfs` map and
+accepts only an explicitly present empty top-level JSON list, or a list containing
+one tmpfs entry at exactly `/var/lib/mysql`. It rejects missing/null/scalar/string
+values, objects (including empty and numeric-key objects), non-list structures,
+extra/duplicate mounts, bind/named/anonymous volume entries and wrong type/destination.
+Missing/changed/extra Tmpfs entries also fail. `HostConfig.Mounts` must be absent or
+exactly `[]`; competing specifications and other types fail. Existing forbidden
+Binds/VolumesFrom remain rejected. An image's Config.Volumes declaration neither
+proves attachment nor bypasses actual requested/reported mount validation.
+
+The small shared decoder keeps the typed JSON view of object-valued mount-list
+fields while preserving the existing associative representation elsewhere. It also
+requires an outer inspection list of objects (engine metadata remains an object),
+so numeric-key outer objects cannot erase nested type distinctions. Both the CLI
+and Linux branch of `m6mysqlIdentity()` use it. The PHP branch's existing environment,
+shared-container and port checks are extracted into a pure reinspection helper,
+tested before any connection. There is no second mount policy. The Windows branch
+retains its existing decoding and behavior; no host/socket checks are bypassed to
+run these local tests.
+
+The **47 inspection cases** each exercise direct PHP reinspection, JSON-decoded PHP
+reinspection and the actual JSON CLI. Negative empty-list cases also retain image,
+owner, environment, resource, logging and loopback enforcement. The new
+`run-mounts-empty` fake-command scenario passes `container_controls`, invokes the
+production cgroup-limit gate with an ineffective CPU limit, and returns **exit 2 /
+`container_limits_not_effective`**, with **Test exit: NOT_EXECUTED** and no harness
+supervisor launched. The focused run passed **242 assertions / one Bash scenario**.
+An initial new progression assertion expected the detailed gate code in the report;
+it was corrected to check stderr, where the unchanged launcher emits that code.
+Its historical report classification remains `startup`; finalization was not changed.
+
+Exactly **six existing files** change; the complete PR remains **40 files (26
+additions, 14 modifications)**:
+
+| Modified file | Purpose |
+| --- | --- |
+| `tests/support/WebsitePlatformM6BLinuxGuard.php` | Shared mount policy, JSON shape preservation and pure PHP reinspection helper. |
+| `tests/support/WebsitePlatformM6BMySqlSupport.php` | Linux-only use of the shared decoder and reinspection helper. |
+| `tests/WebsitePlatformM6BLinuxLauncherTest.php` | Complete observed fixture and direct/JSON/launcher regressions. |
+| `tests/support/WebsitePlatformM6BLinuxLauncherFixture.sh` | Observed-representation scenario using the existing effective-limit gate. |
+| `docs/sprint-8.8-m6b-linux-validation.md` | Supplied runtime evidence, accepted shapes and remaining runtime gate. |
+| `docs/sprint-8.8-m6b-local-implementation.md` | Before/after, source preservation and actual local validation record. |
+
+Final Windows-local validation used **PHP 8.4.24 CLI ZTS Visual C++ 2022 x64** and
+**Git Bash 5.3.15(2)-release (x86_64-pc-cygwin)**. All **57/57 available standalone
+PHP suites passed**, including **1949 launcher assertions / 152 isolated Bash
+scenarios**. The six existing M6B suites retain **743 assertions**, for **2692 M6B
+assertions total**. All **213 tracked PHP files** passed lint; both Bash files passed
+syntax checks and the unchanged PowerShell launcher parsed with zero errors. The
+two changed Markdown documents passed **13 relative links, three referenced anchors
+and six balanced fence pairs**, plus current-status and supplied evidence/image hash
+checks. Exact correction/PR inventories, preservation comparisons and working/staged/
+committed diff checks are part of final commit verification. These counts describe
+local tests and command doubles, not actual container or MySQL acceptance execution.
+
+Application/services, migrations 001–025 and the Windows launcher are unchanged from
+`19dc550081ad47f1c53e91cd9efa5a6d8cddf381`. Migration 025 remains
+`dab585dc29aac11153f92703c65d3883aeea73a1b2283157cfa9d2f2ece85cb0`.
+The entire Linux launcher, native SQL acceptance scenarios/schema cases and worker
+are unchanged from `081f9a9e2c266163f8fd692635db0c5aafe96147`. Therefore the container
+recipe, image selection, resource admission/quotas, deadline, endpoint/identity checks,
+ownership-limited cleanup, signals and evidence finalization retain their prior code.
+No generic bypass, new diagnostic container, Docker top requirement or mount-attestation
+framework was added.
+
+Actual Linux container/mount diagnostics **have been performed by the operator**.
+The corrected full launcher **has not been rerun on the droplet**. Actual MySQL,
+schema/concurrency and full effective-resource validation remain **unexecuted**;
+the next separately authorized exact-SHA run must satisfy every existing gate.
+Migration 025 remains unapplied to the working staging and production databases.
+Earlier blocked/incomplete reports retain their verdicts and missing-evidence history.
+This patch and its passing fixtures do not establish real-Linux/MySQL PASS.
+
+During this correction all execution was local Windows PHP/Git Bash with command
+doubles. No host access, containers, diagnostics on the host, database connections,
+SQL/migrations, installs, resizing/remounts/configuration changes, deployment, M6C or
+Narrator work occurred. PR #126 stays open, non-draft, unmerged and without auto-merge;
+the task result links the single exact-new-head review request and observed state.
+
+**M6B TMPFS GUARD CORRECTION — IMPLEMENTED / REVIEW REQUIRED**.
+**REAL-MYSQL VALIDATION — PENDING**.

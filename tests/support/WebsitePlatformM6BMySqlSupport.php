@@ -45,14 +45,12 @@ function m6mysqlIdentity(): array
         m6linuxRequire(!getenv('DOCKER_CONFIG'),'inherited_client_config');
         m6linuxClientConfig($clientConfig,posix_geteuid());
         $command=['docker','--config',$clientConfig,'--host','unix://'.$socket];
-        $inspect=static fn(array $args):array=>json_decode(m6mysqlProcess(array_merge($command,$args)),true,32,JSON_THROW_ON_ERROR);
+        $inspect=static fn(array $args):array=>m6linuxDecodeInspection(m6mysqlProcess(array_merge($command,$args)),$args[0]==='info');
         m6linuxEngine($inspect(['info','--format','{{json .}}']),$platform);
         $image=$inspect(['image','inspect','docker.io/library/mysql@'.$digest])[0];
         m6linuxRequire(m6linuxImage($image,$digest,$platform)===getenv('M6B_MYSQL_IMAGE_ID'),'image_id_changed');
         $container=$inspect(['inspect',$id])[0];
-        m6linuxEnvironment($container,$image,(string)getenv('M6B_MYSQL_PASSWORD'));
-        m6linuxRequire(m6linuxContainer($container,$token,(string)getenv('M6B_MYSQL_IMAGE_ID'),$id)===$port,'port_changed');
-        return ['token'=>$token,'id'=>$id,'port'=>(int)$port,'hostname'=>$container['Config']['Hostname']];
+        return m6linuxMySqlIdentity($container,$image,$token,(string)getenv('M6B_MYSQL_IMAGE_ID'),$id,(string)getenv('M6B_MYSQL_PASSWORD'),$port);
     }
     $override=getenv('DOCKER_HOST');
     if($override!==false&&$override!==''&&!preg_match('~^(npipe://|unix://)~',$override))throw new RuntimeException('Remote DOCKER_HOST override refused.');
