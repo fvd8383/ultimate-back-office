@@ -1,0 +1,1469 @@
+# Sprint 8.8 M6B — Local persistence and jobs implementation
+
+Date: 2026-09-19. **M6B — IMPLEMENTED LOCALLY / REAL-MYSQL VALIDATION PENDING**.
+**M6B MIGRATION RESULT-SET CORRECTION — IMPLEMENTED / REVIEW REQUIRED**.
+**REAL-MYSQL VALIDATION — PENDING**.
+Latest correction: [Migration result-set lifecycle](#migration-result-set-lifecycle-correction).
+The operator's latest run **FAILED** after completing canonical migrations 001–014
+and executing 015 statements 1–4. Statement 5 failed with SQLSTATE HY000 / driver
+2014. Actual Linux no-INI smoke, native-PDO MySQL 8.4.11 connection and effective
+MySQL/PHP resource controls **PASSED (OPERATOR-REPORTED)**. Later migrations and
+the M6B database acceptance matrix were not reached. The runner correction has
+standalone evidence only; it has not passed a native server run.
+Earlier dated sections retain their historical verdicts and evidence boundaries.
+See [Linux validation host modes and prerequisites](sprint-8.8-m6b-linux-validation.md).
+This is local implementation evidence, not staging validation or formal M6 closeout.
+
+## Authority and status
+
+The authorized baseline is `5baae28c9af68cca7694a912d7f35c87c50c9dc5`, the verified
+merge of [architecture PR #125](https://github.com/fvd8383/ultimate-back-office/pull/125).
+The [reviewed M6 contract](sprint-8.8-m6-implementation-plan.md) remains authoritative.
+The clean checkout, repository path and Git remote were verified before editing;
+`origin/main` matched this exact baseline after fetch. The implementation branch is
+`codex/sprint-8.8-m6b-persistence-jobs`, created from that SHA, not the old planning branch.
+
+Repository: `fvd8383/ultimate-back-office` at
+`C:/Users/fvd83/My Drive/Development/ultimate-back-office`.
+Local Windows identity: `laptop-imhqf010\fvd83`; Git identity: Frank Dalba,
+`frank@frankdalba.com`. Neither `ubo-deploy` nor `codex-validation` was used.
+The execution sandbox has its own restricted account; approved local PHP/Git commands
+use the current Windows development account. No remote development environment was used.
+
+| Milestone | Current status |
+| --- | --- |
+| M6A | ARCHITECTURE REVIEWED / MERGED |
+| M6B | IMPLEMENTED LOCALLY / REAL-MYSQL VALIDATION PENDING |
+| M6 | IN PROGRESS |
+| M6C–M6G | NOT STARTED |
+| M5 | COMPLETE FOR SPRINT PROGRESSION |
+| M5C | ACCEPTED / NARRATOR FOLLOW-UP DEFERRED |
+| Sprint 8.8 | IN PROGRESS |
+| Production | UNAUTHORIZED / NOT DEPLOYED |
+
+Last reported staging application SHA remains existing evidence only:
+`70a3051f73874e7268b9c1bba45bf19d41f9432a`. It was not remotely reverified.
+No staging/production access, SSH, deployment, remote migration, publisher/provider
+action, background worker/service, web route, production activation, or resumed
+Narrator work occurred. No merge or auto-merge is authorized.
+
+## Complete changed-file inventory
+
+The implementation has 42 changed files: 28 additions and 14 modifications.
+
+| Change | Path | Purpose |
+| --- | --- | --- |
+| Add | `database/migrations/025_site_build_deployment.sql` | Nine tables, two existing ownership indexes, deferred cyclic FKs. |
+| Add | `private/classes/SiteBuildService.php` | Database build lifecycle, leases, recovery, completion and safe history. |
+| Add | `private/classes/SiteBuildContract.php` | Bounded values, canonical identity, persisted policy, actor shapes and DTOs. |
+| Add | `private/classes/SiteBuildStore.php` | Build-owned SQL and bounded retries after known rollback. |
+| Add | `private/classes/SiteBuildDependencies.php` | Unwired trusted internal M6C dependency interface. |
+| Modify | `private/classes/SiteRevisionManager.php` | One additive `lockBuildEligibility` method; existing lifecycle behavior unchanged. |
+| Modify | `private/classes/SiteApprovalManager.php` | One additive `lockedBuildApprovals` method reusing effective customer approval authority. |
+| Add | `tests/WebsitePlatformM6BBehaviorTest.php` | Eligibility, identity, lease, completion, rollback and DTO behavior. |
+| Add | `tests/WebsitePlatformM6BAuthorizationTest.php` | B17–B26 authorization distinctions and simulated interleavings. |
+| Add | `tests/WebsitePlatformM6BRecoveryTest.php` | Independent counters, recovery budgets, operator requests and replay. |
+| Add | `tests/WebsitePlatformM6BContractTest.php` | Canonical values, actor shapes, forged evidence and fail-closed seams. |
+| Add | `tests/WebsitePlatformM6BSchemaTest.php` | Static schema contract and canonical SQL splitter checks; not MySQL evidence. |
+| Add | `tests/WebsitePlatformM6BScopeTest.php` | Exact application allowlist and immutable historical migrations. |
+| Add | `tests/WebsitePlatformM6BMySql.php` | Opt-in fresh/upgrade, real metadata/rejection and independent-process tests. |
+| Add | `tests/RunM6BMySql.ps1` | Disposable local Docker launcher and ownership-limited cleanup. |
+| Add | `tests/RunM6BMySql.sh` | Explicit Linux host modes, rootless limits, supervision, private evidence and cleanup. |
+| Add | `tests/WebsitePlatformM6BLinuxLauncherTest.php` | Pure policy guards and process-scoped fake launcher scenarios. |
+| Add | `tests/support/WebsitePlatformM6BLinuxGuard.php` | Shared Linux engine, digest, image and container inspection policy. |
+| Add | `tests/support/WebsitePlatformM6BLinuxLauncherFixture.sh` | Isolated fake command adapters; never contacts Docker/systemd/SQL. |
+| Add | `docs/sprint-8.8-m6b-linux-validation.md` | Future operator/test-user setup, invocations and honest validation boundaries. |
+| Add | `tests/support/WebsitePlatformM6BDatabase.php` | Behavioral fake PDO fixture using existing M2/M3/M5 inputs. |
+| Add | `tests/support/WebsitePlatformM6BDependencies.php` | Synthetic, explicitly bound evidence and private reflection test wiring. |
+| Add | `tests/support/WebsitePlatformM6BMySqlSupport.php` | Verified local connection, canonical migrations and synthetic native-PDO fixtures. |
+| Add | `tests/support/WebsitePlatformM6BMigrations.php` | Canonical migration loop with incremental result disposal and safe failure diagnostics. |
+| Add | `tests/WebsitePlatformM6BMigrationRunnerTest.php` | Canonical-file PDO-double lifecycle regression; no database execution. |
+| Add | `tests/support/WebsitePlatformM6BMySqlWorker.php` | Independent test processes and explicit barriers; not an application worker. |
+| Add | `tests/support/WebsitePlatformM6BMySqlSchemaCases.php` | Real CHECK/FK/uniqueness/deletion rejection fixtures. |
+| Add | `tests/support/WebsitePlatformM6BSql.php` | Canonical SQL lexer; no schema approximation or constraint bypass. |
+| Add | `tests/support/WebsitePlatformM6BScope.php` | Exact shared later-M6B allowances for historical scope suites. |
+| Modify | `tests/WebsitePlatformM2ScopeTest.php` | Permit only the now-authorized build service name. |
+| Modify | `tests/WebsitePlatformM3MigrationTest.php` | Replace obsolete absent-025 assertion with exact only-025 allowance. |
+| Modify | `tests/WebsitePlatformM3ScopeTest.php` | Exact only-025 allowance. |
+| Modify | `tests/WebsitePlatformM4AScopeTest.php` | Exact only-025 allowance. |
+| Modify | `tests/WebsitePlatformM4BScopeTest.php` | Exact seven application paths and only-025 allowance. |
+| Modify | `tests/WebsitePlatformM4CScopeTest.php` | Exact only-025 allowance. |
+| Modify | `tests/WebsitePlatformM5AScopeTest.php` | Exact only-025 allowance. |
+| Modify | `tests/WebsitePlatformM5CScopeTest.php` | Exact seven application paths and only-025 allowance; title regression preserved. |
+| Add | `docs/sprint-8.8-m6b-local-implementation.md` | This implementation/evidence record. |
+| Modify | `docs/sprint-8.8-m6-implementation-plan.md` | Current status and actual M6B links; reviewed contract and historical record retained. |
+| Modify | `docs/codex-handoff.md` | Current milestone and migration status. |
+| Modify | `docs/sprint-8.8.md` | Current milestone, migration and next-gate status. |
+| Modify | `docs/first-customer-checklist.md` | Current critical-path status. |
+
+No historical scope baseline was changed. M6B independently checks the seven-path
+application allowlist, exactly one new method in each existing owner, addition-only
+owner diffs, all historical migration blobs, and untouched public/infrastructure/
+scripts/shared/apps/configuration trees. No generic authorization or job framework
+was introduced. `SiteAuthorizationPolicy` and `SiteServiceSupport` are reused unchanged.
+
+## Migration 025
+
+[025](../database/migrations/025_site_build_deployment.sql) defines:
+`site_build_jobs`, `site_build_attempts`, `site_releases`,
+`site_release_validations`, `site_deployment_targets`, `site_deployments`,
+`site_deployment_attempts`, `site_deployment_health_checks`, and
+`site_deployment_approvals`.
+
+It retains exact composite site/parent/revision/target ownership, explicit unique
+referenced tuples, nullable current-attempt/current-deployment relationships,
+request identity separate from deployment payload fingerprint, counter constraints,
+policy/deadline/scheduling fields, RESTRICT history ownership, and nullable user FKs
+with ON DELETE SET NULL. Targets default disabled. It adds the two reviewed ownership
+indexes to `site_business_associations` and `site_approvals`. Cyclic nullable FKs are
+added after their referenced tables exist. There are no operational seeds/backfills.
+
+Both attempt tables exclude `recovery_authorized_by_user_id` from **every CHECK**.
+The service validates insertion-time actor shape and current authorization, including
+non-NULL authenticated operator identity. Permitted later actor deletion preserves
+historical trigger/type/key/reason and original execution ownership. Historical NULL
+does not authenticate a new caller. Deferred deployment code must use the same rule;
+no deployment service is supplied here.
+
+Concrete SQL translation: explicit non-NULL predicates prevent SQL UNKNOWN from
+accepting incomplete execution/recovery shape; bounded summary/receipt JSON uses
+OCTET_LENGTH checks. UUID/hash identities use binary ASCII collation; durable times
+use DATETIME(6). These implement the reviewed contract, not a relaxed replacement.
+Migration 025 has not yet been reached by a native run. The latest operator report
+instead exposed a test-runner result-lifecycle failure at migration 015; see the
+[current correction](#migration-result-set-lifecycle-correction).
+
+SHA-256 of 025's LF bytes (the committed canonical representation):
+`dab585dc29aac11153f92703c65d3883aeea73a1b2283157cfa9d2f2ece85cb0`.
+
+023/024 were compared byte-for-byte with the authorized baseline checkout via Git's
+checkout filters, preserving the repository's Windows CRLF policy. Their canonical
+Git blobs also match the baseline, as do all migrations 001–024.
+
+| Historical migration | Unchanged local-byte SHA-256 |
+| --- | --- |
+| 023 | `7f487cd11852ee4c05f2bc8766f757134a909716982a47dcfbe5614314189e41` |
+| 024 | `eb81ee47ce8bfdf27d0dc9c1b15fc920bc566c2609cc5eaf6fc8dab7a9ffc5b9` |
+
+Only migration 025 was added. Local migration executions: **0**.
+**Migration 025 NOT APPLIED TO STAGING OR PRODUCTION.** No DDL rollback is claimed.
+
+## Implemented service behavior
+
+`requestBuild`, `claimBuild`, `renewBuildLease`, `completeBuildSuccess`,
+`completeBuildFailure`, `retryBuild`, `claimBuildRecovery`, `completeBuildRecovery`,
+`buildJobForActor`, `releasesForSite` and `releaseManifestForActor` implement database
+transitions and bounded internal DTOs. `executeBuild` and `reconcileBuild` explicitly
+return the future gate. There are no routes, buttons, executable application workers,
+schedulers or automatic jobs from M5 approval.
+
+Eligibility belongs to the revision/approval owners: explicit site/revision/hash,
+approved customer-associated 247sp site, immutable internally approved composition,
+current business/association/module, effective material/non-material customer approval,
+exact internal approval, successor freshness, registry and current asset metadata/rights.
+The existing active/publication path remains gated; EMD/internal-demo is future-gated.
+Approved sites do not need to be active. Domain/DNS/SSL/legacy state grants no authority.
+The legacy snapshot business ID fallback is read only from the immutable hashed facts,
+never a regenerated live profile. Metadata/rights checks do not prove asset bytes.
+
+The lock order is site, required input, ascending user authorization, job, then attempts.
+The unchanged policy locks the user parent, ascending grants and role definitions.
+After acquiring those locks, the service rechecks stored job/requester identity,
+including a requester FK becoming NULL. Retry authorizes both users in ascending order.
+Known deadlock/timeout and identity-change retries start fresh transactions and resolve
+authority again; uncertain commits are never blindly retried.
+
+Ordinary claims and new success/adoption need both the current trusted worker and the
+persisted requester's current active internal Admin/Super Admin role. Supplied worker
+arrays must be empty; user IDs, `actor_type` and `trusted=true` cannot authenticate.
+Worker capability is rechecked after locks and after external verification. Current
+operator identity comes from private invocation wiring, not the operator request array.
+Business Owner/Admin/is_owner and historical actor_type are insufficient.
+
+A definitely unauthorized, safely queued job cancels once in the committed transaction,
+with one bounded system cancellation event and no attempt/counter/lease/BuildInput/start
+event. Database errors are not denial; an untrusted worker cannot cancel. Uncertain
+effects become reconciliation-required. Authority loss after a valid claim denies new
+success, retaining real execution/candidate/recovery evidence. Existing committed success
+and authorized history/replay survive revocation/deletion unchanged.
+
+The fixed server profile is `static-review-v1` with inert contact mode. The canonical
+manifest binds exact source hash, public projection, ordered asset digests, registry
+digest and toolchain contract. The idempotency hash binds site key, revision, input hash,
+builder version and clean code SHA. Unique identity reserves one job/release key;
+duplicate requests preserve the original requester and do not retry or transfer ownership.
+External preparation is followed by locked source revalidation before intent commit.
+
+Persisted policy: at most three executions; at most two automatic recoveries; 120-second
+leases; 30-second heartbeats; 900-second execution and 300-second recovery deadlines;
+30/120-second retry and automatic recovery delays. Scheduling uses DB UTC time. Each
+claim gets a new random token; only its SHA-256 is stored. Kind, current owner, token,
+lease and deadline are checked. Recovery can raise total attempts above three while
+execution stays three. Recovery always references the original execution and has no
+BuildInput. Detection persists its due time once; polling does not postpone it.
+
+Recovery remains available with an inactive/deleted original requester. Safe absence
+or quarantine can settle failure independently; uncommitted adoption still requires
+current source and requester authority. Unknown or inconsistent evidence stays blocked.
+After automatic exhaustion, a current internal operator's new request key can authorize
+one bounded recovery. Matching operator replay returns history without a reusable lease;
+conflicting intent is refused. Attempts/counters are never reset, and old producer rows
+remain expired/failed instead of being rewritten by recovery success.
+
+Completion first resolves committed DB outcome. Opaque receipt keys are lookup hints,
+not proof. Synthetic trusted evidence permits testing one atomic release, validation,
+job, attempt and audit transaction. Matching completion replays without duplicate effects;
+conflicts fail. Validation/audit errors roll back the whole result. Safe transient failure
+alone permits ordinary retry; recovery settlement does not implicitly execute again.
+No site/revision/global publication or deployment pointer is mutated.
+
+History uses allowlists and fixed failure messages, bounded pages/attempts and current
+reader authorization. It excludes lease tokens/hashes, private storage locators, raw
+input snapshots, arbitrary errors and SQL/provider payloads. Manifest inspection is
+bounded, sanitized and rechecks the reader after external work. Logs identify exception
+classes only; expected injected PDO errors in tests are not suite failures.
+
+## M6C dependency seams and limitations
+
+`SiteBuildDependencies` is a minimal internal interface for current worker capability,
+authenticated invocation operator, clean builder identity, immutable public input
+preparation, independent exact-producer outcome verification, and sanitized manifest
+inspection. Its private service slot defaults NULL. There is no runtime implementation,
+public setter, environment bypass or accept-anything verifier. Isolated tests inject a
+deterministic implementation via reflection; its receipt map binds job, original attempt,
+reserved release and input identity. Normal runtime remains fail-closed when these
+dependencies are needed. History of persisted rows uses normal current authorization.
+
+All input/artifact inspection runs outside SQL transactions. Only the trusted in-memory
+worker capability check is allowed under locks; it must perform no external I/O. Result
+transactions recheck the identity, eligibility, requester and lease. The future M6C
+implementation must independently verify real bytes/storage/journals and reject dirty
+toolchains; contract validation alone cannot establish those facts.
+
+No artifact rendering, file copying, sealing, public safety proof, real storage adapter,
+customer artifact, filesystem recovery, publisher, Apache action, production approval,
+deployment orchestration or restore implementation exists in this change. Deployment
+tables are dormant contracts for later milestones. The real-MySQL harness's inert
+deployment rows are rollback-only schema fixtures, not grants or activation.
+
+## Executed local checks and 77-case mapping
+
+Environment: Windows desktop, installed PHP 8.4.24. All **56/56 standalone suites**
+passed (50 existing plus six new). After the PR #126 corrections below, the six M6B
+suites pass **743 assertions** (395 at the initial reviewed head, 88 in the first
+correction, and 260 in the policy correction). All 56 suites and all tracked PHP lint
+were rerun for the policy correction:
+
+| Suite | Assertions passed |
+| --- | ---: |
+| M6B behavior | 401 |
+| M6B authorization | 83 |
+| M6B recovery | 49 |
+| M6B contract | 58 |
+| M6B schema contract, static only | 110 |
+| M6B scope | 42 |
+
+Repository PHP lint passed **211/211 files** (all tracked PHP plus the 18 additions,
+which become tracked in this PR). PowerShell harness syntax passed. Markdown validation
+passed across five changed documents: **84 relative links, one referenced anchor and
+balanced fences**. Current-status, exact 35-file inventory and checksum checks passed;
+working-tree `git diff --check` passed. Staged and committed diff checks are also run
+before delivery, with their results reported alongside the commit/PR. The temporary
+documentation validator is outside the repository. The ordinary suite command is
+`php tests/<Name>Test.php` for every
+root-level standalone `*Test.php`; the real-MySQL entry point is deliberately excluded.
+The fake PDO fixture validates decisions, SQL intent, rollback and ordering, not InnoDB
+locking, FK actions, server CHECK semantics, filesystem integrity or concurrency.
+
+The reviewed matrix still has **77 planned cases**, not 77 passes. The mapping is:
+
+| Plan cases | Executed local evidence | Remaining gate |
+| --- | --- | --- |
+| B01–B05 | Material/non-material eligibility, ownership/association/module/approval/successor denials and synthetic success in behavior tests. | Real DB; B01 actual artifact in M6C. |
+| B06 | Sequential duplicate identity/requester/event preservation. | Independent concurrent native-PDO harness NOT EXECUTED. |
+| B07 | Three execution limit, retry timing, separate counters. | Real MySQL fixture NOT EXECUTED. |
+| B08–B09 | Simulated expired leases, late tokens, recovery/adoption and atomic rollback. | Real heartbeat/completion races and M6C filesystem kill points NOT EXECUTED. |
+| B10 | Golden canonical UTF-8, maps/lists/NULL/integers, revision and builder SHA identity. | M6C actual byte/digest inputs remain synthetic here. |
+| B11 | Matching/conflicting completion/recovery replay, immutable synthetic release. | Real sealed-byte conflict proof in M6C. |
+| B12–B16 | Stored rights/metadata rejection, fixed profile/options and bounded interface data only. | M6C byte integrity, public leakage, rendering, SVG/path security, forms/browser tests. |
+| B17–B21 | Current roles, dirty/mismatched builder, trust denial, one-time no-execution cancellation, deleted/NULL requester, business-role denial, retry ownership. | Real FK/authorization gates NOT EXECUTED. |
+| B22 | Deterministic fake interleavings, fresh authorization after deadlock/identity retry; no locking proof claimed. | Separate processes, barriers and observed InnoDB waits in harness NOT EXECUTED. |
+| B23–B26 | Post-claim/new-adoption denial, independent recovery at (4,3,1), committed/lost-ack replay after deletion, requester/actor/token substitution denial. | Native MySQL races NOT EXECUTED; real output faults in M6C. |
+| D01–D26 | No deployment behavior implemented; dormant schema shape/identity statically checked. | M6D–M6G service, grant, pointer, HTTP, Apache and replay gates. |
+| R01–R06 | No restore behavior implemented. | M6D–M6G restore/runtime gates. |
+| C01–C06, C08, C10, C13 | No deployment/helper behavior implemented. | M6D–M6G process, target and filesystem gates. |
+| C07, C09, C11–C12 | Build-only synthetic exhausted-budget adoption/denial, lost-ack, stale recovery, automatic/operator limits and replay. | Real MySQL NOT EXECUTED; M6C filesystem kill points and later deployment equivalents. |
+| S01–S03 | Static exact column/FK/CHECK contract, SQL parsing, actor-CHECK exclusion, immutable migration checks. | Fresh/upgrade metadata, every FK rejection, negative CHECKs, uniqueness and both-table actor deletion harness NOT EXECUTED; query-plan review remains a real-DB gate. |
+| U01–U02 | Build current authorization, strict shared actor insertion shapes, replay after historical actor NULL and safe history. | Native FK fixtures NOT EXECUTED; deployment service and HTTP/CSRF/control-plane gates deferred. |
+| U03 | No new control UI. | M6F/M6G browser/accessibility gate. |
+
+## Executable isolated real-MySQL harness
+
+**NOT EXECUTED.** Prerequisite check reports: `local Docker CLI/engine and an existing
+mysql:8.4 image are required.` Docker/mysql executables and a local MySQL service were
+not available. PHP's normal configuration has PDO but no loaded PDO MySQL driver.
+No software, service, PHP INI or host configuration was installed or modified.
+
+With operator-provided local prerequisites, run from the repository:
+
+```powershell
+powershell -NoProfile -File tests/RunM6BMySql.ps1 -CheckOnly
+powershell -NoProfile -File tests/RunM6BMySql.ps1
+```
+
+Use PowerShell 7 (`pwsh`) where installed. The launcher accepts `-Php <existing-php-path>`.
+It may load an already installed Windows `php_pdo_mysql.dll` for that process with `-d`;
+it does not edit php.ini. It refuses missing Docker/image prerequisites without pulling
+or installing anything. Docker's selected endpoint and any DOCKER_HOST override must
+be local npipe/unix. TCP/SSH Docker endpoints are rejected.
+
+Each run creates a uniquely named/labelled MySQL 8.4 container, binds only loopback,
+stores the data directory in tmpfs and mounts no host/application data. Both layers
+verify exact run token/container ID/name/image/port/ownership before SQL. PDO is native,
+the server hostname must match that new container, and version must be 8.4.x. The
+actual server version and transaction isolation are printed only on an executed run;
+neither is claimed here. No application DSN, credentials or tunnel is consulted.
+
+The harness refuses preexisting database names, creates only
+`ubo_m6b_<run-token-prefix>_fresh` and `_upgrade`, and executes canonical repository SQL:
+fresh 001–025 and upgrade 001–024 plus synthetic preexisting rows, then 025. It hashes
+every preexisting table before/after upgrade, inspects actual information_schema, uses
+real rejection statements for ownership/uniqueness/CHECKs, and exercises both nullable
+historical actor FKs. FK/CHECK enforcement is never disabled. DDL is not transactional;
+partial migration failure is contained in the newly created disposable database.
+
+Concurrent requests/claims and requester deactivation/deletion/grant removal/role
+scope/name changes use independent PHP processes and explicit barriers. Revocation
+races cover both serial orders and require observed InnoDB lock waits from the exact
+connection IDs. Native CHECK/audit fault injection checks rollback of result writes;
+exhausted-budget recovery after requester deletion checks (4,3,1). Synthetic artifact
+evidence remains explicitly synthetic even when used with real PDO.
+
+Cleanup closes only test children, drops only databases this run recorded as newly
+created, and removes only the matching run-labelled container. Launcher environment
+values are restored. **This task created zero databases, containers, services or
+artifacts**, so none required database/container cleanup. Temporary local test-output
+and documentation-check files contain development evidence only; no application data.
+
+## Final review gates
+
+The code is implemented locally and requires review. Local real-MySQL schema and
+concurrency checks remain mandatory evidence before formal acceptance; sequential
+fakes and static SQL checks cannot replace them. M6C must implement/review trusted
+wiring, clean toolchain detection, real projection/asset bytes and artifact inspection
+before enabling execution. M6D–M6G must implement their separately scoped behavior.
+Any later staging/production migration, deployment or validation requires separate
+authorization. Nothing in this record authorizes those actions.
+
+The final commit/PR URL and actual automated-review state are reported with the task
+result rather than embedded self-referentially in the commit that creates this record.
+
+## PR #126 completed-review corrections
+
+The correction starts from reviewed head
+`78e2838d01ae2a51fa8f8cc02ed335d1ee67282e` on the existing branch and PR.
+The clean local checkout and GitHub head matched. PR #126 remained open, non-draft,
+unmerged, with auto-merge disabled. The completed review reported
+[P1 queue progression](https://github.com/fvd8383/ultimate-back-office/pull/126#discussion_r4054753149)
+and [P2 successful request replay](https://github.com/fvd8383/ultimate-back-office/pull/126#discussion_r4054753155).
+Neither correction changes migration 025 or reopens the reviewed architecture.
+
+Exactly ten existing files change relative to that head; the correction adds/removes
+no files. The complete PR inventory above remains 35 files.
+
+| Corrected file | Change |
+| --- | --- |
+| `private/classes/SiteBuildService.php` | Safe candidate retirement, exact historical request lookup and race resolution. |
+| `private/classes/SiteBuildContract.php` | Recompute recorded canonical input/key and compare the complete builder contract. |
+| `private/classes/SiteBuildStore.php` | Optional winner lookup after known rollback and before retrying request gates. |
+| `tests/WebsitePlatformM6BBehaviorTest.php` | P1 A–F / P2 G–M regressions, snapshots, effect counts and simulated races. |
+| `tests/WebsitePlatformM6BMySql.php` | Native queue contention, historical replay, identity rejection and request races. |
+| `tests/support/WebsitePlatformM6BDatabase.php` | New bounded query matching and explicit ID ordering. |
+| `tests/support/WebsitePlatformM6BDependencies.php` | Isolated synthetic builder/projection variants. |
+| `tests/support/WebsitePlatformM6BMySqlSupport.php` | Queue-selection barrier around actual PDO results. |
+| `tests/support/WebsitePlatformM6BMySqlWorker.php` | Test-process barriers, effect observations and withheld response. |
+| `docs/sprint-8.8-m6b-local-implementation.md` | Correction record and updated evidence totals. |
+
+### P1: disposition and bounded progression
+
+Trusted worker and valid clean current builder identification remain prerequisites.
+Under existing locks, B17 cancellation and unsafe-prior-effect handling retain precedence.
+A pure comparison validates the candidate's recorded canonical input/key and then its
+builder version/SHA/registry/toolchain against the valid current builder. Inconsistent
+stored input yields `input_mismatch`; a definite builder incompatibility yields
+`builder_unavailable`. No SQL/dependency exceptions enter that pure comparison.
+
+For a safely queued candidate, one transaction sets failed, clears ordinary scheduling,
+and records one bounded system failure event. Identity, requester, input, reserved release,
+counters and previous attempts are retained; no new attempt, token, lease or BuildInput
+is allocated. Commit then advances the loop. Selection remains **LIMIT 20**: 25 old jobs
+take one poll for 20 retirements and a second for the remaining five and compatible work.
+Repeated/stale observations recheck locked state; audit failure rolls retirement back.
+
+Dirty/unknown/untrusted current infrastructure fails closed without mass retirement.
+Database errors, deadlocks and uncertain commits retain their established handling.
+An executing owner or unresolved effects remains reconciliation-required. No builder
+substitution, identity rewrite or budget reset occurs.
+
+### P2: exact matching using existing schema
+
+1. Validate the request/caller and obtain the trusted current builder identity. In a
+   fresh transaction, lock the explicit site and revision through existing owners,
+   then resolve current caller authorization. Require exact ownership and expected hash.
+2. Use a current locking job read scoped by site, revision, snapshot hash, fixed profile,
+   builder version and reviewed SHA, using the existing revision/site index. Read at
+   most 101 rows and reject overflow above 100. Include non-success rows in ambiguity
+   detection; never select an arbitrary/latest successful job.
+3. Decode bounded stored evidence and reconstruct the complete canonical manifest from
+   its recorded projection/ordered digests, immutable source hash, fixed profile/options
+   and registry/toolchain. Recompute the build-input hash and the reviewed idempotency
+   hash including site key/revision. Require equality with persisted evidence and compare
+   the complete builder contract with the current trusted builder.
+4. Require exactly one matching input and a succeeded job. Multiple deterministic inputs
+   conflict, even if one is not successful. When a racing request has already prepared
+   input, its exact hash/key must also match the winner.
+5. Recompute the immutable source aggregate hash under its owning locks, supporting the
+   established generic and legacy representations. Verify the committed release's source
+   revision/hash, release key, build-input hash, builder version/SHA and profile against
+   the job. Return its safe DTO with `existing=true`, `replayed=true`, and safe release.
+
+The API accepts no caller-projected input/digest. Immutable source and complete
+builder/profile/options define deterministic projection; stored canonical evidence
+identifies that operation without preparing input or inspecting artifacts again.
+A future projector change must change builder/toolchain identity. Changed source or
+builder/registry/toolchain is a new gated request; a different profile is rejected by
+the current fixed-profile allowlist. Coherently changed job input that disagrees with
+its committed release, or multiple inputs for one contract, conflicts safely.
+
+Exact success history requires current caller authorization, not current content
+approval/freshness/lifecycle or the original requester's continued authority. Foreign
+ownership, wrong hash and corrupt/ambiguous evidence are rejected. History creates no
+job/attempt/lease/event/preparation/verification/publication effects and confers no
+current deployment, artifact-health or deployability guarantee.
+
+Without an exact success, unchanged `lockBuildEligibility` and all new-build checks
+apply. If a winner commits between preflight and a later gate, a fresh locked lookup
+resolves that exact winner before propagating a new-build denial. After known duplicate/
+lock-conflict rollback, the optional store callback reauthorizes and compares the winner
+before retrying gates. Uncertain commit errors still propagate as database failures;
+a subsequent explicit retry resolves the recorded operation. Retries remain bounded.
+
+### Correction evidence and outstanding real-MySQL gate
+
+Behavior coverage adds P1 A–F and P2 G–M using snapshots and effect counters: batches
+beyond 20, repeat polling, global failures, unresolved effects, audit rollback, retained
+retry attempts, B17 precedence, revoked approvals/newer material revisions, deleted
+requester/current reader, changed builder/source/profile, corrupt input/release,
+ambiguous matches, mid-preparation winner, duplicate-key rollback with fresh caller
+authorization and lost commit acknowledgement. Fake interleavings prove behavior only.
+
+The native harness additionally freezes two independent claimers after selecting the
+same stale candidate batch and requires an observed InnoDB lock wait before release.
+It checks one retirement event per old job and one compatible lease. Other new cases
+concurrently replay after revocation/supersession/requester deletion, reject current
+caller or changed/corrupt/ambiguous identity, pause input preparation while another
+connection completes a winner, and withhold a committed request response before retry.
+
+**Real MySQL/concurrency remains NOT EXECUTED.** Missing local prerequisites remain;
+the known-blocked harness was not repeatedly rerun. No installation, image pull, service,
+php.ini change, SQL execution, database or container creation occurred. Existing local
+Docker, an operator-provided `mysql:8.4` image and PDO MySQL remain prerequisites.
+
+Migration 025 retains its recorded checksum; 001–024 and all milestone/production
+statuses remain unchanged. Updated validation totals appear in the executed-checks
+section. The correction SHA, both review replies and the single new-head review
+request/state are reported with the task result. No new PR, deployment, remote
+migration, staging/production access, M6C generation or Narrator action is authorized.
+
+## PR #126 persisted-policy queue correction
+
+The next completed review of `94953504ee350e8d45ec8aed4c5133c54c14600c` raised
+[P1: retire jobs with unsupported persisted policies](https://github.com/fvd8383/ultimate-back-office/pull/126#discussion_r4054877005).
+That exact clean branch head was confirmed before editing. The implementation baseline
+remains `5baae28c9af68cca7694a912d7f35c87c50c9dc5`; this correction uses the existing
+branch and PR #126. No successful-request replay code or migrations were changed.
+
+### Reproduced before changing application behavior
+
+A standalone behavior regression first created two valid queued inputs with the same
+current builder version/SHA, registry, toolchain, profile and options. It validated
+both stored canonical input identities, then changed only the first job's persisted
+policy version. The second input was independently compatible. Running that regression
+against the prior application code actually failed with `caught=conflict;
+unchanged_due_queue=yes`: policy validation rolled back, preserved the due row and
+aborted the poll before the compatible lease. This is executed standalone evidence,
+not a MySQL or concurrency reproduction.
+
+The focused candidate audit also reproduced a separate silent stall: a safely settled
+`retry_wait` row with execution count 1 and supported maximum 1 was skipped without a
+terminal transition. The regression failed with `unchanged_due_queue=yes` before the
+service changed. This row satisfies the migration's counter/limit constraints, although
+normal completion already avoids scheduling exhausted budgets. A full batch of such
+persisted rows could keep later work outside the scan. The narrow correction gives
+this case the fixed configuration failure `execution_exhausted`; it never raises or
+resets the limit. Both previously failing regressions now pass.
+
+Before-fix outputs and the subsequent suite/lint logs are retained in the temporary
+local evidence directory `ubo-m6b-policy-977a88b461ef400ca91d1bc39b6edac7` under the
+development user's Windows TEMP directory. No generated test evidence is committed.
+
+### Policy classification and exact disposition
+
+`SiteBuildContract::policyFailure` is a pure persisted-value classifier. It validates
+the recorded version, bounded decodable JSON, semantic canonical policy digest, and
+supported scalar limits. Native PDO integer/string representations are accepted;
+arbitrary coercions are not. The strict `policy` method delegates to this classifier
+and still throws for unsupported values. Execution allocation, renewal, completion
+and recovery retain strict validation and their existing authority/token checks.
+The helper performs no database or infrastructure calls and uses no exception-message
+matching. Only bounded decode/canonicalization errors are classified as policy failure.
+
+After current worker confirmation, locked ownership/due-state checks, safe-queue proof,
+original-requester authorization and source/input eligibility, `claimBuild` classifies
+unsupported policy as `policy_unsupported` in the `configuration` category. The fixed
+safe summary is "The persisted worker policy is unsupported." Builder and input
+failures retain their distinct `builder_unavailable` and `input_mismatch` codes.
+
+The existing terminal transaction sets `status=failed`, clears `next_attempt_at`,
+records DB-derived completion/update timestamps, increments the lock version once and
+appends one bounded `site_build_failed` event. It commits before continuing the same
+maximum-20 candidate loop. Repeat polls and locked competing claimers see terminal
+state and cannot repeat the transition. No attempt, lease, token, BuildInput, start
+event, preparation, verification or provider/artifact work is allocated for that job.
+
+Every other job field is preserved: job/release identities, original requester, source
+snapshot, canonical input/idempotency/builder, stored policy version/JSON, limits,
+counters and current-attempt reference. Existing attempts, their deadlines, receipts
+and previous events remain unchanged. Configuration failures do not enter the transient
+storage/network retry path. Unsupported policy is never rewritten to executable defaults.
+
+### Focused audit of the complete candidate path
+
+| Candidate check | Disposition and boundary |
+| --- | --- |
+| Worker authentication and current builder identity before selection; worker reconfirmation under locks | Global unavailable/dirty/unidentified/untrusted infrastructure propagates without candidate retirement. |
+| Site/input/ascending authorization/job/current-attempt locks | Existing FK/ownership and immutable-identity checks remain fail-closed. Unexpected missing/changed ownership is an integrity error, not a policy classification. Requester FK races use bounded fresh-transaction retry. |
+| Locked status/due recheck after another worker changes a selected row | Bounded skip: an active owner, terminal result or future retry no longer qualifies as currently due. |
+| Existing ownership or unresolved effects on a still-queued row | Existing durable `reconciliation_required` / required-or-blocked recovery removes ordinary scheduling. Attempts, tokens, deadlines and stored policy remain intact; strict recovery refuses unsupported policy and allocates no fallback recovery. |
+| Original requester unauthorized or deleted | B17 commits its one-time cancellation before policy classification. |
+| Expected source lifecycle, approval, supersession, association/module, asset/rights, registry/composition validation rejection | Existing `source_not_eligible` terminal transaction; operational database errors and unexpected exceptions still propagate. |
+| Canonical input, identity and current builder comparison | Existing `input_mismatch` / `builder_unavailable` safe terminal dispositions. |
+| Persisted policy version, payload or limits | New specific `policy_unsupported` terminal disposition. |
+| Supported but exhausted execution limit on a safely queued row | Newly reproduced `execution_exhausted` terminal disposition; no budget mutation. |
+| Allocation, persistence, audit and commit | Allocation retains strict policy validation. Database/audit failures roll back; known 1205/1213 conflicts retain bounded retries and fresh locks. Uncertain commit propagates; a later poll resolves the committed terminal state. Unexpected exceptions are not swallowed or relabelled. |
+
+The audit found the policy throw and exhausted-limit skip as the two concrete remaining
+expected job-local queue stalls. No other lifecycle, recovery execution, history-replay
+or architecture redesign is included. Current successful history remains an immutable,
+authorized replay even with obsolete policy metadata; it receives no new eligibility
+or policy gate and causes no preparation, verification, policy rewrite or other effect.
+
+### Regression and native-harness coverage
+
+Behavior regressions cover policy-only version mismatch before compatible work;
+same-version changed payload; valid JSON null/array/incomplete/oversized payloads and
+invalid policy values; reordered supported JSON with lower valid limits; 25 incompatible
+rows across bounded polls; event-once and unchanged counter/identity/policy snapshots;
+mixed builder/input/policy classes; global failures; audit/update/unexpected-error
+rollback; simulated 1205/1213 retry and uncertain commit; prior settled-attempt/receipt
+preservation; B17 precedence; active/unresolved/blocked effects; exhausted-limit
+retirement; and exact historical success replay after approval revocation.
+
+Malformed JSON syntax and scalar column limits outside schema bounds are explicitly
+labelled **defensive fake-only rows**, because native JSON/CHECK enforcement prohibits
+them. Valid JSON with an unsupported version, shape or payload is SQL-representable.
+Contract regressions separately exercise pure classification, canonical ordering,
+PDO scalar representations, safe fixed codes and strict renewal/completion/recovery
+denial. Earlier P1/P2 and B17–B26 coverage remains present and executed.
+
+The isolated native harness adds 25 policy-only incompatible jobs on independently
+eligible sources and a compatible job with reordered policy JSON. Two independent PHP
+processes freeze the same remaining queue batch. The first holds its retirement and
+audit before commit; the second must visibly wait on the first connection's InnoDB
+lock before release. Assertions require one failure per job, zero retired-job attempts
+and unchanged counters/evidence, one compatible lease, and effect-free repeat polls.
+Additional native cases cover exact obsolete-policy success replay, audit-FK rollback,
+real JSON/CHECK rejection of fake-only states, and supported exhausted-budget retirement.
+
+**Real MySQL/concurrency: NOT EXECUTED.** The known-blocked harness was not rerun.
+The outstanding prerequisites remain a local Docker CLI/engine, an existing
+operator-provided `mysql:8.4` image and usable PDO MySQL. No software/image installation,
+php.ini/host change, database/container creation, remote substitute or SQL execution
+occurred. Syntax checks and synthetic tests do not establish native locking or DDL
+behavior. Actual database validation remains an outstanding acceptance gate.
+
+### Exact policy-correction inventory and unchanged status
+
+The policy correction changes these eight existing files relative to prior head
+`94953504ee350e8d45ec8aed4c5133c54c14600c`:
+
+| Correction file | Purpose |
+| --- | --- |
+| `private/classes/SiteBuildContract.php` | Pure policy classifier, authoritative strict validator, two fixed configuration codes. |
+| `private/classes/SiteBuildService.php` | Safe policy/exhausted-budget disposition in the existing bounded candidate loop. |
+| `tests/WebsitePlatformM6BBehaviorTest.php` | Before-fix reproductions, queue progression and preservation/rollback/history regressions. |
+| `tests/WebsitePlatformM6BContractTest.php` | Pure/strict policy consistency and lifecycle denial regressions. |
+| `tests/WebsitePlatformM6BMySql.php` | Policy-only batch/contention, replay, constraints/rollback and exhausted-limit native cases. |
+| `tests/support/WebsitePlatformM6BMySqlSupport.php` | Native precommit retirement barrier. |
+| `tests/support/WebsitePlatformM6BMySqlWorker.php` | Barrier wiring and preparation/verification observations from independent claim processes. |
+| `docs/sprint-8.8-m6b-local-implementation.md` | Finding, reproduced failures, audit, evidence, limitations and exact inventory. |
+
+The complete PR inventory remains 35 files. Migrations 001–024 match the implementation
+baseline and all 001–025 match the prior head. Canonical migration 025 SHA-256 remains
+`dab585dc29aac11153f92703c65d3883aeea73a1b2283157cfa9d2f2ece85cb0`.
+Migration 025 is **NOT APPLIED TO STAGING OR PRODUCTION**.
+
+Validation executed for this correction: **56/56 standalone PHP suites**, **743 M6B
+assertions** (behavior 401, authorization 83, recovery 49, contract 58, static schema
+110, scope 42), **211/211 tracked PHP lint**, and PowerShell harness syntax passed.
+Five current Markdown documents passed 84 relative-link checks, one referenced anchor,
+balanced fences, current statuses and the complete 35-file inventory/checksum checks.
+The eight-file correction inventory was separately compared with the prior head.
+Working, staged and committed diff checks are required before reporting the final SHA;
+their completed results accompany the task result. Real MySQL remains unexecuted.
+
+Statuses remain M6A **ARCHITECTURE REVIEWED / MERGED**, M6B **IMPLEMENTED LOCALLY /
+REVIEW REQUIRED**, M6 **IN PROGRESS**, M6C–M6G **NOT STARTED**, M5 **COMPLETE FOR SPRINT
+PROGRESSION**, M5C **ACCEPTED / NARRATOR FOLLOW-UP DEFERRED**, and Production
+**UNAUTHORIZED / NOT DEPLOYED**. No staging/production access, deployment, remote
+migration, M6C generation/publishing, application route/worker/scheduler, resumed
+Narrator work, new PR, merge or auto-merge occurred. The commit SHA, policy-thread reply
+and single new-head review request/state are reported with the task result.
+
+## Linux launcher and explicit shared-staging mode — current tooling update
+
+Prior head: `19dc550081ad47f1c53e91cd9efa5a6d8cddf381`. Its completed clean
+[application review](https://github.com/fvd8383/ultimate-back-office/pull/126#issuecomment-5745751056)
+is existing evidence only; the new Linux launcher/security changes require a new-head
+review in the same PR. The final commit SHA and single review request are recorded
+in the PR/task result rather than embedded as a self-referential launcher constant.
+
+The [Linux operating contract](sprint-8.8-m6b-linux-validation.md) documents both
+supported host modes. Dedicated operation defaults to `ubo-m6b-validate`.
+`ubo-stage-app` remains rejected by default and is accepted only by the explicit
+`shared-staging` mode with the exact `codex-validation` identity and higher verified
+headroom. Unknown/production hosts are rejected in both modes. No host was accessed,
+resized or provisioned, and the shared-host setup/resize remains unauthorized.
+The dedicated host remains **NOT PROVISIONED**.
+
+The new launcher checks the operator-supplied exact SHA, immutable canonical SQL,
+private standalone checkout, rootless Unix socket and daemon ownership, context
+selection, cached official digest/image/platform and enforceable cgroup limits.
+Before SQL, actual container and PHP cgroup values must match the requested limits.
+The 20-minute supervisor, three-PHP-process cap, bounded logs/storage monitoring,
+secret-safe private evidence and ownership-verified cleanup fail closed. Cleanup
+failure overrides overall PASS. Check-only exits before credentials/resources/SQL.
+
+Changes relative to the prior head are exactly these **12 files**:
+
+| Change in this update | Path |
+| --- | --- |
+| Added | `tests/RunM6BMySql.sh` |
+| Added | `tests/support/WebsitePlatformM6BLinuxGuard.php` |
+| Added | `tests/support/WebsitePlatformM6BLinuxLauncherFixture.sh` |
+| Added | `tests/WebsitePlatformM6BLinuxLauncherTest.php` |
+| Added | `docs/sprint-8.8-m6b-linux-validation.md` |
+| Modified | `tests/WebsitePlatformM6BMySql.php` |
+| Modified | `tests/support/WebsitePlatformM6BMySqlSupport.php` |
+| Modified | `docs/sprint-8.8-m6b-local-implementation.md` |
+| Modified | `docs/codex-handoff.md` |
+| Modified | `docs/first-customer-checklist.md` |
+| Modified | `docs/sprint-8.8.md` |
+| Modified | `docs/sprint-8.8-m6-implementation-plan.md` |
+
+The whole PR inventory is now **40 files: 26 additions and 14 modifications**.
+Application code and migrations 001–025 are unchanged from `19dc550`; the original
+Windows launcher is unchanged. Shared support changes concern Linux identity/image
+checks, bounded inspection/worker processes, propagated PHP memory limits and reaping.
+All canonical SQL scenarios and synthetic evidence distinctions remain intact.
+
+Actual Windows-local verification: **57/57 standalone PHP suites**, comprising
+the 56 existing suites plus the new launcher suite. Existing six M6B suites retain
+**743 assertions**; launcher policy/lifecycle adds **249 assertions across 52
+process-scoped Bash scenarios** (**992 M6B assertions total**). These cover host/user/root,
+default staging rejection and explicit shared mode, production rejection, SHA/dirty/
+history/hash/path, endpoint/image/delegation/limits/headroom, check-only, partial
+startup, timeout/interruption/test failure, foreign ownership, failed cleanup,
+exit-code propagation, output bounds and secret redaction.
+
+**213/213 PHP lint**, both Bash files' syntax, unchanged PowerShell launcher syntax,
+and six current Markdown documents' **94 relative links**, one referenced anchor,
+balanced fences, statuses, checksums and exact 40-file inventory passed. Working,
+staged and committed diff checks accompany the final commit verification. No software
+or images were installed; no actual Docker/systemd/Linux isolation or MySQL layer
+was executed. The fake lifecycle uses a gated file to model FIFO delivery on Windows;
+it cannot prove real kernel/resource/supervisor behavior.
+
+The historical staging preflight is recorded solely as user-supplied evidence in the
+Linux contract, including its supplied SHA-256 and **APP_ENV independently unconfirmed**;
+it was not downloaded or independently hash-verified. The current status is
+**M6B — IMPLEMENTED LOCALLY / REAL-MYSQL VALIDATION PENDING**, Linux tooling
+**REVIEW REQUIRED**, M6 **IN PROGRESS**, M6C–M6G **NOT STARTED**, Production
+**UNAUTHORIZED / NOT DEPLOYED**. Real MySQL remains **NOT EXECUTED**. No staging or
+production access, container/database creation, migration execution, M6C/Narrator
+work, new PR, merge or auto-merge occurred.
+
+## Linux review corrections and operator-reported volume setup — 2026-09-20
+
+This correction starts from clean branch head
+`ddc0d749ede346e5da26e9d2e81b02bce5f6851d`, on the existing
+`codex/sprint-8.8-m6b-persistence-jobs` branch and PR #126. The completed launcher
+review contained two findings, independently of the earlier clean application review:
+[P1, unloaded transient units](https://github.com/fvd8383/ultimate-back-office/pull/126#discussion_r4055419657)
+and [P2, inherited Docker client configuration](https://github.com/fvd8383/ultimate-back-office/pull/126#discussion_r4055419662).
+Both are corrected in test tooling; the exact new SHA, replies and single new-head
+review request/state accompany the task result. They do not establish Linux execution.
+
+P1 now captures ownership and cgroup identity before stopping. A complete systemd
+metadata snapshot distinguishes an explicitly absent unit from arbitrary command
+failure, a foreign/replaced unit, active unit or inaccessible manager. A successful
+owned stop followed by explicit `LoadState=not-found` proceeds to container cleanup.
+The recorded cgroup must be removed under accessible ancestry or report
+`cgroup.events populated=0`, including descendants; unreadable or populated state
+fails closed. Original test result and cleanup result remain separate. Uncontrolled
+test trees prevent additional PHP guards and guessed container removal.
+
+P2 now creates an empty private Docker CLI configuration after registering cleanup.
+Every daemon-facing invocation pins both config and endpoint, including PHP and
+cleanup. Existing user config, contexts, proxy values and credential helpers are not
+copied or modified. Endpoint overrides are checked before contacting a daemon.
+Actual container environment is compared to the inspected approved image defaults
+plus only the exact generated test additions; unexpected/missing/duplicate entries
+fail without exposing their values. The rootless daemon configuration and service
+are never modified or started automatically. Check-only cleans its temporary client
+configuration and creates no database credentials, container, SQL connection or worker.
+
+The operator now reports the resize, attached volume and rootless Docker setup as
+complete on `ubo-stage-app`, for `codex-validation`. This **supersedes the prior
+setup-pending banner as an operator report**, not as independently measured evidence.
+No remote access or setup was performed in this correction. Actual UID, available
+resources, mounted UUID, cached digest and daemon behavior remain unverified here.
+A dedicated host remains an alternative, not a requirement for shared staging.
+
+The explicit `--host-mode shared-staging --layout volume` path is
+`/mnt/ubo_stage_testdata/codex-validation`, with private `docker`, `checkouts`,
+`evidence` and `tmp` directories. The root-owned protected marker
+`/etc/ubo-validation/volume.uuid` and helper `/usr/local/bin/ubo-test-volume-check`
+anchor checks of the actual mountpoint, UUID, device and mount ID. Directory
+ownership, private permissions, resolved paths and mount identity must match, and
+DockerRootDir must equal the volume's `docker` path. Missing/wrong mounts fail before
+storage creation. Rechecks precede creation/SQL and run throughout execution/cleanup.
+A pinned directory descriptor prevents writes falling back to the boot disk after
+unmount/overmount. Mount loss stops the run, preserves existing volume evidence and
+uses only a small private runtime emergency report/checksum when necessary.
+
+The existing dedicated home layout remains supported, with no home-symlink disguise
+for external storage. Runtime CLI config, credentials and FIFO/gate files are the
+explicit small `/run/user/<verified-uid>` exception. Disk-backed temporary data and
+evidence use the approved storage tree. The operator's image record is reported at
+`evidence/mysql-image-pin.txt`; no digest or UID was invented or read from the host.
+
+No smaller profile was justified or added. Shared-conservative retains four available
+CPUs, MySQL 1536 MiB (including its 1024 MiB tmpfs), PHP aggregate 1024 MiB and the
+1536 MiB operating-reserve floor. Admission is strengthened from 4096 to **4352 MiB
+MemAvailable**: 1536 + 1024 + 256 MiB external engine/supervisor allowance + 1536 MiB
+staging reserve. Two one-CPU test quotas leave two CPU-equivalents on a qualifying
+four-CPU host. A nominal two-CPU/four-GiB-total host does not qualify, and the configured
+host is not claimed to qualify. No automatic profile fallback, larger limits, longer
+timeouts or reduced SQL acceptance cases were introduced.
+
+Volume admission is 10 GiB free with a 4 GiB runtime floor and a monitored 6 GiB test
+budget. Boot requires a separate **1 GiB** operating reserve, not 10 GiB. Shared
+Docker/evidence capacity is counted once. Check-only prints actual versus required
+CPU, memory, root/data/evidence space and profile/layout, even if Docker is stopped.
+The [operating contract](sprint-8.8-m6b-linux-validation.md) gives separate complete
+later check-only and run commands, host/user responsibilities and all boundaries.
+
+This correction changes exactly **11 existing files**; the whole PR remains
+**40 files: 26 additions and 14 modifications**:
+
+| Modified in this correction | Purpose |
+| --- | --- |
+| `tests/RunM6BMySql.sh` | Unit cleanup, isolated client config, explicit volume layout, mount identity and capacity admission. |
+| `tests/support/WebsitePlatformM6BLinuxGuard.php` | Private client-config validation and exact image/container environment comparison. |
+| `tests/support/WebsitePlatformM6BMySqlSupport.php` | Propagate the isolated CLI config to native PHP inspection. |
+| `tests/support/WebsitePlatformM6BLinuxLauncherFixture.sh` | Process-scoped unit/client/mount/resource doubles and lifecycle regressions. |
+| `tests/WebsitePlatformM6BLinuxLauncherTest.php` | Environment, cleanup, volume and admission/reserve assertions. |
+| `docs/sprint-8.8-m6b-linux-validation.md` | Corrected operating contract and explicit later invocations. |
+| `docs/sprint-8.8-m6b-local-implementation.md` | This correction's exact scope and evidence record. |
+| `docs/codex-handoff.md` | Current operator-reported setup/correction status. |
+| `docs/first-customer-checklist.md` | Current operator-reported setup/correction status. |
+| `docs/sprint-8.8.md` | Current operator-reported setup/correction status. |
+| `docs/sprint-8.8-m6-implementation-plan.md` | Current operator-reported setup/correction status. |
+
+Final Windows-local validation: **57/57 standalone PHP suites passed**, consisting
+of the 56 existing suites and the expanded launcher suite. The six existing M6B
+suites retain **743 assertions**; the launcher has **499 assertions across 91
+isolated Bash scenarios**, for **1242 M6B assertions total**. These include normal
+exit, timeout, interruption, headroom abort, stop/unload and absent units, foreign or
+replaced units, manager failure, descendant-populated/unreadable cgroups, genuine
+stop failure, private client-config success/signal/failure cleanup, proxy sentinels,
+unexpected container environment, volume identity/ownership/path/mount-loss cases,
+and exact admission/reserve boundaries. No sentinel appeared in retained diagnostics.
+
+**213/213 PHP lint**, both Bash files' syntax and unchanged PowerShell launcher
+syntax passed. Six current Markdown documents passed **95 relative links**, one
+referenced anchor, balanced fences, status/migration-checksum checks and the complete
+40-file inventory comparison. The exact 11-file correction inventory was compared
+with the prior head. Working, staged and committed diff checks are part of final
+commit verification. Fake-command and Git Bash results do not establish real Linux,
+systemd, rootless-container, mount or MySQL behavior; those layers remain unexecuted.
+
+Application services, public routes, deployment wrappers and migrations 001–025
+remain unchanged from `19dc550081ad47f1c53e91cd9efa5a6d8cddf381`. Migration 025's
+canonical hash remains `dab585dc29aac11153f92703c65d3883aeea73a1b2283157cfa9d2f2ece85cb0`.
+The Windows launcher, native SQL scenario file and independent SQL worker are also
+unchanged from `ddc0d749`; no business assertion or MySQL version/native-prepare check
+was weakened. The historical deployed SHA is still reported evidence only:
+`70a3051f73874e7268b9c1bba45bf19d41f9432a`.
+
+Actual Linux/systemd/container/MySQL execution remains **NOT EXECUTED**. The desktop
+work used the current Windows development/Git identity, never root, ubo-deploy or
+codex-validation. No staging/production access, installation, resize, host change,
+image download, container/database creation, migration, deployment, M6C or Narrator
+work occurred. No new PR, merge or auto-merge is authorized. Current statuses remain
+**M6B — IMPLEMENTED LOCALLY / REAL-MYSQL VALIDATION PENDING**,
+**Linux launcher — CORRECTIONS IMPLEMENTED / REVIEW REQUIRED**, M6 **IN PROGRESS**,
+and Production **UNAUTHORIZED / NOT DEPLOYED**.
+
+## Deterministic supervisor interruption correction — 2026-09-20
+
+This correction starts from clean local and PR head
+`88d27a179f48fa0404d27ed24ad10a312f335aa2`, on the existing branch and PR #126.
+It addresses [the completed TERM review finding](https://github.com/fvd8383/ultimate-back-office/pull/126#discussion_r4058088240).
+The review's **8 failures in 13 attempts** are reviewer evidence, not a local result.
+
+Actual unchanged-code reproduction used Windows Git Bash **5.3.15(2)-release
+(x86_64-pc-cygwin)** and PHP **8.4.24 CLI, ZTS Visual C++ 2022 x64**. The original
+launcher suite passed **499 assertions / 91 scenarios**. A separate **13/13** isolated
+`run-interrupt` repetitions passed; this runtime did **not** reproduce the reported
+unexpected-EOF parser error or wrong `test_failure` classification. That flaky case
+is retained and strengthened, not removed or relabeled as a reproduced failure.
+
+With the launcher still byte-unchanged from that head, a controlled signal injected
+at the owned-unit stop boundary **did** reproduce interrupted cleanup: PHP reported
+native child exit **3840** after SIGTERM, the command log ended at `stop-unit` /
+`signal-TERM`, and the owned fake container and temporary files remained, without a
+final verdict. This is a distinct deterministic local failure, not the reviewer's
+parser-error reproduction. The corrected case returns **143**, records `interrupted`,
+and finishes ownership-limited cleanup.
+
+The traps now only record the first interruption code. Main-flow checkpoints prevent
+later success/test-failure classification from taking precedence and prevent another
+test phase after observed interruption. Both child-status collection and cleanup
+confirm child termination before `wait`; a signal-interrupted wait is handled explicitly
+under `set -e`. Polling uses the original absolute 1200-second run deadline, short
+sleeps and bounded cleanup reaping. Signals remain recorded during cleanup instead
+of reverting to default termination, and repeated mixed signals never invoke cleanup
+again. SIGINT/SIGTERM retain **130/143** on successful cleanup; failed cleanup returns
+**2** while retaining the original interruption reason/code separately. Publication
+rechecks first-signal state after checksumming, so a signal at that boundary updates
+the verdict and manifest together. No admission threshold or workload cap changes.
+
+The fixture uses bounded, acknowledged marker barriers before/after supervisor
+completion and process-local command adapters for active execution, child-status
+collection, status command substitution, the flag-check/sleep gap, cleanup and evidence
+publication. Both signals cover these boundaries, repeated mixed signals and interruption
+followed by cleanup failure. It asserts exactly one cleanup, no next phase, correct
+signal/non-success classification, no trap/parser errors, secret-safe diagnostics,
+matching final evidence checksums, simulated container removal and independently probed
+termination of the actual owned fixture child PIDs. Normal success, genuine failure,
+the existing flaky completion case, and all previous safety regressions remain enabled.
+An optional exact `--case` filter permits focused reproduction; the default suite
+always runs every case.
+
+Exactly **five existing files** change in this correction; the whole PR remains
+**40 files (26 additions, 14 modifications)**:
+
+| Modified file | Purpose |
+| --- | --- |
+| `tests/RunM6BMySql.sh` | Record-only traps, main-flow checkpoints, bounded status collection/cleanup and interruption evidence. |
+| `tests/support/WebsitePlatformM6BLinuxLauncherFixture.sh` | Controlled signal barriers and owned-process/container doubles. |
+| `tests/WebsitePlatformM6BLinuxLauncherTest.php` | Boundary, classification, cleanup, process-liveness and evidence assertions. |
+| `docs/sprint-8.8-m6b-linux-validation.md` | Signal and cleanup operating contract. |
+| `docs/sprint-8.8-m6b-local-implementation.md` | Exact reproduction, scope and validation record. |
+
+Final Windows-local validation: **57/57 available standalone PHP suites passed**
+(the 56 existing suites and the complete corrected launcher suite). Launcher coverage
+is **1088 assertions across 113 isolated Bash scenarios**, including **22 controlled
+signal cases**. The six existing M6B suites retain **743 assertions**, for **1831 M6B
+assertions total**. All **213 tracked PHP files** passed lint, followed by a final
+lint of the changed test assertion. Both Bash files passed syntax checking; the
+unchanged PowerShell launcher parsed with zero errors. The two changed Markdown
+documents passed **11 relative links, two referenced anchors**, balanced fences and
+status/checksum checks. Exact five-file correction / 40-file PR inventories and
+preserved-file comparisons passed. Ten safety/resource functions and Docker/supervisor
+resource/deadline command lines match the prior head exactly. Working, staged and
+committed diff checks are included in final commit verification.
+
+Supplementary corrected-code repetitions: **13/13** isolated runs of the unchanged
+`run-interrupt` scenario passed with its stronger classification/cleanup/process and
+checksum assertions (**56 assertions per focused invocation**). These repetitions
+are separate from the deterministic boundary matrix and are not added to suite totals.
+The first broad validation pass exposed a new test-adapter parsing mistake: Git Bash
+marks binary SHA-256 entries with `*`. Actual hashes matched; the assertion now accepts
+that marker as well as Linux's text format. The complete launcher suite was rerun
+after that test-only correction; other standalone suites were unaffected.
+
+Application code, migrations 001–025, the Windows launcher, native SQL scenario/worker,
+Linux guard and PHP MySQL support are unchanged from `88d27a179f48fa0404d27ed24ad10a312f335aa2`.
+Migration 025 remains
+`dab585dc29aac11153f92703c65d3883aeea73a1b2283157cfa9d2f2ece85cb0`.
+Resource admission and reserve functions, Docker resource arguments, PHP supervisor
+limits, the 1200-second deadline, and SQL acceptance scenarios remain unchanged.
+P1 unloaded-unit/descendant checks, private client configuration, exact container
+environment verification, volume identity/pinned storage and rootless isolation remain
+covered by the full regression suite.
+
+All execution is Windows-local PHP/Git Bash with isolated command doubles. Real
+Linux/systemd/container/MySQL validation remains **NOT EXECUTED**. No staging/production
+access, resize, installation, host configuration, container/database creation or
+execution, migration, deployment, M6C or Narrator work occurred. No new PR, merge or
+auto-merge is authorized. The review reply and single exact-new-head review request
+are linked in the task result; review approval is not claimed.
+
+M6B remains **IMPLEMENTED LOCALLY / REAL-MYSQL VALIDATION PENDING**; Linux launcher
+**CORRECTIONS IMPLEMENTED / REVIEW REQUIRED**; M6 **IN PROGRESS**; Production
+**UNAUTHORIZED / NOT DEPLOYED**.
+
+## Docker data-root and final evidence correction — 2026-09-20
+
+This correction starts from clean branch and PR head
+`025a564600c500d97442a0e1c431b7a23cc3e3e0`. It addresses the separately identified
+Docker-directory permission mismatch and [the completed final-evidence signal review](https://github.com/fvd8383/ultimate-back-office/pull/126#discussion_r4058219312).
+The latter concerns signals accepted after publication; it is distinct from the
+previous supervisor-completion and cleanup-boundary findings.
+
+Actual local reproduction used **Git Bash 5.3.15(2)-release (x86_64-pc-cygwin)** and
+**PHP 8.4.24 CLI, ZTS Visual C++ 2022 x64**. With the old launcher, the simulated
+0710 Docker directory was rejected with **exit 2**. This was also checked against a
+saved exact baseline launcher using GNU stat's normalized `710` representation.
+The corrected exact-path check accepts it with **exit 0**. The original 0700 case
+remains enabled. Negative cases cover private base/checkouts/evidence/tmp at 0710,
+Docker group read/write and other-user access, special bits, wrong UID/group, a
+foreign DockerRootDir, symlink resolution, unexpected mounts, and permission changes
+between successive volume checks. These are metadata doubles, not host inspection.
+
+The Docker-specific rule applies only to `$base/docker`: it must retain the verified
+UID, the intended codex-validation owning group, exact resolved path and verified
+volume mount/device, with mode **0700 or 0710**. Its enclosing base and all workspace,
+runtime and client directories keep the strict **0700** rule. `m6_private` is unchanged.
+Initial admission, recurring volume checks and cleanup validation share this rule;
+DockerRootDir must still match exactly. The linked Moby initialization source in the
+[operating guide](sprint-8.8-m6b-linux-validation.md) provides 0710 context, without
+claiming that version is installed on the host. No chmod/chown, data traversal/move,
+daemon configuration change or service operation occurred.
+
+The final-evidence race was reproduced deterministically against the unchanged
+finalization flow for **both signals**: injection at the `Private evidence` notice
+returned **TERM 143 / INT 130**, while the final report still said **Interruption exit:
+NONE / Overall: PASS**. The retained manifests matched those PASS reports. These are
+actual local results, independently supporting the review; no reviewer reproduction
+count is presented as a local result.
+
+The selected policy now ends signal acceptance at one explicit builtin boundary,
+**after cleanup attempts and evidence preparation are settled**. All previously
+recorded first signals remain authoritative: INT **130**, TERM **143** when cleanup
+succeeds. Cleanup failure remains separate and forces non-success. After the boundary,
+INT/TERM are deliberately ignored through bounded final publication and exit; this
+includes report/checksum generation, the post-publication notice and the last step
+before exit. They cannot mutate only the exit status or only the evidence. The
+previous republish-on-signal loop and final late status override are removed.
+This does not promise atomic filesystem rewriting at every instant until shell exit.
+
+Publication performs all report/checksum/manifest/notice I/O in a subprocess with a
+**5-second timeout and 1-second forced-kill allowance**. Failure changes the outcome
+to exit **2** and permits exactly **one** equally bounded failure-publication attempt,
+for at most **12 seconds of watchdog allowance**. Signals cannot create extra attempts,
+and owned-resource cleanup is never restarted. `Cleanup`, `Publication`, accepted
+`Interruption exit` and final `Exit status` remain separate. An accepted interruption
+stays the primary reason even if publication fails. The manifest is invalidated first
+and committed by rename after hashing; missing/invalid manifests mean **uncommitted
+non-success evidence**, never PASS. A persistent checksum failure leaves a non-success
+report without a committed manifest. Mount-loss reporting still uses only the private
+runtime emergency path, never a replacement path on the boot disk beneath the volume.
+
+Controlled cases exercise acceptance immediately before the boundary, ignored signals
+during report writing/checksumming, after publication and immediately before exit,
+a genuine test failure followed by a late signal, an accepted signal followed by a
+late mixed signal, accepted interruption plus publication failure, report-write and
+checksum failures, permanent checksum failure and a deliberately hung publisher.
+The timeout case independently probes the publisher and sleeper PIDs as well as the
+existing owned supervisor/collector PIDs. All earlier supervisor, wait/status,
+cleanup, mixed-signal and original `run-interrupt` cases remain enabled. The earlier
+evidence-generation cases now assert the explicitly selected post-boundary policy;
+they were not removed. Tests check report/checksum/exit agreement, bounded attempt
+counts, one owned cleanup, no subsequent phase, and secret-safe output.
+
+The operator supplied completed inspection measurements at **2026-09-20T21:23:19Z**:
+ubo-stage-app / codex-validation, UID **1000**, **4 available CPUs**, MemAvailable
+**7610155008 bytes**, volume free **24222400512 bytes**, boot free **2941308928 bytes**.
+The volume `/mnt/ubo_stage_testdata` UUID was
+`7d255792-0283-4773-b7a1-20596ed0d8fa`; Docker storage was reported
+codex-validation:codex-validation / **0710**, with checkouts/evidence/tmp **0700**.
+The Docker user service was **installed, stopped, disabled**, with no socket while
+stopped. PHP `/usr/bin/php8.3` was reported as **8.3.6**, with PDO MySQL and `proc_open`.
+The deployed application was reported clean at
+`70a3051f73874e7268b9c1bba45bf19d41f9432a`, Apache active. APP_ENV remains independently
+unconfirmed. **Capacity qualified at that inspection** against unchanged gates; it
+must be rechecked with Docker running before separately authorized execution. These
+are operator-supplied measurements, not desktop-task observations. Actual engine
+version, kernel isolation and MySQL behavior remain unverified here. No resize or
+lowered gate is proposed.
+
+Exactly **five existing files** change; the complete PR remains **40 files (26
+additions, 14 modifications)**:
+
+| Modified file | Purpose |
+| --- | --- |
+| `tests/RunM6BMySql.sh` | Exact Docker data-root permission rule and bounded finalization policy. |
+| `tests/support/WebsitePlatformM6BLinuxLauncherFixture.sh` | Permission metadata and deterministic finalization/failure doubles. |
+| `tests/WebsitePlatformM6BLinuxLauncherTest.php` | Permission, report/checksum/exit, attempt-bound and owned-process regressions. |
+| `docs/sprint-8.8-m6b-linux-validation.md` | Permission contract, finalization boundary and completed operator inspection. |
+| `docs/sprint-8.8-m6b-local-implementation.md` | Actual reproduction, changed-file and validation record. |
+
+Final Windows-local validation: **57/57 available standalone PHP suites passed**,
+including **1741 launcher assertions across 151 isolated Bash scenarios**. The six
+existing M6B suites retain **743 assertions**, for **2484 M6B assertions total**.
+Focused corrected checks passed for 0710 acceptance, pre-boundary acceptance,
+post-publication/checksum signals and the publisher timeout before the full run.
+All **213 tracked PHP files** passed lint; both Bash files passed syntax checking;
+the unchanged PowerShell launcher parsed with zero errors. The two changed Markdown
+documents passed **12 relative links, two referenced anchors**, fences, statuses,
+canonical checksum and exact supplied measurement checks. The five-file correction
+and 40-file PR inventories, preserved-file comparisons, working/staged/committed
+diff checks are included in final commit verification. Actual Linux/systemd/container
+and MySQL execution remains unexecuted; these totals describe local command doubles.
+
+Application/services, migrations 001–025 and the Windows launcher remain unchanged
+from application-preservation baseline `19dc550081ad47f1c53e91cd9efa5a6d8cddf381`.
+Migration 025 remains
+`dab585dc29aac11153f92703c65d3883aeea73a1b2283157cfa9d2f2ece85cb0`.
+Native SQL scenarios/worker, PHP Linux guard and MySQL support are unchanged from
+`025a564600c500d97442a0e1c431b7a23cc3e3e0`. Seventeen preserved functions, the strict
+private-directory rule and Docker/supervisor resource/deadline command lines match
+that prior head. No CPU/memory/storage admission or runtime limits, SQL acceptance
+cases, endpoint/client-config/container-environment policy, owned-unit/container
+cleanup, production/web-root rejection or exact-SHA checkout requirements changed.
+
+All execution is Windows-local with command doubles. No staging/production access,
+host changes, resizing/reinstallation, service operations, containers, database
+connections, SQL, migrations, deployment, M6C or Narrator work occurred. Real Linux,
+rootless-container, kernel isolation and MySQL validation remain **NOT EXECUTED**.
+The existing PR stays open, non-draft and unmerged, with auto-merge disabled; the task
+result links the correction reply and one exact-new-head review request/state.
+
+M6B: **IMPLEMENTED LOCALLY / REAL-MYSQL VALIDATION PENDING**. Linux launcher:
+**CORRECTIONS IMPLEMENTED / REVIEW REQUIRED**. M6: **IN PROGRESS**. Production:
+**UNAUTHORIZED / NOT DEPLOYED**.
+
+## Verified Docker tmpfs representation correction
+
+This focused correction starts from clean branch/PR head
+`081f9a9e2c266163f8fd692635db0c5aafe96147` on
+`codex/sprint-8.8-m6b-persistence-jobs`. The initial full Linux `--run` stopped before
+SQL because `m6linuxContainer()` required one top-level mount even though the exact
+approved `HostConfig.Tmpfs` request was present. The operator's subsequent inert
+diagnostic confirmed that Docker can report `Mounts: []` while effectively mounting
+the requested tmpfs. The earlier `docker info` error was a diagnostic-template error,
+not evidence of engine or database application failure.
+
+The supplied report is
+`/mnt/ubo_stage_testdata/codex-validation/evidence/m6b-diagnostic-20260921T001708Z/M6B-ERROR-AND-EFFECTIVE-MOUNT-DIAGNOSTIC.md`,
+with operator-reported SHA-256
+`72c3beac1e2b9a85b2d5589f76f69440378b66f76f7a89fa22cce07408abcc6a`.
+Reported runtime: rootless Docker **29.8.1**, **linux/amd64**;
+image ID `sha256:7c07d11b694dcc7e2ef3de845075eca1a8b39868f85f519f938b54c432edc1cb`;
+repository digest
+`mysql@sha256:85b9bf2e29cf836ecb8c2a15a935d4ba0c606631dff1dd79531a11983c638f2a`.
+The [operating guide](sprint-8.8-m6b-linux-validation.md#confirmed-tmpfs-representation-and-current-validation-gate)
+records the supplied projection and literal probe output. `HostConfig.Mounts` was
+absent; `Binds`/`VolumesFrom` were null; `Config.Volumes` declared `/var/lib/mysql`;
+top-level `Mounts` was explicitly `[]` both before start and after exit. This was a
+sanitized projection, not a complete inspect record.
+
+The read-only shell probe replaced the MySQL entrypoint. It reported exactly one
+effective tmpfs at `/var/lib/mysql`, rw/nosuid, **1048576 KiB = 1073741824 bytes = 1 GiB**;
+attach/client, container and probe exits were all zero. No anonymous volumes or extra
+mount relationships were observed. No database client, SQL, migration or M6B database
+acceptance case ran. These are supplied runtime observations: this desktop task did
+not access the host, download/hash-verify the report or rerun the probe. Its mount IDs,
+device number and uid/gid are not new guard requirements.
+
+**Actual local before/after reproduction:** using the existing complete valid fixture
+with the observed projection applied, the old guard's real stdin/JSON CLI returned
+**exit 2 / `M6B guard rejected inspection: container_mounts`**. After correction it
+returns **exit 0 / port 33306** with no stderr. The fixture uses synthetic identity,
+image and credentials; it is not the incomplete supplied projection passed off as a
+full inspect record. The original single-tmpfs fixture still passes.
+
+The one shared mount rule retains the exact approved `HostConfig.Tmpfs` map and
+accepts only an explicitly present empty top-level JSON list, or a list containing
+one tmpfs entry at exactly `/var/lib/mysql`. It rejects missing/null/scalar/string
+values, objects (including empty and numeric-key objects), non-list structures,
+extra/duplicate mounts, bind/named/anonymous volume entries and wrong type/destination.
+Missing/changed/extra Tmpfs entries also fail. `HostConfig.Mounts` must be absent or
+exactly `[]`; competing specifications and other types fail. Existing forbidden
+Binds/VolumesFrom remain rejected. An image's Config.Volumes declaration neither
+proves attachment nor bypasses actual requested/reported mount validation.
+
+The small shared decoder keeps the typed JSON view of object-valued mount-list
+fields while preserving the existing associative representation elsewhere. It also
+requires an outer inspection list of objects (engine metadata remains an object),
+so numeric-key outer objects cannot erase nested type distinctions. Both the CLI
+and Linux branch of `m6mysqlIdentity()` use it. The PHP branch's existing environment,
+shared-container and port checks are extracted into a pure reinspection helper,
+tested before any connection. There is no second mount policy. The Windows branch
+retains its existing decoding and behavior; no host/socket checks are bypassed to
+run these local tests.
+
+The **47 inspection cases** each exercise direct PHP reinspection, JSON-decoded PHP
+reinspection and the actual JSON CLI. Negative empty-list cases also retain image,
+owner, environment, resource, logging and loopback enforcement. The new
+`run-mounts-empty` fake-command scenario passes `container_controls`, invokes the
+production cgroup-limit gate with an ineffective CPU limit, and returns **exit 2 /
+`container_limits_not_effective`**, with **Test exit: NOT_EXECUTED** and no harness
+supervisor launched. The focused run passed **242 assertions / one Bash scenario**.
+An initial new progression assertion expected the detailed gate code in the report;
+it was corrected to check stderr, where the unchanged launcher emits that code.
+Its historical report classification remains `startup`; finalization was not changed.
+
+Exactly **six existing files** change; the complete PR remains **40 files (26
+additions, 14 modifications)**:
+
+| Modified file | Purpose |
+| --- | --- |
+| `tests/support/WebsitePlatformM6BLinuxGuard.php` | Shared mount policy, JSON shape preservation and pure PHP reinspection helper. |
+| `tests/support/WebsitePlatformM6BMySqlSupport.php` | Linux-only use of the shared decoder and reinspection helper. |
+| `tests/WebsitePlatformM6BLinuxLauncherTest.php` | Complete observed fixture and direct/JSON/launcher regressions. |
+| `tests/support/WebsitePlatformM6BLinuxLauncherFixture.sh` | Observed-representation scenario using the existing effective-limit gate. |
+| `docs/sprint-8.8-m6b-linux-validation.md` | Supplied runtime evidence, accepted shapes and remaining runtime gate. |
+| `docs/sprint-8.8-m6b-local-implementation.md` | Before/after, source preservation and actual local validation record. |
+
+Final Windows-local validation used **PHP 8.4.24 CLI ZTS Visual C++ 2022 x64** and
+**Git Bash 5.3.15(2)-release (x86_64-pc-cygwin)**. All **57/57 available standalone
+PHP suites passed**, including **1949 launcher assertions / 152 isolated Bash
+scenarios**. The six existing M6B suites retain **743 assertions**, for **2692 M6B
+assertions total**. All **213 tracked PHP files** passed lint; both Bash files passed
+syntax checks and the unchanged PowerShell launcher parsed with zero errors. The
+two changed Markdown documents passed **13 relative links, three referenced anchors
+and six balanced fence pairs**, plus current-status and supplied evidence/image hash
+checks. Exact correction/PR inventories, preservation comparisons and working/staged/
+committed diff checks are part of final commit verification. These counts describe
+local tests and command doubles, not actual container or MySQL acceptance execution.
+
+Application/services, migrations 001–025 and the Windows launcher are unchanged from
+`19dc550081ad47f1c53e91cd9efa5a6d8cddf381`. Migration 025 remains
+`dab585dc29aac11153f92703c65d3883aeea73a1b2283157cfa9d2f2ece85cb0`.
+The entire Linux launcher, native SQL acceptance scenarios/schema cases and worker
+are unchanged from `081f9a9e2c266163f8fd692635db0c5aafe96147`. Therefore the container
+recipe, image selection, resource admission/quotas, deadline, endpoint/identity checks,
+ownership-limited cleanup, signals and evidence finalization retain their prior code.
+No generic bypass, new diagnostic container, Docker top requirement or mount-attestation
+framework was added.
+
+Actual Linux container/mount diagnostics **have been performed by the operator**.
+The corrected full launcher **has not been rerun on the droplet**. Actual MySQL,
+schema/concurrency and full effective-resource validation remain **unexecuted**;
+the next separately authorized exact-SHA run must satisfy every existing gate.
+Migration 025 remains unapplied to the working staging and production databases.
+Earlier blocked/incomplete reports retain their verdicts and missing-evidence history.
+This patch and its passing fixtures do not establish real-Linux/MySQL PASS.
+
+During this correction all execution was local Windows PHP/Git Bash with command
+doubles. No host access, containers, diagnostics on the host, database connections,
+SQL/migrations, installs, resizing/remounts/configuration changes, deployment, M6C or
+Narrator work occurred. PR #126 stays open, non-draft, unmerged and without auto-merge;
+the task result links the single exact-new-head review request and observed state.
+
+**M6B TMPFS GUARD CORRECTION — IMPLEMENTED / REVIEW REQUIRED**.
+**REAL-MYSQL VALIDATION — PENDING**.
+
+## Configuration-free PHP guard correction
+
+This correction starts from clean branch/PR head
+`65f0bc276b2fb9fa00fd0223b54bccd5a748afe4`. Its pure guard matches Git blob
+`25a4c8e70d5d5551ae4ea6ff6a31c5b793b6c765`. The launcher invokes that guard with
+`php -n -d memory_limit=256M`; its `ctype_digit($port)` call could therefore use an
+optional extension unavailable in that configuration-free process. The catch-all
+then mislabeled the resulting Error as `invalid_metadata`.
+
+The supplied assistant-side reproduction used **Linux PHP 8.4.23**, the exact blob
+and complete synthetic inspection input. Configured PHP passed; `php -n` failed with
+an undefined-ctype Error; explicitly loading existing ctype passed; a scratch core-only
+replacement passed 27 port/type probes. Those results were supplied to this task.
+They are not a reproduction performed by this Windows task on Linux or ubo-stage-app,
+and they do not capture the original server exception.
+
+The latest operator-reported attempt used **PHP 8.3.6** and stopped before SQL.
+Report:
+`/mnt/ubo_stage_testdata/codex-validation/evidence/m6b-mysql-rerun-20260921T010426Z/M6B-ISOLATED-MYSQL-RERUN.md`.
+Operator-reported SHA-256:
+`f0b39ed68ac816bb8d3a4aac5a84389d4f2c7767c76499312fb47d16a83f7730`.
+No server access, download or independent hash verification occurred here; its
+original exception remains unobserved. The later runtime failure does not establish
+that the tmpfs correction failed. The separately supplied effective 1 GiB tmpfs
+diagnostic and all historical blocked/incomplete reports retain their evidence and
+verdicts.
+
+**Actual Windows reproduction:** PHP **8.4.24 CLI ZTS Visual C++ 2022 x64**, with
+the complete existing synthetic fixture and the real stdin/JSON CLI. Child invocations
+use the same PHP executable followed by each profile's flags, then
+`-d memory_limit=256M`, the guard file, `container`, the synthetic digest and
+`linux/amd64`. Windows ctype remained available under `-n`, so the third profile uses
+test-only `-d disable_functions=ctype_digit`. A separate child with identical flags
+verified `function_exists('ctype_digit') === false` before acceptance was asserted.
+
+| Original guard profile, both mount forms | ctype exists | Exit | stdout | stderr |
+| --- | --- | --- | --- | --- |
+| Configured PHP | yes | 0 | `33306\n` | empty |
+| `-n` | yes | 0 | `33306\n` | empty |
+| `-n -d disable_functions=ctype_digit` | no | 2 | empty | `M6B guard rejected inspection: invalid_metadata\n` |
+
+The old-guard result was first reproduced before editing it, then checked for both
+mount forms against a saved copy whose Git blob was verified identical. A synthetic-only
+direct child invocation confirmed **`Error: Call to undefined function ctype_digit()`**,
+exit 2 with empty stdout. No real inspection metadata was used for exception disclosure.
+After correction, **both mount forms pass all three profiles**, exit 0, stdout
+`33306\n`, empty stderr, including the verified absent-ctype child.
+
+The port predicate now uses `is_string`, an anchored ASCII `[0-9]+` check and the
+unchanged numeric range **1–65535**. It returns the verified original string; the
+valid leading-zero case `033306` stays `033306`. Non-string types, empty/zero/overflow,
+whitespace/newlines, signs, decimal/exponent/hex notation and non-ASCII digits receive
+the named `loopback_binding` rejection. Binding cardinality and exact loopback IP
+remain unchanged. No extension loading, polyfill, bypass or fallback configuration
+was added, and the production launcher still uses `-n`.
+
+CLI failures remain exit **2**, with empty stdout and fixed safe stderr:
+
+| Failure | Code |
+| --- | --- |
+| Existing guard policy | Existing named code, such as `loopback_binding` |
+| Invalid JSON, including malformed UTF-8 | `invalid_json` |
+| Unexpected Error, TypeError or PHP warning | `guard_runtime_error` |
+
+A new negative test exposed PHP's pre-catch warning output for a malformed synthetic
+binding structure. A small CLI-only handler now converts warnings to an exception
+without printing their text. The catch emits no raw messages, stack traces, arguments,
+metadata, Env, passwords or tokens. Sentinel tests assert exact responses and a bounded
+diagnostic length. Runtime failure remains distinct from a policy rejection.
+
+The added matrix contains **27 port/type cases per mount form**, all through the real
+CLI with `-n -d disable_functions=ctype_digit -d memory_limit=256M`. JSON encoding
+preserves a whole-valued float as a float, so that type case does not silently become
+an integer. Configured/no-INI/absent-ctype profiles cover both supported mount forms.
+Malformed JSON/UTF-8, a warning, an argument TypeError and a deliberately unavailable
+core function test classification without a production debug hook. The focused
+`run-mounts-empty` invocation passed **368 assertions / one Bash scenario**, retaining
+the subsequent effective-limit rejection before the harness starts. All previous
+47 mount cases and 152 Bash scenarios remain enabled in the default suite.
+
+The pure-guard audit covered **32 distinct built-in functions**, available in the absent-ctype
+no-INI child from **Core, standard, JSON and PCRE**. No further optional-extension
+assumption was found. The configured PDO MySQL harness and its legitimate dependencies
+are unchanged; the audit did not expand into application services.
+
+The existing test file now provides a small `--guard-smoke` mode, exiting before Bash
+scenarios. The [operating guide](sprint-8.8-m6b-linux-validation.md#configuration-free-guard-and-synthetic-smoke-check)
+records the exact later-server command using the previously reported PHP executable:
+
+```bash
+/usr/bin/php8.3 -n -d memory_limit=256M tests/WebsitePlatformM6BLinuxLauncherTest.php --guard-smoke
+```
+
+Run it from the reviewed exact-SHA checkout before any later authorized container
+creation. It uses synthetic fixtures/PHP children only, no Docker daemon, database,
+real credentials or application bootstrap. It does not introduce a launcher workflow
+or prove real resource/MySQL acceptance. The same invocation using the Windows PHP
+executable passed locally, including when ctype was also disabled in its parent.
+
+Exactly **four existing files** change; the complete PR remains **40 files (26
+additions, 14 modifications)**:
+
+| Modified file | Purpose |
+| --- | --- |
+| `tests/support/WebsitePlatformM6BLinuxGuard.php` | Core-only port predicate and safe fixed CLI failure classification. |
+| `tests/WebsitePlatformM6BLinuxLauncherTest.php` | Real-child profiles, port/type/error regressions and synthetic smoke mode. |
+| `docs/sprint-8.8-m6b-linux-validation.md` | No-INI diagnosis, supplied report and later-server smoke invocation. |
+| `docs/sprint-8.8-m6b-local-implementation.md` | Exact reproduction, evidence distinctions and local validation record. |
+
+Final local validation: **57/57 standalone PHP suites passed**, including **2075
+launcher assertions / 152 Bash scenarios**. The six other M6B suites retain **743
+assertions**, for **2818 M6B assertions total**. All **213 tracked PHP files** passed
+lint; both Bash files passed syntax checks and the unchanged PowerShell launcher
+parsed with zero errors. The two changed Markdown documents passed **14 relative
+links, four referenced anchors and eight balanced fence pairs**, with current-status
+and supplied-report/hash checks. Exact correction/PR inventories, preservation and
+working/staged/committed diff checks are included in final commit verification.
+These are Windows-local tests and command doubles, not actual Linux/container/MySQL
+acceptance execution.
+
+Application/services, migrations 001–025 and the Windows launcher are unchanged from
+`19dc550081ad47f1c53e91cd9efa5a6d8cddf381`. Canonical migration 025 remains
+`dab585dc29aac11153f92703c65d3883aeea73a1b2283157cfa9d2f2ece85cb0`.
+Both launchers, the Bash fixture, PHP reinspection support and native SQL scenarios/
+schema cases/worker are unchanged from `65f0bc276b2fb9fa00fd0223b54bccd5a748afe4`.
+Mount/image/resource/ownership/environment/network requirements, bounded execution,
+cleanup, signals and evidence publication retain their existing code and tests.
+
+The no-INI correction has not been rerun on the droplet. Real-MySQL/schema/concurrency
+and full effective-resource validation remain pending. Migration 025 remains unapplied
+to working staging and production databases. No staging/production access, Docker or
+container execution, database connection, SQL/migration, software installation, php.ini/
+host change, deployment, M6C or Narrator work occurred in this Windows correction.
+PR #126 remains open, non-draft, unmerged and without auto-merge; the task result links
+the single exact-new-head review request and observed state.
+
+**M6B NO-INI GUARD CORRECTION — IMPLEMENTED / REVIEW REQUIRED**.
+**REAL-MYSQL VALIDATION — PENDING**.
+
+## Migration result-set lifecycle correction
+
+This 2026-09-21 correction starts from clean branch/PR head
+`9983bf37f2791e7f67c5f9d6733662afb0457255`. It changes only the migration test runner,
+its standalone/native coverage and these two evidence documents. No application,
+canonical SQL, launcher, guard, configuration or resource-control change is included.
+
+### Latest operator evidence and remaining gate
+
+The supplied native report for that head used **PHP 8.3.6**, Docker client/server
+**29.8.1**, SQL-queried **MySQL 8.4.11**, **REPEATABLE-READ**, and verified native PDO
+prepares. The actual Linux no-INI smoke, container identity/environment, loopback/tmpfs
+and effective MySQL/PHP resource controls passed. Canonical migrations **001–014
+completed**; migration **015 statements 1–4 executed**, then **statement 5,
+DEALLOCATE PREPARE, failed** with `SQLSTATE[HY000]` / driver `2014`:
+`Cannot execute queries while other unbuffered queries are active.`
+
+The overall verdict remains **FAILED**. Later migrations, migration 025, completed
+fresh/upgrade schemas and the M6B database acceptance matrix were not reached.
+Cleanup/publication passed; the working staging database was reported untouched.
+This is partial native execution evidence, not full M6B PASS or first-customer readiness.
+
+Operator report:
+`/mnt/ubo_stage_testdata/codex-validation/evidence/m6b-no-ini-mysql-20260921T213519Z/M6B-NO-INI-SMOKE-AND-MYSQL-VALIDATION.md`.
+Operator-reported SHA-256:
+`1565f5b5cacfdc6f56b6aea256786a041390d59ea5ef5c587cd1da18a3f29f94`.
+This desktop task did **not** download, independently hash-verify or reproduce that
+server evidence. Earlier report paths, hashes and FAILED/blocked verdicts above remain
+historical evidence; their then-current “not executed” statements do not describe this run.
+
+### Canonical sequence and source diagnosis
+
+The unchanged splitter returns two statements for 014, whose first creates
+`website_integrations`. The actual 015 file splits into these five statements:
+
+| Index | Canonical operation |
+| --- | --- |
+| 1 | SET the legacy table name using CONCAT. |
+| 2 | SET the conditional SQL from information_schema: RENAME TABLE if needed, otherwise SELECT 1. |
+| 3 | PREPARE rename_legacy_website_integrations_statement FROM the session variable. |
+| 4 | EXECUTE rename_legacy_website_integrations_statement. |
+| 5 | DEALLOCATE PREPARE rename_legacy_website_integrations_statement. |
+
+On the fresh path, 014 already created the destination, so 015's EXECUTE produces
+the SELECT result. The old `$db->exec($sql)` loop obtained no statement handle and
+had no result-consumption lifecycle. That source defect matches the reported failure
+at the next command; the Windows regression simulates this lifecycle, not MySQL itself.
+Migrations 019 and 020 contain repeated conditional ALTER/SELECT 1, PREPARE, EXECUTE,
+DEALLOCATE cycles and now use the same generic path. Their SQL and splitter are unchanged.
+
+[PDO::exec](https://www.php.net/manual/en/pdo.exec.php) returns an affected-row count,
+where zero can be success, without a result handle. [PDO::query](https://www.php.net/manual/en/pdo.query.php)
+returns a statement and documents that unfetched results can block the next command.
+[nextRowset](https://www.php.net/manual/en/pdostatement.nextrowset.php) advances results;
+[closeCursor](https://www.php.net/manual/en/pdostatement.closecursor.php) releases them.
+The [PHP 8.3 PDO MySQL driver](https://github.com/php/php-src/blob/PHP-8.3/ext/pdo_mysql/mysql_driver.c)
+has a protocol-unsupported preparation fallback, so this harness uses query() without
+forcing a prepare()/execute() wrapper or changing ATTR_EMULATE_PREPARES. That driver
+source analysis supports the choice; actual compatibility on the target remains a native gate.
+
+### Result lifecycle and failure behavior
+
+`WebsitePlatformM6BMigrations.php` owns the existing canonical loop and its small
+execution helper; MySqlSupport includes it. Each statement is submitted once through
+query(), in file order on the supplied PDO session. Result columns trigger incremental
+FETCH_NUM disposal, including empty SELECTs; no-column commands still advance rowsets.
+Every additional rowset is processed, and closeCursor() must succeed before the next
+canonical command. Neither fetchAll() nor affected-row/rowCount decisions are used.
+The existing exception mode, native-prepare setting and buffering settings remain intact.
+
+False fetch/nextRowset is accepted as end only with SQLSTATE `00000`. Execution,
+consumption, advancement or cleanup failures stop immediately. Each acquired handle
+gets one explicit cursor-close attempt, including result failures; query failures that
+return no handle cannot be closed. The primary diagnostic is captured before cleanup;
+a second cleanup error is appended without replacing it. No statement is retried and
+no suspect session is reused or reconnected. “Applied” is emitted only after the whole
+migration and every result/cursor lifecycle complete.
+
+Diagnostics retain filename, one-based statement index, lifecycle stage, a validated
+five-character SQLSTATE and bounded numeric driver code. Unavailable/invalid codes are
+labeled unavailable. Raw driver messages and exception chains are omitted because they
+can carry SQL values or credentials; returned rows, DSNs and environment are never logged.
+Canonical errors remain failures, including driver 2014. There is no migration-specific
+branch, SQL rewrite, batching, constraint bypass or DDL transaction change.
+
+### Standalone regression and authored native coverage
+
+Before changing the runner, the new PDO-double regression with canonical 015 failed
+at statement **5**, exit **255**. The double refuses every subsequent command while a
+prior handle has pending results. Its old-exec simulation also checks driver **2014**.
+After correction, the focused regression passes **848 assertions**: canonical 014/015,
+019/020, exactly-once ordering, same connection, DDL/DML/SET, zero affected rows, empty
+SELECT, mixed multiple/no-column rowsets, each lifecycle failure as exception or false,
+primary-plus-cleanup failure, unavailable/unsafe error codes and secret sentinels.
+These are simulated results with **zero database connections or SQL execution**.
+
+The native harness adds **13 assertions**, authored but **NOT EXECUTED** here. In the
+newly created owned fresh database, a synthetic legacy table/row exercises canonical
+015's rename branch. It verifies the renamed data and same session, then drops its sole
+table and verifies the database is empty before the unchanged canonical **001–025**
+fresh sequence. On fixture failure, the existing owned-database cleanup applies; no
+attempt is made to continue migrations on that session. The original upgrade sequence
+**001–024, synthetic fixture/snapshot, 025, snapshot comparison** remains unchanged.
+Both paths verify 015 selected SELECT 1, the same session can still query after the
+canonical dynamic migrations (including 019/020), and PDO emulation remains false.
+Existing business/schema/concurrency assertions are preserved. The obsolete runner is
+never used to poison a native connection. A later authorized native run must create
+fresh disposable databases and execute **001 onward**; the prior container was removed.
+
+### Correction inventory and local validation
+
+Exactly six files change in this correction:
+
+| Change | Path |
+| --- | --- |
+| Add | `tests/support/WebsitePlatformM6BMigrations.php` |
+| Add | `tests/WebsitePlatformM6BMigrationRunnerTest.php` |
+| Modify | `tests/support/WebsitePlatformM6BMySqlSupport.php` |
+| Modify | `tests/WebsitePlatformM6BMySql.php` |
+| Modify | `docs/sprint-8.8-m6b-local-implementation.md` |
+| Modify | `docs/sprint-8.8-m6b-linux-validation.md` |
+
+Windows PHP **8.4.24 CLI** validation: **58/58 standalone suites passed**, including
+**848 migration-runner assertions**, **2075 launcher assertions / 152 isolated Bash
+scenarios**, and the unchanged six other M6B suites' **743 assertions**: **3666 M6B
+assertions total**. All **215 tracked PHP files** passed lint. Both Bash files passed
+syntax checks; the PowerShell launcher parsed with **zero errors**. The existing
+no-INI smoke passed both mount forms / three PHP profiles, including the absent-ctype
+child. Two Markdown documents passed **16 relative links, six referenced anchors and
+eight balanced fence pairs**, plus supplied evidence/status checks. These are local
+synthetic/parse checks; the native MySQL entry point was not executed.
+
+The exact six-file inventory and working/staged/committed diff checks passed.
+All **218 application/private/public/migration files** match both the prior head and
+application-preservation baseline `19dc550081ad47f1c53e91cd9efa5a6d8cddf381`, accounting
+for existing Windows line endings; protected local raw-byte hashes remain unchanged.
+Both launchers, Linux guard and its no-INI/tmpfs/resource checks, launcher tests/Bash
+fixture, SQL splitter, worker and native schema cases are unchanged. MySqlSupport
+differs only by extracting the migration loop and changing its include; native harness
+changes are addition-only, preserving the original business/concurrency assertions.
+
+Migration 025's canonical SHA-256 remains
+`dab585dc29aac11153f92703c65d3883aeea73a1b2283157cfa9d2f2ece85cb0`.
+M6 remains **IN PROGRESS**; M6B **IMPLEMENTED / REAL-MYSQL VALIDATION PENDING**;
+M6C–M6G **NOT STARTED**; Production **UNAUTHORIZED / NOT DEPLOYED**. M5 acceptance and
+Narrator deferral are unchanged. No host access, Docker operations, database connection,
+SQL/migration execution, installation, configuration change, deployment, M6C or Narrator
+action occurred in this desktop correction. PR #126 remains the sole open, non-draft,
+unmerged PR with auto-merge disabled; its exact-new-head review is linked in the task result.

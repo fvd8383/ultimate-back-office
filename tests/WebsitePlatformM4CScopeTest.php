@@ -1,6 +1,7 @@
 <?php
 
 declare(strict_types=1);
+require_once __DIR__ . '/support/WebsitePlatformM6BScope.php';
 
 $root = dirname(__DIR__); $assertions = 0;
 function checkM4CScope(bool $condition, string $message): void { global $assertions; $assertions++; if (!$condition) throw new RuntimeException($message); }
@@ -28,5 +29,5 @@ foreach (['database/migrations/023_website_platform_foundation.sql', 'database/m
 }
 checkM4CScope(str_contains($customerManager, 'WebsiteManager::saveWebsiteManager(') && str_contains($customerManager, 'SiteCustomerReviewWorkflow::workspaceWithForms('), 'M5A integrates a customer read while retaining the legacy save boundary.');
 checkM4CScope(!preg_match('/SiteApprovalManager::(?:requestApproval|decideApproval|revokeApproval)|SiteReviewAdminWorkflow::apply/', $customerManager), 'M5A adds no customer or internal approval mutation to Website Manager.');
-checkM4CScope(glob($root . '/database/migrations/02[5-9]_*.sql') === [], 'No migration 025+ was added.');
+checkM4CScope(m6bOnlyMigration025($root), 'Only the separately authorized M6B migration 025 may exist after 024.');
 echo "Website platform M4C scope: {$assertions} assertions passed.\n";

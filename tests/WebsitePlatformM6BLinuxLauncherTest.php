@@ -1,0 +1,304 @@
+<?php
+
+declare(strict_types=1);
+require_once __DIR__ . '/support/WebsitePlatformM6BLinuxGuard.php';
+$assertions=0;
+function launcherCheck(bool $ok,string $why):void{global $assertions;$assertions++;if(!$ok)throw new RuntimeException($why);}
+function launcherReject(callable $call,string $code):void{
+    try{$call();throw new LogicException('Accepted '.$code);}catch(RuntimeException $e){launcherCheck(str_contains($e->getMessage(),$code),'Wrong guard '.$code);}
+}
+$token='0123456789abcdef0123456789abcdef';$id=str_repeat('a',64);$imageId='sha256:'.str_repeat('b',64);$digest='sha256:'.str_repeat('d',64);
+$engine=['OSType'=>'linux','Architecture'=>'x86_64','SecurityOptions'=>['name=rootless'],'CgroupVersion'=>'2','CgroupDriver'=>'systemd','Warnings'=>[], 'NCPU'=>2,'MemTotal'=>4*1024**3,'DockerRootDir'=>'/home/codex-validation/.local/share/docker'];
+launcherCheck(m6linuxEngine($engine,'linux/amd64')===$engine['DockerRootDir'],'Rootless engine');
+foreach([['SecurityOptions',[],'rootless_required'],['CgroupVersion','1','cgroup_v2_systemd_required'],['CgroupDriver','cgroupfs','cgroup_v2_systemd_required'],['Warnings',['ignored'],'engine_warnings'],['NCPU',1,'host_resources'],['Architecture','arm64','engine_platform']]as[$key,$value,$code]){
+    $bad=$engine;$bad[$key]=$value;launcherReject(fn()=>m6linuxEngine($bad,'linux/amd64'),$code);
+}
+$image=['RepoDigests'=>['mysql@'.$digest],'Os'=>'linux','Architecture'=>'amd64','Id'=>$imageId,'Size'=>1024];
+launcherCheck(m6linuxImage($image,$digest,'linux/amd64')===$imageId,'Cached official image');
+launcherReject(fn()=>m6linuxImage($image,'sha256:'.str_repeat('e',64),'linux/amd64'),'official_image_digest');
+launcherReject(fn()=>m6linuxImage($image,$digest,'linux/arm64'),'image_platform');
+$bad=$image;$bad['RepoDigests']=['untrusted/mysql@'.$digest];launcherReject(fn()=>m6linuxImage($bad,$digest,'linux/amd64'),'official_image_digest');
+$container=['Id'=>$id,'Name'=>'/ubo-m6b-'.$token,'Image'=>$imageId,'Platform'=>'linux','Config'=>['Hostname'=>'m6b-fixture','Labels'=>['ubo.m6b.owner'=>$token,'ubo.m6b.launcher'=>'linux-v1']],
+    'State'=>['Running'=>true],'HostConfig'=>['Privileged'=>false,'NetworkMode'=>'bridge','PidMode'=>'','IpcMode'=>'private','UTSMode'=>'','UsernsMode'=>'','CgroupnsMode'=>'private','SecurityOpt'=>['no-new-privileges=true'],
+        'NanoCpus'=>1000000000,'Memory'=>1610612736,'MemorySwap'=>1610612736,'PidsLimit'=>128,'Tmpfs'=>['/var/lib/mysql'=>'rw,nosuid,size=1073741824'],
+        'LogConfig'=>['Type'=>'local','Config'=>['max-size'=>'1m','max-file'=>'2','compress'=>'false']]],
+    'Mounts'=>[['Type'=>'tmpfs','Destination'=>'/var/lib/mysql']],'NetworkSettings'=>['Ports'=>['3306/tcp'=>[['HostIp'=>'127.0.0.1','HostPort'=>'33306']],'33060/tcp'=>null]]];
+$password='abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789';
+$image['Config']['Env']=['PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin','MYSQL_MAJOR=8.4','PINNED_IMAGE_DEFAULT=legitimate'];
+$container['Config']['Env']=array_merge($image['Config']['Env'],['MYSQL_ROOT_PASSWORD='.$password,'MYSQL_ROOT_HOST=%']);
+m6linuxEnvironment($container,$image,$password);launcherCheck(true,'Pinned image defaults and exact additions accepted');
+foreach(['HTTP_PROXY=PROXY_CREDENTIAL_SENTINEL','https_proxy=PROXY_CREDENTIAL_SENTINEL','DB_PASSWORD=PROXY_CREDENTIAL_SENTINEL','MYSQL_ROOT_HOST=foreign','PATH=changed']as$entry){
+    $bad=$container;$bad['Config']['Env'][]=$entry;launcherReject(fn()=>m6linuxEnvironment($bad,$image,$password),'container_environment');
+}
+$bad=$container;array_shift($bad['Config']['Env']);launcherReject(fn()=>m6linuxEnvironment($bad,$image,$password),'container_environment');
+$bad=$container;$bad['Config']['Env']=array_reverse($bad['Config']['Env']);m6linuxEnvironment($bad,$image,$password);launcherCheck(true,'Environment ordering is immaterial');
+launcherCheck(m6linuxContainer($container,$token,$imageId,$id)==='33306','Complete isolation policy');
+foreach(['Privileged'=>true,'NetworkMode'=>'host','PidMode'=>'host','Devices'=>[['PathOnHost'=>'/dev/sda']],'Binds'=>['/var/run/docker.sock:/socket'],'Memory'=>0,'MemorySwap'=>-1,'PidsLimit'=>0,'NanoCpus'=>0]as$key=>$value){
+    $bad=$container;$bad['HostConfig'][$key]=$value;
+    launcherReject(fn()=>m6linuxContainer($bad,$token,$imageId,$id),in_array($key,['Memory','MemorySwap','PidsLimit','NanoCpus'],true)?'container_resource_request':'container_isolation');
+}
+$bad=$container;$bad['NetworkSettings']['Ports']['3306/tcp'][0]['HostIp']='0.0.0.0';launcherReject(fn()=>m6linuxContainer($bad,$token,$imageId,$id),'loopback_binding');
+$bad=$container;$bad['Mounts'][]=['Type'=>'bind','Destination'=>'/host'];launcherReject(fn()=>m6linuxContainer($bad,$token,$imageId,$id),'container_mounts');
+launcherReject(fn()=>m6linuxOwner($container,str_repeat('f',32),$imageId,$id),'container_ownership');
+launcherReject(fn()=>m6linuxOwner($container,$token,$imageId,str_repeat('f',64)),'container_ownership');
+launcherReject(fn()=>m6linuxOwner($container,$token,'sha256:'.str_repeat('f',64),$id),'container_ownership');
+
+/** Synthetic-only PHP child; never invokes Docker, SQL or application bootstrap. */
+function launcherPhpChild(array $flags,array $arguments,string $input='',array $environment=[]):array{
+    $process=proc_open([PHP_BINARY,...$flags,'-d','memory_limit=256M',...$arguments],
+        [0=>['pipe','r'],1=>['pipe','w'],2=>['pipe','w']],$pipes,null,array_merge(getenv(),$environment),['bypass_shell'=>true]);
+    if(!is_resource($process))throw new RuntimeException('Guard CLI unavailable');
+    fwrite($pipes[0],$input);fclose($pipes[0]);
+    $out=stream_get_contents($pipes[1]);$error=stream_get_contents($pipes[2]);fclose($pipes[1]);fclose($pipes[2]);
+    return [proc_close($process),$out,$error];
+}
+/** Exercise the actual stdin/JSON CLI boundary, with synthetic test credentials only. */
+function launcherInspectionCli(array|stdClass|string $rows,array $flags=['-n']):array{
+    global $token,$id,$imageId,$digest,$password;
+    return launcherPhpChild($flags,[__DIR__.'/support/WebsitePlatformM6BLinuxGuard.php','container',$digest,'linux/amd64'],
+        is_string($rows)?$rows:json_encode($rows,JSON_THROW_ON_ERROR|JSON_PRESERVE_ZERO_FRACTION),[
+            'M6B_MYSQL_RUN_TOKEN'=>$token,'M6B_MYSQL_CONTAINER_ID'=>$id,'M6B_MYSQL_IMAGE_ID'=>$imageId,'MYSQL_ROOT_PASSWORD'=>$password]);
+}
+// Operator-supplied Docker 29.8.1 projection applied to our COMPLETE valid fixture.
+// HostConfig.Mounts is absent; Config.Volumes is an image declaration, not an attachment.
+$observed=$container;$observed['Mounts']=[];
+$observed['HostConfig']['Binds']=null;$observed['HostConfig']['VolumesFrom']=null;
+$observed['Config']['Volumes']=['/var/lib/mysql'=>(object)[]];
+[$exit,$out,$error]=launcherInspectionCli([$observed,$image]);
+launcherCheck($exit===0&&$out==="33306\n"&&$error==='','Observed empty Mounts CLI: exit '.$exit.' '.trim($error));
+launcherCheck(m6linuxContainer($observed,$token,$imageId,$id)==='33306','Observed representation direct shared mount guard');
+$profiles=['configured'=>[],'no-ini'=>['-n'],'no-ini-no-ctype'=>['-n','-d','disable_functions=ctype_digit']];
+[$exit,$out,$error]=launcherPhpChild($profiles['no-ini-no-ctype'],['-r','echo function_exists("ctype_digit") ? "present\n" : "absent\n";']);
+launcherCheck($exit===0&&$out==="absent\n"&&$error==='','Child ctype_digit absence verified');
+foreach(['single-tmpfs'=>$container,'empty-mounts'=>$observed]as$name=>$row)foreach($profiles as$profile=>$flags){
+    [$exit,$out,$error]=launcherInspectionCli([$row,$image],$flags);
+    launcherCheck($exit===0&&$out==="33306\n"&&$error==='',"$name $profile CLI: exit $exit stdout ".json_encode($out).' stderr '.json_encode($error));
+}
+// Small reusable pre-container smoke check: fixtures and PHP children only, no Bash layer.
+if($argc===2&&$argv[1]==='--guard-smoke'){
+    echo "PASS: synthetic guard smoke; 2 mount forms / 3 PHP profiles; child ctype_digit absent; no Docker/SQL/application bootstrap.\n";
+    exit(0);
+}
+function launcherSafeGuardOutput(string $out,string $error,string $context):void{
+    global $token,$password;
+    launcherCheck(strlen($error)<=128&&!str_contains($out.$error,$token)&&!str_contains($out.$error,$password)
+        &&!str_contains($out.$error,'GUARD_SECRET_SENTINEL')&&!str_contains($out.$error,'Stack trace'),$context.' bounded secret-safe output');
+}
+$portCases=[
+    'minimum'=>['1',true],'usual'=>['33306',true],'maximum'=>['65535',true],'leading-zero'=>['033306',true],
+    'zero'=>['0',false],'too-high'=>['65536',false],'empty'=>['',false],'overflow'=>[str_repeat('9',100),false],
+    'leading-space'=>[' 33306',false],'trailing-space'=>['33306 ',false],'newline'=>["33306\n",false],'tab'=>["\t33306",false],
+    'plus'=>['+33306',false],'minus'=>['-33306',false],'decimal'=>['33306.0',false],'exponent'=>['3e4',false],'hex'=>['0x821a',false],
+    'arabic-digits'=>['٣٣٣٠٦',false],'fullwidth-digits'=>['３３３０６',false],
+    'integer'=>[33306,false],'float'=>[33306.0,false],'fraction'=>[1.5,false],'true'=>[true,false],'false'=>[false,false],
+    'null'=>[null,false],'list'=>[['GUARD_SECRET_SENTINEL'],false],'object'=>[(object)['secret'=>'GUARD_SECRET_SENTINEL'],false],
+];
+foreach(['single-tmpfs'=>$container,'empty-mounts'=>$observed]as$mount=>$validRow)foreach($portCases as$name=>[$port,$valid]){
+    $row=$validRow;$row['NetworkSettings']['Ports']['3306/tcp'][0]['HostPort']=$port;
+    [$exit,$out,$error]=launcherInspectionCli([$row,$image],$profiles['no-ini-no-ctype']);
+    launcherCheck($valid?($exit===0&&$out===$port."\n"&&$error===''):
+        ($exit===2&&$out===''&&$error==="M6B guard rejected inspection: loopback_binding\n"),"$mount $name no-ctype port policy");
+    launcherSafeGuardOutput($out,$error,"$mount $name");
+}
+foreach(['truncated'=>'{"GUARD_SECRET_SENTINEL":','invalid-utf8'=>"[\"\xffGUARD_SECRET_SENTINEL\"]"]as$name=>$json){
+    [$exit,$out,$error]=launcherInspectionCli($json,$profiles['no-ini-no-ctype']);
+    launcherCheck($exit===2&&$out===''&&$error==="M6B guard rejected inspection: invalid_json\n",$name.' JSON classification');
+    launcherSafeGuardOutput($out,$error,$name);
+}
+$row=$observed;$row['NetworkSettings']['Ports']='GUARD_SECRET_SENTINEL';
+[$exit,$out,$error]=launcherInspectionCli([$row,$image],$profiles['no-ini-no-ctype']);
+launcherCheck($exit===2&&$out===''&&$error==="M6B guard rejected inspection: guard_runtime_error\n",'Synthetic warning classification');
+launcherSafeGuardOutput($out,$error,'Synthetic warning');
+$badImage=$image;$badImage['RepoDigests']='GUARD_SECRET_SENTINEL';
+[$exit,$out,$error]=launcherInspectionCli([$observed,$badImage],$profiles['no-ini-no-ctype']);
+launcherCheck($exit===2&&$out===''&&$error==="M6B guard rejected inspection: guard_runtime_error\n",'Synthetic argument TypeError classification');
+launcherSafeGuardOutput($out,$error,'Synthetic argument TypeError');
+// An intentionally unavailable core function causes Error, without a production debug hook.
+$runtimeFlags=['-n','-d','disable_functions=ctype_digit,array_filter'];
+[$exit,$out,$error]=launcherPhpChild($runtimeFlags,['-r','echo function_exists("array_filter") ? "present\n" : "absent\n";']);
+launcherCheck($exit===0&&$out==="absent\n"&&$error==='','Synthetic runtime-failure child verified');
+[$exit,$out,$error]=launcherInspectionCli([$observed,$image],$runtimeFlags);
+launcherCheck($exit===2&&$out===''&&$error==="M6B guard rejected inspection: guard_runtime_error\n",'Synthetic Error classification');
+launcherSafeGuardOutput($out,$error,'Synthetic Error');
+$mountCases=['single-tmpfs'=>[$container,null],'observed-empty'=>[$observed,null]];
+$row=$observed;$row['HostConfig']['Mounts']=[];$mountCases['empty-host-mount-list']=[$row,null];
+$row=$observed;unset($row['Config']['Volumes']);$mountCases['no-image-volume-declaration']=[$row,null];
+$row=$observed;unset($row['HostConfig']['Tmpfs']);$mountCases['missing-tmpfs']=[$row,'database_tmpfs'];
+foreach(['wrong-size'=>'rw,nosuid,size=536870912','wrong-options'=>'rw,size=1073741824']as$name=>$value){
+    $row=$observed;$row['HostConfig']['Tmpfs']['/var/lib/mysql']=$value;$mountCases[$name]=[$row,'database_tmpfs'];
+}
+$row=$observed;$row['HostConfig']['Tmpfs']['/extra']='rw,nosuid,size=1073741824';$mountCases['extra-tmpfs']=[$row,'database_tmpfs'];
+$row=$observed;unset($row['Mounts']);$mountCases['missing-mounts']=[$row,'container_mounts'];
+foreach(['null'=>null,'string'=>'','integer'=>0,'boolean'=>false,'object'=>(object)[],
+    'numeric-object'=>(object)[0=>['Type'=>'tmpfs','Destination'=>'/var/lib/mysql']],
+    'non-list'=>[1=>['Type'=>'tmpfs','Destination'=>'/var/lib/mysql']],
+    'entry-object'=>['Type'=>'tmpfs','Destination'=>'/var/lib/mysql'],
+    'scalar-entry'=>[1],'null-entry'=>[null],'empty-entry'=>[[]]]as$name=>$value){
+    $row=$observed;$row['Mounts']=$value;$mountCases['mounts-'.$name]=[$row,'container_mounts'];
+}
+foreach(['bind'=>['Type'=>'bind','Destination'=>'/var/lib/mysql','Source'=>'/host'],
+    'named-volume'=>['Type'=>'volume','Destination'=>'/var/lib/mysql','Name'=>'named'],
+    'anonymous-volume'=>['Type'=>'volume','Destination'=>'/var/lib/mysql','Name'=>str_repeat('e',64)],
+    'wrong-destination'=>['Type'=>'tmpfs','Destination'=>'/other'],
+    'wrong-type'=>['Type'=>'unknown','Destination'=>'/var/lib/mysql']]as$name=>$value){
+    $row=$observed;$row['Mounts']=[$value];$mountCases[$name]=[$row,'container_mounts'];
+}
+$row=$observed;$row['Mounts']=array_merge($container['Mounts'],$container['Mounts']);$mountCases['duplicate-mount']=[$row,'container_mounts'];
+$row=$container;$row['Mounts'][]=['Type'=>'tmpfs','Destination'=>'/extra'];$mountCases['extra-mount']=[$row,'container_mounts'];
+foreach(['nonempty'=>[['Type'=>'tmpfs','Target'=>'/var/lib/mysql']], 'bind'=>[['Type'=>'bind','Target'=>'/other']],
+    'null'=>null,'object'=>(object)[],'numeric-object'=>(object)[0=>['Type'=>'tmpfs','Target'=>'/var/lib/mysql']],
+    'string'=>'','boolean'=>false,'integer'=>0]as$name=>$value){
+    $row=$observed;$row['HostConfig']['Mounts']=$value;$mountCases['host-mounts-'.$name]=[$row,'container_mount_requests'];
+}
+foreach(['Binds'=>['/host:/var/lib/mysql'],'VolumesFrom'=>['another-container'],'Privileged'=>true]as$key=>$value){
+    $row=$observed;$row['HostConfig'][$key]=$value;$mountCases['empty-with-'.$key]=[$row,'container_isolation'];
+}
+foreach(['NanoCpus'=>0,'Memory'=>0,'MemorySwap'=>-1,'PidsLimit'=>0]as$key=>$value){
+    $row=$observed;$row['HostConfig'][$key]=$value;$mountCases['empty-with-'.$key]=[$row,'container_resource_request'];
+}
+$row=$observed;$row['Image']='sha256:'.str_repeat('f',64);$mountCases['empty-wrong-image']=[$row,'container_ownership'];
+$row=$observed;$row['Config']['Labels']['ubo.m6b.owner']='foreign';$mountCases['empty-wrong-owner']=[$row,'container_ownership'];
+$row=$observed;$row['Config']['Env'][]='HTTP_PROXY=PROXY_CREDENTIAL_SENTINEL';$mountCases['empty-wrong-environment']=[$row,'container_environment'];
+$row=$observed;$row['HostConfig']['LogConfig']['Type']='json-file';$mountCases['empty-wrong-logs']=[$row,'container_logs'];
+$row=$observed;$row['NetworkSettings']['Ports']['3306/tcp'][0]['HostIp']='0.0.0.0';$mountCases['empty-wrong-binding']=[$row,'loopback_binding'];
+foreach($mountCases as$name=>[$row,$code]){
+    // This is the same pure reinspection helper m6mysqlIdentity calls before connecting.
+    foreach(['direct'=>$row,'decoded'=>m6linuxDecodeInspection(json_encode([$row],JSON_THROW_ON_ERROR))[0]]as$path=>$inspected){
+        $check=fn()=>m6linuxMySqlIdentity($inspected,$image,$token,$imageId,$id,$password,'33306');
+        if($code===null)launcherCheck($check()===['token'=>$token,'id'=>$id,'port'=>33306,'hostname'=>'m6b-fixture'],$name.' '.$path.' PHP reinspection');
+        else launcherReject($check,$code);
+    }
+    [$exit,$out,$error]=launcherInspectionCli([$row,$image]);
+    launcherCheck($code===null?($exit===0&&$out==="33306\n"&&$error===''):($exit===2&&$out===''&&$error==="M6B guard rejected inspection: $code\n"),$name.' JSON CLI');
+    launcherCheck(!str_contains($error.$out,$password)&&!str_contains($error.$out,$token)&&!str_contains($error.$out,'PROXY_CREDENTIAL_SENTINEL'),$name.' secret-safe CLI');
+}
+launcherCheck(m6linuxDecodeInspection(json_encode($engine,JSON_THROW_ON_ERROR),true)===$engine,'Engine JSON decode remains supported');
+launcherReject(fn()=>m6linuxMySqlIdentity($observed,$image,$token,$imageId,$id,$password,'33307'),'port_changed');
+// A numeric-key object at the outer inspection boundary must not erase nested shapes either.
+[$exit,$out,$error]=launcherInspectionCli((object)[0=>$observed,1=>$image]);
+launcherCheck($exit===2&&$out===''&&str_contains($error,'inspection_shape'),'Inspection list cannot be an object');
+$badImage=$image;$badImage['RepoDigests']=['mysql@sha256:'.str_repeat('e',64)];
+[$exit,$out,$error]=launcherInspectionCli([$observed,$badImage]);
+launcherCheck($exit===2&&$out===''&&str_contains($error,'official_image_digest'),'Empty Mounts never bypasses pinned-image verification');
+
+$bash=PHP_OS_FAMILY==='Windows'?'C:/Git/bin/bash.exe':'/bin/bash';
+if(!is_file($bash))throw new RuntimeException('Bash fixture layer unavailable; install nothing, report NOT EXECUTED.');
+$cases=['identity-valid'=>0,'identity-host'=>2,'identity-user'=>2,'identity-root'=>2,'identity-stage-default'=>2,'identity-shared'=>0,'identity-shared-user'=>2,'identity-production'=>2,'identity-production-default'=>2,
+    'checkout-valid'=>0,'checkout-sha'=>2,'checkout-dirty'=>2,'checkout-untracked'=>2,'checkout-hash'=>2,'checkout-deployed'=>2,'checkout-webroot'=>2,'checkout-worktree'=>2,'checkout-history'=>2,
+    'endpoint-valid'=>0,'endpoint-remote'=>2,'endpoint-ambiguous'=>2,'endpoint-conflict'=>2,'endpoint-context'=>2,'endpoint-rootful'=>2,'delegation-valid'=>0,'delegation-controller'=>2,'delegation-ignored'=>2,
+    'headroom-dedicated'=>0,'headroom-shared'=>0,'headroom-memory'=>2,'headroom-disk'=>2,'headroom-cpu'=>2,'cgroup-valid'=>0,'cgroup-ignored'=>2,'check-only'=>0,
+    'cleanup-valid'=>0,'cleanup-foreign'=>2,'cleanup-unknown'=>2,'cleanup-failed'=>2,'exit-test'=>17,'exit-timeout'=>124,'exit-interrupt'=>130,'partial-start'=>2,'redact'=>0,'output-bound'=>0,
+    'run-success'=>0,'run-partial-start'=>2,'run-timeout'=>124,'run-test-failure'=>17,'run-resource'=>2,'run-cleanup-failure'=>2,'run-foreign'=>2,'run-supervisor-limit'=>2,
+    'run-unload'=>0,'run-headroom'=>2,'run-interrupt'=>143,'run-mount-loss'=>2,'run-env-injected'=>2,'run-mounts-empty'=>2,
+    'unit-normal'=>0,'unit-unload'=>0,'unit-unload-removed'=>0,'unit-absent'=>0,'unit-foreign'=>2,'unit-replaced'=>2,'unit-manager-inaccessible'=>2,'unit-arbitrary-failure'=>2,'unit-still-running'=>2,'unit-populated-descendant'=>2,'unit-unreadable'=>2,'unit-stop-failure'=>2,
+    'client-isolated'=>0,'client-create'=>0,'client-signal'=>143,'client-cleanup-failure'=>2,
+    'volume-correct'=>0,'volume-missing'=>2,'volume-wrong-uuid'=>2,'volume-unsafe-marker'=>2,'volume-unsafe-directory'=>2,'volume-wrong-docker-root'=>2,'volume-symlink'=>2,'volume-mount-loss'=>2,
+    'space-boundary'=>0,'space-cpu-below'=>2,'space-memory-below'=>2,'space-boot-below'=>2,'space-volume-below'=>2,'space-reserve-boundary'=>0,'space-reserve-memory'=>2,'space-reserve-boot'=>2,'space-reserve-volume'=>2];
+foreach(['TERM'=>143,'INT'=>130]as$signal=>$status){
+    foreach(['active','before','after','wait','collector','status','sleep-race','cleanup','repeated','cleanup-failure','evidence']as$point){
+        $cases['run-signal-'.$signal.'-'.$point]=match($point){'cleanup-failure'=>2,'evidence'=>0,default=>$status};
+    }
+    foreach(['boundary'=>$status,'boundary-publish-failure'=>2,'accepted-published'=>$status,'report'=>0,'published'=>0,'exit'=>0,'published-failure'=>17]as$point=>$expected)$cases['run-signal-'.$signal.'-'.$point]=$expected;
+}
+foreach(['report-failure','checksum-failure','checksum-permanent','timeout']as$point)$cases['run-publish-'.$point]=2;
+foreach(['0700'=>0,'0710'=>0,'0711'=>2,'0750'=>2,'0730'=>2,'0770'=>2,'1700'=>2,'2700'=>2,'4700'=>2]as$mode=>$expected)$cases['permission-docker-'.$mode]=$expected;
+foreach(['base','checkouts','evidence','tmp','owner','group','other-path','symlink','mount','change-docker','change-base']as$case)$cases['permission-'.$case]=2;
+// A focused reproduction never replaces or removes cases from the default full suite.
+if(isset($argv[1])){
+    if($argc!==3||$argv[1]!=='--case'||!array_key_exists($argv[2],$cases))throw new RuntimeException('Use --case with an existing scenario');
+    $cases=[$argv[2]=>$cases[$argv[2]]];
+}
+$root=sys_get_temp_dir().'/ubo-m6b-launcher-'.bin2hex(random_bytes(8));mkdir($root,0700);
+foreach($cases as$case=>$expected){
+    $dir=$root.'/'.$case;mkdir($dir,0700);$row=$container;if($case==='cleanup-foreign')$row['Config']['Labels']['ubo.m6b.owner']='foreign';
+    file_put_contents($dir.'/container.json',json_encode([$row],JSON_THROW_ON_ERROR));
+    $inspected=$container;if($case==='run-env-injected')$inspected['Config']['Env'][]='HTTP_PROXY=PROXY_CREDENTIAL_SENTINEL';
+    if($case==='run-mounts-empty')$inspected=$observed;
+    file_put_contents($dir.'/inspection.json',json_encode([$inspected,$image],JSON_THROW_ON_ERROR));
+    $foreign=$container;$foreign['Config']['Labels']['ubo.m6b.owner']='foreign';file_put_contents($dir.'/foreign.json',json_encode([$foreign],JSON_THROW_ON_ERROR));
+    $started=microtime(true);
+    $process=proc_open([$bash,__DIR__.'/support/WebsitePlatformM6BLinuxLauncherFixture.sh',$case,$dir,str_replace('\\','/',PHP_BINARY)],
+        [0=>['pipe','r'],1=>['pipe','w'],2=>['pipe','w']],$pipes,null,null,['bypass_shell'=>true]);
+    if(!is_resource($process))throw new RuntimeException('Bash fixture unavailable');
+    fclose($pipes[0]);$out=stream_get_contents($pipes[1]);$error=stream_get_contents($pipes[2]);fclose($pipes[1]);fclose($pipes[2]);$exit=proc_close($process);
+    launcherCheck($exit===$expected,$case.' exit '.$exit.' expected '.$expected.' '.substr($error,0,300));
+    $commands=is_file($dir.'/commands')?file_get_contents($dir.'/commands'):'';
+    launcherCheck(!str_contains($commands,'UNEXPECTED'),$case.' unexpected command');
+    launcherCheck(!preg_match('/unexpected EOF|syntax error|trap:|bad trap/i',$out.$error),'No shell/trap errors '.$case);
+    if($case==='check-only'){
+        launcherCheck($commands==="prerequisites\n",'Check-only must never enter run');
+        launcherCheck(glob($dir.'/runtime/ubo-m6b-cli.*')===[],'Check-only cleans its private client config');
+    }
+    if(in_array($case,['cleanup-foreign','cleanup-unknown'],true))launcherCheck(!str_contains($commands,"rm\n"),'Foreign/unknown ownership must prevent deletion');
+    if(in_array($case,['cleanup-valid','exit-test','exit-timeout','exit-interrupt','partial-start'],true))launcherCheck(str_contains($commands,"rm\n"),'Owned cleanup after '.$case);
+    $evidence=str_starts_with($case,'run-')?(glob($dir.'/evidence/run-*')[0]??$dir.'/evidence'):$dir.'/evidence';
+    $report=file_get_contents($evidence.'/report.txt');$tail=file_get_contents($evidence.'/mysql-tail.txt');
+    $diagnostics=$out.$error.$report.$tail;
+    launcherCheck(!str_contains($diagnostics,$token)&&!str_contains($diagnostics,substr($token,0,16))&&!str_contains($diagnostics,'abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789'),'Secret-safe '.$case);
+    launcherCheck(!str_contains($diagnostics,'PROXY_CREDENTIAL_SENTINEL'),'Proxy-safe diagnostics '.$case);
+    if(str_starts_with($case,'client-')){
+        launcherCheck(str_contains(file_get_contents($dir.'/user-docker/config.json'),'PROXY_CREDENTIAL_SENTINEL'),'Existing client config preserved');
+        launcherCheck($case==='client-cleanup-failure'?glob($dir.'/runtime/ubo-m6b-cli.*')!==[]:glob($dir.'/runtime/ubo-m6b-cli.*')===[],'Client config cleanup '.$case);
+    }
+    if(str_starts_with($case,'cleanup-')||str_starts_with($case,'exit-')||$case==='partial-start'){
+        launcherCheck(is_file($dir.'/evidence/SHA256SUMS'),'Evidence manifest '.$case);
+        launcherCheck(!is_dir($dir.'/runtime/ubo-m6b.test'),'Scratch cleanup '.$case);
+        if(in_array($case,['cleanup-foreign','cleanup-unknown','cleanup-failed'],true))launcherCheck(str_contains($report,'Test exit: 0')&&str_contains($report,'Overall: NON_SUCCESS'),'Cleanup failure overrides SQL success');
+    }
+    if(str_starts_with($case,'run-')){
+        if($case==='run-mounts-empty'){
+            launcherCheck(str_contains($error,'M6B prerequisite/run failure: container_limits_not_effective')&&str_contains($report,'Test exit: NOT_EXECUTED')&&!str_contains($diagnostics,'container_controls'),'Observed Mounts passes admission and reaches the real cgroup-limit gate');
+            launcherCheck(!is_file($dir.'/supervisor.pid')&&!is_file($dir.'/test-done'),'Rejected effective limits prevent the harness phase');
+        }
+        $uncommitted=in_array($case,['run-mount-loss','run-publish-checksum-permanent'],true);
+        $lateSignal=preg_match('/^run-signal-(TERM|INT)-(evidence|report|published|published-failure|exit)$/D',$case)===1;
+        $publicationFailure=str_starts_with($case,'run-publish-')||str_ends_with($case,'-boundary-publish-failure');
+        $acceptedSignal=(str_starts_with($case,'run-signal-')&&!$lateSignal)||$case==='run-interrupt';
+        launcherCheck($uncommitted?!is_file($evidence.'/SHA256SUMS'):is_file($evidence.'/SHA256SUMS'),'Full lifecycle manifest '.$case);
+        launcherCheck(glob($dir.'/runtime/ubo-m6b.*')===[],'Full lifecycle scratch cleanup '.$case);
+        launcherCheck($case==='run-foreign'?!str_contains($commands,"rm\n"):str_contains($commands,"rm\n"),'Full lifecycle ownership cleanup '.$case);
+        if($case==='run-mount-loss'){
+            $emergency=array_values(array_filter(glob($dir.'/runtime/ubo-m6b-failure.*'),static fn(string $path):bool=>!str_ends_with($path,'.sha256')));
+            launcherCheck(count($emergency)===1&&is_file($emergency[0].'.sha256')&&str_contains(file_get_contents($emergency[0]),'infrastructure_volume_identity')&&!str_contains($report,'Overall:'),'Mount loss preserves old evidence and writes only runtime diagnostic with checksum');
+        }else{
+            $success=in_array($case,['run-success','run-unload'],true)||($lateSignal&&$expected===0);
+            launcherCheck(str_contains($report,$success?'Overall: PASS':'Overall: NON_SUCCESS'),'Full lifecycle verdict '.$case);
+            launcherCheck(str_contains($report,'Exit status: '.$exit), 'Report/process exit agreement '.$case);
+            launcherCheck(substr_count($commands,"publish-attempt\n")===($publicationFailure?2:1),'Bounded publication attempts '.$case);
+        }
+        $output=file_get_contents($evidence.'/test-output.txt');launcherCheck(!str_contains($output,$token)&&!str_contains($output,'abcdef0123456789abcdef'),'Full lifecycle redaction '.$case);
+        if(str_starts_with($case,'run-signal-')||$case==='run-interrupt'||$publicationFailure){
+            $failureClass=$acceptedSignal?'interrupted':($publicationFailure?'evidence_publication':($expected===17?'test_failure':'none'));
+            launcherCheck(str_contains($report,'Failure class: '.$failureClass),'Correct final failure class '.$case);
+            $signalExit=$acceptedSignal?(str_contains($case,'-INT-')?130:143):'NONE';
+            launcherCheck(str_contains($report,'Interruption exit: '.$signalExit),'First signal exit retained '.$case);
+            if(str_ends_with($case,'-repeated'))launcherCheck(substr_count($commands,'signal-')===3,'Repeated mixed signals delivered '.$case);
+            if(str_ends_with($case,'-accepted-published'))launcherCheck(substr_count($commands,'signal-')===2,'Accepted and late mixed signals delivered '.$case);
+            if($lateSignal)launcherCheck(substr_count($commands,'signal-')===1,'Late signal actually delivered '.$case);
+            launcherCheck(substr_count($commands,"stop-unit\n")===1&&substr_count($commands,"rm\n")===1,'Exactly one owned cleanup '.$case);
+            $cleanupFailure=str_ends_with($case,'-cleanup-failure');
+            launcherCheck(str_contains($report,$cleanupFailure?'Cleanup: FAILED_orphan_requires_operator_review':'Cleanup: PASS'),'Separate cleanup verdict '.$case);
+            launcherCheck(str_contains($report,'Publication: '.($publicationFailure?'FAILED':'PASS')),'Separate publication status '.$case);
+            foreach($uncommitted?[]:explode("\n",trim(file_get_contents($evidence.'/SHA256SUMS')))as$line){
+                [$hash,$name]=preg_split('/\s+/',$line,2);
+                $name=ltrim($name,'*'); // Git Bash marks binary checksum entries with '*'.
+                launcherCheck(in_array($name,['report.txt','test-output.txt','mysql-tail.txt'],true)&&hash_file('sha256',$evidence.'/'.$name)===$hash,'Final evidence checksum '.$case);
+            }
+            launcherCheck(is_file($dir.'/owned-container')===$cleanupFailure,'Owned simulated container removal '.$case);
+            launcherCheck(!is_file($dir.'/owned-supervisor')&&!is_file($dir.'/owned-collector'),'Owned simulated children removed '.$case);
+            $pids=[];foreach(['supervisor','collector']as$child){$pid=trim(file_get_contents($dir.'/'.$child.'.pid'));launcherCheck(ctype_digit($pid),'Recorded child PID');$pids[]=$pid;}
+            if($case==='run-publish-timeout'){
+                launcherCheck(microtime(true)-$started<45,'Publication watchdog bounded despite an ignored TERM');
+                foreach(explode(' ',trim(file_get_contents($dir.'/publisher.pids')))as$pid){launcherCheck(ctype_digit($pid),'Recorded publication PID');$pids[]=$pid;}
+            }
+            $probe=proc_open([$bash,'-c','for pid in "$@"; do if kill -0 "$pid" 2>/dev/null; then exit 1; fi; done','fixture-probe',...$pids],[0=>['pipe','r'],1=>['pipe','w'],2=>['pipe','w']],$probePipes,null,null,['bypass_shell'=>true]);
+            foreach($probePipes as$pipe)fclose($pipe);
+            launcherCheck(proc_close($probe)===0,'No remaining owned fixture processes '.$case);
+        }
+    }
+}
+echo "PASS: $assertions Linux launcher guard assertions; ".count($cases)." isolated Bash scenarios; ".count($mountCases)." mount inspection cases; ".count($portCases)." no-ctype port/type cases per mount form; 3 PHP profiles. Fake commands only; Linux/container/MySQL NOT EXECUTED by this suite.\n";
+// Retain only small local fixture evidence on failure. Remove our successful test's exact temporary tree.
+if(!str_starts_with(realpath($root),realpath(sys_get_temp_dir()).DIRECTORY_SEPARATOR.'ubo-m6b-launcher-'))throw new RuntimeException('Temporary cleanup boundary');
+$iterator=new RecursiveIteratorIterator(new RecursiveDirectoryIterator($root,FilesystemIterator::SKIP_DOTS),RecursiveIteratorIterator::CHILD_FIRST);
+foreach($iterator as$file){if($file->isDir())rmdir($file->getPathname());else unlink($file->getPathname());}rmdir($root);

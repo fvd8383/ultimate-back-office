@@ -1,6 +1,7 @@
 <?php
 
 declare(strict_types=1);
+require_once __DIR__ . '/support/WebsitePlatformM6BScope.php';
 
 error_reporting(E_ALL);
 
@@ -30,7 +31,7 @@ function assertM3Migration(bool $condition, string $message): void
 assertM3Migration(hash('sha256', $canonicalMigration023) === 'f0912bafc947eab8cc5b2dd5d534466d6b3675f991cac2f6849b1f84819db302', 'Historical migration 023 canonical repository content must remain unchanged.');
 assertM3Migration(basename($migration024) === '024_component_registry_versioning.sql', 'Migration 024 must use the authorized filename.');
 assertM3Migration(count(glob($root . '/database/migrations/024_*.sql') ?: []) === 1, 'Exactly one migration 024 may exist.');
-assertM3Migration(count(glob($root . '/database/migrations/02[5-9]_*.sql') ?: []) === 0, 'Migration 025+ must remain absent.');
+assertM3Migration(m6bOnlyMigration025($root), 'Only the separately authorized M6B migration 025 may exist after 024.');
 assertM3Migration(str_contains($sql, 'DROP INDEX uq_component_definitions_key'), 'Old component-key uniqueness must be removed.');
 assertM3Migration(str_contains($sql, 'UNIQUE KEY uq_component_definitions_key_version (component_key, implementation_version)'), 'Component key/version must be the immutable unique identity.');
 assertM3Migration(!preg_match('/DELETE\s+FROM\s+component_(?:definitions|variants)|TRUNCATE|DROP\s+TABLE/i', $sql), 'Existing component rows and IDs must be preserved.');

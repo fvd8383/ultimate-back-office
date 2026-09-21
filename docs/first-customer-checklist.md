@@ -1,10 +1,14 @@
 # First Customer Checklist
 
-Current M6 planning: **PLANNING COMPLETE / IMPLEMENTATION NOT STARTED**. See the
-[M6 implementation plan](sprint-8.8-m6-implementation-plan.md) for the repository audit,
-proposed migration 025, service/artifact/publisher contracts and validation gates.
-Migration 025 remains absent. M5 acceptance and historical evidence are unchanged;
-earlier M6 NEXT/NOT STARTED references record the M5 handoff. No deployment is authorized.
+Current M6: **IN PROGRESS**. **M6A — ARCHITECTURE REVIEWED / MERGED** (PR #125).
+**M6B — IMPLEMENTED LOCALLY / REAL-MYSQL VALIDATION PENDING**. **M6C–M6G — NOT STARTED**.
+Linux tooling: **CORRECTIONS IMPLEMENTED / REVIEW REQUIRED**; [host modes and prerequisites](sprint-8.8-m6b-linux-validation.md).
+Shared-staging volume/setup: **OPERATOR-REPORTED COMPLETE**, runtime verification pending.
+See the [M6B local implementation record](sprint-8.8-m6b-local-implementation.md)
+for scope and evidence, and the [reviewed M6 plan](sprint-8.8-m6-implementation-plan.md).
+Migration 025 exists locally/in the PR and is **NOT APPLIED TO STAGING OR PRODUCTION**.
+The local real-MySQL/concurrency gate is **NOT EXECUTED**: prerequisites unavailable.
+M5 acceptance and historical evidence are unchanged. No deployment is authorized.
 
 ## Purpose
 
@@ -18,7 +22,7 @@ New module development is paused until 247SP is launch-ready. EMD, SSP, TUHWD, a
 
 1. Sprint 8.7: Shared Business Profile and Website Platform Alignment — COMPLETE
 2. 247SP First-Customer Pricing Implementation and staging gate — COMPLETE / PASS
-3. Sprint 8.8: Website Platform and Component CMS — IN PROGRESS; M1–M4 and M5A/M5B COMPLETE / STAGING PASS / FORMALLY CLOSED; M5 COMPLETE FOR SPRINT PROGRESSION; M5C ACCEPTED / NARRATOR FOLLOW-UP DEFERRED; M6 PLANNING COMPLETE / IMPLEMENTATION NOT STARTED
+3. Sprint 8.8: Website Platform and Component CMS — IN PROGRESS; M1–M4 and M5A/M5B COMPLETE / STAGING PASS / FORMALLY CLOSED; M5 COMPLETE FOR SPRINT PROGRESSION; M5C ACCEPTED / NARRATOR FOLLOW-UP DEFERRED; M6 IN PROGRESS
 4. Sprint 8.9: Communications Core Foundation
 5. Sprint 8.10: Telephony and AI Receptionist
 6. Later Sprint: Messaging and Website Chat
@@ -191,7 +195,8 @@ New module development is paused until 247SP is launch-ready. EMD, SSP, TUHWD, a
 
 # Remaining Critical Path
 
-The next Website Platform milestone is **M6 PLANNING COMPLETE / IMPLEMENTATION NOT STARTED**: build/deployment/restore,
+The current Website Platform milestone is **M6 IN PROGRESS**: M6A reviewed/merged,
+M6B implemented locally/review required, and M6C–M6G not started; build/deployment/restore is
 followed by the M7/M8 scope in [Sprint 8.8](sprint-8.8.md). M5 progression does not
 complete the launch requirements below.
 
@@ -274,7 +279,7 @@ through M4 are **COMPLETE / STAGING PASS / FORMALLY CLOSED**, on final M4
 deployed/validated SHA `d33589da5eebbf8e2ae0dc203837d6667abd1f71`.
 Sprint 8.8 remains **IN PROGRESS**. See `docs/sprint-8.8-m4-closeout.md`.
 M5 is **COMPLETE FOR SPRINT PROGRESSION**; M5C is
-**ACCEPTED / NARRATOR FOLLOW-UP DEFERRED**. M6 is **PLANNING COMPLETE / IMPLEMENTATION NOT STARTED**.
+**ACCEPTED / NARRATOR FOLLOW-UP DEFERRED**. M6 is **IN PROGRESS**.
 M5A/M5B are **COMPLETE / STAGING PASS / FORMALLY CLOSED**; see
 [M5 closeout](sprint-8.8-m5-closeout.md) for the product-owner acceptance decision
 and deferred validation. Production remains **UNAUTHORIZED / NOT DEPLOYED**;
