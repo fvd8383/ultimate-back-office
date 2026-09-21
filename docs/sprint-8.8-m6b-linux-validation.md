@@ -1,18 +1,83 @@
 # M6B isolated Linux MySQL validation
 
 **M6B — IMPLEMENTED LOCALLY / REAL-MYSQL VALIDATION PENDING**.
-**M6B NO-INI GUARD CORRECTION — IMPLEMENTED / REVIEW REQUIRED**.
+**M6B MIGRATION RESULT-SET CORRECTION — IMPLEMENTED / REVIEW REQUIRED**.
 **REAL-MYSQL VALIDATION — PENDING**.
-Actual Linux container/mount diagnostics: **OPERATOR-REPORTED EXECUTED**.
-MySQL/schema/concurrency and full effective-resource validation: **NOT EXECUTED**.
-The latest operator-reported attempt stopped before SQL on PHP 8.3.6.
-The no-INI guard correction has not yet been rerun on the droplet.
+Latest operator run: **FAILED**, after canonical 001–014 completed and 015 statements
+1–4 executed; 015 statement 5 failed with SQLSTATE HY000 / driver 2014.
+Actual no-INI smoke, native-PDO MySQL 8.4.11 connection and effective MySQL/PHP resource
+controls: **PASSED (OPERATOR-REPORTED)**. Fresh/upgrade schema completion and M6B
+database acceptance remain pending. The result-set correction has not run on the server.
 M6 **IN PROGRESS**; M6C–M6G **NOT STARTED**; Production **UNAUTHORIZED / NOT DEPLOYED**.
 
 Work remains in [PR #126](https://github.com/fvd8383/ultimate-back-office/pull/126).
 The [implementation record](sprint-8.8-m6b-local-implementation.md) records executed
-local tests separately from the unexecuted real-MySQL gate. The earlier clean
+local tests separately from the partially executed, still-failing real-MySQL gate. The earlier clean
 application review of `19dc550` did not approve the Linux launcher.
+
+## Latest migration result-set failure and correction
+
+The latest supplied report ran code `9983bf37f2791e7f67c5f9d6733662afb0457255` with
+PHP **8.3.6**, Docker client/server **29.8.1**, SQL-queried MySQL **8.4.11**,
+**REPEATABLE-READ** and verified native PDO prepares. Actual Linux no-INI smoke,
+container identity/environment, loopback/tmpfs and effective MySQL/PHP limits passed.
+Canonical migrations **001–014 completed**. In 015, statements **1–4 executed**, then
+**5 (DEALLOCATE PREPARE)** failed: `SQLSTATE[HY000]`, driver `2014`,
+`Cannot execute queries while other unbuffered queries are active.`
+Cleanup/publication passed and the working staging database was reported untouched.
+The overall verdict remains **FAILED**. Later migrations/025, full fresh/upgrade
+schemas and the M6B database acceptance matrix were not reached.
+
+Report:
+`/mnt/ubo_stage_testdata/codex-validation/evidence/m6b-no-ini-mysql-20260921T213519Z/M6B-NO-INI-SMOKE-AND-MYSQL-VALIDATION.md`.
+Operator-reported SHA-256:
+`1565f5b5cacfdc6f56b6aea256786a041390d59ea5ef5c587cd1da18a3f29f94`.
+This desktop task did not download, independently hash-verify or reproduce the report.
+Earlier evidence below retains its original verdict; historical pre-SQL failures do
+not erase this latest partial SQL execution and actual resource-control validation.
+
+Canonical 014 creates website_integrations; 015 sets the legacy name and conditional
+SQL, then PREPARE / EXECUTE / DEALLOCATE. Its no-op branch executes SELECT 1 at statement
+4. The old exec-only runner had no result handle to settle before statement 5.
+The generic test-support runner now uses one query() per unchanged canonical statement,
+incrementally discards rows, advances all rowsets and requires successful closeCursor()
+before the next statement. Same-session variables/prepared statements and native PDO
+configuration are retained. False end-of-results requires successful SQLSTATE; execution,
+consumption, advancement or cleanup errors stop the migration. Primary failure and any
+secondary cleanup failure retain safe stage/SQLSTATE/driver diagnostics, without raw
+driver messages, rows, credentials or exception chains. No automatic retry/reconnection,
+SQL rewrite/skip, emulation setting, buffering change or launcher change is introduced.
+The [implementation record](sprint-8.8-m6b-local-implementation.md#migration-result-set-lifecycle-correction)
+contains official PHP references, exact statement mapping and regression details.
+
+The standalone canonical-file PDO-double regression failed on the old runner at
+statement 5 (exit 255), then passed **848 assertions** with the correction. It covers
+DDL/DML/SET, empty/multiple/no-column results, later dynamic 019/020 cycles, exactly-once
+ordering, same session, lifecycle faults and secret-safe diagnostics. This is simulated
+result handling, not a fresh native MySQL reproduction.
+
+Current Windows-local validation passed **58/58 standalone suites**, **3666 M6B
+assertions** (including **2075 launcher assertions / 152 fake Bash scenarios**), lint
+for **215 tracked PHP files**, both Bash syntax checks and PowerShell parsing with
+zero errors. The existing no-INI smoke passed. Documentation checks covered **16
+relative links, six anchors and eight balanced fence pairs**; preservation and exact
+six-file diff checks passed. None of these checks executed the native MySQL entry point.
+
+Thirteen native assertions are authored in the existing owned-database harness but
+**NOT EXECUTED** by this desktop task. A synthetic rename fixture runs in the newly
+created empty fresh database, verifies canonical 015's rename branch, and removes its
+table before canonical 001 onward. Existing ownership-limited database cleanup handles
+failure. The original fresh **001–025** and upgrade **001–024 → fixture/snapshot → 025**
+sequences remain. Added checks establish SELECT 1 was selected in canonical 015,
+the same session accepts the next query after 015/019/020, and emulation remains false.
+Existing business/concurrency assertions and all launcher safety controls are unchanged.
+
+A later separately authorized native run must start with **fresh disposable databases
+and execute 001 onward**; do not resume the prior partial schema (its container was
+removed). The correction has no server PASS evidence yet. First-customer readiness,
+full M6B acceptance and migration 025 validation remain pending. M6 stays IN PROGRESS,
+M6B IMPLEMENTED / REAL-MYSQL VALIDATION PENDING, M6C–M6G NOT STARTED and Production
+UNAUTHORIZED / NOT DEPLOYED; M5 acceptance and Narrator deferral are unchanged.
 
 ## Configuration-free guard and synthetic smoke check
 
@@ -40,7 +105,7 @@ undefined `ctype_digit()`. Explicitly loading existing ctype passed; a scratch
 core-only replacement passed 27 port/type probes. Those are supplied reproduction
 results, not Linux execution by this Windows task and not a captured server exception.
 
-The latest server report used **PHP 8.3.6** and stopped before SQL:
+The earlier server report used **PHP 8.3.6** and stopped before SQL:
 `/mnt/ubo_stage_testdata/codex-validation/evidence/m6b-mysql-rerun-20260921T010426Z/M6B-ISOLATED-MYSQL-RERUN.md`.
 Operator-reported SHA-256:
 `f0b39ed68ac816bb8d3a4aac5a84389d4f2c7767c76499312fb47d16a83f7730`.
@@ -79,8 +144,8 @@ The scoped pure-guard audit found no further optional-extension assumption: its
 remaining function calls are from Core, standard, JSON and PCRE, available in the
 tested no-INI child. The database harness remains a separate configured PHP process
 with its legitimate PDO MySQL dependency. No application or harness refactor is part
-of this correction. Real-MySQL/schema/concurrency and full effective-resource
-validation remain pending; historical blocked/incomplete reports keep their verdicts.
+of that guard correction. The latest partial native run is recorded above;
+historical blocked/incomplete reports keep their verdicts.
 
 ## Confirmed tmpfs representation and current validation gate
 

@@ -1,14 +1,16 @@
 # Sprint 8.8 M6B — Local persistence and jobs implementation
 
 Date: 2026-09-19. **M6B — IMPLEMENTED LOCALLY / REAL-MYSQL VALIDATION PENDING**.
-**M6B NO-INI GUARD CORRECTION — IMPLEMENTED / REVIEW REQUIRED**.
+**M6B MIGRATION RESULT-SET CORRECTION — IMPLEMENTED / REVIEW REQUIRED**.
 **REAL-MYSQL VALIDATION — PENDING**.
-Latest correction: [Configuration-free PHP guard](#configuration-free-php-guard-correction).
-Shared-staging volume/setup **OPERATOR-REPORTED COMPLETE**; real MySQL **NOT EXECUTED**.
-Actual Linux container/mount diagnostics are now **OPERATOR-REPORTED EXECUTED**;
-the latest operator-reported PHP 8.3.6 attempt stopped before SQL. The no-INI
-correction has not yet been rerun. Earlier dated records retain
-their historical verdicts and the evidence available at those points.
+Latest correction: [Migration result-set lifecycle](#migration-result-set-lifecycle-correction).
+The operator's latest run **FAILED** after completing canonical migrations 001–014
+and executing 015 statements 1–4. Statement 5 failed with SQLSTATE HY000 / driver
+2014. Actual Linux no-INI smoke, native-PDO MySQL 8.4.11 connection and effective
+MySQL/PHP resource controls **PASSED (OPERATOR-REPORTED)**. Later migrations and
+the M6B database acceptance matrix were not reached. The runner correction has
+standalone evidence only; it has not passed a native server run.
+Earlier dated sections retain their historical verdicts and evidence boundaries.
 See [Linux validation host modes and prerequisites](sprint-8.8-m6b-linux-validation.md).
 This is local implementation evidence, not staging validation or formal M6 closeout.
 
@@ -47,7 +49,7 @@ Narrator work occurred. No merge or auto-merge is authorized.
 
 ## Complete changed-file inventory
 
-The implementation has 40 changed files: 26 additions and 14 modifications.
+The implementation has 42 changed files: 28 additions and 14 modifications.
 
 | Change | Path | Purpose |
 | --- | --- | --- |
@@ -74,6 +76,8 @@ The implementation has 40 changed files: 26 additions and 14 modifications.
 | Add | `tests/support/WebsitePlatformM6BDatabase.php` | Behavioral fake PDO fixture using existing M2/M3/M5 inputs. |
 | Add | `tests/support/WebsitePlatformM6BDependencies.php` | Synthetic, explicitly bound evidence and private reflection test wiring. |
 | Add | `tests/support/WebsitePlatformM6BMySqlSupport.php` | Verified local connection, canonical migrations and synthetic native-PDO fixtures. |
+| Add | `tests/support/WebsitePlatformM6BMigrations.php` | Canonical migration loop with incremental result disposal and safe failure diagnostics. |
+| Add | `tests/WebsitePlatformM6BMigrationRunnerTest.php` | Canonical-file PDO-double lifecycle regression; no database execution. |
 | Add | `tests/support/WebsitePlatformM6BMySqlWorker.php` | Independent test processes and explicit barriers; not an application worker. |
 | Add | `tests/support/WebsitePlatformM6BMySqlSchemaCases.php` | Real CHECK/FK/uniqueness/deletion rejection fixtures. |
 | Add | `tests/support/WebsitePlatformM6BSql.php` | Canonical SQL lexer; no schema approximation or constraint bypass. |
@@ -125,7 +129,9 @@ Concrete SQL translation: explicit non-NULL predicates prevent SQL UNKNOWN from
 accepting incomplete execution/recovery shape; bounded summary/receipt JSON uses
 OCTET_LENGTH checks. UUID/hash identities use binary ASCII collation; durable times
 use DATETIME(6). These implement the reviewed contract, not a relaxed replacement.
-No server incompatibility has been observed or corrected because MySQL did not run.
+Migration 025 has not yet been reached by a native run. The latest operator report
+instead exposed a test-runner result-lifecycle failure at migration 015; see the
+[current correction](#migration-result-set-lifecycle-correction).
 
 SHA-256 of 025's LF bytes (the committed canonical representation):
 `dab585dc29aac11153f92703c65d3883aeea73a1b2283157cfa9d2f2ece85cb0`.
@@ -1311,3 +1317,153 @@ the single exact-new-head review request and observed state.
 
 **M6B NO-INI GUARD CORRECTION — IMPLEMENTED / REVIEW REQUIRED**.
 **REAL-MYSQL VALIDATION — PENDING**.
+
+## Migration result-set lifecycle correction
+
+This 2026-09-21 correction starts from clean branch/PR head
+`9983bf37f2791e7f67c5f9d6733662afb0457255`. It changes only the migration test runner,
+its standalone/native coverage and these two evidence documents. No application,
+canonical SQL, launcher, guard, configuration or resource-control change is included.
+
+### Latest operator evidence and remaining gate
+
+The supplied native report for that head used **PHP 8.3.6**, Docker client/server
+**29.8.1**, SQL-queried **MySQL 8.4.11**, **REPEATABLE-READ**, and verified native PDO
+prepares. The actual Linux no-INI smoke, container identity/environment, loopback/tmpfs
+and effective MySQL/PHP resource controls passed. Canonical migrations **001–014
+completed**; migration **015 statements 1–4 executed**, then **statement 5,
+DEALLOCATE PREPARE, failed** with `SQLSTATE[HY000]` / driver `2014`:
+`Cannot execute queries while other unbuffered queries are active.`
+
+The overall verdict remains **FAILED**. Later migrations, migration 025, completed
+fresh/upgrade schemas and the M6B database acceptance matrix were not reached.
+Cleanup/publication passed; the working staging database was reported untouched.
+This is partial native execution evidence, not full M6B PASS or first-customer readiness.
+
+Operator report:
+`/mnt/ubo_stage_testdata/codex-validation/evidence/m6b-no-ini-mysql-20260921T213519Z/M6B-NO-INI-SMOKE-AND-MYSQL-VALIDATION.md`.
+Operator-reported SHA-256:
+`1565f5b5cacfdc6f56b6aea256786a041390d59ea5ef5c587cd1da18a3f29f94`.
+This desktop task did **not** download, independently hash-verify or reproduce that
+server evidence. Earlier report paths, hashes and FAILED/blocked verdicts above remain
+historical evidence; their then-current “not executed” statements do not describe this run.
+
+### Canonical sequence and source diagnosis
+
+The unchanged splitter returns two statements for 014, whose first creates
+`website_integrations`. The actual 015 file splits into these five statements:
+
+| Index | Canonical operation |
+| --- | --- |
+| 1 | SET the legacy table name using CONCAT. |
+| 2 | SET the conditional SQL from information_schema: RENAME TABLE if needed, otherwise SELECT 1. |
+| 3 | PREPARE rename_legacy_website_integrations_statement FROM the session variable. |
+| 4 | EXECUTE rename_legacy_website_integrations_statement. |
+| 5 | DEALLOCATE PREPARE rename_legacy_website_integrations_statement. |
+
+On the fresh path, 014 already created the destination, so 015's EXECUTE produces
+the SELECT result. The old `$db->exec($sql)` loop obtained no statement handle and
+had no result-consumption lifecycle. That source defect matches the reported failure
+at the next command; the Windows regression simulates this lifecycle, not MySQL itself.
+Migrations 019 and 020 contain repeated conditional ALTER/SELECT 1, PREPARE, EXECUTE,
+DEALLOCATE cycles and now use the same generic path. Their SQL and splitter are unchanged.
+
+[PDO::exec](https://www.php.net/manual/en/pdo.exec.php) returns an affected-row count,
+where zero can be success, without a result handle. [PDO::query](https://www.php.net/manual/en/pdo.query.php)
+returns a statement and documents that unfetched results can block the next command.
+[nextRowset](https://www.php.net/manual/en/pdostatement.nextrowset.php) advances results;
+[closeCursor](https://www.php.net/manual/en/pdostatement.closecursor.php) releases them.
+The [PHP 8.3 PDO MySQL driver](https://github.com/php/php-src/blob/PHP-8.3/ext/pdo_mysql/mysql_driver.c)
+has a protocol-unsupported preparation fallback, so this harness uses query() without
+forcing a prepare()/execute() wrapper or changing ATTR_EMULATE_PREPARES. That driver
+source analysis supports the choice; actual compatibility on the target remains a native gate.
+
+### Result lifecycle and failure behavior
+
+`WebsitePlatformM6BMigrations.php` owns the existing canonical loop and its small
+execution helper; MySqlSupport includes it. Each statement is submitted once through
+query(), in file order on the supplied PDO session. Result columns trigger incremental
+FETCH_NUM disposal, including empty SELECTs; no-column commands still advance rowsets.
+Every additional rowset is processed, and closeCursor() must succeed before the next
+canonical command. Neither fetchAll() nor affected-row/rowCount decisions are used.
+The existing exception mode, native-prepare setting and buffering settings remain intact.
+
+False fetch/nextRowset is accepted as end only with SQLSTATE `00000`. Execution,
+consumption, advancement or cleanup failures stop immediately. Each acquired handle
+gets one explicit cursor-close attempt, including result failures; query failures that
+return no handle cannot be closed. The primary diagnostic is captured before cleanup;
+a second cleanup error is appended without replacing it. No statement is retried and
+no suspect session is reused or reconnected. “Applied” is emitted only after the whole
+migration and every result/cursor lifecycle complete.
+
+Diagnostics retain filename, one-based statement index, lifecycle stage, a validated
+five-character SQLSTATE and bounded numeric driver code. Unavailable/invalid codes are
+labeled unavailable. Raw driver messages and exception chains are omitted because they
+can carry SQL values or credentials; returned rows, DSNs and environment are never logged.
+Canonical errors remain failures, including driver 2014. There is no migration-specific
+branch, SQL rewrite, batching, constraint bypass or DDL transaction change.
+
+### Standalone regression and authored native coverage
+
+Before changing the runner, the new PDO-double regression with canonical 015 failed
+at statement **5**, exit **255**. The double refuses every subsequent command while a
+prior handle has pending results. Its old-exec simulation also checks driver **2014**.
+After correction, the focused regression passes **848 assertions**: canonical 014/015,
+019/020, exactly-once ordering, same connection, DDL/DML/SET, zero affected rows, empty
+SELECT, mixed multiple/no-column rowsets, each lifecycle failure as exception or false,
+primary-plus-cleanup failure, unavailable/unsafe error codes and secret sentinels.
+These are simulated results with **zero database connections or SQL execution**.
+
+The native harness adds **13 assertions**, authored but **NOT EXECUTED** here. In the
+newly created owned fresh database, a synthetic legacy table/row exercises canonical
+015's rename branch. It verifies the renamed data and same session, then drops its sole
+table and verifies the database is empty before the unchanged canonical **001–025**
+fresh sequence. On fixture failure, the existing owned-database cleanup applies; no
+attempt is made to continue migrations on that session. The original upgrade sequence
+**001–024, synthetic fixture/snapshot, 025, snapshot comparison** remains unchanged.
+Both paths verify 015 selected SELECT 1, the same session can still query after the
+canonical dynamic migrations (including 019/020), and PDO emulation remains false.
+Existing business/schema/concurrency assertions are preserved. The obsolete runner is
+never used to poison a native connection. A later authorized native run must create
+fresh disposable databases and execute **001 onward**; the prior container was removed.
+
+### Correction inventory and local validation
+
+Exactly six files change in this correction:
+
+| Change | Path |
+| --- | --- |
+| Add | `tests/support/WebsitePlatformM6BMigrations.php` |
+| Add | `tests/WebsitePlatformM6BMigrationRunnerTest.php` |
+| Modify | `tests/support/WebsitePlatformM6BMySqlSupport.php` |
+| Modify | `tests/WebsitePlatformM6BMySql.php` |
+| Modify | `docs/sprint-8.8-m6b-local-implementation.md` |
+| Modify | `docs/sprint-8.8-m6b-linux-validation.md` |
+
+Windows PHP **8.4.24 CLI** validation: **58/58 standalone suites passed**, including
+**848 migration-runner assertions**, **2075 launcher assertions / 152 isolated Bash
+scenarios**, and the unchanged six other M6B suites' **743 assertions**: **3666 M6B
+assertions total**. All **215 tracked PHP files** passed lint. Both Bash files passed
+syntax checks; the PowerShell launcher parsed with **zero errors**. The existing
+no-INI smoke passed both mount forms / three PHP profiles, including the absent-ctype
+child. Two Markdown documents passed **16 relative links, six referenced anchors and
+eight balanced fence pairs**, plus supplied evidence/status checks. These are local
+synthetic/parse checks; the native MySQL entry point was not executed.
+
+The exact six-file inventory and working/staged/committed diff checks passed.
+All **218 application/private/public/migration files** match both the prior head and
+application-preservation baseline `19dc550081ad47f1c53e91cd9efa5a6d8cddf381`, accounting
+for existing Windows line endings; protected local raw-byte hashes remain unchanged.
+Both launchers, Linux guard and its no-INI/tmpfs/resource checks, launcher tests/Bash
+fixture, SQL splitter, worker and native schema cases are unchanged. MySqlSupport
+differs only by extracting the migration loop and changing its include; native harness
+changes are addition-only, preserving the original business/concurrency assertions.
+
+Migration 025's canonical SHA-256 remains
+`dab585dc29aac11153f92703c65d3883aeea73a1b2283157cfa9d2f2ece85cb0`.
+M6 remains **IN PROGRESS**; M6B **IMPLEMENTED / REAL-MYSQL VALIDATION PENDING**;
+M6C–M6G **NOT STARTED**; Production **UNAUTHORIZED / NOT DEPLOYED**. M5 acceptance and
+Narrator deferral are unchanged. No host access, Docker operations, database connection,
+SQL/migration execution, installation, configuration change, deployment, M6C or Narrator
+action occurred in this desktop correction. PR #126 remains the sole open, non-draft,
+unmerged PR with auto-merge disabled; its exact-new-head review is linked in the task result.

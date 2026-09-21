@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 require_once __DIR__ . '/WebsitePlatformM6BDependencies.php';
-require_once __DIR__ . '/WebsitePlatformM6BSql.php';
+require_once __DIR__ . '/WebsitePlatformM6BMigrations.php';
 require_once __DIR__ . '/WebsitePlatformM6BLinuxGuard.php';
 require_once dirname(__DIR__,2) . '/private/classes/SiteCompositionEditor.php';
 
@@ -96,22 +96,6 @@ function m6mysqlInsert(PDO $db,string $table,array $values): int
     if(!preg_match('/^[a-z_]+$/D',$table))throw new RuntimeException('Invalid fixture table');
     $query=$db->prepare('INSERT INTO '.$table.' ('.implode(',',array_keys($values)).') VALUES (:'.implode(',:',array_keys($values)).')');
     $query->execute($values);return (int)$db->lastInsertId();
-}
-function m6mysqlMigrate(PDO $db,int $first,int $last): void
-{
-    for($number=$first;$number<=$last;$number++){
-        $files=glob(dirname(__DIR__,2).'/database/migrations/'.sprintf('%03d',$number).'_*.sql');
-        if(count($files)!==1)throw new RuntimeException('Canonical migration identity mismatch.');
-        foreach(m6bSqlStatements(file_get_contents($files[0]))as$index=>$sql){
-            if(preg_match('/(?:foreign_key_checks|check_constraint_checks)\s*=\s*0/i',$sql))throw new RuntimeException('Constraint bypass refused.');
-            try{$db->exec($sql);}
-            catch(PDOException $e){
-                // Canonical repository DDL only; exact compatibility failure is useful evidence.
-                throw new RuntimeException('Migration '.basename($files[0]).' statement '.($index+1).' failed: '.$e->getMessage());
-            }
-        }
-        echo 'Applied local disposable migration '.basename($files[0])."\n";
-    }
 }
 function m6mysqlFixture(PDO $db): array
 {

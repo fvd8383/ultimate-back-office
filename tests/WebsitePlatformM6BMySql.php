@@ -124,6 +124,33 @@ function mysqlSchema(PDO $db):void{
     }
     mysqlCheck((int)$db->query('SELECT @@foreign_key_checks')->fetchColumn()===1,'Foreign keys remain enabled');
 }
+/** Native-only assertions; the desktop standalone suite never includes this entry point. */
+function mysqlMigrationScalar(PDO $db,string $sql): mixed
+{
+    $statement=$db->query($sql);
+    try{return $statement->fetchColumn();}
+    finally{if(!$statement->closeCursor())throw new RuntimeException('Native migration assertion cursor cleanup failed.');}
+}
+function mysqlMigrationRenameFixture(PDO $db): void
+{
+    // Called only in the newly created, harness-owned fresh database, before canonical 001.
+    // On failure the outer ownership-limited database cleanup applies; do not reuse a failed session.
+    $tableCount="SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE()";
+    mysqlCheck((int)mysqlMigrationScalar($db,$tableCount)===0,'Rename fixture starts in empty owned database');
+    $connection=mysqlMigrationScalar($db,'SELECT CONNECTION_ID()');
+    m6mysqlMigrationStatement($db,'CREATE TABLE `247sp_website_integrations` (id INT PRIMARY KEY)','native-rename-fixture',1);
+    m6mysqlMigrationStatement($db,'INSERT INTO `247sp_website_integrations` (id) VALUES (37)','native-rename-fixture',2);
+    echo "Isolated canonical 015 rename fixture, before fresh 001 onward.\n";
+    m6mysqlMigrate($db,15,15);
+    mysqlCheck(mysqlMigrationScalar($db,'SELECT @rename_legacy_website_integrations_sql')===
+        'RENAME TABLE `247sp_website_integrations` TO website_integrations','Canonical conditional rename selected');
+    mysqlCheck((int)mysqlMigrationScalar($db,'SELECT id FROM website_integrations')===37,'Renamed synthetic row preserved after DEALLOCATE');
+    mysqlCheck((int)mysqlMigrationScalar($db,$tableCount)===1,'Only renamed fixture table remains');
+    mysqlCheck(mysqlMigrationScalar($db,'SELECT CONNECTION_ID()')===$connection,'Rename sequence retains same session');
+    mysqlCheck(!$db->getAttribute(PDO::ATTR_EMULATE_PREPARES),'Native prepares retained during rename fixture');
+    m6mysqlMigrationStatement($db,'DROP TABLE website_integrations','native-rename-fixture',3);
+    mysqlCheck((int)mysqlMigrationScalar($db,$tableCount)===0,'Fixture fully removed before canonical fresh schema');
+}
 try{
     if(PHP_SAPI!=='cli')throw new RuntimeException('CLI only');
     if(!in_array('mysql',PDO::getAvailableDrivers(),true))throw new RuntimeException('NOT EXECUTED: PHP PDO MySQL, local Docker and mysql:8.4 are required.');
@@ -137,6 +164,8 @@ try{
         if($exists!==null)throw new RuntimeException('Refusing a preexisting database.');
         $admin->exec('CREATE DATABASE `'.$name.'` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci');$owned[]=$name;
         $db=m6mysqlConnect($identity,$name);
+        if($mode==='fresh')mysqlMigrationRenameFixture($db);
+        $migrationConnection=mysqlMigrationScalar($db,'SELECT CONNECTION_ID()');
         if($mode==='fresh')m6mysqlMigrate($db,1,25);
         else{
             m6mysqlMigrate($db,1,24);$fixture=m6mysqlFixture($db);$before=m6mysqlSnapshot($db);
@@ -144,6 +173,11 @@ try{
             foreach($before as$table=>$hash)mysqlCheck($after[$table]===$hash,'Upgrade preserves canonical preexisting content/relationships '.$table);
             mysqlCheck(count($after)===count($before)+9,'Upgrade adds only nine tables');
         }
+        mysqlCheck(mysqlMigrationScalar($db,'SELECT @rename_legacy_website_integrations_sql')==='SELECT 1',
+            'Canonical 014-to-015 no-op EXECUTE/DEALLOCATE completed: '.$mode);
+        mysqlCheck(mysqlMigrationScalar($db,'SELECT CONNECTION_ID()')===$migrationConnection,
+            'Same session accepts next query after canonical 015/019/020: '.$mode);
+        mysqlCheck(!$db->getAttribute(PDO::ATTR_EMULATE_PREPARES),'PDO emulation remains false: '.$mode);
         mysqlSchema($db);
         foreach(['site_build_jobs','site_releases','site_deployment_targets','site_deployment_approvals']as$table)mysqlCheck((int)$db->query('SELECT COUNT(*) FROM '.$table)->fetchColumn()===0,'Migration has no operational seeds '.$table);
     }
