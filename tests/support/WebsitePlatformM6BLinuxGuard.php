@@ -135,12 +135,15 @@ function m6linuxContainer(array $container, string $token, string $imageId, stri
     $port = $bindings['3306/tcp'][0]['HostPort'] ?? '';
     m6linuxRequire(count(array_filter($bindings, static fn ($v): bool => $v !== null)) === 1
         && count($bindings['3306/tcp'] ?? []) === 1 && ($bindings['3306/tcp'][0]['HostIp'] ?? '') === '127.0.0.1'
-        && ctype_digit($port) && (int) $port > 0 && (int) $port <= 65535, 'loopback_binding');
+        && is_string($port) && preg_match('/\A[0-9]+\z/', $port) === 1
+        && (int) $port > 0 && (int) $port <= 65535, 'loopback_binding');
     return $port;
 }
 
 // CLI bridge for Bash. Output is a single bounded value; raw inspection/Env is never logged.
 if (isset($_SERVER['SCRIPT_FILENAME']) && realpath($_SERVER['SCRIPT_FILENAME']) === __FILE__) {
+    // PHP warnings can contain input values; classify them without printing their text.
+    set_error_handler(static function (): never { throw new ErrorException(); });
     try {
         $input = stream_get_contents(STDIN, 1048577);
         m6linuxRequire(strlen($input) <= 1048576, 'inspection_size');
@@ -157,7 +160,9 @@ if (isset($_SERVER['SCRIPT_FILENAME']) && realpath($_SERVER['SCRIPT_FILENAME']) 
         echo $result . "\n";
     } catch (Throwable $e) {
         // Never forward parser values, inspected Env, dependency errors or arbitrary exception text.
-        fwrite(STDERR, "M6B guard rejected inspection: " . (($e instanceof RuntimeException && str_starts_with($e->getMessage(), 'M6B guard: ')) ? substr($e->getMessage(), 11) : 'invalid_metadata') . "\n");
+        $code = $e instanceof JsonException ? 'invalid_json' : 'guard_runtime_error';
+        if ($e instanceof RuntimeException && str_starts_with($e->getMessage(), 'M6B guard: ')) $code = substr($e->getMessage(), 11);
+        fwrite(STDERR, "M6B guard rejected inspection: " . $code . "\n");
         exit(2);
     }
 }

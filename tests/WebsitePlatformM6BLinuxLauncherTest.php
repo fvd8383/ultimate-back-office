@@ -43,16 +43,21 @@ launcherReject(fn()=>m6linuxOwner($container,str_repeat('f',32),$imageId,$id),'c
 launcherReject(fn()=>m6linuxOwner($container,$token,$imageId,str_repeat('f',64)),'container_ownership');
 launcherReject(fn()=>m6linuxOwner($container,$token,'sha256:'.str_repeat('f',64),$id),'container_ownership');
 
-/** Exercise the actual stdin/JSON CLI boundary, with synthetic test credentials only. */
-function launcherInspectionCli(array|stdClass $rows):array{
-    global $token,$id,$imageId,$digest,$password;
-    $process=proc_open([PHP_BINARY,'-n','-d','memory_limit=256M',__DIR__.'/support/WebsitePlatformM6BLinuxGuard.php','container',$digest,'linux/amd64'],
-        [0=>['pipe','r'],1=>['pipe','w'],2=>['pipe','w']],$pipes,null,array_merge(getenv(),[
-            'M6B_MYSQL_RUN_TOKEN'=>$token,'M6B_MYSQL_CONTAINER_ID'=>$id,'M6B_MYSQL_IMAGE_ID'=>$imageId,'MYSQL_ROOT_PASSWORD'=>$password]),['bypass_shell'=>true]);
+/** Synthetic-only PHP child; never invokes Docker, SQL or application bootstrap. */
+function launcherPhpChild(array $flags,array $arguments,string $input='',array $environment=[]):array{
+    $process=proc_open([PHP_BINARY,...$flags,'-d','memory_limit=256M',...$arguments],
+        [0=>['pipe','r'],1=>['pipe','w'],2=>['pipe','w']],$pipes,null,array_merge(getenv(),$environment),['bypass_shell'=>true]);
     if(!is_resource($process))throw new RuntimeException('Guard CLI unavailable');
-    fwrite($pipes[0],json_encode($rows,JSON_THROW_ON_ERROR));fclose($pipes[0]);
+    fwrite($pipes[0],$input);fclose($pipes[0]);
     $out=stream_get_contents($pipes[1]);$error=stream_get_contents($pipes[2]);fclose($pipes[1]);fclose($pipes[2]);
     return [proc_close($process),$out,$error];
+}
+/** Exercise the actual stdin/JSON CLI boundary, with synthetic test credentials only. */
+function launcherInspectionCli(array|stdClass|string $rows,array $flags=['-n']):array{
+    global $token,$id,$imageId,$digest,$password;
+    return launcherPhpChild($flags,[__DIR__.'/support/WebsitePlatformM6BLinuxGuard.php','container',$digest,'linux/amd64'],
+        is_string($rows)?$rows:json_encode($rows,JSON_THROW_ON_ERROR|JSON_PRESERVE_ZERO_FRACTION),[
+            'M6B_MYSQL_RUN_TOKEN'=>$token,'M6B_MYSQL_CONTAINER_ID'=>$id,'M6B_MYSQL_IMAGE_ID'=>$imageId,'MYSQL_ROOT_PASSWORD'=>$password]);
 }
 // Operator-supplied Docker 29.8.1 projection applied to our COMPLETE valid fixture.
 // HostConfig.Mounts is absent; Config.Volumes is an image declaration, not an attachment.
@@ -62,6 +67,59 @@ $observed['Config']['Volumes']=['/var/lib/mysql'=>(object)[]];
 [$exit,$out,$error]=launcherInspectionCli([$observed,$image]);
 launcherCheck($exit===0&&$out==="33306\n"&&$error==='','Observed empty Mounts CLI: exit '.$exit.' '.trim($error));
 launcherCheck(m6linuxContainer($observed,$token,$imageId,$id)==='33306','Observed representation direct shared mount guard');
+$profiles=['configured'=>[],'no-ini'=>['-n'],'no-ini-no-ctype'=>['-n','-d','disable_functions=ctype_digit']];
+[$exit,$out,$error]=launcherPhpChild($profiles['no-ini-no-ctype'],['-r','echo function_exists("ctype_digit") ? "present\n" : "absent\n";']);
+launcherCheck($exit===0&&$out==="absent\n"&&$error==='','Child ctype_digit absence verified');
+foreach(['single-tmpfs'=>$container,'empty-mounts'=>$observed]as$name=>$row)foreach($profiles as$profile=>$flags){
+    [$exit,$out,$error]=launcherInspectionCli([$row,$image],$flags);
+    launcherCheck($exit===0&&$out==="33306\n"&&$error==='',"$name $profile CLI: exit $exit stdout ".json_encode($out).' stderr '.json_encode($error));
+}
+// Small reusable pre-container smoke check: fixtures and PHP children only, no Bash layer.
+if($argc===2&&$argv[1]==='--guard-smoke'){
+    echo "PASS: synthetic guard smoke; 2 mount forms / 3 PHP profiles; child ctype_digit absent; no Docker/SQL/application bootstrap.\n";
+    exit(0);
+}
+function launcherSafeGuardOutput(string $out,string $error,string $context):void{
+    global $token,$password;
+    launcherCheck(strlen($error)<=128&&!str_contains($out.$error,$token)&&!str_contains($out.$error,$password)
+        &&!str_contains($out.$error,'GUARD_SECRET_SENTINEL')&&!str_contains($out.$error,'Stack trace'),$context.' bounded secret-safe output');
+}
+$portCases=[
+    'minimum'=>['1',true],'usual'=>['33306',true],'maximum'=>['65535',true],'leading-zero'=>['033306',true],
+    'zero'=>['0',false],'too-high'=>['65536',false],'empty'=>['',false],'overflow'=>[str_repeat('9',100),false],
+    'leading-space'=>[' 33306',false],'trailing-space'=>['33306 ',false],'newline'=>["33306\n",false],'tab'=>["\t33306",false],
+    'plus'=>['+33306',false],'minus'=>['-33306',false],'decimal'=>['33306.0',false],'exponent'=>['3e4',false],'hex'=>['0x821a',false],
+    'arabic-digits'=>['٣٣٣٠٦',false],'fullwidth-digits'=>['３３３０６',false],
+    'integer'=>[33306,false],'float'=>[33306.0,false],'fraction'=>[1.5,false],'true'=>[true,false],'false'=>[false,false],
+    'null'=>[null,false],'list'=>[['GUARD_SECRET_SENTINEL'],false],'object'=>[(object)['secret'=>'GUARD_SECRET_SENTINEL'],false],
+];
+foreach(['single-tmpfs'=>$container,'empty-mounts'=>$observed]as$mount=>$validRow)foreach($portCases as$name=>[$port,$valid]){
+    $row=$validRow;$row['NetworkSettings']['Ports']['3306/tcp'][0]['HostPort']=$port;
+    [$exit,$out,$error]=launcherInspectionCli([$row,$image],$profiles['no-ini-no-ctype']);
+    launcherCheck($valid?($exit===0&&$out===$port."\n"&&$error===''):
+        ($exit===2&&$out===''&&$error==="M6B guard rejected inspection: loopback_binding\n"),"$mount $name no-ctype port policy");
+    launcherSafeGuardOutput($out,$error,"$mount $name");
+}
+foreach(['truncated'=>'{"GUARD_SECRET_SENTINEL":','invalid-utf8'=>"[\"\xffGUARD_SECRET_SENTINEL\"]"]as$name=>$json){
+    [$exit,$out,$error]=launcherInspectionCli($json,$profiles['no-ini-no-ctype']);
+    launcherCheck($exit===2&&$out===''&&$error==="M6B guard rejected inspection: invalid_json\n",$name.' JSON classification');
+    launcherSafeGuardOutput($out,$error,$name);
+}
+$row=$observed;$row['NetworkSettings']['Ports']='GUARD_SECRET_SENTINEL';
+[$exit,$out,$error]=launcherInspectionCli([$row,$image],$profiles['no-ini-no-ctype']);
+launcherCheck($exit===2&&$out===''&&$error==="M6B guard rejected inspection: guard_runtime_error\n",'Synthetic warning classification');
+launcherSafeGuardOutput($out,$error,'Synthetic warning');
+$badImage=$image;$badImage['RepoDigests']='GUARD_SECRET_SENTINEL';
+[$exit,$out,$error]=launcherInspectionCli([$observed,$badImage],$profiles['no-ini-no-ctype']);
+launcherCheck($exit===2&&$out===''&&$error==="M6B guard rejected inspection: guard_runtime_error\n",'Synthetic argument TypeError classification');
+launcherSafeGuardOutput($out,$error,'Synthetic argument TypeError');
+// An intentionally unavailable core function causes Error, without a production debug hook.
+$runtimeFlags=['-n','-d','disable_functions=ctype_digit,array_filter'];
+[$exit,$out,$error]=launcherPhpChild($runtimeFlags,['-r','echo function_exists("array_filter") ? "present\n" : "absent\n";']);
+launcherCheck($exit===0&&$out==="absent\n"&&$error==='','Synthetic runtime-failure child verified');
+[$exit,$out,$error]=launcherInspectionCli([$observed,$image],$runtimeFlags);
+launcherCheck($exit===2&&$out===''&&$error==="M6B guard rejected inspection: guard_runtime_error\n",'Synthetic Error classification');
+launcherSafeGuardOutput($out,$error,'Synthetic Error');
 $mountCases=['single-tmpfs'=>[$container,null],'observed-empty'=>[$observed,null]];
 $row=$observed;$row['HostConfig']['Mounts']=[];$mountCases['empty-host-mount-list']=[$row,null];
 $row=$observed;unset($row['Config']['Volumes']);$mountCases['no-image-volume-declaration']=[$row,null];
@@ -239,7 +297,7 @@ foreach($cases as$case=>$expected){
         }
     }
 }
-echo "PASS: $assertions Linux launcher guard assertions; ".count($cases)." isolated Bash scenarios; ".count($mountCases)." mount inspection cases (direct, PHP decode/reinspection, JSON CLI). Fake commands only; Linux/container/MySQL NOT EXECUTED by this suite.\n";
+echo "PASS: $assertions Linux launcher guard assertions; ".count($cases)." isolated Bash scenarios; ".count($mountCases)." mount inspection cases; ".count($portCases)." no-ctype port/type cases per mount form; 3 PHP profiles. Fake commands only; Linux/container/MySQL NOT EXECUTED by this suite.\n";
 // Retain only small local fixture evidence on failure. Remove our successful test's exact temporary tree.
 if(!str_starts_with(realpath($root),realpath(sys_get_temp_dir()).DIRECTORY_SEPARATOR.'ubo-m6b-launcher-'))throw new RuntimeException('Temporary cleanup boundary');
 $iterator=new RecursiveIteratorIterator(new RecursiveDirectoryIterator($root,FilesystemIterator::SKIP_DOTS),RecursiveIteratorIterator::CHILD_FIRST);

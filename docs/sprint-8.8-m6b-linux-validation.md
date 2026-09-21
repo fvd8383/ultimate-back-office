@@ -1,17 +1,86 @@
 # M6B isolated Linux MySQL validation
 
 **M6B — IMPLEMENTED LOCALLY / REAL-MYSQL VALIDATION PENDING**.
-**M6B TMPFS GUARD CORRECTION — IMPLEMENTED / REVIEW REQUIRED**.
+**M6B NO-INI GUARD CORRECTION — IMPLEMENTED / REVIEW REQUIRED**.
 **REAL-MYSQL VALIDATION — PENDING**.
 Actual Linux container/mount diagnostics: **OPERATOR-REPORTED EXECUTED**.
 MySQL/schema/concurrency and full effective-resource validation: **NOT EXECUTED**.
-The corrected full launcher has not yet been rerun on the droplet.
+The latest operator-reported attempt stopped before SQL on PHP 8.3.6.
+The no-INI guard correction has not yet been rerun on the droplet.
 M6 **IN PROGRESS**; M6C–M6G **NOT STARTED**; Production **UNAUTHORIZED / NOT DEPLOYED**.
 
 Work remains in [PR #126](https://github.com/fvd8383/ultimate-back-office/pull/126).
 The [implementation record](sprint-8.8-m6b-local-implementation.md) records executed
 local tests separately from the unexecuted real-MySQL gate. The earlier clean
 application review of `19dc550` did not approve the Linux launcher.
+
+## Configuration-free guard and synthetic smoke check
+
+The launcher deliberately runs its pure JSON inspection guard with
+`php -n -d memory_limit=256M`. The earlier guard called optional-extension function
+`ctype_digit()` while checking the published port. If ctype is unavailable without
+php.ini, valid inspection data caused an Error that the catch-all mislabeled
+`invalid_metadata`. The fix keeps `-n` and uses a string check plus
+`preg_match('/\A[0-9]+\z/', $port) === 1` and the unchanged 1–65535 range.
+The original verified string is returned, including valid leading zeros. Non-string
+types, empty values, whitespace/newlines, signs, decimal/exponent/hex notation,
+non-ASCII digits and overflow are rejected as `loopback_binding`. The exact allowed
+binding count and `127.0.0.1` requirement are unchanged.
+
+The CLI emits only named guard-policy codes, `invalid_json` for JSON decoding errors,
+or `guard_runtime_error` for unexpected runtime failures. All failures exit 2.
+A small CLI-only error handler converts PHP warnings into the same fixed runtime
+failure instead of printing their text. It emits no raw exception messages, stack
+traces, arguments, metadata, Config.Env, passwords or tokens. There is no debug bypass.
+
+Supplied assistant-side evidence used the exact guard Git blob
+`25a4c8e70d5d5551ae4ea6ff6a31c5b793b6c765` on **Linux PHP 8.4.23** with synthetic
+input: configured PHP passed, `php -n` failed, and the underlying Error was an
+undefined `ctype_digit()`. Explicitly loading existing ctype passed; a scratch
+core-only replacement passed 27 port/type probes. Those are supplied reproduction
+results, not Linux execution by this Windows task and not a captured server exception.
+
+The latest server report used **PHP 8.3.6** and stopped before SQL:
+`/mnt/ubo_stage_testdata/codex-validation/evidence/m6b-mysql-rerun-20260921T010426Z/M6B-ISOLATED-MYSQL-RERUN.md`.
+Operator-reported SHA-256:
+`f0b39ed68ac816bb8d3a4aac5a84389d4f2c7767c76499312fb47d16a83f7730`.
+This task did not access/download/hash-verify that report or capture its original
+exception. The reproduced no-INI defect explains a failure mode; the original server
+exception remains unobserved here. A later guard runtime problem does not invalidate
+the earlier tmpfs representation correction or the supplied effective-mount evidence.
+
+Windows-local reproduction uses **PHP 8.4.24 CLI** and complete synthetic fixtures.
+In a child with `-n -d disable_functions=ctype_digit -d memory_limit=256M`,
+`function_exists('ctype_digit')` is verified false. The old CLI rejected valid input
+with exit 2, empty stdout and `M6B guard rejected inspection: invalid_metadata`.
+The corrected CLI passes both mount forms under configured PHP, `-n`, and `-n` with
+ctype disabled, returning the original port string with exit 0 and empty stderr.
+Each mount form also exercises 27 port/type cases with ctype absent. Sentinel tests
+cover malformed JSON, PHP warnings, TypeError and a deliberately missing function.
+Disabling functions is confined to test-child command lines; no php.ini is changed.
+
+Before creating a container on a later separately authorized server run, use the
+reviewed exact-SHA checkout and the already verified PHP executable. From that
+checkout, the small synthetic-only smoke invocation is:
+
+```bash
+/usr/bin/php8.3 -n -d memory_limit=256M tests/WebsitePlatformM6BLinuxLauncherTest.php --guard-smoke
+```
+
+Expected output: `PASS: synthetic guard smoke; 2 mount forms / 3 PHP profiles; child ctype_digit absent; no Docker/SQL/application bootstrap.`
+This mode uses the existing complete synthetic fixtures and PHP children only; it
+exits before the Bash scenario layer. It needs no Docker daemon, database, real
+credentials or application bootstrap and creates no container. It is a local test
+invocation, not a new launcher prerequisite workflow. It does not establish runtime
+isolation or SQL PASS. Its intentionally absent-function child uses the flags above;
+the production launcher never disables functions or loads an extension as a workaround.
+
+The scoped pure-guard audit found no further optional-extension assumption: its
+remaining function calls are from Core, standard, JSON and PCRE, available in the
+tested no-INI child. The database harness remains a separate configured PHP process
+with its legitimate PDO MySQL dependency. No application or harness refactor is part
+of this correction. Real-MySQL/schema/concurrency and full effective-resource
+validation remain pending; historical blocked/incomplete reports keep their verdicts.
 
 ## Confirmed tmpfs representation and current validation gate
 

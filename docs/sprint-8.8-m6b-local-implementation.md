@@ -1,12 +1,13 @@
 # Sprint 8.8 M6B — Local persistence and jobs implementation
 
 Date: 2026-09-19. **M6B — IMPLEMENTED LOCALLY / REAL-MYSQL VALIDATION PENDING**.
-**M6B TMPFS GUARD CORRECTION — IMPLEMENTED / REVIEW REQUIRED**.
+**M6B NO-INI GUARD CORRECTION — IMPLEMENTED / REVIEW REQUIRED**.
 **REAL-MYSQL VALIDATION — PENDING**.
-Latest correction: [Verified Docker tmpfs representation](#verified-docker-tmpfs-representation-correction).
+Latest correction: [Configuration-free PHP guard](#configuration-free-php-guard-correction).
 Shared-staging volume/setup **OPERATOR-REPORTED COMPLETE**; real MySQL **NOT EXECUTED**.
 Actual Linux container/mount diagnostics are now **OPERATOR-REPORTED EXECUTED**;
-the corrected full launcher has not yet been rerun. Earlier dated records retain
+the latest operator-reported PHP 8.3.6 attempt stopped before SQL. The no-INI
+correction has not yet been rerun. Earlier dated records retain
 their historical verdicts and the evidence available at those points.
 See [Linux validation host modes and prerequisites](sprint-8.8-m6b-linux-validation.md).
 This is local implementation evidence, not staging validation or formal M6 closeout.
@@ -1170,4 +1171,143 @@ Narrator work occurred. PR #126 stays open, non-draft, unmerged and without auto
 the task result links the single exact-new-head review request and observed state.
 
 **M6B TMPFS GUARD CORRECTION — IMPLEMENTED / REVIEW REQUIRED**.
+**REAL-MYSQL VALIDATION — PENDING**.
+
+## Configuration-free PHP guard correction
+
+This correction starts from clean branch/PR head
+`65f0bc276b2fb9fa00fd0223b54bccd5a748afe4`. Its pure guard matches Git blob
+`25a4c8e70d5d5551ae4ea6ff6a31c5b793b6c765`. The launcher invokes that guard with
+`php -n -d memory_limit=256M`; its `ctype_digit($port)` call could therefore use an
+optional extension unavailable in that configuration-free process. The catch-all
+then mislabeled the resulting Error as `invalid_metadata`.
+
+The supplied assistant-side reproduction used **Linux PHP 8.4.23**, the exact blob
+and complete synthetic inspection input. Configured PHP passed; `php -n` failed with
+an undefined-ctype Error; explicitly loading existing ctype passed; a scratch core-only
+replacement passed 27 port/type probes. Those results were supplied to this task.
+They are not a reproduction performed by this Windows task on Linux or ubo-stage-app,
+and they do not capture the original server exception.
+
+The latest operator-reported attempt used **PHP 8.3.6** and stopped before SQL.
+Report:
+`/mnt/ubo_stage_testdata/codex-validation/evidence/m6b-mysql-rerun-20260921T010426Z/M6B-ISOLATED-MYSQL-RERUN.md`.
+Operator-reported SHA-256:
+`f0b39ed68ac816bb8d3a4aac5a84389d4f2c7767c76499312fb47d16a83f7730`.
+No server access, download or independent hash verification occurred here; its
+original exception remains unobserved. The later runtime failure does not establish
+that the tmpfs correction failed. The separately supplied effective 1 GiB tmpfs
+diagnostic and all historical blocked/incomplete reports retain their evidence and
+verdicts.
+
+**Actual Windows reproduction:** PHP **8.4.24 CLI ZTS Visual C++ 2022 x64**, with
+the complete existing synthetic fixture and the real stdin/JSON CLI. Child invocations
+use the same PHP executable followed by each profile's flags, then
+`-d memory_limit=256M`, the guard file, `container`, the synthetic digest and
+`linux/amd64`. Windows ctype remained available under `-n`, so the third profile uses
+test-only `-d disable_functions=ctype_digit`. A separate child with identical flags
+verified `function_exists('ctype_digit') === false` before acceptance was asserted.
+
+| Original guard profile, both mount forms | ctype exists | Exit | stdout | stderr |
+| --- | --- | --- | --- | --- |
+| Configured PHP | yes | 0 | `33306\n` | empty |
+| `-n` | yes | 0 | `33306\n` | empty |
+| `-n -d disable_functions=ctype_digit` | no | 2 | empty | `M6B guard rejected inspection: invalid_metadata\n` |
+
+The old-guard result was first reproduced before editing it, then checked for both
+mount forms against a saved copy whose Git blob was verified identical. A synthetic-only
+direct child invocation confirmed **`Error: Call to undefined function ctype_digit()`**,
+exit 2 with empty stdout. No real inspection metadata was used for exception disclosure.
+After correction, **both mount forms pass all three profiles**, exit 0, stdout
+`33306\n`, empty stderr, including the verified absent-ctype child.
+
+The port predicate now uses `is_string`, an anchored ASCII `[0-9]+` check and the
+unchanged numeric range **1–65535**. It returns the verified original string; the
+valid leading-zero case `033306` stays `033306`. Non-string types, empty/zero/overflow,
+whitespace/newlines, signs, decimal/exponent/hex notation and non-ASCII digits receive
+the named `loopback_binding` rejection. Binding cardinality and exact loopback IP
+remain unchanged. No extension loading, polyfill, bypass or fallback configuration
+was added, and the production launcher still uses `-n`.
+
+CLI failures remain exit **2**, with empty stdout and fixed safe stderr:
+
+| Failure | Code |
+| --- | --- |
+| Existing guard policy | Existing named code, such as `loopback_binding` |
+| Invalid JSON, including malformed UTF-8 | `invalid_json` |
+| Unexpected Error, TypeError or PHP warning | `guard_runtime_error` |
+
+A new negative test exposed PHP's pre-catch warning output for a malformed synthetic
+binding structure. A small CLI-only handler now converts warnings to an exception
+without printing their text. The catch emits no raw messages, stack traces, arguments,
+metadata, Env, passwords or tokens. Sentinel tests assert exact responses and a bounded
+diagnostic length. Runtime failure remains distinct from a policy rejection.
+
+The added matrix contains **27 port/type cases per mount form**, all through the real
+CLI with `-n -d disable_functions=ctype_digit -d memory_limit=256M`. JSON encoding
+preserves a whole-valued float as a float, so that type case does not silently become
+an integer. Configured/no-INI/absent-ctype profiles cover both supported mount forms.
+Malformed JSON/UTF-8, a warning, an argument TypeError and a deliberately unavailable
+core function test classification without a production debug hook. The focused
+`run-mounts-empty` invocation passed **368 assertions / one Bash scenario**, retaining
+the subsequent effective-limit rejection before the harness starts. All previous
+47 mount cases and 152 Bash scenarios remain enabled in the default suite.
+
+The pure-guard audit covered **32 distinct built-in functions**, available in the absent-ctype
+no-INI child from **Core, standard, JSON and PCRE**. No further optional-extension
+assumption was found. The configured PDO MySQL harness and its legitimate dependencies
+are unchanged; the audit did not expand into application services.
+
+The existing test file now provides a small `--guard-smoke` mode, exiting before Bash
+scenarios. The [operating guide](sprint-8.8-m6b-linux-validation.md#configuration-free-guard-and-synthetic-smoke-check)
+records the exact later-server command using the previously reported PHP executable:
+
+```bash
+/usr/bin/php8.3 -n -d memory_limit=256M tests/WebsitePlatformM6BLinuxLauncherTest.php --guard-smoke
+```
+
+Run it from the reviewed exact-SHA checkout before any later authorized container
+creation. It uses synthetic fixtures/PHP children only, no Docker daemon, database,
+real credentials or application bootstrap. It does not introduce a launcher workflow
+or prove real resource/MySQL acceptance. The same invocation using the Windows PHP
+executable passed locally, including when ctype was also disabled in its parent.
+
+Exactly **four existing files** change; the complete PR remains **40 files (26
+additions, 14 modifications)**:
+
+| Modified file | Purpose |
+| --- | --- |
+| `tests/support/WebsitePlatformM6BLinuxGuard.php` | Core-only port predicate and safe fixed CLI failure classification. |
+| `tests/WebsitePlatformM6BLinuxLauncherTest.php` | Real-child profiles, port/type/error regressions and synthetic smoke mode. |
+| `docs/sprint-8.8-m6b-linux-validation.md` | No-INI diagnosis, supplied report and later-server smoke invocation. |
+| `docs/sprint-8.8-m6b-local-implementation.md` | Exact reproduction, evidence distinctions and local validation record. |
+
+Final local validation: **57/57 standalone PHP suites passed**, including **2075
+launcher assertions / 152 Bash scenarios**. The six other M6B suites retain **743
+assertions**, for **2818 M6B assertions total**. All **213 tracked PHP files** passed
+lint; both Bash files passed syntax checks and the unchanged PowerShell launcher
+parsed with zero errors. The two changed Markdown documents passed **14 relative
+links, four referenced anchors and eight balanced fence pairs**, with current-status
+and supplied-report/hash checks. Exact correction/PR inventories, preservation and
+working/staged/committed diff checks are included in final commit verification.
+These are Windows-local tests and command doubles, not actual Linux/container/MySQL
+acceptance execution.
+
+Application/services, migrations 001–025 and the Windows launcher are unchanged from
+`19dc550081ad47f1c53e91cd9efa5a6d8cddf381`. Canonical migration 025 remains
+`dab585dc29aac11153f92703c65d3883aeea73a1b2283157cfa9d2f2ece85cb0`.
+Both launchers, the Bash fixture, PHP reinspection support and native SQL scenarios/
+schema cases/worker are unchanged from `65f0bc276b2fb9fa00fd0223b54bccd5a748afe4`.
+Mount/image/resource/ownership/environment/network requirements, bounded execution,
+cleanup, signals and evidence publication retain their existing code and tests.
+
+The no-INI correction has not been rerun on the droplet. Real-MySQL/schema/concurrency
+and full effective-resource validation remain pending. Migration 025 remains unapplied
+to working staging and production databases. No staging/production access, Docker or
+container execution, database connection, SQL/migration, software installation, php.ini/
+host change, deployment, M6C or Narrator work occurred in this Windows correction.
+PR #126 remains open, non-draft, unmerged and without auto-merge; the task result links
+the single exact-new-head review request and observed state.
+
+**M6B NO-INI GUARD CORRECTION — IMPLEMENTED / REVIEW REQUIRED**.
 **REAL-MYSQL VALIDATION — PENDING**.
