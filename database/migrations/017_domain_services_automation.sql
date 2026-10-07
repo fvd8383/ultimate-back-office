@@ -35,6 +35,9 @@ CREATE TABLE domain_dns_records (
     record_type VARCHAR(20) NOT NULL,
     host VARCHAR(255) NOT NULL,
     value VARCHAR(500) NOT NULL,
+    record_hash CHAR(64) GENERATED ALWAYS AS (
+        SHA2(CONCAT_WS('|', COALESCE(LOWER(domain_name), ''), COALESCE(UPPER(record_type), ''), COALESCE(LOWER(host), ''), COALESCE(value, '')), 256)
+    ) STORED,
     priority INT NULL,
     ttl INT NOT NULL DEFAULT 1800,
     provider VARCHAR(100) NULL,
@@ -42,7 +45,7 @@ CREATE TABLE domain_dns_records (
     last_synced_at DATETIME NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    UNIQUE KEY uq_domain_dns_record (domain_name, record_type, host, value),
+    UNIQUE KEY uq_domain_dns_record_hash (record_hash),
     INDEX idx_domain_dns_records_business (business_id),
     INDEX idx_domain_dns_records_request (domain_request_id),
     INDEX idx_domain_dns_records_assignment (domain_assignment_id),

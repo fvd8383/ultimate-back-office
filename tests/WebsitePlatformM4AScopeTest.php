@@ -68,7 +68,7 @@ foreach ($immutableHashes as $path => $expectedHash) {
     $canonical = is_string($contents) ? str_replace(["\r\n", "\r"], "\n", $contents) : '';
     assertM4AScope(hash('sha256', $canonical) === $expectedHash, "{$path} must remain unchanged.");
 }
-assertM4AScope(m6bOnlyMigration025($root), 'Only the separately authorized M6B migration 025 may exist after 024.');
+assertM4AScope(m6bCanonicalMigrationsValid($root), 'Exact migration inventory: baseline history, pinned DNS corrections and unchanged 025.');
 assertM4AScope(!str_contains($siteRoute, 'SiteCompositionRenderer::render'), 'M4A detail delegates preview to the separate M4B route.');
 assertM4AScope(!is_file($root . '/public/app/admin/site-editor.php'), 'M4A must add no generic composition editor route.');
 assertM4AScope(str_contains($customerManager, 'WebsiteManager::saveWebsiteManager('), 'M5A must retain the legacy Website Manager save service.');

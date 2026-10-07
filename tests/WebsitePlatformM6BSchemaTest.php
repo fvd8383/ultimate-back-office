@@ -11,7 +11,7 @@ foreach($statements as $statement)if(preg_match('/^CREATE TABLE (\w+)/',$stateme
 $expected=['site_build_jobs','site_build_attempts','site_releases','site_release_validations','site_deployment_targets',
     'site_deployments','site_deployment_attempts','site_deployment_health_checks','site_deployment_approvals'];
 m6s(array_keys($tables)===$expected,'Exact nine-table dependency order');
-m6s(m6bOnlyMigration025($root),'Only authorized migration025');
+m6s(m6bCanonicalMigrationsValid($root),'Exact baseline/pinned DNS/025 migration sources');
 m6s(count($statements)===15,'Nine CREATEs, two existing ownership indexes, four deferred FK ALTERs');
 foreach($tables as $name=>$ddl){
     m6s(str_contains($ddl,'id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY') && str_contains($ddl,'site_id BIGINT UNSIGNED NOT NULL'),'Exact ID types '.$name);

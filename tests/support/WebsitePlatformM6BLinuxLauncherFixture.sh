@@ -161,9 +161,24 @@ DOCKER
         m6_identity;;
     checkout-*)
         base="$fixture"; repo="$base/checkouts/repo"; expected_sha=cccccccccccccccccccccccccccccccccccccccc
-        baseline=dddddddddddddddddddddddddddddddddddddddd; migration_hash=eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee
+        baseline=5baae28c9af68cca7694a912d7f35c87c50c9dc5; migration_hash=dab585dc29aac11153f92703c65d3883aeea73a1b2283157cfa9d2f2ece85cb0
+        canonical_repo=$(realpath "${BASH_SOURCE[0]%/*}/../..")
         mkdir -p "$repo/.git" "$repo/database/migrations"
-        for number in {1..24}; do printf -v number '%03d' "$number"; touch "$repo/database/migrations/${number}_fixture.sql"; done
+        # Real canonical file bytes, with Linux checkout line endings; Git identity is still a double.
+        for source in "$canonical_repo/database/migrations/"*.sql; do sed 's/\r$//' "$source" > "$repo/database/migrations/${source##*/}"; done
+        case $scenario in
+            checkout-history) printf '\n-- altered\n' >> "$repo/database/migrations/001_create_platform_foundation.sql";;
+            checkout-dns-017|checkout-dns-019|checkout-history-020)
+                number=${scenario##*-}; files=("$repo/database/migrations/${number}_"*.sql); printf '\n-- altered\n' >> "${files[0]}";;
+            checkout-old-017|checkout-old-019)
+                number=${scenario##*-}; files=("$repo/database/migrations/${number}_"*.sql)
+                command git -C "$canonical_repo" show "$baseline:database/migrations/${files[0]##*/}" > "${files[0]}";;
+            checkout-hash) printf '\n-- altered\n' >> "$repo/database/migrations/025_site_build_deployment.sql";;
+            checkout-deleted) rm -- "$repo/database/migrations/017_domain_services_automation.sql";;
+            checkout-renamed) mv -- "$repo/database/migrations/019_repair_domain_services_schema.sql" "$repo/database/migrations/019_renamed.sql";;
+            checkout-extra) touch "$repo/database/migrations/026_unapproved.sql";;
+            checkout-duplicate) cp -- "$repo/database/migrations/019_repair_domain_services_schema.sql" "$repo/database/migrations/019_duplicate.sql";;
+        esac
         m6_git() {
             case "$*" in
                 'rev-parse --absolute-git-dir') echo "$repo/.git";; 'rev-parse --git-common-dir') echo .git;; 'rev-parse --show-toplevel') echo "$repo";;
@@ -171,11 +186,10 @@ DOCKER
                 status*) [[ $scenario != checkout-dirty ]] || echo modified; return 0;;
                 ls-files*) [[ $scenario != checkout-untracked ]] || echo .env; return 0;;
                 cat-file*) return 0;;
-                hash-object*) [[ $scenario != checkout-history ]] && echo blob || echo changed;;
-                rev-parse*) echo blob;; *) return 97;;
+                hash-object*) command git hash-object --no-filters "${@: -1}";;
+                rev-parse*) command git -C "$canonical_repo" "$@";; *) return 97;;
             esac
         }
-        sha256sum() { [[ $scenario != checkout-hash ]] && printf '%s  file\n' "$migration_hash" || echo wrong; }
         [[ $scenario != checkout-deployed ]] || repo=/var/www/ubo-repo
         [[ $scenario != checkout-webroot ]] || repo="$base/checkouts/www/repo"
         [[ $scenario != checkout-worktree ]] || { rmdir "$repo/.git"; touch "$repo/.git"; }

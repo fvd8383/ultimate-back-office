@@ -185,6 +185,8 @@ $bash=PHP_OS_FAMILY==='Windows'?'C:/Git/bin/bash.exe':'/bin/bash';
 if(!is_file($bash))throw new RuntimeException('Bash fixture layer unavailable; install nothing, report NOT EXECUTED.');
 $cases=['identity-valid'=>0,'identity-host'=>2,'identity-user'=>2,'identity-root'=>2,'identity-stage-default'=>2,'identity-shared'=>0,'identity-shared-user'=>2,'identity-production'=>2,'identity-production-default'=>2,
     'checkout-valid'=>0,'checkout-sha'=>2,'checkout-dirty'=>2,'checkout-untracked'=>2,'checkout-hash'=>2,'checkout-deployed'=>2,'checkout-webroot'=>2,'checkout-worktree'=>2,'checkout-history'=>2,
+    'checkout-dns-017'=>2,'checkout-dns-019'=>2,'checkout-history-020'=>2,'checkout-old-017'=>2,'checkout-old-019'=>2,
+    'checkout-deleted'=>2,'checkout-renamed'=>2,'checkout-extra'=>2,'checkout-duplicate'=>2,
     'endpoint-valid'=>0,'endpoint-remote'=>2,'endpoint-ambiguous'=>2,'endpoint-conflict'=>2,'endpoint-context'=>2,'endpoint-rootful'=>2,'delegation-valid'=>0,'delegation-controller'=>2,'delegation-ignored'=>2,
     'headroom-dedicated'=>0,'headroom-shared'=>0,'headroom-memory'=>2,'headroom-disk'=>2,'headroom-cpu'=>2,'cgroup-valid'=>0,'cgroup-ignored'=>2,'check-only'=>0,
     'cleanup-valid'=>0,'cleanup-foreign'=>2,'cleanup-unknown'=>2,'cleanup-failed'=>2,'exit-test'=>17,'exit-timeout'=>124,'exit-interrupt'=>130,'partial-start'=>2,'redact'=>0,'output-bound'=>0,
@@ -225,6 +227,13 @@ foreach($cases as$case=>$expected){
     $commands=is_file($dir.'/commands')?file_get_contents($dir.'/commands'):'';
     launcherCheck(!str_contains($commands,'UNEXPECTED'),$case.' unexpected command');
     launcherCheck(!preg_match('/unexpected EOF|syntax error|trap:|bad trap/i',$out.$error),'No shell/trap errors '.$case);
+    $integrityFailures=['checkout-history'=>'historical_migration_changed','checkout-dns-017'=>'historical_migration_changed',
+        'checkout-dns-019'=>'historical_migration_changed','checkout-history-020'=>'historical_migration_changed',
+        'checkout-old-017'=>'historical_migration_changed','checkout-old-019'=>'historical_migration_changed',
+        'checkout-hash'=>'migration_025_hash','checkout-deleted'=>'historical_migration_inventory',
+        'checkout-renamed'=>'historical_migration_missing','checkout-extra'=>'historical_migration_inventory',
+        'checkout-duplicate'=>'historical_migration_inventory'];
+    if(isset($integrityFailures[$case]))launcherCheck(str_contains($error,$integrityFailures[$case]),'Exact integrity rejection '.$case);
     if($case==='check-only'){
         launcherCheck($commands==="prerequisites\n",'Check-only must never enter run');
         launcherCheck(glob($dir.'/runtime/ubo-m6b-cli.*')===[],'Check-only cleans its private client config');

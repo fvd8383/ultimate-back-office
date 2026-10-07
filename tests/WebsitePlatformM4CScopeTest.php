@@ -29,5 +29,5 @@ foreach (['database/migrations/023_website_platform_foundation.sql', 'database/m
 }
 checkM4CScope(str_contains($customerManager, 'WebsiteManager::saveWebsiteManager(') && str_contains($customerManager, 'SiteCustomerReviewWorkflow::workspaceWithForms('), 'M5A integrates a customer read while retaining the legacy save boundary.');
 checkM4CScope(!preg_match('/SiteApprovalManager::(?:requestApproval|decideApproval|revokeApproval)|SiteReviewAdminWorkflow::apply/', $customerManager), 'M5A adds no customer or internal approval mutation to Website Manager.');
-checkM4CScope(m6bOnlyMigration025($root), 'Only the separately authorized M6B migration 025 may exist after 024.');
+checkM4CScope(m6bCanonicalMigrationsValid($root), 'Exact migration inventory: baseline history, pinned DNS corrections and unchanged 025.');
 echo "Website platform M4C scope: {$assertions} assertions passed.\n";

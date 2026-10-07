@@ -32,7 +32,7 @@ assertM3Scope($status === 0 && trim(implode("\n", $output)) === $baseline, 'The 
 assertM3Scope(m3GitQuiet($root, $baseline, 'database/migrations/023_website_platform_foundation.sql'), 'Migration 023 must remain unchanged.');
 assertM3Scope(is_file($root . '/database/migrations/024_component_registry_versioning.sql'), 'Migration 024 must be present.');
 assertM3Scope(count(glob($root . '/database/migrations/024_*.sql') ?: []) === 1, 'Only one migration 024 may exist.');
-assertM3Scope(m6bOnlyMigration025($root), 'Only the separately authorized M6B migration 025 may exist after 024.');
+assertM3Scope(m6bCanonicalMigrationsValid($root), 'Exact migration inventory: baseline history, pinned DNS corrections and unchanged 025.');
 
 foreach ([
     'public/accounts',

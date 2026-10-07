@@ -1,13 +1,13 @@
 # M6B isolated Linux MySQL validation
 
 **M6B — IMPLEMENTED LOCALLY / REAL-MYSQL VALIDATION PENDING**.
-**M6B MIGRATION RESULT-SET CORRECTION — IMPLEMENTED / REVIEW REQUIRED**.
+**M6B CANONICAL DNS BOOTSTRAP CORRECTION — IMPLEMENTED / REVIEW REQUIRED**.
 **REAL-MYSQL VALIDATION — PENDING**.
-Latest operator run: **FAILED**, after canonical 001–014 completed and 015 statements
-1–4 executed; 015 statement 5 failed with SQLSTATE HY000 / driver 2014.
+Latest operator run at `d13091b`: **FAILED at 017 statement 3, SQLSTATE 42000 / driver
+1071**, after both 015 paths, fresh 001–016 and 017 statements 1–2 completed.
 Actual no-INI smoke, native-PDO MySQL 8.4.11 connection and effective MySQL/PHP resource
 controls: **PASSED (OPERATOR-REPORTED)**. Fresh/upgrade schema completion and M6B
-database acceptance remain pending. The result-set correction has not run on the server.
+database acceptance remain pending. The new 017/019 schema correction has not run natively.
 M6 **IN PROGRESS**; M6C–M6G **NOT STARTED**; Production **UNAUTHORIZED / NOT DEPLOYED**.
 
 Work remains in [PR #126](https://github.com/fvd8383/ultimate-back-office/pull/126).
@@ -15,7 +15,85 @@ The [implementation record](sprint-8.8-m6b-local-implementation.md) records exec
 local tests separately from the partially executed, still-failing real-MySQL gate. The earlier clean
 application review of `19dc550` did not approve the Linux launcher.
 
-## Latest migration result-set failure and correction
+## Canonical DNS bootstrap correction and next validation gate
+
+The latest supplied report at `d13091b60eda9bad0060b5aad6c5fd902b596fa4` passed the
+no-INI smoke, **848 simulated lifecycle assertions**, actual MySQL **8.4.11** with
+**REPEATABLE-READ / native PDO**, and container/effective MySQL/PHP resource gates.
+The isolated 015 rename fixture completed and was cleaned. Fresh canonical **001–016**
+completed, including 015's no-op branch; **017 statements 1–2** completed. Statement
+**3 failed during execution, SQLSTATE 42000 / driver 1071**, without a secondary
+cursor-cleanup error. Cleanup/publication passed; working staging was reported untouched.
+Overall verdict remains **FAILED**; 025 and M6B acceptance cases were not reached.
+
+Report:
+`/mnt/ubo_stage_testdata/codex-validation/evidence/m6b-migration-runner-validation-20260921T222221Z/M6B-MIGRATION-RUNNER-AND-MYSQL-VALIDATION.md`.
+Operator-reported SHA-256:
+`acf32a09a1a81adecb070d2cad13a6b1c483ea7fc5ac5e18f672e2922a075f9a`.
+This desktop task did not download, independently hash-verify or reproduce the report.
+Earlier reports below preserve their original hashes/verdicts and historical boundaries.
+
+Source verification confirms 017 statement 3's original domain/type/host/value unique
+key required **(255 + 20 + 255 + 500) × 4 = 4120 bytes**, exceeding standard InnoDB's
+**3072-byte** limit. 019 statement 97 repeats it. This is the canonical index defect,
+distinct from the earlier 2014 pending-result issue. Only these two CREATE definitions
+are corrected: each copies unchanged 020's exact **CHAR(64) generated STORED record_hash**
+after value and **uq_domain_dns_record_hash (record_hash)**. CREATE versus CREATE IF
+NOT EXISTS, other columns/indexes/FKs/defaults/utf8mb4 and all other statements remain.
+This adopts existing 020 normalization/hash semantics, not mathematical equivalence
+to the old composite key. No stored lengths or tenant/identity scope are changed.
+
+The [implementation record](sprint-8.8-m6b-local-implementation.md#canonical-dns-bootstrap-correction)
+records original/corrected Git blobs and SHA-256, exact table parity, official MySQL
+references and all affected tests. The two approved corrected Git blobs are:
+
+| Exact filename | Corrected Git blob |
+| --- | --- |
+| 017_domain_services_automation.sql | `a8345bed9669e2e43b29a3c40de593cbce1f44de` |
+| 019_repair_domain_services_schema.sql | `de2d1ce8c3481ae034383be4b138a446650d5d51` |
+
+The Linux integrity gate retains the original baseline for the other 22 historical
+files, accepts only these exact two corrected contents and retains 025's checksum.
+It rejects missing/renamed/extra/duplicate migrations and any further alteration.
+Shared PHP scope checks enforce the same content/inventory contract; scope exclusions
+first validate it. No safety bypass or HEAD-as-baseline comparison is added. Launcher
+resource, mount, signal, cleanup, evidence and endpoint behavior remains unchanged.
+
+Repository guidance uses manual SQL imports; no applied-migration checksum ledger
+was found in the inspected application/tooling. Source-admission pins are not an
+application migration-history ledger. Existing installations were not inspected and
+are not assumed identical or already at 020. Do not reapply 017/019 to working staging,
+rewrite applied history or silently accept changed checksums. Any future deployed
+history/checksum reconciliation requires explicit review before an application migration.
+
+The focused source/integrity suite passes **151 assertions** and the unchanged lifecycle
+regression **848**. They verify exact source transformation, stable canonical ordering,
+full schema parity and rejection of altered original/corrected/020/025 files plus
+inventory changes. Fake Bash checkout cases use actual copied canonical bytes and
+real hashing. These tests do not execute SQL. Final full-suite totals are recorded in
+the implementation record.
+
+Native DNS cases are authored but **NOT EXECUTED** here. Normal fresh/upgrade sequences
+still run every canonical migration in order, with real metadata checks after 017,
+019 and 020. Synthetic DML checks full-length utf8mb4 values, duplicate rejection,
+long shared prefixes and 020's normalization. Separately labeled fixtures run only after
+canonical upgrade assertions in its owned database: an empty DNS table is removed so
+complete 019 must recreate it, then its hash/index are removed so complete unchanged
+020 must repair them. Schema and data snapshots are checked afterward. Existing owned
+database cleanup handles failure; no DDL rollback is claimed. The fresh database used
+by business/concurrency tests remains untouched by those repair fixtures.
+
+The next authorized server run requires the reviewed **new exact-SHA checkout**, fresh
+disposable databases and **001 onward**. Do not patch server SQL or resume the prior
+partial schema. Corrected native schema/025/acceptance and first-customer readiness
+remain pending. M6 is IN PROGRESS, M6B IMPLEMENTED / REAL-MYSQL VALIDATION PENDING,
+Production UNAUTHORIZED / NOT DEPLOYED. This desktop task performed no host access,
+Docker/database/SQL execution, migration-history/deployment change, M6C or Narrator work.
+
+## Prior migration result-set failure and correction
+
+This section records the preceding correction and evidence available at that time;
+the current operator run and canonical-source exception are documented above.
 
 The latest supplied report ran code `9983bf37f2791e7f67c5f9d6733662afb0457255` with
 PHP **8.3.6**, Docker client/server **29.8.1**, SQL-queried MySQL **8.4.11**,
@@ -402,7 +480,9 @@ All layouts require an exact operator-supplied reviewed SHA, clean tracked and
 untracked/ignored inputs, a standalone checkout outside all web roots, and independent
 Git metadata (no worktree, alternates or redirected work tree). `/var/www/ubo-repo`,
 other `/var/www` paths and `www`/`public_html` descendants remain rejected.
-Migrations 001–024 must match baseline `5baae28c9af68cca7694a912d7f35c87c50c9dc5`;
+Migrations 001–024 must match baseline `5baae28c9af68cca7694a912d7f35c87c50c9dc5`,
+except the exact corrected 017/019 filenames/blobs pinned above. All other 22 remain
+baseline-identical; unexpected inventory or any other content is rejected. The
 canonical LF migration 025 must hash to
 `dab585dc29aac11153f92703c65d3883aeea73a1b2283157cfa9d2f2ece85cb0`.
 
@@ -518,8 +598,9 @@ review; cached images, unrelated resources and other runs are never deleted.
 Passwords, tokens, token-derived database-name prefixes and environment values are
 not printed or retained in diagnostics.
 
-The [Windows launcher](../tests/RunM6BMySql.ps1) and all application/migration code are
-unchanged. The native harness retains canonical fresh/upgrade migrations, MySQL 8.4
+The [Windows launcher](../tests/RunM6BMySql.ps1), application code and all migrations
+except the two explicitly corrected 017/019 sources are unchanged. The native harness
+retains canonical fresh/upgrade migrations in order, MySQL 8.4
 verification, native prepares, schema/FK/CHECK/actor-deletion cases, independent
 authorization/queue/replay/rollback processes and synthetic artifact labels.
 The [launcher suite](../tests/WebsitePlatformM6BLinuxLauncherTest.php) uses only

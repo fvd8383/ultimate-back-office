@@ -83,11 +83,19 @@ m6_checkout() {
     [[ $(sha256sum "$repo/database/migrations/025_site_build_deployment.sql") == "$migration_hash "* ]] || m6_fail migration_025_hash;
     m6_git cat-file -e "$baseline^{commit}" || m6_fail missing_scope_history;
     local number files blob
+    files=("$repo/database/migrations/"*)
+    [[ ${#files[@]} == 25 ]] || m6_fail historical_migration_inventory;
     for number in {1..24}; do
         printf -v number '%03d' "$number"
         files=("$repo/database/migrations/${number}_"*.sql)
         [[ ${#files[@]} == 1 && -f ${files[0]} ]] || m6_fail historical_migration_inventory;
         blob=$(m6_git rev-parse "$baseline:database/migrations/${files[0]##*/}") || m6_fail historical_migration_missing;
+        # Reviewed DNS bootstrap source exception: exact filenames AND corrected Git blobs.
+        # All other historical files still compare with the original implementation baseline.
+        case ${files[0]##*/} in
+            017_domain_services_automation.sql) blob=a8345bed9669e2e43b29a3c40de593cbce1f44de;;
+            019_repair_domain_services_schema.sql) blob=de2d1ce8c3481ae034383be4b138a446650d5d51;;
+        esac
         [[ $(m6_git hash-object --no-filters "${files[0]}") == "$blob" ]] || m6_fail historical_migration_changed;
     done
 }

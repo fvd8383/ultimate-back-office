@@ -7,7 +7,7 @@ function m6scope(bool $ok,string $why):void{global $assertions;$assertions++;if(
 $changes=[];exec('git -C '.escapeshellarg($root).' diff --name-only '.$baseline.' -- . ":(exclude)docs" ":(exclude)tests"',$changes,$status);
 $untracked=[];exec('git -C '.escapeshellarg($root).' ls-files --others --exclude-standard',$untracked,$untrackedStatus);
 $untracked=array_values(array_filter($untracked,static fn($p)=>!str_starts_with($p,'docs/')&&!str_starts_with($p,'tests/')));
-m6scope($status===0&&$untrackedStatus===0&&array_diff(array_merge($changes,$untracked),m6bApplicationPaths())===[],'Exact application file boundary');
+m6scope($status===0&&$untrackedStatus===0&&array_diff(array_merge($changes,$untracked),array_merge(m6bApplicationPaths(),array_keys(m6bApprovedDnsMigrationBlobs())))===[],'Exact application boundary plus two pinned DNS migration corrections');
 foreach(['public','infrastructure','scripts','shared','apps','private/config']as$path){
     exec('git -C '.escapeshellarg($root).' diff --quiet '.$baseline.' -- '.escapeshellarg($path),$unused,$status);
     m6scope($status===0,'No web routes/UI/publisher/provider/wrapper/configuration changes '.$path);
@@ -22,10 +22,11 @@ foreach(glob($root.'/database/migrations/*.sql')as$file){
     if((int)basename($file)>=25)continue;
     $relative='database/migrations/'.basename($file);
     $blob=trim((string)shell_exec('git -C '.escapeshellarg($root).' rev-parse '.escapeshellarg($baseline.':'.$relative)));
+    $blob=m6bApprovedDnsMigrationBlobs()[$relative]??$blob;
     $current=trim((string)shell_exec('git -C '.escapeshellarg($root).' hash-object '.escapeshellarg($file)));
-    m6scope($blob!==''&&$blob===$current,'Historical canonical migration unchanged: '.basename($file));
+    m6scope($blob!==''&&$blob===$current,'Historical migration matches baseline or exact approved DNS blob: '.basename($file));
 }
-m6scope(m6bOnlyMigration025($root),'Only migration025 added');
+m6scope(m6bCanonicalMigrationsValid($root),'Exact migration inventory, including two pinned DNS corrections and 025');
 $service=file_get_contents($root.'/private/classes/SiteBuildService.php');
 m6scope(!preg_match('/INSERT INTO site_approvals|UPDATE sites|UPDATE site_revisions|UPDATE site_deployments|UPDATE site_deployment_targets|INSERT INTO site_deployments/i',$service),'No publication/deployment/approval SQL in build owner');
 m6scope(!preg_match('/curl_|file_put_contents|mkdir\s*\(|rename\s*\(|copy\s*\(|exec\s*\(|shell_exec\s*\(/i',$service),'No rendering/storage/provider/publisher implementation');

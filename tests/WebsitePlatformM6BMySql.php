@@ -4,6 +4,7 @@ declare(strict_types=1);
 // Explicit local harness, excluded from ordinary *Test.php discovery.
 // Uses canonical 001-025 SQL, native PDO, synthetic data and independent processes.
 require_once __DIR__ . '/support/WebsitePlatformM6BMySqlSupport.php';
+require_once __DIR__ . '/support/WebsitePlatformM6BDnsSchemaCases.php';
 $assertions=0;$owned=[];$admin=null;$children=[];
 function mysqlCheck(bool $ok,string $why):void{global $assertions;$assertions++;if(!$ok)throw new RuntimeException($why);}
 function mysqlReject(PDO $db,callable $mutation,array $codes=[1452,3819,1048,1062]):void{
@@ -166,9 +167,13 @@ try{
         $db=m6mysqlConnect($identity,$name);
         if($mode==='fresh')mysqlMigrationRenameFixture($db);
         $migrationConnection=mysqlMigrationScalar($db,'SELECT CONNECTION_ID()');
-        if($mode==='fresh')m6mysqlMigrate($db,1,25);
+        m6mysqlMigrate($db,1,17);mysqlDnsSchema($db,'canonical 017 '.$mode);
+        m6mysqlMigrate($db,18,19);mysqlDnsSchema($db,'canonical 019 '.$mode);
+        m6mysqlMigrate($db,20,20);mysqlDnsSchema($db,'canonical 020 '.$mode);
+        m6mysqlMigrate($db,21,24);
+        if($mode==='fresh')m6mysqlMigrate($db,25,25);
         else{
-            m6mysqlMigrate($db,1,24);$fixture=m6mysqlFixture($db);$before=m6mysqlSnapshot($db);
+            $fixture=m6mysqlFixture($db);$before=m6mysqlSnapshot($db);
             m6mysqlMigrate($db,25,25);$after=m6mysqlSnapshot($db);
             foreach($before as$table=>$hash)mysqlCheck($after[$table]===$hash,'Upgrade preserves canonical preexisting content/relationships '.$table);
             mysqlCheck(count($after)===count($before)+9,'Upgrade adds only nine tables');
@@ -180,6 +185,10 @@ try{
         mysqlCheck(!$db->getAttribute(PDO::ATTR_EMULATE_PREPARES),'PDO emulation remains false: '.$mode);
         mysqlSchema($db);
         foreach(['site_build_jobs','site_releases','site_deployment_targets','site_deployment_approvals']as$table)mysqlCheck((int)$db->query('SELECT COUNT(*) FROM '.$table)->fetchColumn()===0,'Migration has no operational seeds '.$table);
+        if($mode==='upgrade'){
+            mysqlDnsIdentityCases($db,$fixture['business_id']);
+            mysqlDnsRepairFixtures($db);
+        }
     }
     $database=$prefix.'_fresh';$db=m6mysqlConnect($identity,$database);$monitor=m6mysqlConnect($identity,$database);
     $fixture=m6mysqlFixture($db);$runtime=m6mysqlWire($db);$runtime->operator=$fixture['operator'];

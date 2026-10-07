@@ -48,7 +48,7 @@ foreach (['private/classes', 'database', 'infrastructure', 'public/accounts', 'p
     exec('git -C ' . escapeshellarg($root) . ' diff --quiet ' . escapeshellarg($baseline) . ' -- ' . escapeshellarg($path) . m6bScopeExclusions(), $unused, $status);
     checkM5CScope($status === 0, 'Protected security/lifecycle/schema/runtime tree unchanged: ' . $path);
 }
-checkM5CScope(m6bOnlyMigration025($root), 'Only the separately authorized M6B migration 025 may exist after 024.');
+checkM5CScope(m6bCanonicalMigrationsValid($root), 'Exact migration inventory: baseline history, pinned DNS corrections and unchanged 025.');
 $correctionBaseline = $baseline;
 foreach (['private/classes', 'database', 'infrastructure', 'public/accounts', 'public/webhooks', 'shared', 'private/views', 'public/app/assets/js', 'public/app/assets/css'] as $path) {
     exec('git -C ' . escapeshellarg($root) . ' diff --quiet ' . escapeshellarg($correctionBaseline) . ' -- ' . escapeshellarg($path) . m6bScopeExclusions(), $unused, $status);
