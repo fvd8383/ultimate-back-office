@@ -5,6 +5,7 @@ declare(strict_types=1);
 // Uses canonical 001-025 SQL, native PDO, synthetic data and independent processes.
 require_once __DIR__ . '/support/WebsitePlatformM6BMySqlSupport.php';
 require_once __DIR__ . '/support/WebsitePlatformM6BDnsSchemaCases.php';
+require_once __DIR__ . '/support/WebsitePlatformM6BReplayAssertions.php';
 $assertions=0;$owned=[];$admin=null;$children=[];
 function mysqlCheck(bool $ok,string $why):void{global $assertions;$assertions++;if(!$ok)throw new RuntimeException($why);}
 function mysqlReject(PDO $db,callable $mutation,array $codes=[1452,3819,1048,1062]):void{
@@ -340,8 +341,9 @@ try{
     $db->prepare('UPDATE site_build_jobs SET worker_policy_version=?, worker_policy_json=? WHERE id=?')->execute(['historical-policy','{}',$pj['id']]);
     $db->prepare('UPDATE site_approvals SET revoked_at=UTC_TIMESTAMP() WHERE site_id=?')->execute([$pf['site_id']]);
     $before=m6mysqlSnapshot($db);$worker=mysqlStart($database,['action'=>'request_observed','fixture'=>$pf,'actor'=>$pf['operator']]);mysqlSend($worker,'GO');$historical=mysqlResult($worker);
-    mysqlCheck($historical['job']===$policySuccess['job']+['existing'=>true,'replayed'=>true,'release'=>$policySuccess['release']]
-        &&$historical['prepared']===0&&$historical['verified']===0&&$before===m6mysqlSnapshot($db),'Native historical success ignores obsolete policy without any effects');
+    $after=m6mysqlSnapshot($db);
+    $expected=$policySuccess['job']+['existing'=>true,'replayed'=>true,'release'=>$policySuccess['release']];
+    M6BReplayAssertions::check($historical,$expected,$before,$after,'mysqlCheck');
 
     // Native audit FK failure must roll back the prior policy terminal UPDATE as well.
     $pf=m6mysqlFixture($db);$pj=m6mysqlRequest($pf);

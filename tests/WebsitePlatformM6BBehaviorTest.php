@@ -3,6 +3,7 @@
 declare(strict_types=1);
 error_reporting(E_ALL);
 require_once __DIR__ . '/support/WebsitePlatformM6BDatabase.php';
+require_once __DIR__ . '/support/WebsitePlatformM6BReplayAssertions.php';
 $assertions = 0;
 function m6b(bool $ok, string $why): void { global $assertions; $assertions++; if (!$ok) throw new RuntimeException($why); }
 function m6deny(callable $call, ?string $classification = null): void {
@@ -430,7 +431,7 @@ foreach(['active','unresolved','blocked']as$case){
 $db->tables['site_build_jobs'][$job['id']]['worker_policy_json']='{}';$db->read->base->approvals[700]['revoked_at']='2026-09-19';
 $snap=$db->snapshot();$prepared=$db->runtime->prepared;$verified=$db->runtime->verified;$replay=$db->request(2);
 $expected=$success['job']+['existing'=>true,'replayed'=>true,'release'=>$success['release']];
-m6b($replay===$expected,'Historical unsupported policy does not invalidate exact authorized committed success replay');
+m6b(M6BReplayAssertions::same($expected,$replay),'Historical unsupported policy preserves every field/value/type independently of record order');
 m6b($snap===$db->snapshot()&&$prepared===$db->runtime->prepared&&$verified===$db->runtime->verified,'History-only replay never prepares/verifies/rewrites policy or allocates effects');
 
 echo "Website platform M6B behavior: $assertions assertions passed.\n";

@@ -1,13 +1,14 @@
 # M6B isolated Linux MySQL validation
 
 **M6B — IMPLEMENTED LOCALLY / REAL-MYSQL VALIDATION PENDING**.
-**M6B CANONICAL DNS BOOTSTRAP CORRECTION — IMPLEMENTED / REVIEW REQUIRED**.
-**REAL-MYSQL VALIDATION — PENDING**.
-Latest operator run at `d13091b`: **FAILED at 017 statement 3, SQLSTATE 42000 / driver
-1071**, after both 015 paths, fresh 001–016 and 017 statements 1–2 completed.
-Actual no-INI smoke, native-PDO MySQL 8.4.11 connection and effective MySQL/PHP resource
-controls: **PASSED (OPERATOR-REPORTED)**. Fresh/upgrade schema completion and M6B
-database acceptance remain pending. The new 017/019 schema correction has not run natively.
+**M6B HISTORICAL REPLAY ASSERTION CORRECTION — IMPLEMENTED / REVIEW REQUIRED**.
+**FULL NATIVE VALIDATION — PENDING**.
+Latest operator run at `f729ecf`: **53/53 migration executions completed**, fresh and
+upgrade schemas through 025 and DNS native checks passed. Overall **FAILED** at the
+compound historical-success/no-effects assertion; later rollback, exhausted-queue,
+revocation and recovery cases were unreached. Original native operands were not retained
+individually. The ordering regression is reproduced locally, while corrected native
+replay and the remaining acceptance cases await another reviewed run.
 M6 **IN PROGRESS**; M6C–M6G **NOT STARTED**; Production **UNAUTHORIZED / NOT DEPLOYED**.
 
 Work remains in [PR #126](https://github.com/fvd8383/ultimate-back-office/pull/126).
@@ -15,7 +16,76 @@ The [implementation record](sprint-8.8-m6b-local-implementation.md) records exec
 local tests separately from the partially executed, still-failing real-MySQL gate. The earlier clean
 application review of `19dc550` did not approve the Linux launcher.
 
+## Historical replay assertion correction and next validation gate
+
+The latest operator run tested `f729ecf44effb31340db148bea27acec1f651f44` on
+`ubo-stage-app / codex-validation / UID 1000`. It reported synthetic guard smoke,
+**848 runner assertions** and **151 DNS assertions** PASS; actual MySQL **8.4.11**,
+**REPEATABLE-READ / native PDO** and effective MySQL/PHP resource controls PASS.
+All **53 migration executions** completed: one 015 rename fixture, 25 fresh, 25 upgrade
+and two separate 019/020 repair fixtures. DNS metadata, full-length identity,
+normalization and repair coverage passed. Earlier schema/actor-deletion, concurrent
+request/claim, builder progression, replay and policy-retirement contention cases
+completed. The compound assertion **Native historical success ignores obsolete policy
+without any effects** failed. Later rollback, exhausted-queue, revocation and recovery
+cases were not reached. Cleanup/publication passed; working application databases
+were reported untouched. Overall verdict remains **FAILED**, not full M6B acceptance.
+
+Report:
+`/mnt/ubo_stage_testdata/codex-validation/evidence/m6b-dns-bootstrap-validation-20261007T232552Z/M6B-DNS-BOOTSTRAP-AND-MYSQL-VALIDATION.md`.
+Operator-reported SHA-256:
+`806382a34eeb61b54bf42262188417f6506f9131f347e46eda71b608e61447f8`.
+This desktop task did not download, independently hash-verify or rerun that evidence.
+
+Source tracing shows acceptSuccess() appends release id after insertion; releaseRow()
+uses SELECT *, whose schema order puts id first. SiteBuildContract::release() uses
+array_intersect_key and preserves input order. The worker's JSON boundary also preserves
+these record orders. The old nested === therefore rejects synthetic records containing
+the same complete key sets and strict values/types. The local regression uses the actual
+projection and worker encoder/decoder options; the old check fails (exit 255) and the
+corrected comparison passes. This confirms a test flaw, not the unrecorded operand
+values or all no-effects conditions in the original native failure. The supplied
+Linux PHP 8.4.24 10/10 synthetic result remains separate supplied evidence.
+
+The test-only comparator ignores associative field insertion order while checking
+exact key sets, strict scalar values/types and ordered list contents/lengths/types.
+Missing and explicit null differ. Unknown fields are rejected rather than discarded.
+Only the native assertion and its concretely equivalent behavior-suite comparison use
+the helper; application project()/serialization and database snapshots are unchanged.
+
+After the observed worker returns, the native case captures one post-replay snapshot.
+Its baseline remains after the intentional obsolete-policy/approval-revocation writes.
+The recorded successful result supplies the expected reply. A bounded
+`M6B_REPLAY_DIAGNOSTIC` line is emitted and flushed into existing evidence capture before
+any assertion can throw. All 12 conditions are computed first: worker/response shape
+and field sets, complete reply, strict existing/replayed flags, job record, nested
+release record, prepared === 0, verified === 0 and unchanged snapshot. No condition is
+waived; order-only differences are informational. Diagnostics contain only a fixed case
+ID, named Boolean conditions, failed names, allowlisted field paths, difference categories
+and safe type names. Unknown field names, DTO/row values, source/manifest data, hashes,
+credentials, tokens, snapshots and fixture payloads are not printed. Output is bounded
+to 64 difference entries; malformed shapes do not trigger missing-offset warnings.
+
+The focused regression passes **141 assertions**, including all independent diagnostics
+on simultaneous failures, malformed shapes with warnings promoted to exceptions, type/
+identity/hash/key/null/list negatives, and unknown-field flood/redaction checks. These
+are synthetic comparisons, not native replay PASS. Full local totals and the exact
+six-file scope appear in the [implementation record](sprint-8.8-m6b-local-implementation.md#historical-replay-assertion-correction).
+
+The successful immutable release, persisted obsolete policy, revoked approval, authorized
+reader, independent observed worker and no-preparation/verification/write requirements
+remain. Historical access still does not confer deployability. Both launchers, guards,
+resource/image/mount/cleanup/evidence controls, application code, runner/splitter and all
+25 migration SQL files are unchanged from f729ecf, including the reviewed 017/019 pins.
+Working staging/production 025 remains unapplied. The next server run requires exact-head
+review and separate authorization, a reviewed checkout and fresh disposable databases.
+Seven historical review conversations remain administrative history; this task neither
+resolves them wholesale nor treats their flags as proof about the current failure.
+
 ## Canonical DNS bootstrap correction and next validation gate
+
+Historical correction-time record: the later run above completed all migration/DNS
+checks. The preceding report, hashes and then-pending native gate below are preserved.
 
 The latest supplied report at `d13091b60eda9bad0060b5aad6c5fd902b596fa4` passed the
 no-INI smoke, **848 simulated lifecycle assertions**, actual MySQL **8.4.11** with
