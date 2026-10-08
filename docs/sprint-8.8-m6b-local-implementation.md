@@ -1,20 +1,20 @@
 # Sprint 8.8 M6B — Local persistence and jobs implementation
 
-Date: 2026-09-19. **M6B — IMPLEMENTED LOCALLY / REAL-MYSQL VALIDATION PENDING**.
-**M6B HISTORICAL REPLAY ASSERTION CORRECTION — IMPLEMENTED / REVIEW REQUIRED**.
-**FULL NATIVE VALIDATION — PENDING**.
-Latest correction: [Historical replay assertion](#historical-replay-assertion-correction).
-The latest operator run at `f729ecf` completed **53/53 migration executions**, fresh
-and upgrade schemas through 025, DNS native metadata/data/repair checks and earlier
-database cases. It remained **FAILED** at the compound historical-success/no-effects
-assertion. Later rollback, exhausted-queue, revocation and recovery cases were unreached.
-The source-derived ordering flaw is reproduced locally; the original native operands
-were not individually retained. Corrected native replay and later cases await a new run.
-This correction changes only test comparisons/diagnostics and documentation. Application
-code, all 25 migration sources (including corrected 017/019), launchers and guards remain.
-Earlier dated sections retain their historical verdicts and evidence boundaries.
-See [Linux validation host modes and prerequisites](sprint-8.8-m6b-linux-validation.md).
-This is local implementation evidence, not staging validation or formal M6 closeout.
+Implementation began 2026-09-19; current evidence reconciliation: **2026-10-08 UTC**.
+**M6B — IMPLEMENTED / ISOLATED REAL-MYSQL GATE PASS**.
+**PR #126 — EVIDENCE RECORDED / MERGE REVIEW PENDING**; M6B is not formally closed.
+The [native validation record](sprint-8.8-m6b-native-validation.md) records the operator's
+run at `bef67310adafa041a45ee204ed0fc99ca13b754f`, independently retrieved/hash-verified:
+**1824 native assertions**, **53/53 migrations**, all 12 replay conditions and later
+native cases completed; launcher exit 0, cleanup/publication PASS.
+**Working staging deployment/migration — NOT PERFORMED**. M6 remains **IN PROGRESS**;
+M6C–M6G **NOT STARTED**; Production **UNAUTHORIZED / NOT DEPLOYED**.
+Earlier dated sections retain their original FAILED/BLOCKED/INCOMPLETE/PENDING observations,
+hashes and historical validation counts. This later PASS supersedes their blocking effect;
+it does not rewrite those runs. The f729ecf replay run remains historically **FAILED**.
+See the [historical replay correction](#historical-replay-assertion-correction) and
+[Linux host guide](sprint-8.8-m6b-linux-validation.md). The existing 77-case mapping below
+remains scoped evidence, not full acceptance or deployed-staging validation.
 
 ## Authority and status
 
@@ -28,14 +28,15 @@ The clean checkout, repository path and Git remote were verified before editing;
 Repository: `fvd8383/ultimate-back-office` at
 `C:/Users/fvd83/My Drive/Development/ultimate-back-office`.
 Local Windows identity: `laptop-imhqf010\fvd83`; Git identity: Frank Dalba,
-`frank@frankdalba.com`. Neither `ubo-deploy` nor `codex-validation` was used.
-The execution sandbox has its own restricted account; approved local PHP/Git commands
-use the current Windows development account. No remote development environment was used.
+`frank@frankdalba.com`. The original local implementation used neither server identity.
+This later documentation task used established `codex-validation` SSH only to verify
+identity and retrieve/hash existing evidence. No `ubo-deploy`, sudo, remote development,
+server checkout/Git metadata change, test or runtime operation occurred in this task.
 
 | Milestone | Current status |
 | --- | --- |
 | M6A | ARCHITECTURE REVIEWED / MERGED |
-| M6B | IMPLEMENTED LOCALLY / REAL-MYSQL VALIDATION PENDING |
+| M6B | IMPLEMENTED / ISOLATED REAL-MYSQL GATE PASS; MERGE REVIEW PENDING |
 | M6 | IN PROGRESS |
 | M6C–M6G | NOT STARTED |
 | M5 | COMPLETE FOR SPRINT PROGRESSION |
@@ -43,15 +44,15 @@ use the current Windows development account. No remote development environment w
 | Sprint 8.8 | IN PROGRESS |
 | Production | UNAUTHORIZED / NOT DEPLOYED |
 
-Last reported staging application SHA remains existing evidence only:
-`70a3051f73874e7268b9c1bba45bf19d41f9432a`. It was not remotely reverified.
-No staging/production access, SSH, deployment, remote migration, publisher/provider
-action, background worker/service, web route, production activation, or resumed
-Narrator work occurred. No merge or auto-merge is authorized.
+Last reported staging application SHA remains operator-recorded evidence:
+`70a3051f73874e7268b9c1bba45bf19d41f9432a`. Saved head/status captures were retrieved
+and hash-verified; the deployed checkout was not directly inspected in this task.
+No new test, container/database/SQL/migration/service action, deployment, production
+access, or resumed Narrator work occurred. No merge or auto-merge is authorized.
 
 ## Complete changed-file inventory
 
-The implementation has 48 changed files: 32 additions and 16 modifications.
+The complete PR has 49 changed files: 33 additions and 16 modifications. The evidence reconciliation adds one document and updates six; all 339 tracked non-documentation paths retain their tested Git blobs/modes and local bytes.
 
 | Change | Path | Purpose |
 | --- | --- | --- |
@@ -99,6 +100,7 @@ The implementation has 48 changed files: 32 additions and 16 modifications.
 | Modify | `tests/WebsitePlatformM5AScopeTest.php` | Same exact migration source protection. |
 | Modify | `tests/WebsitePlatformM5CScopeTest.php` | Exact application/migration allowances; title regression preserved. |
 | Add | `docs/sprint-8.8-m6b-local-implementation.md` | This implementation/evidence record. |
+| Add | `docs/sprint-8.8-m6b-native-validation.md` | Verified native PASS, limitations, provenance and individual review dispositions. |
 | Modify | `docs/sprint-8.8-m6-implementation-plan.md` | Current status and actual M6B links; reviewed contract and historical record retained. |
 | Modify | `docs/codex-handoff.md` | Current milestone and migration status. |
 | Modify | `docs/sprint-8.8.md` | Current milestone, migration and next-gate status. |
@@ -137,11 +139,11 @@ Concrete SQL translation: explicit non-NULL predicates prevent SQL UNKNOWN from
 accepting incomplete execution/recovery shape; bounded summary/receipt JSON uses
 OCTET_LENGTH checks. UUID/hash identities use binary ASCII collation; durable times
 use DATETIME(6). These implement the reviewed contract, not a relaxed replacement.
-Migration 025 completed in both disposable fresh/upgrade databases in the latest
-operator-reported run at `f729ecf`; all 53 migration executions and DNS checks completed.
-The run later failed at the historical replay assertion; see the
-[current correction](#historical-replay-assertion-correction). Working staging and
-production migration 025 remain unapplied. Earlier 015/017 failures remain historical.
+Migration 025 completed in both disposable fresh/upgrade databases in the successful
+operator run at `bef67310adafa041a45ee204ed0fc99ca13b754f`; all 53 migrations and the
+full 1824-assertion native harness completed. See the [verified evidence](sprint-8.8-m6b-native-validation.md).
+Working staging and production migration 025 remain unapplied. Earlier 015/017 and
+f729ecf replay failures retain their original historical verdicts.
 
 SHA-256 of 025's LF bytes (the committed canonical representation):
 `dab585dc29aac11153f92703c65d3883aeea73a1b2283157cfa9d2f2ece85cb0`.
@@ -156,7 +158,7 @@ explicitly reviewed 017/019 DNS CREATE corrections documented below; 020 is unch
 | 023 | `7f487cd11852ee4c05f2bc8766f757134a909716982a47dcfbe5614314189e41` |
 | 024 | `eb81ee47ce8bfdf27d0dc9c1b15fc920bc566c2609cc5eaf6fc8dab7a9ffc5b9` |
 
-Only migration 025 was added. Local migration executions: **0**.
+Only migration 025 was added. Windows implementation-task migration executions: **0**; the separate operator native run completed **53** disposable executions.
 **Migration 025 NOT APPLIED TO STAGING OR PRODUCTION.** No DDL rollback is claimed.
 
 ## Implemented service behavior
@@ -260,8 +262,9 @@ deployment rows are rollback-only schema fixtures, not grants or activation.
 ## Executed local checks and 77-case mapping
 
 This section preserves the initial local implementation/policy-correction evidence and
-then-unexecuted native mapping. The latest partial native results and current remaining
-gate are in [Historical replay assertion correction](#historical-replay-assertion-correction).
+then-unexecuted native mapping. Its remaining-gate column is a historical snapshot.
+The later [native PASS record](sprint-8.8-m6b-native-validation.md#native-coverage-and-retained-limitations)
+identifies completed persistence slices and retained M6C–M6G/77-case limitations.
 
 Environment: Windows desktop, installed PHP 8.4.24. All **56/56 standalone suites**
 passed (50 existing plus six new). After the PR #126 corrections below, the six M6B
@@ -362,9 +365,10 @@ and documentation-check files contain development evidence only; no application 
 
 ## Final review gates
 
-The code is implemented locally and requires review. Local real-MySQL schema and
-concurrency checks remain mandatory evidence before formal acceptance; sequential
-fakes and static SQL checks cannot replace them. M6C must implement/review trusted
+The implemented code now has verified isolated real-MySQL schema/concurrency evidence.
+PR #126 requires review of the documentation/evidence successor and an authorized merge
+decision; M6B is not formally closed. The [native record](sprint-8.8-m6b-native-validation.md)
+separates that completed gate from later deployment/handoff. M6C must implement/review trusted
 wiring, clean toolchain detection, real projection/asset bytes and artifact inspection
 before enabling execution. M6D–M6G must implement their separately scoped behavior.
 Any later staging/production migration, deployment or validation requires separate
@@ -646,6 +650,9 @@ Narrator work, new PR, merge or auto-merge occurred. The commit SHA, policy-thre
 and single new-head review request/state are reported with the task result.
 
 ## Linux launcher and explicit shared-staging mode — current tooling update
+
+Historical tooling-introduction snapshot: the current native PASS and review
+dispositions are in the [evidence record](sprint-8.8-m6b-native-validation.md).
 
 Prior head: `19dc550081ad47f1c53e91cd9efa5a6d8cddf381`. Its completed clean
 [application review](https://github.com/fvd8383/ultimate-back-office/pull/126#issuecomment-5745751056)
@@ -1689,6 +1696,8 @@ M6B **IMPLEMENTED / REAL-MYSQL VALIDATION PENDING**; M6C–M6G **NOT STARTED**;
 Production **UNAUTHORIZED / NOT DEPLOYED**; M5 acceptance and Narrator deferral unchanged.
 
 ## Historical replay assertion correction
+
+Historical correction-time record: the later [native PASS](sprint-8.8-m6b-native-validation.md) supersedes the pending gate below. Its original failure, hashes, local checks and then-open conversation state remain unchanged.
 
 Date: **2026-10-07**. Starting clean head: `f729ecf44effb31340db148bea27acec1f651f44`
 on the existing PR #126 branch. This is a test assertion/diagnostic correction;

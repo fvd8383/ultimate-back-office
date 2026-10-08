@@ -1,22 +1,27 @@
 # M6B isolated Linux MySQL validation
 
-**M6B — IMPLEMENTED LOCALLY / REAL-MYSQL VALIDATION PENDING**.
-**M6B HISTORICAL REPLAY ASSERTION CORRECTION — IMPLEMENTED / REVIEW REQUIRED**.
-**FULL NATIVE VALIDATION — PENDING**.
-Latest operator run at `f729ecf`: **53/53 migration executions completed**, fresh and
-upgrade schemas through 025 and DNS native checks passed. Overall **FAILED** at the
-compound historical-success/no-effects assertion; later rollback, exhausted-queue,
-revocation and recovery cases were unreached. Original native operands were not retained
-individually. The ordering regression is reproduced locally, while corrected native
-replay and the remaining acceptance cases await another reviewed run.
-M6 **IN PROGRESS**; M6C–M6G **NOT STARTED**; Production **UNAUTHORIZED / NOT DEPLOYED**.
+**M6B — IMPLEMENTED / ISOLATED REAL-MYSQL GATE PASS**.
+**PR #126 — EVIDENCE RECORDED / MERGE REVIEW PENDING**; M6B is not formally closed.
+The [native evidence record](sprint-8.8-m6b-native-validation.md) independently verifies
+the saved operator run at `bef67310adafa041a45ee204ed0fc99ca13b754f`: **1824 native
+assertions**, **53/53 migrations**, all 12 replay conditions and later harness cases
+completed. One full launcher invocation exited 0; cleanup/publication/manifests PASS.
+**Working staging deployment/migration — NOT PERFORMED**; 025 ran only in disposable
+databases. M6 **IN PROGRESS**; M6C–M6G **NOT STARTED**;
+Production **UNAUTHORIZED / NOT DEPLOYED**. The 77-case acceptance mapping remains
+in the [implementation record](sprint-8.8-m6b-local-implementation.md).
 
 Work remains in [PR #126](https://github.com/fvd8383/ultimate-back-office/pull/126).
-The [implementation record](sprint-8.8-m6b-local-implementation.md) records executed
-local tests separately from the partially executed, still-failing real-MySQL gate. The earlier clean
-application review of `19dc550` did not approve the Linux launcher.
+The guide retains dedicated and explicitly selected guarded shared-staging operation.
+Its operational instructions are not authorization for a new run in this documentation
+task. The [clean review of the tested SHA](https://github.com/fvd8383/ultimate-back-office/pull/126#issuecomment-6049440679)
+and individual review dispositions are recorded in the native evidence record.
+Earlier failed/blocked/incomplete reports retain their hashes and verdicts; the later
+PASS supersedes their blocking effect without changing what they observed.
 
 ## Historical replay assertion correction and next validation gate
+
+Historical correction-time record: the subsequent [native PASS](sprint-8.8-m6b-native-validation.md) completed this gate. The failure and then-pending run/review statements below describe the earlier task, including its seven then-open conversations.
 
 The latest operator run tested `f729ecf44effb31340db148bea27acec1f651f44` on
 `ubo-stage-app / codex-validation / UID 1000`. It reported synthetic guard smoke,
@@ -292,10 +297,14 @@ The scoped pure-guard audit found no further optional-extension assumption: its
 remaining function calls are from Core, standard, JSON and PCRE, available in the
 tested no-INI child. The database harness remains a separate configured PHP process
 with its legitimate PDO MySQL dependency. No application or harness refactor is part
-of that guard correction. The latest partial native run is recorded above;
+of that guard correction. The later full native PASS is recorded in the
+[native evidence record](sprint-8.8-m6b-native-validation.md);
 historical blocked/incomplete reports keep their verdicts.
 
 ## Confirmed tmpfs representation and current validation gate
+
+Historical inspection-correction record: the later native PASS completed the then-pending
+gate below. Its probe observations and original report hash remain unchanged.
 
 The initial full `--run` stopped before SQL at `container_controls`: the guard
 required exactly one top-level mount, but the operator's Docker **29.8.1**, rootless
@@ -668,8 +677,10 @@ review; cached images, unrelated resources and other runs are never deleted.
 Passwords, tokens, token-derived database-name prefixes and environment values are
 not printed or retained in diagnostics.
 
-The [Windows launcher](../tests/RunM6BMySql.ps1), application code and all migrations
-except the two explicitly corrected 017/019 sources are unchanged. The native harness
+All 339 non-documentation paths, including the [Windows launcher](../tests/RunM6BMySql.ps1),
+application code and all 25 migrations, are unchanged from the natively tested bef67310
+in this documentation task. The previously reviewed 017/019 source exceptions remain
+exactly pinned against the original implementation baseline. The native harness
 retains canonical fresh/upgrade migrations in order, MySQL 8.4
 verification, native prepares, schema/FK/CHECK/actor-deletion cases, independent
 authorization/queue/replay/rollback processes and synthetic artifact labels.
@@ -687,7 +698,10 @@ independently unconfirmed. The completed operator inspection at 2026-09-20T21:23
 supersedes that old capacity/runtime description with operator-supplied measurements.
 It does not establish this desktop task's host access, kernel isolation or MySQL PASS.
 
-During this desktop correction, no staging/production access, host setup, resize,
-installation, image download, container/database creation or execution, SQL,
-migration, deployment, M6C or Narrator work occurred. The separately supplied
-operator container/mount diagnostic is recorded above; real-MySQL validation is pending.
+This evidence/documentation task used read-only SSH identity checks and retrieval of
+existing evidence only. No server checkout/Git metadata, host setup, resize, installation,
+image download, container/database/SQL/migration/service operation, deployment,
+production access, M6C or Narrator action occurred. The completed isolated real-MySQL
+gate is PASS at the exact tested SHA; working-staging deployment/migration remains
+unperformed and requires separate authorization. PR #126 awaits evidence/merge review;
+M6B is not formally closed.

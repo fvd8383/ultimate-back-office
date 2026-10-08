@@ -1,14 +1,17 @@
 # Codex Handoff
 
 Current M6: **IN PROGRESS**. **M6A — ARCHITECTURE REVIEWED / MERGED** (PR #125).
-**M6B — IMPLEMENTED LOCALLY / REAL-MYSQL VALIDATION PENDING**. **M6C–M6G — NOT STARTED**.
-Linux tooling: **CORRECTIONS IMPLEMENTED / REVIEW REQUIRED**; [host modes and prerequisites](sprint-8.8-m6b-linux-validation.md).
-Shared-staging volume/setup: **OPERATOR-REPORTED COMPLETE**, runtime verification pending.
-See the [M6B local implementation record](sprint-8.8-m6b-local-implementation.md)
-for scope and evidence, and the [reviewed M6 plan](sprint-8.8-m6-implementation-plan.md).
-Migration 025 exists locally/in the PR and is **NOT APPLIED TO STAGING OR PRODUCTION**.
-The local real-MySQL/concurrency gate is **NOT EXECUTED**: prerequisites unavailable.
-M5 acceptance and historical evidence are unchanged. No deployment is authorized.
+**M6B — IMPLEMENTED / ISOLATED REAL-MYSQL GATE PASS**. **M6C–M6G — NOT STARTED**.
+**PR #126 — EVIDENCE RECORDED / MERGE REVIEW PENDING**; M6B is not formally closed.
+The [native evidence record](sprint-8.8-m6b-native-validation.md) verifies the operator's
+isolated run at `bef67310adafa041a45ee204ed0fc99ca13b754f`: **1824 native assertions**,
+**53/53 migration executions**, all 12 replay conditions, cleanup/publication PASS.
+See the [implementation record](sprint-8.8-m6b-local-implementation.md),
+[host guide](sprint-8.8-m6b-linux-validation.md) and [reviewed M6 plan](sprint-8.8-m6-implementation-plan.md).
+**Working staging deployment/migration — NOT PERFORMED**; 025 ran only in disposable
+databases and remains unapplied to working staging or production.
+**Production — UNAUTHORIZED / NOT DEPLOYED**. M5 acceptance and Narrator deferral are
+unchanged. This documentation task authorizes no new runtime operation or deployment.
 
 ## Current M5 closeout — 2026-09-17
 
@@ -22,7 +25,7 @@ M5 acceptance and historical evidence are unchanged. No deployment is authorized
 | M5C | ACCEPTED / NARRATOR FOLLOW-UP DEFERRED |
 | M5 | COMPLETE FOR SPRINT PROGRESSION |
 | M6A | ARCHITECTURE REVIEWED / MERGED |
-| M6B | IMPLEMENTED LOCALLY / REVIEW REQUIRED |
+| M6B | IMPLEMENTED / ISOLATED REAL-MYSQL GATE PASS; MERGE REVIEW PENDING |
 | M6C–M6G | NOT STARTED |
 | M6 | IN PROGRESS |
 | Production | UNAUTHORIZED / NOT DEPLOYED |
@@ -30,7 +33,7 @@ M5 acceptance and historical evidence are unchanged. No deployment is authorized
 Authoritative deployed application SHA: `70a3051f73874e7268b9c1bba45bf19d41f9432a`.
 Latest deployed title-regression PASS SHA-256:
 `de1e215f7716e550a6ab993872cb50eaaf7d4a2d5a2dc03c4159fb9a569368c7`.
-These are existing evidence references; this documentation closeout does not access staging.
+These M5 references are unchanged. The M6B record above separately documents read-only retrieval of isolated-run evidence; no deployed-checkout operation occurred in that documentation task.
 
 Further Windows Narrator validation is intentionally deferred. The product owner
 accepts the implemented behavior as sufficient for the current product stage based
@@ -50,9 +53,9 @@ release requirement makes them mandatory. This acceptance does not establish ful
 accessibility validation. No known application accessibility failure remains from
 completed cases; deferred checks are validation items, not established defects.
 
-Migrations 023/024 are unchanged. Migration 025 and build persistence are implemented
-locally under the separately authorized M6B task; remote migration execution remains
-unauthorized. Sprint 8.8 remains **IN PROGRESS**.
+Migrations 023/024 are unchanged. Migration 025 and build persistence passed the isolated
+M6B native gate; working-staging migration/deployment remains unperformed and requires
+separate authorization. Sprint 8.8 remains **IN PROGRESS**.
 This current decision supersedes earlier closure prerequisites; dated snapshots and
 historical failure/tooling-block reports below retain their original verdicts.
 
