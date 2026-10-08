@@ -1,10 +1,17 @@
 # Sprint 8.8 — Website Platform And Component CMS
 
-Current M6 planning: **PLANNING COMPLETE / IMPLEMENTATION NOT STARTED**. See the
-[M6 implementation plan](sprint-8.8-m6-implementation-plan.md) for the repository audit,
-proposed migration 025, service/artifact/publisher contracts and validation gates.
-Migration 025 remains absent. M5 acceptance and historical evidence are unchanged;
-earlier M6 NEXT/NOT STARTED references record the M5 handoff. No deployment is authorized.
+Current M6: **IN PROGRESS**. **M6A — ARCHITECTURE REVIEWED / MERGED** (PR #125).
+**M6B — IMPLEMENTED / ISOLATED REAL-MYSQL GATE PASS**. **M6C–M6G — NOT STARTED**.
+**PR #126 — EVIDENCE RECORDED / MERGE REVIEW PENDING**; M6B is not formally closed.
+The [native evidence record](sprint-8.8-m6b-native-validation.md) verifies the operator's
+isolated run at `bef67310adafa041a45ee204ed0fc99ca13b754f`: **1824 native assertions**,
+**53/53 migration executions**, all 12 replay conditions, cleanup/publication PASS.
+See the [implementation record](sprint-8.8-m6b-local-implementation.md),
+[host guide](sprint-8.8-m6b-linux-validation.md) and [reviewed M6 plan](sprint-8.8-m6-implementation-plan.md).
+**Working staging deployment/migration — NOT PERFORMED**; 025 ran only in disposable
+databases and remains unapplied to working staging or production.
+**Production — UNAUTHORIZED / NOT DEPLOYED**. M5 acceptance and Narrator deferral are
+unchanged. This documentation task authorizes no new runtime operation or deployment.
 
 ## Current M5 closeout — 2026-09-17
 
@@ -17,13 +24,16 @@ earlier M6 NEXT/NOT STARTED references record the M5 handoff. No deployment is a
 | M5B | COMPLETE / STAGING PASS / FORMALLY CLOSED |
 | M5C | ACCEPTED / NARRATOR FOLLOW-UP DEFERRED |
 | M5 | COMPLETE FOR SPRINT PROGRESSION |
-| M6 | PLANNING COMPLETE / IMPLEMENTATION NOT STARTED |
+| M6A | ARCHITECTURE REVIEWED / MERGED |
+| M6B | IMPLEMENTED / ISOLATED REAL-MYSQL GATE PASS; MERGE REVIEW PENDING |
+| M6C–M6G | NOT STARTED |
+| M6 | IN PROGRESS |
 | Production | UNAUTHORIZED / NOT DEPLOYED |
 
 Authoritative deployed application SHA: `70a3051f73874e7268b9c1bba45bf19d41f9432a`.
 Latest deployed title-regression PASS SHA-256:
 `de1e215f7716e550a6ab993872cb50eaaf7d4a2d5a2dc03c4159fb9a569368c7`.
-These are existing evidence references; this documentation closeout does not access staging.
+These M5 references are unchanged. The M6B record above separately documents read-only retrieval of isolated-run evidence; no deployed-checkout operation occurred in that documentation task.
 
 Further Windows Narrator validation is intentionally deferred. The product owner
 accepts the implemented behavior as sufficient for the current product stage based
@@ -43,9 +53,9 @@ release requirement makes them mandatory. This acceptance does not establish ful
 accessibility validation. No known application accessibility failure remains from
 completed cases; deferred checks are validation items, not established defects.
 
-Migrations 023/024 are unchanged; 025 is absent. No application, deployment,
-configuration, provider, domain, public-runtime, or production change occurs here.
-M6 implementation has not started. Sprint 8.8 remains **IN PROGRESS**.
+Migrations 023/024 are unchanged. Migration 025 and build persistence passed the isolated
+M6B native gate; working-staging migration/deployment remains unperformed and requires
+separate authorization. Sprint 8.8 remains **IN PROGRESS**.
 This current decision supersedes earlier closure prerequisites; dated snapshots and
 historical failure/tooling-block reports below retain their original verdicts.
 
@@ -154,7 +164,7 @@ deployed, and validated SHA `557cc34fe4cf3ab56cdcb59fd7c623c495fd8eaf`, and M4C 
 deployed/validated SHA `d33589da5eebbf8e2ae0dc203837d6667abd1f71`.
 M5 is **COMPLETE FOR SPRINT PROGRESSION**; M5A and M5B are
 **COMPLETE / STAGING PASS / FORMALLY CLOSED**; M5C is
-**ACCEPTED / NARRATOR FOLLOW-UP DEFERRED**. M6 is **PLANNING COMPLETE / IMPLEMENTATION NOT STARTED**.
+**ACCEPTED / NARRATOR FOLLOW-UP DEFERRED**. M6 is **IN PROGRESS**.
 See the [M5 closeout](sprint-8.8-m5-closeout.md) for the acceptance decision.
 Production is **UNAUTHORIZED / NOT DEPLOYED**. The detailed
 completion records are `docs/sprint-8.8-m1-closeout.md`,
@@ -169,8 +179,8 @@ milestones, M1–M8. M1–M4 are complete and formally closed; M5 is complete fo
 sprint progression, and M6–M8 remain required before Sprint 8.8 closes.
 The completed M4 exit gate covers the internal administrative
 workflow, and M5B completed the customer review, feedback, and approval UI. Outstanding
-work begins with review of the completed M6 build/deployment/restore plan, then separately
-authorized implementation and later public generic sites,
+work begins with M6B evidence/merge review after its isolated real-MySQL gate PASS,
+then separately authorized M6C–M6G implementation and later public generic sites,
 domain/routing, LeadHub ingestion, legacy runtime cutover, and production authorization
 in later milestones. Historical migrations remain immutable, and the customer
 Website Manager is not a drag-and-drop builder. The authoritative architecture is
@@ -192,7 +202,11 @@ Website Manager is not a drag-and-drop builder. The authoritative architecture i
 The initial website migration is `023_website_platform_foundation.sql`, applied
 exactly once during M1 and staging validated. Migration 024 was subsequently applied
 exactly once during M3. M4A/M4B/M4C required no new migration; 023/024 remain unchanged
-and migration 025+ remains absent.
+and no migration was added by M4. M6B adds migration 025 in PR #126. Its isolated
+real-MySQL validation passed at `bef67310adafa041a45ee204ed0fc99ca13b754f`,
+including 025 in both fresh and upgrade disposable databases on the staging host;
+see the [native validation record](sprint-8.8-m6b-native-validation.md).
+Migration 025 has not been applied to the working staging or production databases.
 Migration 023 is deliberately the **dependency-safe M1 core**, not every operational
 table for the whole sprint.
 
@@ -202,12 +216,19 @@ component/variant metadata required for import, themes, assets/references, appro
 generation briefs, legacy mappings/import state, and generic site audit events. This
 is the coherent aggregate required for M1 backfill and M2/M3 services.
 
-Durable build/deployment structures should arrive in a later additive M6 migration.
+Durable build/deployment structures are defined in additive M6B migration 025.
+The isolated real-MySQL gate passed; deployment and migration of the working staging
+and production databases have not been performed. Later deployment behavior remains
+deferred to the remaining M6 milestones. This is not all 77 planned acceptance cases
+or formal M6B closure.
 Domain/routing/conversion structures that cannot safely reuse or extend current domain
 tables should arrive in a later additive M7 migration. Use the next available numbers
 in actual implementation order; do not reserve or create empty files now. Historical
-migrations are immutable, and each migration must be independently reviewable,
-forward-repairable, and staging reconciled.
+migration sources retain only the already-reviewed exact 017/019 DNS bootstrap-source
+exception recorded in the [native validation record](sprint-8.8-m6b-native-validation.md#tested-code-and-migration-provenance);
+all other historical sources remain immutable. Applied migration history is not
+rewritten or reapplied. Each new migration must be independently reviewable,
+forward-repairable, and reconciled on working staging before deployment.
 
 ## Cross-Sprint Rules
 
@@ -537,7 +558,7 @@ build/deployment, domain routing, LeadHub ingestion, legacy runtime cutover, or
 production activation. M4C and M4 are **COMPLETE / STAGING PASS /
 FORMALLY CLOSED**. Sprint 8.8 remains **IN PROGRESS**; M5 is
 **COMPLETE FOR SPRINT PROGRESSION** with M5C
-**ACCEPTED / NARRATOR FOLLOW-UP DEFERRED**. M6 is **PLANNING COMPLETE / IMPLEMENTATION NOT STARTED**;
+**ACCEPTED / NARRATOR FOLLOW-UP DEFERRED**. M6 is **IN PROGRESS**;
 production is **UNAUTHORIZED / NOT DEPLOYED**.
 
 The local M4C gate is **42/42 standalone suites PASS**, including focused M4C behavior,
@@ -627,7 +648,7 @@ from service or source-contract coverage.
 
 Status: **COMPLETE FOR SPRINT PROGRESSION**. M5A and M5B are
 **COMPLETE / STAGING PASS / FORMALLY CLOSED**. M5C is
-**ACCEPTED / NARRATOR FOLLOW-UP DEFERRED**. M6 is **PLANNING COMPLETE / IMPLEMENTATION NOT STARTED**.
+**ACCEPTED / NARRATOR FOLLOW-UP DEFERRED**. M6 is **IN PROGRESS**.
 M6–M8 remain required before Sprint 8.8 closes; see [M5 closeout](sprint-8.8-m5-closeout.md).
 
 M5A adds a customer-only read boundary, an allowlisted issued-review DTO, a dedicated
@@ -653,7 +674,7 @@ and completed authenticated browser mutation validation. This validation/closeou
 performed no deployment or migration and changed no application/provider/public runtime.
 M5C server/browser gates and completed Narrator observations are recorded in
 [M5 closeout](sprint-8.8-m5-closeout.md). Remaining Narrator validation is deferred
-by product-owner decision; M6 is **PLANNING COMPLETE / IMPLEMENTATION NOT STARTED**.
+by product-owner decision; M6 is **IN PROGRESS**.
 
 ### Deliverables
 
@@ -676,11 +697,15 @@ business/site or cause publication.
 
 ## M6 — Build / Deployment / Restore
 
-Status: **PLANNING COMPLETE / IMPLEMENTATION NOT STARTED**. The
-[M6 implementation plan](sprint-8.8-m6-implementation-plan.md) records the completed
-repository architecture audit, proposed migration 025 and M6A–M6G sequence. M5 is
-complete for sprint progression. Planning does not authorize implementation,
-migration execution, staging access, deployment or production work.
+Status: **IN PROGRESS**. M6A is **ARCHITECTURE REVIEWED / MERGED**; M6B is
+**IMPLEMENTED / ISOLATED REAL-MYSQL GATE PASS**; M6C–M6G are **NOT STARTED**.
+The [M6 plan](sprint-8.8-m6-implementation-plan.md) remains the reviewed contract;
+the [implementation record](sprint-8.8-m6b-local-implementation.md) preserves the acceptance
+mapping, and the [native record](sprint-8.8-m6b-native-validation.md) records verified
+1824-assertion persistence evidence. PR #126 awaits evidence/merge review; M6B is not
+formally closed. Migration 025 passed in disposable databases only and remains unapplied
+to working staging or production. M5 is complete for sprint progression. Working-staging
+migration, deployment, validation and subsequent M6 work require separate authorization.
 
 ### Deliverables
 
@@ -797,7 +822,7 @@ are formally closed. The final integrated M4 real-MySQL gate passed on
 retained. This completes M4's internal administrative workflow exit gate, not the
 Sprint 8.8 M1–M8 exit gate. M5 is **COMPLETE FOR SPRINT PROGRESSION**; M5A/M5B
 are **COMPLETE / STAGING PASS / FORMALLY CLOSED**; M5C is
-**ACCEPTED / NARRATOR FOLLOW-UP DEFERRED**. M6 is **PLANNING COMPLETE / IMPLEMENTATION NOT STARTED**;
+**ACCEPTED / NARRATOR FOLLOW-UP DEFERRED**. M6 is **IN PROGRESS**;
 M6–M8 work remains required before Sprint 8.8 closes. Deferred Narrator follow-up
 is non-blocking unless a future release requirement makes it mandatory.
 Production remains **UNAUTHORIZED / NOT DEPLOYED**, and M4 does not establish

@@ -100,7 +100,7 @@ foreach (glob($root . '/private/classes/Site*.php') ?: [] as $path) {
 assertM2Scope(!preg_match('/Stripe|Namecheap|Twilio|Retell|Vendasta|DataForSEO|Apache/i', $serviceSources), 'M2 services must not invoke providers or Apache.');
 assertM2Scope(!preg_match('/\b(?:curl_|file_get_contents\s*\(\s*["\']https?:|fsockopen|stream_socket_client)\b/i', $serviceSources), 'M2 services must not perform HTTP/network calls.');
 assertM2Scope(!preg_match('/\b(?:file_put_contents|mkdir|rename|unlink|copy)\s*\(/i', $serviceSources), 'M2 services must not perform filesystem mutations.');
-assertM2Scope(!preg_match('/class\s+(?:ComponentRegistry|SiteBuildService|SitePublisher)\b/', $serviceSources), 'M3+ classes must not begin.');
+assertM2Scope(!preg_match('/class\s+(?:ComponentRegistry|SitePublisher|SiteDeploymentService)\b/', $serviceSources), 'Only the authorized M6B build service may begin; publisher/deployment remain absent.');
 assertM2Scope(!preg_match('/INSERT INTO component_(?:definitions|variants)|INSERT INTO site_page_sections/', file_get_contents($root . '/private/classes/SiteManager.php') ?: ''), 'SiteManager must not begin component authoring.');
 
 assertM2Scope(str_contains($serviceSources, "'future_gate_required'"), 'M2 must retain explicit future gates.');

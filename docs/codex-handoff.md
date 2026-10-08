@@ -1,10 +1,17 @@
 # Codex Handoff
 
-Current M6 planning: **PLANNING COMPLETE / IMPLEMENTATION NOT STARTED**. See the
-[M6 implementation plan](sprint-8.8-m6-implementation-plan.md) for the repository audit,
-proposed migration 025, service/artifact/publisher contracts and validation gates.
-Migration 025 remains absent. M5 acceptance and historical evidence are unchanged;
-earlier M6 NEXT/NOT STARTED references record the M5 handoff. No deployment is authorized.
+Current M6: **IN PROGRESS**. **M6A — ARCHITECTURE REVIEWED / MERGED** (PR #125).
+**M6B — IMPLEMENTED / ISOLATED REAL-MYSQL GATE PASS**. **M6C–M6G — NOT STARTED**.
+**PR #126 — EVIDENCE RECORDED / MERGE REVIEW PENDING**; M6B is not formally closed.
+The [native evidence record](sprint-8.8-m6b-native-validation.md) verifies the operator's
+isolated run at `bef67310adafa041a45ee204ed0fc99ca13b754f`: **1824 native assertions**,
+**53/53 migration executions**, all 12 replay conditions, cleanup/publication PASS.
+See the [implementation record](sprint-8.8-m6b-local-implementation.md),
+[host guide](sprint-8.8-m6b-linux-validation.md) and [reviewed M6 plan](sprint-8.8-m6-implementation-plan.md).
+**Working staging deployment/migration — NOT PERFORMED**; 025 ran only in disposable
+databases and remains unapplied to working staging or production.
+**Production — UNAUTHORIZED / NOT DEPLOYED**. M5 acceptance and Narrator deferral are
+unchanged. This documentation task authorizes no new runtime operation or deployment.
 
 ## Current M5 closeout — 2026-09-17
 
@@ -17,13 +24,16 @@ earlier M6 NEXT/NOT STARTED references record the M5 handoff. No deployment is a
 | M5B | COMPLETE / STAGING PASS / FORMALLY CLOSED |
 | M5C | ACCEPTED / NARRATOR FOLLOW-UP DEFERRED |
 | M5 | COMPLETE FOR SPRINT PROGRESSION |
-| M6 | PLANNING COMPLETE / IMPLEMENTATION NOT STARTED |
+| M6A | ARCHITECTURE REVIEWED / MERGED |
+| M6B | IMPLEMENTED / ISOLATED REAL-MYSQL GATE PASS; MERGE REVIEW PENDING |
+| M6C–M6G | NOT STARTED |
+| M6 | IN PROGRESS |
 | Production | UNAUTHORIZED / NOT DEPLOYED |
 
 Authoritative deployed application SHA: `70a3051f73874e7268b9c1bba45bf19d41f9432a`.
 Latest deployed title-regression PASS SHA-256:
 `de1e215f7716e550a6ab993872cb50eaaf7d4a2d5a2dc03c4159fb9a569368c7`.
-These are existing evidence references; this documentation closeout does not access staging.
+These M5 references are unchanged. The M6B record above separately documents read-only retrieval of isolated-run evidence; no deployed-checkout operation occurred in that documentation task.
 
 Further Windows Narrator validation is intentionally deferred. The product owner
 accepts the implemented behavior as sufficient for the current product stage based
@@ -43,9 +53,9 @@ release requirement makes them mandatory. This acceptance does not establish ful
 accessibility validation. No known application accessibility failure remains from
 completed cases; deferred checks are validation items, not established defects.
 
-Migrations 023/024 are unchanged; 025 is absent. No application, deployment,
-configuration, provider, domain, public-runtime, or production change occurs here.
-M6 implementation has not started. Sprint 8.8 remains **IN PROGRESS**.
+Migrations 023/024 are unchanged. Migration 025 and build persistence passed the isolated
+M6B native gate; working-staging migration/deployment remains unperformed and requires
+separate authorization. Sprint 8.8 remains **IN PROGRESS**.
 This current decision supersedes earlier closure prerequisites; dated snapshots and
 historical failure/tooling-block reports below retain their original verdicts.
 
@@ -163,7 +173,7 @@ STAGING PASS / FORMALLY CLOSED** on final deployed and validated SHA
 FORMALLY CLOSED** on PR #112 merge and final deployed/validated SHA
 `d33589da5eebbf8e2ae0dc203837d6667abd1f71`. M5 is **COMPLETE FOR SPRINT PROGRESSION**;
 M5A/M5B are **COMPLETE / STAGING PASS / FORMALLY CLOSED**; M5C is
-**ACCEPTED / NARRATOR FOLLOW-UP DEFERRED**. M6 is **PLANNING COMPLETE / IMPLEMENTATION NOT STARTED**.
+**ACCEPTED / NARRATOR FOLLOW-UP DEFERRED**. M6 is **IN PROGRESS**.
 The accepted deployed application SHA is `70a3051f73874e7268b9c1bba45bf19d41f9432a`.
 Production remains **UNAUTHORIZED / NOT DEPLOYED**. M4's exit gate is complete;
 M6–M8 public/runtime work and the full M1–M8 sprint exit gate remain required
@@ -199,12 +209,12 @@ presentation/image requests, exact session-bound customer decisions, transaction
 reauthorization, replay protection, CSRF/303 receipts, and internal submission visibility.
 The local gate passes 48/48 standalone suites, including M5B behavior/input-session/
 view-route totals of 258/72/118 assertions. PHP lint passes 189/189. Migration 023/024
-remain unchanged and 025 remains absent. See the [M5B local implementation record](sprint-8.8-m5b-local-implementation.md)
+remained unchanged and 025 remained absent at that M5B gate. See the [M5B local implementation record](sprint-8.8-m5b-local-implementation.md)
 for security findings and file inventory. The [M5B closeout](sprint-8.8-m5b-closeout.md)
 records passed real-MySQL/concurrency/replay/HTTP and authenticated browser mutation
 gates, including approval, changes, stale-tab, populated tenant denial, and forged input.
 All 81 table counts reconciled after cleanup. M5C is **ACCEPTED / NARRATOR FOLLOW-UP DEFERRED**;
-M5 is **COMPLETE FOR SPRINT PROGRESSION**; M6 is **PLANNING COMPLETE / IMPLEMENTATION NOT STARTED**.
+M5 is **COMPLETE FOR SPRINT PROGRESSION**; M6 is **IN PROGRESS**.
 
 M4B was merged through PR #110, “Sprint 8.8 M4B: add composition editor and admin
 preview,” at `557cc34fe4cf3ab56cdcb59fd7c623c495fd8eaf`. It adds the structured
@@ -370,7 +380,7 @@ M5 is **COMPLETE FOR SPRINT PROGRESSION**. M5A/M5B are
 **COMPLETE / STAGING PASS / FORMALLY CLOSED**. M5C is
 **ACCEPTED / NARRATOR FOLLOW-UP DEFERRED**. The [M5 closeout](sprint-8.8-m5-closeout.md)
 records completed validation, immutable evidence, and the non-blocking follow-up
-backlog. M6 is **PLANNING COMPLETE / IMPLEMENTATION NOT STARTED**.
+backlog. M6 is **IN PROGRESS**.
 Build/deployment, domain/routing, LeadHub ingestion, and legacy runtime cutover remain
 later milestones. Administrative `approved` does not mean published, live, deployed,
 domain-active, or production-ready. The contract is
