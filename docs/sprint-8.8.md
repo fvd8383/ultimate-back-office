@@ -202,8 +202,11 @@ Website Manager is not a drag-and-drop builder. The authoritative architecture i
 The initial website migration is `023_website_platform_foundation.sql`, applied
 exactly once during M1 and staging validated. Migration 024 was subsequently applied
 exactly once during M3. M4A/M4B/M4C required no new migration; 023/024 remain unchanged
-and no migration was added by M4. M6B now adds migration 025 locally/in its PR;
-it has not been applied to staging or production.
+and no migration was added by M4. M6B adds migration 025 in PR #126. Its isolated
+real-MySQL validation passed at `bef67310adafa041a45ee204ed0fc99ca13b754f`,
+including 025 in both fresh and upgrade disposable databases on the staging host;
+see the [native validation record](sprint-8.8-m6b-native-validation.md).
+Migration 025 has not been applied to the working staging or production databases.
 Migration 023 is deliberately the **dependency-safe M1 core**, not every operational
 table for the whole sprint.
 
@@ -214,12 +217,18 @@ generation briefs, legacy mappings/import state, and generic site audit events. 
 is the coherent aggregate required for M1 backfill and M2/M3 services.
 
 Durable build/deployment structures are defined in additive M6B migration 025.
-Its real-MySQL validation remains NOT EXECUTED; deployment behavior is deferred.
+The isolated real-MySQL gate passed; deployment and migration of the working staging
+and production databases have not been performed. Later deployment behavior remains
+deferred to the remaining M6 milestones. This is not all 77 planned acceptance cases
+or formal M6B closure.
 Domain/routing/conversion structures that cannot safely reuse or extend current domain
 tables should arrive in a later additive M7 migration. Use the next available numbers
 in actual implementation order; do not reserve or create empty files now. Historical
-migrations are immutable, and each migration must be independently reviewable,
-forward-repairable, and staging reconciled.
+migration sources retain only the already-reviewed exact 017/019 DNS bootstrap-source
+exception recorded in the [native validation record](sprint-8.8-m6b-native-validation.md#tested-code-and-migration-provenance);
+all other historical sources remain immutable. Applied migration history is not
+rewritten or reapplied. Each new migration must be independently reviewable,
+forward-repairable, and reconciled on working staging before deployment.
 
 ## Cross-Sprint Rules
 
