@@ -819,7 +819,8 @@ final class SiteRevisionManager
             $connection, $site, $revision, SiteCompositionValidator::MODE_RENDER_READ
         );
         return ['site' => $site, 'revision' => $revision, 'composition' => $composition,
-            'business_id' => $businessId, 'association_id' => (int) $associations[0]['id'], 'approvals' => $approvals];
+            'business_id' => $businessId, 'association_id' => (int) $associations[0]['id'], 'approvals' => $approvals,
+            'asset_metadata' => $assetRows]; // Private M6C byte resolution; never a public DTO.
     }
 
     private static function validatedSnapshotInput(array $input): array

@@ -1,21 +1,20 @@
 # First Customer Checklist
 
 Current M6: **IN PROGRESS**. **M6A — ARCHITECTURE REVIEWED / MERGED** (PR #125).
-Proposed **M6B — COMPLETE / STAGING PASS / CLOSEOUT REVIEW PENDING**. **M6C — NEXT / NOT STARTED**;
+**M6B — COMPLETE / STAGING PASS / FORMALLY CLOSED**. **M6C — IMPLEMENTED LOCALLY / REVIEW REQUIRED**;
 **M6D–M6G — NOT STARTED**. **PR #126 — MERGED** at
 `f466fc1cdbfb53325a1db11445736bdc5ea7c6f4`, the operator-reported deployed baseline.
 **Migration 025 — APPLIED TO WORKING STAGING**, once on October 17, 2026.
 The [M6B closeout](sprint-8.8-m6b-closeout.md) separates the earlier native PASS,
 operator-executed deployment/migration, retrieved evidence, and completed authenticated
-smoke. Formal closeout acceptance remains pending; unavailable raw operational reports
+smoke. [PR #127 acceptance](https://github.com/fvd8383/ultimate-back-office/pull/127#issuecomment-6241852763) establishes formal M6B closure; unavailable raw operational reports
 are disclosed as a review limitation. The
 [native evidence record](sprint-8.8-m6b-native-validation.md) preserves its dated
 pre-deployment provenance: 1824 native assertions, 53/53 executions, all twelve
 replay conditions and cleanup/publication PASS; no native rerun in this task.
 **Production — UNAUTHORIZED / NOT DEPLOYED**; production migration unperformed.
 M5 remains **COMPLETE FOR SPRINT PROGRESSION**; M5C remains
-**ACCEPTED / NARRATOR FOLLOW-UP DEFERRED**. Subsequent implementation and runtime
-operations require a separate task; this closeout does not authorize them.
+**ACCEPTED / NARRATOR FOLLOW-UP DEFERRED**. The [M6C local implementation](sprint-8.8-m6c-local-implementation.md) records the completed artifact slice, local checks and remaining native gate. Runtime operations remain separately gated.
 
 ## Purpose
 
@@ -204,7 +203,7 @@ New module development is paused until 247SP is launch-ready. EMD, SSP, TUHWD, a
 
 The current Website Platform milestone is **M6 IN PROGRESS**: M6A reviewed/merged,
 M6B implemented and deployed with 025 applied to working staging, limited authenticated smoke PASS
-and formal closeout review pending, M6C next/not started, and M6D–M6G not started; build/deployment/restore is
+and formal closeout accepted in PR #127, M6C implemented locally / review required, and M6D–M6G not started; build/deployment/restore is
 followed by the M7/M8 scope in [Sprint 8.8](sprint-8.8.md). M5 progression does not
 complete the launch requirements below.
 

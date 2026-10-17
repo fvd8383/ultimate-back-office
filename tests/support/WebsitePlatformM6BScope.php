@@ -1,6 +1,7 @@
 <?php
 
 declare(strict_types=1);
+require_once __DIR__ . '/WebsitePlatformM6CScope.php';
 
 /** Exact later-M6B allowances; historical suite baselines are deliberately unchanged. */
 function m6bApplicationPaths(): array
@@ -18,7 +19,7 @@ function m6bApplicationPaths(): array
 function m6bScopeExclusions(): string
 {
     if (!m6bCanonicalMigrationsValid(dirname(__DIR__, 2))) throw new RuntimeException('Canonical migration integrity failed.');
-    $paths = array_merge(m6bApplicationPaths(), array_keys(m6bApprovedDnsMigrationBlobs()));
+    $paths = array_merge(m6bApplicationPaths(), m6cApplicationPaths(), array_keys(m6bApprovedDnsMigrationBlobs()));
     return ' ' . implode(' ', array_map(static fn ($path): string => escapeshellarg(':(exclude)' . $path), $paths));
 }
 /** Only the reviewed DNS bootstrap correction; a filename alone never authorizes new content. */

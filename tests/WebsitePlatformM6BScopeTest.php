@@ -7,9 +7,9 @@ function m6scope(bool $ok,string $why):void{global $assertions;$assertions++;if(
 $changes=[];exec('git -C '.escapeshellarg($root).' diff --name-only '.$baseline.' -- . ":(exclude)docs" ":(exclude)tests"',$changes,$status);
 $untracked=[];exec('git -C '.escapeshellarg($root).' ls-files --others --exclude-standard',$untracked,$untrackedStatus);
 $untracked=array_values(array_filter($untracked,static fn($p)=>!str_starts_with($p,'docs/')&&!str_starts_with($p,'tests/')));
-m6scope($status===0&&$untrackedStatus===0&&array_diff(array_merge($changes,$untracked),array_merge(m6bApplicationPaths(),array_keys(m6bApprovedDnsMigrationBlobs())))===[],'Exact application boundary plus two pinned DNS migration corrections');
+m6scope($status===0&&$untrackedStatus===0&&array_diff(array_merge($changes,$untracked),array_merge(m6bApplicationPaths(),m6cApplicationPaths(),array_keys(m6bApprovedDnsMigrationBlobs())))===[],'Exact M6B/M6C application boundaries plus two pinned DNS migration corrections');
 foreach(['public','infrastructure','scripts','shared','apps','private/config']as$path){
-    exec('git -C '.escapeshellarg($root).' diff --quiet '.$baseline.' -- '.escapeshellarg($path),$unused,$status);
+    exec('git -C '.escapeshellarg($root).' diff --quiet '.$baseline.' -- '.escapeshellarg($path).m6cScopeExclusions(),$unused,$status);
     m6scope($status===0,'No web routes/UI/publisher/provider/wrapper/configuration changes '.$path);
 }
 foreach(['private/classes/SiteRevisionManager.php'=>'lockBuildEligibility','private/classes/SiteApprovalManager.php'=>'lockedBuildApprovals']as$path=>$method){
@@ -30,6 +30,6 @@ m6scope(m6bCanonicalMigrationsValid($root),'Exact migration inventory, including
 $service=file_get_contents($root.'/private/classes/SiteBuildService.php');
 m6scope(!preg_match('/INSERT INTO site_approvals|UPDATE sites|UPDATE site_revisions|UPDATE site_deployments|UPDATE site_deployment_targets|INSERT INTO site_deployments/i',$service),'No publication/deployment/approval SQL in build owner');
 m6scope(!preg_match('/curl_|file_put_contents|mkdir\s*\(|rename\s*\(|copy\s*\(|exec\s*\(|shell_exec\s*\(/i',$service),'No rendering/storage/provider/publisher implementation');
-m6scope(str_contains($service,'private static ?SiteBuildDependencies $dependencies = null;')&&!preg_match('/public static function (?:set|configure|wire)/',$service),'Runtime remains unwired with no public bypass setter');
+m6scope(str_contains($service,'private static ?SiteBuildDependencies $dependencies = null;')&&!preg_match('/public static function (?:set|configure|wire)/',$service),'Runtime has no public bypass setter; only private M6C factory');
 foreach(['SiteDeploymentService.php','SitePublisher.php','ApacheDigitalOceanSitePublisher.php']as$file)m6scope(!file_exists($root.'/private/classes/'.$file),'Later orchestrator absent '.$file);
 echo "Website platform M6B scope: $assertions assertions passed.\n";

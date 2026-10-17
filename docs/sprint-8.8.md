@@ -1,21 +1,20 @@
 # Sprint 8.8 — Website Platform And Component CMS
 
 Current M6: **IN PROGRESS**. **M6A — ARCHITECTURE REVIEWED / MERGED** (PR #125).
-Proposed **M6B — COMPLETE / STAGING PASS / CLOSEOUT REVIEW PENDING**. **M6C — NEXT / NOT STARTED**;
+**M6B — COMPLETE / STAGING PASS / FORMALLY CLOSED**. **M6C — IMPLEMENTED LOCALLY / REVIEW REQUIRED**;
 **M6D–M6G — NOT STARTED**. **PR #126 — MERGED** at
 `f466fc1cdbfb53325a1db11445736bdc5ea7c6f4`, the operator-reported deployed baseline.
 **Migration 025 — APPLIED TO WORKING STAGING**, once on October 17, 2026.
 The [M6B closeout](sprint-8.8-m6b-closeout.md) separates the earlier native PASS,
 operator-executed deployment/migration, retrieved evidence, and completed authenticated
-smoke. Formal closeout acceptance remains pending; unavailable raw operational reports
+smoke. [PR #127 acceptance](https://github.com/fvd8383/ultimate-back-office/pull/127#issuecomment-6241852763) establishes formal M6B closure; unavailable raw operational reports
 are disclosed as a review limitation. The
 [native evidence record](sprint-8.8-m6b-native-validation.md) preserves its dated
 pre-deployment provenance: 1824 native assertions, 53/53 executions, all twelve
 replay conditions and cleanup/publication PASS; no native rerun in this task.
 **Production — UNAUTHORIZED / NOT DEPLOYED**; production migration unperformed.
 M5 remains **COMPLETE FOR SPRINT PROGRESSION**; M5C remains
-**ACCEPTED / NARRATOR FOLLOW-UP DEFERRED**. Subsequent implementation and runtime
-operations require a separate task; this closeout does not authorize them.
+**ACCEPTED / NARRATOR FOLLOW-UP DEFERRED**. The [M6C local implementation](sprint-8.8-m6c-local-implementation.md) records the completed artifact slice, local checks and remaining native gate. Runtime operations remain separately gated.
 
 ## Current M5 closeout — 2026-09-17
 
@@ -29,8 +28,8 @@ operations require a separate task; this closeout does not authorize them.
 | M5C | ACCEPTED / NARRATOR FOLLOW-UP DEFERRED |
 | M5 | COMPLETE FOR SPRINT PROGRESSION |
 | M6A | ARCHITECTURE REVIEWED / MERGED |
-| M6B | COMPLETE / STAGING PASS / CLOSEOUT REVIEW PENDING |
-| M6C | NEXT / NOT STARTED |
+| M6B | COMPLETE / STAGING PASS / FORMALLY CLOSED |
+| M6C | IMPLEMENTED LOCALLY / REVIEW REQUIRED |
 | M6D–M6G | NOT STARTED |
 | M6 | IN PROGRESS |
 | Production | UNAUTHORIZED / NOT DEPLOYED |
@@ -185,9 +184,9 @@ milestones, M1–M8. M1–M4 are complete and formally closed; M5 is complete fo
 sprint progression, and M6–M8 remain required before Sprint 8.8 closes.
 The completed M4 exit gate covers the internal administrative
 workflow, and M5B completed the customer review, feedback, and approval UI. Outstanding
-work begins with formal M6B closeout review after native PASS, operator-executed
-working-staging deployment/migration and limited authenticated smoke PASS,
-then separately authorized M6C–M6G implementation and later public generic sites,
+work begins with M6C review and separately authorized isolated native validation.
+M6B is formally closed; M6C is implemented locally. M6D–M6G implementation remains,
+followed by later public generic sites,
 domain/routing, LeadHub ingestion, legacy runtime cutover, and production authorization
 in later milestones. Historical migrations remain immutable, and the customer
 Website Manager is not a drag-and-drop builder. The authoritative architecture is
@@ -228,9 +227,9 @@ is the coherent aggregate required for M1 backfill and M2/M3 services.
 Durable build/deployment structures are defined in additive M6B migration 025.
 The isolated real-MySQL gate passed; M6B code deployment and migration 025 application
 to working staging were operator-executed successfully. Limited authenticated smoke
-passed; formal closeout review remains pending. Production is unauthorized and not deployed. Later
-site publishing/restore behavior remains deferred to M6C–M6G; this is not all 77
-planned acceptance cases or formal M6B acceptance.
+passed; formal closeout was accepted in PR #127. Production is unauthorized and not deployed. Later
+site publishing/restore behavior remains deferred to M6D–M6G; this is not all 77
+planned acceptance cases. M6B formal acceptance is recorded in PR #127.
 Domain/routing/conversion structures that cannot safely reuse or extend current domain
 tables should arrive in a later additive M7 migration. Use the next available numbers
 in actual implementation order; do not reserve or create empty files now. Historical
@@ -708,12 +707,12 @@ business/site or cause publication.
 ## M6 — Build / Deployment / Restore
 
 Status: **IN PROGRESS**. M6A is **ARCHITECTURE REVIEWED / MERGED**; M6B is
-**COMPLETE / STAGING PASS / CLOSEOUT REVIEW PENDING**. M6C is **NEXT / NOT STARTED**;
+**COMPLETE / STAGING PASS / FORMALLY CLOSED**. M6C is **IMPLEMENTED LOCALLY / REVIEW REQUIRED**;
 M6D–M6G are **NOT STARTED**. The [M6 plan](sprint-8.8-m6-implementation-plan.md)
 remains the reviewed contract. The [M6B closeout](sprint-8.8-m6b-closeout.md) records
 merged PR #126, earlier native persistence PASS, operator-executed staging deployment
 and migration 025, and completed authenticated smoke with explicit evidence limits. Formal
-closeout acceptance is pending. Production migration remains unperformed; later M6
+closeout was accepted in PR #127. Production migration remains unperformed; later M6
 implementation and runtime actions need separate authorization. M5 is complete for
 sprint progression; Narrator remains deferred.
 

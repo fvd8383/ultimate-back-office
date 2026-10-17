@@ -8,8 +8,8 @@ require_once __DIR__ . '/SiteBuildStore.php';
 
 /**
  * M6B database owner. No routes, rendering, filesystem, deployment or scheduling.
- * Private dependency slot intentionally has no runtime adapter or public setter.
- * Worker arrays cannot authenticate: only future trusted internal wiring can.
+ * Private dependency slot has no public setter. Only protected CLI wiring can
+ * authenticate a worker; request arrays never create authority.
  */
 final class SiteBuildService
 {
@@ -346,16 +346,48 @@ final class SiteBuildService
         return self::complete($lease, SiteBuildContract::hint(['receipt_key' => $result['receipt_key']]), $result['disposition'], null);
     }
 
-    /** Runtime artifact execution and reconciliation remain absent in M6B. */
-    public static function executeBuild(array $lease): never
+    /** Recheck the owning execution, then construct entirely outside lifecycle locks. */
+    public static function executeBuild(array $lease): array
     {
-        self::leaseInput($lease, 'execution');
-        throw new SiteServiceException('future_gate_required', 'Artifact construction requires M6C.');
+        $lease = self::leaseInput($lease, 'execution');
+        $worker = self::worker('execution');
+        $builder = self::external(static fn (): array => self::dependencies()->builderIdentity());
+        $identity = self::jobIdentity($lease['job_id']);
+        [$job,$attempt,$source] = SiteBuildStore::transaction(static function (object $db) use ($identity,$lease,$worker,$builder): array {
+            [$job,$attempt,$source,$actors,$error] = self::lockedContext($db,$identity,true,[]);
+            self::confirmWorker($worker,'execution');
+            if ($attempt === null) throw new SiteServiceException('conflict','An execution owner is required.');
+            self::assertLease($job,$attempt,$lease,$worker,SiteBuildStore::now($db));
+            if (!self::requesterAllowed($job,$actors)) throw new SiteServiceException('unauthorized','Current requester authority is required.');
+            if ($error !== null) throw $error;
+            self::assertInput($job,$source,$builder);
+            return [$job,$attempt,$source];
+        });
+        $last = 0;
+        $pulse = static function (bool $force = false) use ($lease,&$last): void {
+            $now = hrtime(true);
+            if ($force || $now - $last >= 25000000000) { self::renewBuildLease($lease); $last = $now; }
+        };
+        return self::external(static fn (): array => self::dependencies()->execute($job,$attempt,$source,$pulse));
     }
-    public static function reconcileBuild(array $lease): never
+    public static function reconcileBuild(array $lease): array
     {
-        self::leaseInput($lease, 'recovery');
-        throw new SiteServiceException('future_gate_required', 'Artifact reconciliation requires M6C.');
+        $lease = self::leaseInput($lease,'recovery');
+        $worker = self::worker('recovery');
+        $identity = self::jobIdentity($lease['job_id']);
+        [$job,$producer] = SiteBuildStore::transaction(static function (object $db) use ($identity,$lease,$worker): array {
+            SiteManager::lockSite($db,(int)$identity['site_id']);
+            $job = self::lockJob($db,$identity);
+            $attempt = self::attempt($db,$job,$lease['attempt_id']);
+            self::confirmWorker($worker,'recovery');
+            self::assertLease($job,$attempt,$lease,$worker,SiteBuildStore::now($db));
+            return [$job,self::producer($db,$job,$attempt)];
+        });
+        $hint = ['receipt_key'=>$job['release_key']];
+        $evidence = self::external(static fn (): array => SiteBuildContract::evidence(self::dependencies()->verifyOutcome($job,$producer,$hint),$job,$producer));
+        return ['disposition'=>match($evidence['disposition']) {
+            'sealed'=>'adopted', 'safe_absence','quarantined'=>'safely_failed', default=>'blocked',
+        }] + $hint;
     }
 
     public static function buildJobForActor(int $actingUserId, int $jobId): array
@@ -680,25 +712,27 @@ final class SiteBuildService
     private static function dependencies(): SiteBuildDependencies
     {
         if (self::$dependencies === null) {
-            throw new SiteServiceException('future_gate_required', 'Trusted build infrastructure requires M6C wiring.');
+            require_once __DIR__ . '/SiteBuildRuntime.php';
+            self::$dependencies = SiteBuildRuntime::fromTrustedCli();
         }
         return self::$dependencies;
     }
     private static function external(callable $call): mixed
     {
-        return SiteServiceSupport::read(static function (object $db) use ($call): mixed {
-            if ($db->inTransaction()) throw new SiteServiceException('conflict', 'External verification cannot run in a transaction.');
-            try { return $call(); }
-            catch (SiteServiceException $e) { throw $e; }
-            catch (Throwable $e) {
-                error_log('Website build dependency failed: ' . get_class($e));
-                throw new SiteServiceException('conflict', 'Build verification is unavailable.');
-            }
-        });
+        $db = SiteServiceSupport::read(static fn (object $db): object => $db);
+        if ($db->inTransaction()) throw new SiteServiceException('conflict', 'External verification cannot run in a transaction.');
+        try { return $call(); }
+        catch (SiteServiceException | SiteArtifactException $e) { throw $e; }
+        catch (Throwable $e) {
+            error_log('Website build dependency failed: ' . get_class($e));
+            throw new SiteServiceException('conflict', 'Build verification is unavailable.');
+        }
     }
     private static function worker(string $capability): array
     {
-        $worker = self::external(static fn (): array => self::dependencies()->workerIdentity($capability));
+        // Authenticate the invocation before even opening the configured database.
+        $dependencies = self::dependencies();
+        $worker = self::external(static fn (): array => $dependencies->workerIdentity($capability));
         SiteBuildContract::keys($worker, ['worker_id','environment'], ['worker_id','environment']);
         SiteBuildContract::key($worker['worker_id']);
         if (!in_array($worker['environment'], ['local','staging','production'], true)) {

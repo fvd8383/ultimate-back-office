@@ -3,9 +3,9 @@
 declare(strict_types=1);
 
 /**
- * Internal M6C boundary, deliberately UNWIRED in normal runtime.
+ * Internal M6C boundary. Only the protected, explicitly invoked CLI is wired.
  * Implementations are trusted application wiring, never request data. There is
- * no public setter, environment bypass, artifact implementation or worker here.
+ * no public setter or environment bypass.
  * Tests inject a deterministic implementation into SiteBuildService's private
  * slot using Reflection, in their isolated process only.
  */
@@ -27,6 +27,9 @@ interface SiteBuildDependencies
      * Return only public_composition, public_facts and ordered_asset_digests.
      * Locator handles, if needed by M6C, must be resolved privately from exact input. */
     public function prepareInput(array $lockedSource): array;
+
+    /** Construct with service-owned rows and a lease heartbeat, outside SQL. */
+    public function execute(array $job, array $producerAttempt, array $lockedSource, callable $pulse): array;
 
     /**
      * Outside SQL: verify exact producer output or safe absence/quarantine.
