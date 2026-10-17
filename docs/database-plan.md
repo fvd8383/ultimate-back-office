@@ -1,10 +1,21 @@
 # Ultimate Back Office Database Plan
 
-Current M6 planning: **PLANNING COMPLETE / IMPLEMENTATION NOT STARTED**. See the
-[M6 implementation plan](sprint-8.8-m6-implementation-plan.md) for the repository audit,
-proposed migration 025, service/artifact/publisher contracts and validation gates.
-Migration 025 remains absent. M5 acceptance and historical evidence are unchanged;
-earlier M6 NEXT/NOT STARTED references record the M5 handoff. No deployment is authorized.
+Current M6: **IN PROGRESS**. **M6A — ARCHITECTURE REVIEWED / MERGED** (PR #125).
+Proposed **M6B — COMPLETE / STAGING PASS / CLOSEOUT REVIEW PENDING**. **M6C — NEXT / NOT STARTED**;
+**M6D–M6G — NOT STARTED**. **PR #126 — MERGED** at
+`f466fc1cdbfb53325a1db11445736bdc5ea7c6f4`, the operator-reported deployed baseline.
+**Migration 025 — APPLIED TO WORKING STAGING**, once on October 17, 2026.
+The [M6B closeout](sprint-8.8-m6b-closeout.md) separates the earlier native PASS,
+operator-executed deployment/migration, retrieved evidence, and completed authenticated
+smoke. Formal closeout acceptance remains pending; unavailable raw operational reports
+are disclosed as a review limitation. The
+[native evidence record](sprint-8.8-m6b-native-validation.md) preserves its dated
+pre-deployment provenance: 1824 native assertions, 53/53 executions, all twelve
+replay conditions and cleanup/publication PASS; no native rerun in this task.
+**Production — UNAUTHORIZED / NOT DEPLOYED**; production migration unperformed.
+M5 remains **COMPLETE FOR SPRINT PROGRESSION**; M5C remains
+**ACCEPTED / NARRATOR FOLLOW-UP DEFERRED**. Subsequent implementation and runtime
+operations require a separate task; this closeout does not authorize them.
 
 ## Purpose
 
@@ -777,7 +788,8 @@ and `stripe_webhook_events`. Migration 022 is applied and validated on staging.
 Migration 023 was absent at pricing closeout and reserved for Sprint 8.8. It was
 subsequently applied exactly once on staging during M1, passed staging validation,
 and M1 was formally closed. Migration 024 was applied exactly once during M3.
-M4A/M4B/M4C required no new migration; migration 025+ remains absent.
+M4A/M4B/M4C required no new migration. M6B subsequently added 025, applied once to
+working staging on October 17, 2026; production migration remains unperformed.
 Applied MySQL behavior for migration 022 and Stripe TEST behavior
 passed the dedicated pricing staging gate. Historical pricing
 migrations remain unchanged. See
@@ -2111,7 +2123,8 @@ The shared component composition and internal 247SP/EMD site lifecycle workflow
 through M4 are **COMPLETE / STAGING PASS / FORMALLY CLOSED**, on final M4 deployed/validated SHA
 `d33589da5eebbf8e2ae0dc203837d6667abd1f71`. Sprint 8.8 remains **IN PROGRESS**.
 M5 is **COMPLETE FOR SPRINT PROGRESSION**; M5C is
-**ACCEPTED / NARRATOR FOLLOW-UP DEFERRED**. M6 is **PLANNING COMPLETE / IMPLEMENTATION NOT STARTED**.
+**ACCEPTED / NARRATOR FOLLOW-UP DEFERRED**. M6 is **IN PROGRESS**; M6B staging deployment/025 application are operator-complete,
+with limited authenticated smoke PASS and formal closeout review pending. M6C is **NEXT / NOT STARTED**.
 Public build/deploy/restore and later runtime work remain outstanding; production
 is **UNAUTHORIZED / NOT DEPLOYED**. See [M5 closeout](sprint-8.8-m5-closeout.md). See `docs/sprint-8.8-m4-closeout.md`.
 Sprint 8.7 Milestone 6 completed the implementation-ready schema design in
@@ -2132,7 +2145,9 @@ compatibility, transition consumers in stages, then retire legacy writes only af
 validation. Milestone 7 locked `023_website_platform_foundation.sql` as the planned
 dependency-safe Sprint 8.8 M1 core because migration 022 implements Pricing P1.
 Build/deployment and domain/routing/conversion structures may use later focused
-additive migrations in implementation order. Historical migrations are never edited.
+additive migrations in implementation order. The exact reviewed 017/019 bootstrap-source
+exception is preserved in the [M6B closeout](sprint-8.8-m6b-closeout.md); neither was
+replayed on working staging. Applied history is never rewritten.
 
 Sprint 8.8 M1 implemented and staging validated that dependency-safe core. Migration
 023 adds generic sites, optional business associations, stable logical pages,
@@ -2144,7 +2159,10 @@ published/active state, and leaves all existing website readers unchanged. Migra
 023 was applied exactly once during M1; staging validation and reconciliation passed,
 and M1 is **COMPLETE / STAGING PASS / FORMALLY CLOSED**. Migration 024 subsequently
 added versioned component registry identity and was applied exactly once during M3.
-M4A/M4B/M4C required no new migration; 023/024 remain unchanged and 025+ remains absent.
+M4A/M4B/M4C required no new migration; 023/024 remain unchanged. M6B migration 025
+adds nine build/release/deployment tables and two ownership indexes, and was applied
+once to working staging on October 17. The [M6B closeout](sprint-8.8-m6b-closeout.md)
+records canonical verification and its evidence provenance; production is unmigrated.
 
 Component implementation remains repository-owned; database records never contain
 executable PHP or JavaScript. 247SP and EMD share the public ingestion contract, while

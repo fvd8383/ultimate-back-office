@@ -1,5 +1,9 @@
 # M6B isolated native validation evidence
 
+For current deployment, migration and closeout status, see the
+[October 17 M6B closeout](sprint-8.8-m6b-closeout.md). The dated pre-deployment
+record below remains historical evidence and has not been rewritten.
+
 Recorded **2026-10-08 UTC** after read-only retrieval of the operator's completed run.
 **M6B — IMPLEMENTED / ISOLATED REAL-MYSQL GATE PASS**.
 **PR #126 — EVIDENCE RECORDED / MERGE REVIEW PENDING**.

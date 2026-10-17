@@ -1,23 +1,26 @@
 # M6B isolated Linux MySQL validation
 
-**M6B — IMPLEMENTED / ISOLATED REAL-MYSQL GATE PASS**.
-**PR #126 — EVIDENCE RECORDED / MERGE REVIEW PENDING**; M6B is not formally closed.
-The [native evidence record](sprint-8.8-m6b-native-validation.md) independently verifies
-the saved operator run at `bef67310adafa041a45ee204ed0fc99ca13b754f`: **1824 native
-assertions**, **53/53 migrations**, all 12 replay conditions and later harness cases
-completed. One full launcher invocation exited 0; cleanup/publication/manifests PASS.
-**Working staging deployment/migration — NOT PERFORMED**; 025 ran only in disposable
-databases. M6 **IN PROGRESS**; M6C–M6G **NOT STARTED**;
-Production **UNAUTHORIZED / NOT DEPLOYED**. The 77-case acceptance mapping remains
-in the [implementation record](sprint-8.8-m6b-local-implementation.md).
+Current M6: **IN PROGRESS**. **M6A — ARCHITECTURE REVIEWED / MERGED** (PR #125).
+Proposed **M6B — COMPLETE / STAGING PASS / CLOSEOUT REVIEW PENDING**. **M6C — NEXT / NOT STARTED**;
+**M6D–M6G — NOT STARTED**. **PR #126 — MERGED** at
+`f466fc1cdbfb53325a1db11445736bdc5ea7c6f4`, the operator-reported deployed baseline.
+**Migration 025 — APPLIED TO WORKING STAGING**, once on October 17, 2026.
+The [M6B closeout](sprint-8.8-m6b-closeout.md) separates the earlier native PASS,
+operator-executed deployment/migration, retrieved evidence, and completed authenticated
+smoke. Formal closeout acceptance remains pending; unavailable raw operational reports
+are disclosed as a review limitation. The
+[native evidence record](sprint-8.8-m6b-native-validation.md) preserves its dated
+pre-deployment provenance: 1824 native assertions, 53/53 executions, all twelve
+replay conditions and cleanup/publication PASS; no native rerun in this task.
+**Production — UNAUTHORIZED / NOT DEPLOYED**; production migration unperformed.
+M5 remains **COMPLETE FOR SPRINT PROGRESSION**; M5C remains
+**ACCEPTED / NARRATOR FOLLOW-UP DEFERRED**. Subsequent implementation and runtime
+operations require a separate task; this closeout does not authorize them.
 
-Work remains in [PR #126](https://github.com/fvd8383/ultimate-back-office/pull/126).
-The guide retains dedicated and explicitly selected guarded shared-staging operation.
-Its operational instructions are not authorization for a new run in this documentation
-task. The [clean review of the tested SHA](https://github.com/fvd8383/ultimate-back-office/pull/126#issuecomment-6049440679)
-and individual review dispositions are recorded in the native evidence record.
-Earlier failed/blocked/incomplete reports retain their hashes and verdicts; the later
-PASS supersedes their blocking effect without changing what they observed.
+The operational guide below preserves earlier correction/setup snapshots and
+commands for separately authorized runs; it is not permission to repeat the completed
+native gate. Earlier FAILED/BLOCKED/INCOMPLETE reports retain their hashes and verdicts.
+The [native record](sprint-8.8-m6b-native-validation.md) records their later resolution.
 
 ## Historical replay assertion correction and next validation gate
 
@@ -698,10 +701,11 @@ independently unconfirmed. The completed operator inspection at 2026-09-20T21:23
 supersedes that old capacity/runtime description with operator-supplied measurements.
 It does not establish this desktop task's host access, kernel isolation or MySQL PASS.
 
-This evidence/documentation task used read-only SSH identity checks and retrieval of
+The October 8 evidence/documentation task used read-only SSH identity checks and retrieval of
 existing evidence only. No server checkout/Git metadata, host setup, resize, installation,
 image download, container/database/SQL/migration/service operation, deployment,
 production access, M6C or Narrator action occurred. The completed isolated real-MySQL
-gate is PASS at the exact tested SHA; working-staging deployment/migration remains
-unperformed and requires separate authorization. PR #126 awaits evidence/merge review;
-M6B is not formally closed.
+gate is PASS at the exact tested SHA. That pre-deployment snapshot is historical:
+PR #126 subsequently merged and the operator deployed its baseline and applied 025
+once to working staging on October 17. Current smoke/evidence and formal closeout
+status are in the [M6B closeout](sprint-8.8-m6b-closeout.md). No rerun is authorized.
