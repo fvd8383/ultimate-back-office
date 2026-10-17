@@ -13,6 +13,11 @@ Branch: `codex/sprint-8.8-m6c-artifact-builder`. The operator-reported deployed 
 remains `f466fc1cdbfb53325a1db11445736bdc5ea7c6f4`. Earlier M6B native results are
 not attributed to these changed executable inputs. Original dated evidence is retained.
 
+PR #128 correction work follows the completed review of original head
+`d06f9e5ffbd24b8488e61c9ffb307aa9b0125984`. See the
+[review corrections](#pr-128-review-corrections) for current behavior and fresh validation.
+The original local PASS and reviewer observations below remain separate evidence.
+
 ## Implementation and wiring
 
 | File | Responsibility |
@@ -207,7 +212,9 @@ arguments and web SAPI return before runtime bootstrap; `--once` claims at most 
 and `--recover JOB_ID` performs at most one automatic recovery claim. No scheduling,
 service provisioning, operator controls, deployment or publication is implemented.
 
-## Local validation and later native gate
+## Original local validation and later native gate
+
+The local counts in this section describe original head `d06f9e5`, not the corrected head.
 
 M6C suites cover artifacts, security, service integration, bounds, CLI and scope. Real
 file bytes are used with fake lifecycle SQL. Scope guards retain existing negative
@@ -280,7 +287,7 @@ Migration 025 raw-file and canonical SHA-256 remains
 No SSH, live DB, SQL/migration execution, provider call, Spaces upload, host provisioning,
 runtime installation, deployment, publication, merge or auto-merge occurred.
 
-## Exact changed-file inventory
+## Original implementation changed-file inventory
 
 37 files: 19 added and 18 modified. No deletions or renames.
 
@@ -323,3 +330,174 @@ runtime installation, deployment, publication, merge or auto-merge occurred.
 | Modified | `tests/support/WebsitePlatformM6BScope.php` |
 | Added | `tests/support/WebsitePlatformM6CFixture.php` |
 | Added | `tests/support/WebsitePlatformM6CScope.php` |
+
+## PR #128 review corrections
+
+M6C remains **IMPLEMENTED LOCALLY / REVIEW REQUIRED**. Native build-only validation is
+pending. This correction does not reopen M6B or authorize any operational worker run.
+The existing branch and PR remain the only implementation review; no new PR is created.
+
+### Reproductions and corrections
+
+The four review comments at original head `d06f9e5` had no replies when inspected.
+Original reported local PASS (66 standalone suites, 274 M6C assertions) is retained above.
+The completed review is a separate observation, including the bounds failure and unsafe
+Linux CLI behavior. Fresh before/after stdout, stderr, exits, profiles and summary are
+saved outside the repository in the correction evidence directory.
+
+| Finding | Before observation | Correction |
+| --- | --- | --- |
+| [4304835568](https://github.com/fvd8383/ultimate-back-office/pull/128#discussion_r4304835568) producer evidence | Reproduced on Windows PHP 8.4.24 with fake SQL/real private files: remove or change asset bytes after request/claim; execution throws `artifact_invalid`, verifier returns `unknown`, completion becomes `reconciliation_required`. | Compare cheap stored input/identity first, then create the existing candidate/journal before execution asset-byte validation. Request-time preparation still writes no journal or attempt. |
+| [4304835573](https://github.com/fvd8383/ultimate-back-office/pull/128#discussion_r4304835573) verification heartbeat | Reproduced with a controlled database clock advanced during actual file verification: the final completion rejects an expired lease and inserts no release. No multi-minute sleep or native Linux claim. | Service-owned pulse flows through dependency, real runtime adapter, store, inventory, chunked reads and validator for every active verification path. |
+| [4304835576](https://github.com/fvd8383/ultimate-back-office/pull/128#discussion_r4304835576) bounds alias | Exact original `php -n tests/WebsitePlatformM6CBoundsTest.php` exits 0 with 19 assertions locally, empty stderr; the reviewer failure did not reproduce. A deliberately retained PHP reference deterministically makes the shallow saved copy inherit 2,000 files. | Reconstruct only independent scalar/file counters, restore those fields in `finally`, and retain the original live lock/ownership state. A forced-reference regression proves isolation, restoration, later valid write, duplicate denial and orphan preservation. |
+| [4304835581](https://github.com/fvd8383/ultimate-back-office/pull/128#discussion_r4304835581) CLI safety | Review identified that Linux passes the OS gate and can reach protected configuration or operational work. No real `--once`/`--recover` was run to reproduce this on a host. | Valid arguments run only in isolated child fixtures using actual runtime/entry source with deny-only namespace doubles. Production runtime selection/configuration stays fixed. Missing capability checks now precede configuration access. |
+
+Instrumentation of the original bounds test's unchanged counter sequence under the
+current isolated fixture reports an absent saved candidate reference, restored bytes=0
+and file_count=0, and the original 19 assertions pass. The forced-reference case is
+separate and deterministic; it does not establish a native Linux reproduction.
+
+### Producer evidence and failure settlement
+
+Execution retains current requester/source/lease checks before external writes, compares
+the stored public input and exact asset descriptors, and calls `createCandidate` before
+fallible asset reads. The existing fsynced journal binds job/site/release/input/builder
+and original execution attempt; candidate content follows that evidence. The builder's
+`finally` releases the writer handle on asset, callback, validation and seal failures.
+Successful package/hash definitions and deterministic metadata are unchanged.
+The private journal is written to `.json.pending` and published by same-directory rename
+only after write/flush/fsync/mode checks succeed. Even complete-looking pending JSON is
+unknown evidence; a failed journal write cannot masquerade as verified safe absence.
+This does not add a directory-entry power-loss guarantee.
+
+An intact journal plus an exclusively observed empty/private candidate permits quarantine
+settlement. Missing or corrupt asset bytes remain integrity failures, never automatic
+transient retries. A simulated unreadable source or interrupted copy returns the existing
+storage failure and can retry under unchanged policy with a new authorized attempt,
+same requester/reserved release and incremented execution count. No missing journal is
+interpreted as safe absence. Before-journal interruption, a partial journal-write fault
+and seal-proof-without-final-output remain unknown/reconciliation states. These storage
+faults are explicit local doubles; real disk/fsync/permission failures remain native gates.
+Repeated failure/recovery completion returns recorded history without extra effects.
+Recovery never regenerates output, removes unknown data or changes execution budgets.
+
+### Active verification leases
+
+`SiteBuildService::leasePulse` shares the existing 25-second monotonic cadence and forced
+checkpoint behavior. It captures only the active execution or recovery lease. The optional
+clock argument is private and used through Reflection only in isolated cadence tests.
+The 120-second lease and persisted 900-second execution / 300-second recovery deadlines
+are unchanged. Renewal is a short existing transaction between external operations.
+
+Ordinary success, failure verification, `reconcileBuild`, and recovery completion's
+independent reinspection all pass that pulse to `verifyOutcome`, then `verifyRelease`.
+Inventory checkpoints occur for directories/entries; reads check progress around each
+at-most-1-MiB chunk; file validation/hashing and pre-render asset verification also pulse.
+The store distinguishes a callback exception from corrupt evidence and propagates it,
+releasing its lock. Final locked requester/source/lease/ownership checks remain in place.
+A single blocking OS read cannot be interrupted by a PHP checkpoint; native filesystem
+latency/crash behavior remains a separate validation requirement.
+
+Controlled-clock tests span 125 seconds for ordinary completion and failure inspection,
+and 125 seconds each for recovery reconciliation and independent adoption within its
+original 300-second deadline. The original producer stays expired and unchanged.
+Natural absolute-deadline exhaustion, mid-verification ownership/lease loss, callback
+exceptions and replacement worker identity stop processing without release/audit success.
+Already committed completion returns before verification and heartbeat writes. Read-only
+manifest/history inspection has no lease allocation or renewal.
+
+### Safe cross-platform CLI tests
+
+Actual entry processes cover help, invalid arguments and available CGI 404 denial only.
+Every valid `--once`/`--recover` test invokes `WebsitePlatformM6CCliChild.php`, never the
+real host worker. The child evaluates copies of the actual entry/runtime source in a
+test namespace; a checked count of bootstrap imports is replaced with sentinels.
+OS/SAPI/POSIX/capability/path/stat/config/process/service doubles fail closed. Filesystem
+configuration reads are synthetic; external Git/process calls are blocked; no DB/queue
+or artifact write is available. A configured-host double is included, so safety never
+depends on absence of `/etc/ubo-site-build-worker.json`. No host file is renamed or hidden.
+
+Assertions check actual child exit/stdout/stderr plus no-bootstrap (help/invalid/web),
+no-host-config, no-DB, no-claim and no-artifact-output traces. Parent-owned temporary
+stdout/stderr captures are distinct from worker output and cleaned exactly. The parent
+enforces ten-second / 64-KiB bounds without blocking on Windows anonymous pipes. A stalled
+child is terminated in a one-second timeout regression. Linux owner/UID/config/capability
+branches are deterministic simulations, not a native Linux startup PASS.
+
+During fixture development, Windows `dirname` semantics caused a simulated Linux path
+walk to stall; only those isolated test processes were stopped. The fixture now models
+POSIX path ancestors explicitly. A simulated `proc_open` signature was corrected to
+retain its by-reference pipes argument. These intermediate fixture failures are retained
+separately from final results, along with corrected DTO/producer assertions in the new
+recovery suite. No operational worker or new environment was used.
+
+### Correction validation and inventory
+
+Fresh full regression: **67 standalone suites, all exit 0; 593 M6C assertions**.
+Every affected suite was first run individually with `php -n tests/<Suite>Test.php`,
+then every available `tests/*Test.php` was run individually with `php -n`, including
+all M2-M6B suites and the new recovery suite. No suite was disabled or skipped.
+
+| M6C suite | Assertions | Exit |
+| --- | ---: | ---: |
+| Artifact/determinism | 45 | 0 |
+| Bounds | 29 | 0 |
+| Safe CLI | 186 | 0 |
+| Integration | 54 | 0 |
+| Recovery/progress | 135 | 0 |
+| Scope | 53 | 0 |
+| Security | 91 | 0 |
+
+The existing M6B launcher test passed 2,131 assertions, 161 isolated Bash scenarios,
+47 mount cases and 27 no-ctype port/type cases per mount form across three PHP profiles.
+Its commands are fake: no native Linux/container/MySQL execution. The migration-runner
+suite passed 848 simulated-lifecycle assertions without a database. Actual Windows
+private-file and child-process tests include one CGI denial and one hardlink case;
+SQL, clocks, disk faults and Linux startup/identity branches use explicit doubles.
+
+`php -n -l` passed for all 238 tracked/new PHP files. Syntax-only checks passed:
+`node --check tests/WebsitePlatformM5CBrowser.cjs`,
+`bash -n tests/RunM6BMySql.sh`, and PowerShell `Parser.ParseFile` for
+`tests/RunM6BMySql.ps1` (zero parser errors). The changed document's local link/anchor,
+fences and milestone-status checks passed. Working and staged `git diff --check`
+passed; the committed check is recorded in the outside-repository final report.
+Actual per-suite exits/stdout/stderr are retained. Expected injected-error diagnostics
+and Git checkout CRLF warnings were not silently relabeled as empty stderr.
+
+Local runtime: PHP 8.4.24 ZTS, Visual C++ 2022 x64; libxml 2.11.9, Windows CLI.
+Both default and `-n` invocations report no loaded php.ini. DOM, image metadata, fsync,
+filter and ctype are available; POSIX and mb_strlen are absent. Additional artifact checks
+use `-n -d disable_functions=ctype_digit,mb_strlen`; no installed PHP configuration is changed.
+Script tools: Node v24.22.0, PowerShell 7.6.5, Git Bash 5.3.15. Initial Bash syntax-only
+startup was blocked by Windows sandbox named-object permissions; the approved normal
+execution context passes the same `bash -n` command. Initial diagnostics remain recorded.
+
+Correction-only inventory relative to `d06f9e5`: 16 files, 14 modified and two added.
+
+| Change | File |
+| --- | --- |
+| Modified | `private/classes/LocalSiteArtifactStore.php` |
+| Modified | `private/classes/SiteArtifactAssetResolver.php` |
+| Modified | `private/classes/SiteArtifactBuilder.php` |
+| Modified | `private/classes/SiteArtifactFiles.php` |
+| Modified | `private/classes/SiteArtifactStore.php` |
+| Modified | `private/classes/SiteArtifactValidator.php` |
+| Modified | `private/classes/SiteBuildDependencies.php` |
+| Modified | `private/classes/SiteBuildRuntime.php` |
+| Modified | `private/classes/SiteBuildService.php` |
+| Modified | `tests/WebsitePlatformM6CBoundsTest.php` |
+| Modified | `tests/WebsitePlatformM6CCliTest.php` |
+| Modified | `tests/support/WebsitePlatformM6BDependencies.php` |
+| Modified | `tests/support/WebsitePlatformM6CFixture.php` |
+| Modified | `docs/sprint-8.8-m6c-local-implementation.md` |
+| Added | `tests/WebsitePlatformM6CRecoveryTest.php` |
+| Added | `tests/support/WebsitePlatformM6CCliChild.php` |
+
+All 25 canonical migrations and reviewed 017/019 pins remain unchanged from baseline;
+025 remains applied to working staging, with the canonical/raw hash recorded above.
+No schema, canonical migration runner, M6B launcher, wrapper, TLS or host-permission
+changes occur. M6B identity, authorization, lock order, result/audit atomicity and budgets
+remain the lifecycle authority. Native Linux startup/permissions, process/crash races,
+power-loss behavior and actual MySQL/filesystem integration remain pending. No server,
+Docker/WSL/package setup, live database, migration, deployment, provider, M6D–M6G or
+Narrator action is part of this correction.

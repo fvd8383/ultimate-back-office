@@ -36,9 +36,11 @@ interface SiteBuildDependencies
      * An opaque receipt lookup hint is NOT proof. This implementation must
      * independently verify storage/journal/bytes and bind evidence to job AND
      * producer attempt, including during recovery. No rendering in this method.
+     * Pulse renews the current active operation, which may differ from the producer.
+     * Call it at bounded progress checkpoints; propagate any callback failure.
      * @return array Verified evidence, validated by SiteBuildContract::evidence.
      */
-    public function verifyOutcome(array $job, array $producerAttempt, array $hint): array;
+    public function verifyOutcome(array $job, array $producerAttempt, array $hint, callable $pulse): array;
 
     /** Reverify a release and return sanitized manifest data, outside SQL. */
     public function inspectManifest(array $release): array;

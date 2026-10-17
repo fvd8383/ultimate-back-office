@@ -15,11 +15,30 @@ try{
     foreach(['public/index.html/x','public/index.html/../x','public/INDEX.html','public/run.cgi','metadata/manifest.json:stream']as$path)m6cDeny(fn()=>$f->store->writeFile($candidate,$path,'x'));
     // Fault doubles drive counters to their edge without writing 100 MiB or 2,000 files.
     $property=new ReflectionProperty(LocalSiteArtifactStore::class,'candidates');$state=$property->getValue($f->store);
-    $full=$state;$full[$candidate]['bytes']=104857600;$property->setValue($f->store,$full);m6cDeny(fn()=>$f->store->writeFile($candidate,'public/index.html','x'));
-    $full=$state;$full[$candidate]['files']=array_fill_keys(range(1,2000),true);$property->setValue($f->store,$full);m6cDeny(fn()=>$f->store->writeFile($candidate,'public/index.html','x'));
-    $property->setValue($f->store,$state);
+    // Deterministically retain a PHP reference, regardless of platform/runtime reference unwrapping.
+    $alias=&$state[$candidate];$property->setValue($f->store,$state);
+    m6c(ReflectionReference::fromArrayElement($state,$candidate)!==null,'Reference-alias case is exercised');
+    $baseline=['bytes'=>(int)$alias['bytes'],'files'=>[]];
+    foreach($alias['files']as$name=>$owned)$baseline['files'][$name]=(bool)$owned;
+    $lock=$alias['lock'];
+    $counters=function(int $bytes,array $files)use($property,$f,$candidate):void{
+        $live=$property->getValue($f->store);$live[$candidate]['bytes']=$bytes;$live[$candidate]['files']=$files;
+        $property->setValue($f->store,$live);
+    };
+    foreach([[104857600,[]],[0,array_fill_keys(range(1,2000),true)]]as[$bytes,$files]){
+        try{
+            $counters($bytes,$files);
+            m6cDeny(fn()=>$f->store->writeFile($candidate,'public/index.html','x'));
+            m6c($baseline===['bytes'=>0,'files'=>[]],'Injected edge cannot mutate independent saved counters');
+            m6c(!file_exists($f->root.'/work/'.$job['job_key'].'/attempt-'.$producer['id'].'/public'),'Each rejected edge writes no public content');
+        }finally{$counters($baseline['bytes'],$baseline['files']);}
+        $restored=$property->getValue($f->store)[$candidate];
+        m6c($restored['bytes']===0&&$restored['files']===[],'Counters restored before next case');
+        m6c($restored['lock']===$lock&&is_resource($lock),'Live lock/ownership state is preserved');
+    }
     m6c(!file_exists($f->root.'/work/'.$job['job_key'].'/attempt-'.$producer['id'].'/public'),'Rejected bounds create no public files');
     $f->store->writeFile($candidate,'public/index.html','owned');
+    m6c(file_get_contents($f->root.'/work/'.$job['job_key'].'/attempt-'.$producer['id'].'/public/index.html')==='owned','Valid write after both rejected edges');
     m6cDeny(fn()=>$f->store->writeFile($candidate,'public/index.html','replacement'));
     $f->store->finish($candidate,true);
     $bad=$source;$bad['composition']['assets']=array_fill(0,2001,$bad['composition']['assets'][0]);m6cDeny(fn()=>$f->assets->descriptors($bad));

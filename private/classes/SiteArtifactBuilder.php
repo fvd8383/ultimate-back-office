@@ -21,12 +21,17 @@ final class SiteArtifactBuilder
     {
         $pulse();
         $input = SiteBuildContract::recordedInput($source,$job);
-        $projection = $this->prepareInput($source);
+        // Compare cheap stored identity before writing; byte reads need a producer journal.
+        $projection = SitePublicRenderContext::project($source)
+            + ['ordered_asset_digests'=>$this->assets->descriptors($source)];
         foreach ($projection as $key=>$value) if (CanonicalJson::hash($input[$key]) !== CanonicalJson::hash($value)) SiteArtifactFiles::fail('input_mismatch');
         $identity = ['site_key'=>SiteBuildContract::uuid($source['site']['site_key']), 'release_key'=>$job['release_key'],
             'revision_number'=>(int)$source['revision']['revision_number']];
         $candidate = $this->store->createCandidate($job,$producer,$identity);
         try {
+            foreach ($projection['ordered_asset_digests'] as $descriptor) {
+                $this->assets->bytes($source,$descriptor,$pulse);
+            }
             $entries = [];
             $write = function (string $path,string $bytes,string $mime) use (&$entries,$candidate,$pulse): void {
                 $pulse();
@@ -43,7 +48,7 @@ final class SiteArtifactBuilder
             foreach ($input['ordered_asset_digests'] as $asset) {
                 $pulse();
                 $write('public/assets/' . $asset['sha256'] . '.' . SiteArtifactValidator::extension($asset['mime_type']),
-                    $this->assets->bytes($source,$asset),$asset['mime_type']);
+                    $this->assets->bytes($source,$asset,$pulse),$asset['mime_type']);
             }
             $context = SitePublicRenderContext::renderer($input);
             foreach ($input['public_composition']['pages'] as $page) {

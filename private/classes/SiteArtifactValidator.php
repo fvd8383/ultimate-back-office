@@ -82,7 +82,7 @@ final class SiteArtifactValidator
             $file = SiteArtifactFiles::contained($directory, $path);
             $stat = SiteArtifactFiles::regular($file);
             if ($total + $stat['size'] > SiteArtifactFiles::MAX_PACKAGE) SiteArtifactFiles::fail();
-            $bytes = SiteArtifactFiles::read($file, $max); $total += strlen($bytes);
+            $bytes = SiteArtifactFiles::read($file, $max, $pulse); $total += strlen($bytes);
             if ($mime === 'text/html') self::html($bytes, $pages[$path], $input, $identity, $expected);
             elseif ($mime === 'text/css') {
                 if ($bytes !== self::css($input['public_composition']['theme'])) SiteArtifactFiles::fail();
@@ -95,6 +95,7 @@ final class SiteArtifactValidator
                 if (!$matched) SiteArtifactFiles::fail();
             }
             $entries[] = ['relative_path'=>$path, 'sha256'=>hash('sha256', $bytes), 'byte_size'=>strlen($bytes), 'mime_type'=>$mime];
+            $pulse();
         }
         return $entries;
     }
@@ -139,15 +140,15 @@ final class SiteArtifactValidator
         $expected = array_merge(array_keys(self::expected($input)), ['metadata/manifest.json','metadata/validation.json']);
         sort($expected, SORT_STRING);
         $pulse();
-        if (SiteArtifactFiles::inventory($directory) !== $expected) SiteArtifactFiles::fail();
+        if (SiteArtifactFiles::inventory($directory,$pulse) !== $expected) SiteArtifactFiles::fail();
         $entries = self::publicEntries($directory, $input, $identity, $pulse);
         $summary = self::summary($entries, count($input['public_composition']['pages']));
         $manifest = self::manifest($job, $identity, $input, $entries, $summary);
         $marker = ['contract_version'=>self::CONTRACT,'site_key'=>$identity['site_key'],'release_key'=>$job['release_key'],
             'public_payload_hash'=>$manifest['public_payload_hash']];
-        if (SiteArtifactFiles::read($directory . '/public/_release.json',1024) !== CanonicalJson::encode($marker)
-            || SiteArtifactFiles::read($directory . '/metadata/validation.json',SiteArtifactFiles::MAX_VALIDATION) !== CanonicalJson::encode($summary)
-            || SiteArtifactFiles::read($directory . '/metadata/manifest.json',SiteArtifactFiles::MAX_MANIFEST) !== SiteBuildContract::json($manifest,SiteArtifactFiles::MAX_MANIFEST)) SiteArtifactFiles::fail();
+        if (SiteArtifactFiles::read($directory . '/public/_release.json',1024,$pulse) !== CanonicalJson::encode($marker)
+            || SiteArtifactFiles::read($directory . '/metadata/validation.json',SiteArtifactFiles::MAX_VALIDATION,$pulse) !== CanonicalJson::encode($summary)
+            || SiteArtifactFiles::read($directory . '/metadata/manifest.json',SiteArtifactFiles::MAX_MANIFEST,$pulse) !== SiteBuildContract::json($manifest,SiteArtifactFiles::MAX_MANIFEST)) SiteArtifactFiles::fail();
         return $manifest;
     }
 

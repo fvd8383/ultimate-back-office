@@ -26,9 +26,10 @@ final class SiteArtifactAssetResolver
         ksort($out,SORT_STRING); return array_values($out);
     }
 
-    public function bytes(array $source, array $descriptor): string
+    public function bytes(array $source, array $descriptor, ?callable $pulse = null): string
     {
         ($this->guard)();
+        if ($pulse !== null) $pulse();
         $matches = array_values(array_filter($source['composition']['assets'],static fn($a)=>$a['usage_key']===$descriptor['usage_key']));
         if (count($matches) !== 1) SiteArtifactFiles::fail();
         $asset = $matches[0];
@@ -47,8 +48,9 @@ final class SiteArtifactAssetResolver
         }
         $relative = substr($row['storage_key'],strlen('/uploads/'));
         $path = SiteArtifactFiles::contained($this->legacyRoot,$relative);
-        $bytes = SiteArtifactFiles::read($path,SiteArtifactFiles::MAX_ASSET);
+        $bytes = SiteArtifactFiles::read($path,SiteArtifactFiles::MAX_ASSET,$pulse);
         SiteArtifactValidator::asset($bytes,$descriptor);
+        if ($pulse !== null) $pulse();
         return $bytes;
     }
 }

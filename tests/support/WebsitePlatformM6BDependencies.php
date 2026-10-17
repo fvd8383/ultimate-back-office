@@ -48,7 +48,7 @@ final class WebsitePlatformM6BDependencies implements SiteBuildDependencies
         return array_replace(['public_facts' => ['name' => 'Synthetic café'], 'public_composition' => ['synthetic' => true],
             'ordered_asset_digests' => $assets], $this->projectionOverrides);
     }
-    public function verifyOutcome(array $job, array $producerAttempt, array $hint): array
+    public function verifyOutcome(array $job, array $producerAttempt, array $hint, callable $pulse): array
     {
         if (Database::connection()->inTransaction()) throw new LogicException('External work inside transaction');
         $this->verified++;

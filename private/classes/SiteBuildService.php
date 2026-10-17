@@ -363,11 +363,7 @@ final class SiteBuildService
             self::assertInput($job,$source,$builder);
             return [$job,$attempt,$source];
         });
-        $last = 0;
-        $pulse = static function (bool $force = false) use ($lease,&$last): void {
-            $now = hrtime(true);
-            if ($force || $now - $last >= 25000000000) { self::renewBuildLease($lease); $last = $now; }
-        };
+        $pulse = self::leasePulse($lease);
         return self::external(static fn (): array => self::dependencies()->execute($job,$attempt,$source,$pulse));
     }
     public static function reconcileBuild(array $lease): array
@@ -384,7 +380,8 @@ final class SiteBuildService
             return [$job,self::producer($db,$job,$attempt)];
         });
         $hint = ['receipt_key'=>$job['release_key']];
-        $evidence = self::external(static fn (): array => SiteBuildContract::evidence(self::dependencies()->verifyOutcome($job,$producer,$hint),$job,$producer));
+        $pulse = self::leasePulse($lease);
+        $evidence = self::external(static fn (): array => SiteBuildContract::evidence(self::dependencies()->verifyOutcome($job,$producer,$hint,$pulse),$job,$producer));
         return ['disposition'=>match($evidence['disposition']) {
             'sealed'=>'adopted', 'safe_absence','quarantined'=>'safely_failed', default=>'blocked',
         }] + $hint;
@@ -576,7 +573,8 @@ final class SiteBuildService
             return ['job' => $job, 'attempt' => $attempt, 'producer' => self::producer($db, $job, $attempt)];
         });
         if (isset($preflight['replay'])) return $preflight['replay'] + ['replayed' => true];
-        $verified = self::external(static fn (): array => self::dependencies()->verifyOutcome($preflight['job'], $preflight['producer'], $hint));
+        $pulse = self::leasePulse($lease);
+        $verified = self::external(static fn (): array => self::dependencies()->verifyOutcome($preflight['job'], $preflight['producer'], $hint, $pulse));
         try { $evidence = SiteBuildContract::evidence($verified, $preflight['job'], $preflight['producer']); }
         catch (SiteServiceException) {
             // Conflicting trusted inspection evidence blocks; never adopt or persist its untrusted payload.
@@ -707,6 +705,20 @@ final class SiteBuildService
     private static function completionDTO(object $db, array $job): array
     {
         return $job['status'] === 'succeeded' ? self::recordedResult($db, $job) : ['job' => self::jobDTO($db, $job)];
+    }
+
+    /** Renew only the active lease, never the producer's expired token.
+     * The private clock argument permits isolated reflection tests of the cadence. */
+    private static function leasePulse(array $lease, ?Closure $clock = null): Closure
+    {
+        $clock ??= static fn (): int => hrtime(true);
+        $last = null;
+        return static function (bool $force = false) use ($lease,$clock,&$last): void {
+            $now = $clock();
+            if ($force || $last === null || $now - $last >= 25000000000) {
+                self::renewBuildLease($lease); $last = $now;
+            }
+        };
     }
 
     private static function dependencies(): SiteBuildDependencies

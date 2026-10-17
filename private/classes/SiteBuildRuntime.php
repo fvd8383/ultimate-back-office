@@ -18,6 +18,8 @@ final class SiteBuildRuntime implements SiteBuildDependencies
             || PHP_OS_FAMILY !== 'Linux' || !function_exists('posix_geteuid')) {
             throw new SiteServiceException('future_gate_required','A protected build-worker invocation is required.');
         }
+        if (!class_exists(DOMDocument::class) || !function_exists('getimagesizefromstring') || !function_exists('fsync')
+            || !function_exists('filter_var')) SiteArtifactFiles::fail('builder_unavailable');
         self::guard();
         $configPath = '/etc/ubo-site-build-worker.json';
         self::protectedPath($configPath,0,false);
@@ -42,8 +44,6 @@ final class SiteBuildRuntime implements SiteBuildDependencies
         if (Database::config('APP_ENV') !== $config['environment']) SiteArtifactFiles::fail('builder_unavailable');
         foreach (['work_root','artifact_root'] as $key) self::protectedPath($config[$key],$config['worker_uid'],true,true);
         if ($config['legacy_upload_root'] !== null) self::protectedPath($config['legacy_upload_root'],null,true);
-        if (!class_exists(DOMDocument::class) || !function_exists('getimagesizefromstring') || !function_exists('fsync')
-            || !function_exists('filter_var')) SiteArtifactFiles::fail('builder_unavailable');
         $guard = Closure::fromCallable([self::class,'guard']);
         $store = new LocalSiteArtifactStore($config['work_root'],$config['artifact_root'],$guard);
         $assets = new SiteArtifactAssetResolver($config['legacy_upload_root'],$guard);
@@ -129,10 +129,10 @@ final class SiteBuildRuntime implements SiteBuildDependencies
     {
         self::guard(); return $this->artifactBuilder->build($job,$producerAttempt,$lockedSource,$pulse);
     }
-    public function verifyOutcome(array $job,array $producerAttempt,array $hint): array
+    public function verifyOutcome(array $job,array $producerAttempt,array $hint,callable $pulse): array
     {
         self::guard(); SiteBuildContract::hint($hint);
-        return $this->store->verifyRelease($job,$producerAttempt);
+        return $this->store->verifyRelease($job,$producerAttempt,$pulse);
     }
     public function inspectManifest(array $release): array
     {

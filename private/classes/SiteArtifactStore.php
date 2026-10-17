@@ -10,8 +10,9 @@ interface SiteArtifactStore
     public function writeFile(string $candidate, string $relativePath, string $bytes): void;
     /** Reverify every byte, record producer evidence, then atomic rename without overwrite. */
     public function sealIfAbsent(string $candidate, callable $pulse): array;
-    /** No generation, materialization or candidate cleanup during verification/recovery. */
-    public function verifyRelease(array $job, array $producer): array;
+    /** No generation/materialization/cleanup. Active operations supply their lease pulse;
+     * read-only inspection omits it and must never allocate/renew a lease. */
+    public function verifyRelease(array $job, array $producer, ?callable $pulse = null): array;
     public function inspectManifest(array $job, array $producer): array;
     public function openVerifiedFile(array $job, array $producer, string $relativePath): string;
     /** Release lock; discard only this handle's exact tracked candidate, never sealed output. */

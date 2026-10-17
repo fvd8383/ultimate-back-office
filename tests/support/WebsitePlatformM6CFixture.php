@@ -11,11 +11,14 @@ final class WebsitePlatformM6CFixture implements SiteBuildDependencies
     public LocalSiteArtifactStore $store;
     public SiteArtifactAssetResolver $assets;
     public SiteArtifactBuilder $builder;
+    private SiteBuildRuntime $artifactRuntime;
     public string $root;
     public int $io = 0;
     public int $builds = 0;
     public $afterVerify = null;
     public $duringBuild = null;
+    public $duringProgress = null;
+    public $verificationProgress = null;
     public static array $roots = [];
     public array $identity;
 
@@ -48,6 +51,10 @@ final class WebsitePlatformM6CFixture implements SiteBuildDependencies
         $this->assets = new SiteArtifactAssetResolver(realpath($this->root . '/uploads'),$guard);
         $this->builder = new SiteArtifactBuilder($this->store,$this->assets);
         $this->identity = SiteBuildRuntime::identity(str_repeat('a',40));
+        // Isolated fixture only: exercise the real adapter without any host bootstrap/configuration.
+        $runtimeClass=new ReflectionClass(SiteBuildRuntime::class);
+        $this->artifactRuntime=$runtimeClass->newInstanceWithoutConstructor();
+        $runtimeClass->getConstructor()->invoke($this->artifactRuntime,$this->workerIdentity('execution'),$this->identity,$this->store,$this->builder,dirname(__DIR__,2));
         (new ReflectionProperty(SiteBuildService::class,'dependencies'))->setValue(null,$this);
     }
     public static function selection(string $key,array $config,string $variant='default'):array
@@ -81,11 +88,13 @@ final class WebsitePlatformM6CFixture implements SiteBuildDependencies
     public function builderIdentity():array { return $this->identity; }
     public function prepareInput(array $lockedSource):array { SiteBuildRuntime::guard(); return $this->builder->prepareInput($lockedSource); }
     public function execute(array $job,array $producerAttempt,array $lockedSource,callable $pulse):array
-    { $this->builds++; if($this->duringBuild!==null)($this->duringBuild)(); return $this->builder->build($job,$producerAttempt,$lockedSource,$pulse); }
-    public function verifyOutcome(array $job,array $producerAttempt,array $hint):array
-    { $e=$this->store->verifyRelease($job,$producerAttempt); if($this->afterVerify!==null){$f=$this->afterVerify;$this->afterVerify=null;$f();} return $e; }
+    { $this->builds++; if($this->duringBuild!==null)($this->duringBuild)(); return $this->builder->build($job,$producerAttempt,$lockedSource,$this->progress($pulse,$this->duringProgress)); }
+    private function progress(callable $pulse,?callable $hook): Closure
+    { return function(bool $force=false)use($pulse,$hook):void{if($this->db->inTransaction())throw new LogicException('Progress inside SQL');if($hook!==null)$hook($pulse,$force);else $pulse($force);}; }
+    public function verifyOutcome(array $job,array $producerAttempt,array $hint,callable $pulse):array
+    { $e=$this->artifactRuntime->verifyOutcome($job,$producerAttempt,$hint,$this->progress($pulse,$this->verificationProgress)); if($this->afterVerify!==null){$f=$this->afterVerify;$this->afterVerify=null;$f();} return $e; }
     public function inspectManifest(array $release):array
-    { $job=$this->db->tables['site_build_jobs'][$release['build_job_id']];$attempt=$this->db->tables['site_build_attempts'][$job['current_attempt_id']];return $this->store->inspectManifest($job,$attempt); }
+    { $job=$this->db->tables['site_build_jobs'][$release['build_job_id']];$attempt=$this->db->tables['site_build_attempts'][$job['current_attempt_id']];if($attempt['attempt_kind']==='recovery')$attempt=$this->db->tables['site_build_attempts'][$attempt['recovery_of_attempt_id']];return $this->store->inspectManifest($job,$attempt); }
     public function run():array
     { $request=$this->db->request();$claim=$this->db->claim();$receipt=SiteBuildService::executeBuild($claim['lease']);return [$request,$claim,$receipt]; }
     public function rows(array $claim):array

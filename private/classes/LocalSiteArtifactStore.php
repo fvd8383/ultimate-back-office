@@ -72,11 +72,13 @@ final class LocalSiteArtifactStore implements SiteArtifactStore
                 SiteArtifactFiles::fail('storage_unavailable');
             }
             $stem = $this->workRoot . '/' . $binding['job_key'] . '/attempt-' . $binding['producer_attempt_id'];
-            if (file_exists($stem) || file_exists($stem . '.json') || file_exists($stem . '.seal.json')) SiteArtifactFiles::fail('outcome_unknown');
+            if (file_exists($stem) || file_exists($stem . '.json') || file_exists($stem . '.json.pending') || file_exists($stem . '.seal.json')) SiteArtifactFiles::fail('outcome_unknown');
             $sealed = $this->sealedRoot . '/' . $identity['site_key'] . '/' . $job['release_key'];
             if (file_exists($sealed)) SiteArtifactFiles::fail('outcome_unknown');
-            // Durable producer identity is written before any candidate content.
-            SiteArtifactFiles::writeNew($stem . '.json',CanonicalJson::encode(['binding'=>$binding,'identity'=>$identity]),4096);
+            // Only publish the journal after write/flush/fsync/chmod succeeds. A complete-looking
+            // but unsuccessfully synced pending file must never establish safe absence.
+            SiteArtifactFiles::writeNew($stem . '.json.pending',CanonicalJson::encode(['binding'=>$binding,'identity'=>$identity]),4096);
+            if (!@rename($stem . '.json.pending',$stem . '.json')) SiteArtifactFiles::fail('outcome_unknown');
             SiteArtifactFiles::mkdir($stem);
             $handle = bin2hex(random_bytes(32));
             $this->candidates[$handle] = ['directory'=>$stem,'job'=>$job,'producer'=>$producer,'identity'=>$identity,
@@ -137,9 +139,14 @@ final class LocalSiteArtifactStore implements SiteArtifactStore
         return ['receipt_key'=>$c['job']['release_key']];
     }
 
-    public function verifyRelease(array $job, array $producer): array
+    public function verifyRelease(array $job, array $producer, ?callable $pulse = null): array
     {
-        ($this->guard)();
+        $progressFailure = null;
+        $progress = function () use ($pulse,&$progressFailure): void {
+            try { ($this->guard)(); if ($pulse !== null) $pulse(); }
+            catch (Throwable $e) { $progressFailure = $e; throw $e; }
+        };
+        $progress();
         $binding = self::binding($job,$producer);
         $base = ['job_id'=>(int)$job['id'],'producer_attempt_id'=>(int)$producer['id'],
             'release_key'=>$job['release_key'],'build_input_hash'=>$job['build_input_hash']];
@@ -147,9 +154,10 @@ final class LocalSiteArtifactStore implements SiteArtifactStore
         catch (SiteArtifactException) { return $base + ['disposition'=>'unknown']; }
         try {
             $stem = $this->workRoot . '/' . $binding['job_key'] . '/attempt-' . $binding['producer_attempt_id'];
+            if (file_exists($stem . '.json.pending') || is_link($stem . '.json.pending')) return $base + ['disposition'=>'unknown'];
             // Missing producer journal is ambiguous, including a write interrupted before its fsync.
             if (!file_exists($stem . '.json')) return $base + ['disposition'=>'unknown'];
-            $journal = SiteBuildContract::decode(SiteArtifactFiles::read($stem . '.json',4096),4096);
+            $journal = SiteBuildContract::decode(SiteArtifactFiles::read($stem . '.json',4096,$progress),4096);
             if (($journal['binding'] ?? null) !== CanonicalJson::canonicalize($binding)) SiteArtifactFiles::fail();
             $identity = $journal['identity'];
             SiteBuildContract::uuid($identity['site_key']); SiteBuildContract::id($identity['revision_number']);
@@ -159,7 +167,7 @@ final class LocalSiteArtifactStore implements SiteArtifactStore
                 // Exclusive lock proves no producer is still writing. A journaled,
                 // never-sealed candidate stays private and cannot be resumed by createCandidate().
                 if (!file_exists($stem)) return $base + ['disposition'=>'safe_absence'];
-                $actual = SiteArtifactFiles::inventory($stem);
+                $actual = SiteArtifactFiles::inventory($stem,$progress);
                 $allowed = array_merge(array_keys(SiteArtifactValidator::expected(SiteBuildContract::decode($job['input_manifest_json']))),
                     ['metadata/manifest.json','metadata/validation.json']);
                 if (array_diff($actual,$allowed) !== []) SiteArtifactFiles::fail();
@@ -168,16 +176,20 @@ final class LocalSiteArtifactStore implements SiteArtifactStore
             if (!file_exists($stem . '.seal.json') || !file_exists($target)) {
                 return $base + ['disposition'=>'unknown']; // Prepared seal without observed final bytes is ambiguous.
             }
-            $proof = SiteBuildContract::decode(SiteArtifactFiles::read($stem . '.seal.json',4096),4096);
+            $proof = SiteBuildContract::decode(SiteArtifactFiles::read($stem . '.seal.json',4096,$progress),4096);
             if (($proof['binding'] ?? null) !== CanonicalJson::canonicalize($binding)) SiteArtifactFiles::fail();
             SiteArtifactFiles::contained($this->sealedRoot,$key,true);
-            $manifest = SiteArtifactValidator::verify($target,$job,$identity,$this->guard);
+            $manifest = SiteArtifactValidator::verify($target,$job,$identity,$progress);
             $hash = CanonicalJson::hash($manifest);
             if (($proof['manifest_hash'] ?? null) !== $hash) SiteArtifactFiles::fail();
             return $base + ['disposition'=>'sealed','artifact_hash'=>$manifest['artifact_hash'],'manifest_hash'=>$hash,
                 'storage_backend'=>'local','storage_key'=>$key,'manifest'=>$manifest,'validation_summary'=>$manifest['validation_summary'],
                 'file_count'=>$manifest['file_count'],'byte_size'=>$manifest['byte_size'],'validator_version'=>SiteArtifactValidator::VERSION];
-        } catch (SiteArtifactException | SiteServiceException) { return $base + ['disposition'=>'unknown']; }
+        } catch (SiteArtifactException | SiteServiceException $e) {
+            // Lost lease/authority is an operation failure, never an integrity disposition.
+            if ($progressFailure !== null) throw $progressFailure;
+            return $base + ['disposition'=>'unknown'];
+        }
         finally { flock($lock,LOCK_UN); fclose($lock); }
     }
 

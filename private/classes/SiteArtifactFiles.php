@@ -63,7 +63,7 @@ final class SiteArtifactFiles
         return $path;
     }
 
-    public static function read(string $path, int $max): string
+    public static function read(string $path, int $max, ?callable $pulse = null): string
     {
         $before = self::regular($path);
         if ($before['size'] < 0 || $before['size'] > $max) self::fail();
@@ -72,8 +72,17 @@ final class SiteArtifactFiles
         try {
             $s = fstat($h);
             if ($s === false || $s['ino'] !== $before['ino'] || $s['dev'] !== $before['dev'] || $s['nlink'] !== 1) self::fail();
-            $bytes = stream_get_contents($h, $max + 1);
-            if (!is_string($bytes) || strlen($bytes) !== $before['size'] || strlen($bytes) > $max) self::fail();
+            $bytes = '';
+            do {
+                if ($pulse !== null) $pulse();
+                $chunk = @fread($h, min(1048576, $max + 1 - strlen($bytes)));
+                if ($chunk === false) self::fail('storage_unavailable');
+                $bytes .= $chunk;
+                if ($pulse !== null) $pulse();
+                if (strlen($bytes) > $max) self::fail();
+                if ($chunk === '' && !feof($h)) self::fail('storage_unavailable');
+            } while (!feof($h));
+            if (strlen($bytes) !== $before['size']) self::fail();
             return $bytes;
         } finally { fclose($h); }
     }
@@ -102,15 +111,17 @@ final class SiteArtifactFiles
     }
 
     /** @return list<string> Complete bounded inventory, rejecting empty/unexpected directories later. */
-    public static function inventory(string $root): array
+    public static function inventory(string $root, ?callable $pulse = null): array
     {
         self::regular($root, true);
         $files = []; $names = []; $directories = 0;
-        $walk = function (string $relative) use (&$walk, &$files, &$names, &$directories, $root): void {
+        $walk = function (string $relative) use (&$walk, &$files, &$names, &$directories, $root, $pulse): void {
+            if ($pulse !== null) $pulse();
             $iterator = new DirectoryIterator($root . ($relative === '' ? '' : '/' . $relative));
             $count = 0;
             foreach ($iterator as $entry) {
                 if ($entry->isDot()) continue;
+                if ($pulse !== null) $pulse();
                 if (++$count > self::MAX_FILES) self::fail();
                 $name = self::path(($relative === '' ? '' : $relative . '/') . $entry->getFilename());
                 if (isset($names[strtolower($name)]) || substr_count($name, '/') > 20) self::fail();
