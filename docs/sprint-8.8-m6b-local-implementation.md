@@ -151,8 +151,9 @@ accepting incomplete execution/recovery shape; bounded summary/receipt JSON uses
 OCTET_LENGTH checks. UUID/hash identities use binary ASCII collation; durable times
 use DATETIME(6). These implement the reviewed contract, not a relaxed replacement.
 Migration 025 completed in both disposable fresh/upgrade databases in the successful
-operator run at `bef67310adafa041a45ee204ed0fc99ca13b754f`; all 53 migrations and the
-full 1824-assertion native harness completed. See the [verified evidence](sprint-8.8-m6b-native-validation.md).
+operator run at `bef67310adafa041a45ee204ed0fc99ca13b754f`; all 53
+migration-file executions and the full 1824-assertion native harness completed.
+See the [verified evidence](sprint-8.8-m6b-native-validation.md).
 The operator applied 025 once to working staging on October 17; production migration
 remains unperformed. See the [closeout](sprint-8.8-m6b-closeout.md). Earlier 015/017 and
 f729ecf replay failures retain their original historical verdicts.
@@ -170,8 +171,12 @@ explicitly reviewed 017/019 DNS CREATE corrections documented below; 020 is unch
 | 023 | `7f487cd11852ee4c05f2bc8766f757134a909716982a47dcfbe5614314189e41` |
 | 024 | `eb81ee47ce8bfdf27d0dc9c1b15fc920bc566c2609cc5eaf6fc8dab7a9ffc5b9` |
 
-Only migration 025 was added. Windows implementation-task migration executions: **0**; the separate operator native run completed **53** disposable executions.
-**Migration 025 NOT APPLIED TO STAGING OR PRODUCTION.** No DDL rollback is claimed.
+Only migration 025 was added. The historical Windows implementation task executed no
+migrations; the later isolated native run completed 53 disposable migration-file executions.
+**Migration 025 was applied once to working staging on October 17, 2026; it remains unapplied
+to production.** The working-staging result is operator-supplied; its private raw report was not
+independently retrieved in this closeout task. See the [closeout](sprint-8.8-m6b-closeout.md)
+for provenance and limitations. No DDL rollback is claimed.
 
 ## Implemented service behavior
 
