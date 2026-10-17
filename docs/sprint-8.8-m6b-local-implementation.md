@@ -1,20 +1,30 @@
 # Sprint 8.8 M6B — Local persistence and jobs implementation
 
-Implementation began 2026-09-19; current evidence reconciliation: **2026-10-08 UTC**.
-**M6B — IMPLEMENTED / ISOLATED REAL-MYSQL GATE PASS**.
-**PR #126 — EVIDENCE RECORDED / MERGE REVIEW PENDING**; M6B is not formally closed.
-The [native validation record](sprint-8.8-m6b-native-validation.md) records the operator's
-run at `bef67310adafa041a45ee204ed0fc99ca13b754f`, independently retrieved/hash-verified:
-**1824 native assertions**, **53/53 migrations**, all 12 replay conditions and later
-native cases completed; launcher exit 0, cleanup/publication PASS.
-**Working staging deployment/migration — NOT PERFORMED**. M6 remains **IN PROGRESS**;
-M6C–M6G **NOT STARTED**; Production **UNAUTHORIZED / NOT DEPLOYED**.
+Implementation began 2026-09-19; current closeout reconciliation: **2026-10-17**.
+Current M6: **IN PROGRESS**. **M6A — ARCHITECTURE REVIEWED / MERGED** (PR #125).
+Proposed **M6B — COMPLETE / STAGING PASS / CLOSEOUT REVIEW PENDING**. **M6C — NEXT / NOT STARTED**;
+**M6D–M6G — NOT STARTED**. **PR #126 — MERGED** at
+`f466fc1cdbfb53325a1db11445736bdc5ea7c6f4`, the operator-reported deployed baseline.
+**Migration 025 — APPLIED TO WORKING STAGING**, once on October 17, 2026.
+The [M6B closeout](sprint-8.8-m6b-closeout.md) separates the earlier native PASS,
+operator-executed deployment/migration, retrieved evidence, and completed authenticated
+smoke. Formal closeout acceptance remains pending; unavailable raw operational reports
+are disclosed as a review limitation. The
+[native evidence record](sprint-8.8-m6b-native-validation.md) preserves its dated
+pre-deployment provenance: 1824 native assertions, 53/53 executions, all twelve
+replay conditions and cleanup/publication PASS; no native rerun in this task.
+**Production — UNAUTHORIZED / NOT DEPLOYED**; production migration unperformed.
+M5 remains **COMPLETE FOR SPRINT PROGRESSION**; M5C remains
+**ACCEPTED / NARRATOR FOLLOW-UP DEFERRED**. Subsequent implementation and runtime
+operations require a separate task; this closeout does not authorize them.
+
 Earlier dated sections retain their original FAILED/BLOCKED/INCOMPLETE/PENDING observations,
 hashes and historical validation counts. This later PASS supersedes their blocking effect;
 it does not rewrite those runs. The f729ecf replay run remains historically **FAILED**.
 See the [historical replay correction](#historical-replay-assertion-correction) and
 [Linux host guide](sprint-8.8-m6b-linux-validation.md). The existing 77-case mapping below
-remains scoped evidence, not full acceptance or deployed-staging validation.
+remains scoped native evidence, not all M6 acceptance cases. The linked closeout
+separately records working-staging deployment/migration and the limited smoke.
 
 ## Authority and status
 
@@ -29,30 +39,31 @@ Repository: `fvd8383/ultimate-back-office` at
 `C:/Users/fvd83/My Drive/Development/ultimate-back-office`.
 Local Windows identity: `laptop-imhqf010\fvd83`; Git identity: Frank Dalba,
 `frank@frankdalba.com`. The original local implementation used neither server identity.
-This later documentation task used established `codex-validation` SSH only to verify
+The October 8 evidence task used established `codex-validation` SSH only to verify
 identity and retrieve/hash existing evidence. No `ubo-deploy`, sudo, remote development,
-server checkout/Git metadata change, test or runtime operation occurred in this task.
+server checkout/Git metadata change, test or runtime operation occurred in that evidence task.
 
 | Milestone | Current status |
 | --- | --- |
 | M6A | ARCHITECTURE REVIEWED / MERGED |
-| M6B | IMPLEMENTED / ISOLATED REAL-MYSQL GATE PASS; MERGE REVIEW PENDING |
+| M6B | COMPLETE / STAGING PASS / CLOSEOUT REVIEW PENDING |
 | M6 | IN PROGRESS |
-| M6C–M6G | NOT STARTED |
+| M6C | NEXT / NOT STARTED |
+| M6D–M6G | NOT STARTED |
 | M5 | COMPLETE FOR SPRINT PROGRESSION |
 | M5C | ACCEPTED / NARRATOR FOLLOW-UP DEFERRED |
 | Sprint 8.8 | IN PROGRESS |
 | Production | UNAUTHORIZED / NOT DEPLOYED |
 
-Last reported staging application SHA remains operator-recorded evidence:
-`70a3051f73874e7268b9c1bba45bf19d41f9432a`. Saved head/status captures were retrieved
-and hash-verified; the deployed checkout was not directly inspected in this task.
-No new test, container/database/SQL/migration/service action, deployment, production
-access, or resumed Narrator work occurred. No merge or auto-merge is authorized.
+Current operator-reported staging application SHA is
+`f466fc1cdbfb53325a1db11445736bdc5ea7c6f4`; PR #126 is merged and migration 025
+is applied to working staging. The [closeout](sprint-8.8-m6b-closeout.md) separates
+operator operations from this task's retrieved evidence and browser observations.
+No native/PHP tests, deployment, migration, production or Narrator work is repeated.
 
 ## Complete changed-file inventory
 
-The complete PR has 49 changed files: 33 additions and 16 modifications. The evidence reconciliation adds one document and updates six; all 339 tracked non-documentation paths retain their tested Git blobs/modes and local bytes.
+Historical merged PR #126 has 49 changed files: 33 additions and 16 modifications. The evidence reconciliation adds one document and updates six; all 339 tracked non-documentation paths retain their tested Git blobs/modes and local bytes.
 
 | Change | Path | Purpose |
 | --- | --- | --- |
@@ -140,9 +151,11 @@ accepting incomplete execution/recovery shape; bounded summary/receipt JSON uses
 OCTET_LENGTH checks. UUID/hash identities use binary ASCII collation; durable times
 use DATETIME(6). These implement the reviewed contract, not a relaxed replacement.
 Migration 025 completed in both disposable fresh/upgrade databases in the successful
-operator run at `bef67310adafa041a45ee204ed0fc99ca13b754f`; all 53 migrations and the
-full 1824-assertion native harness completed. See the [verified evidence](sprint-8.8-m6b-native-validation.md).
-Working staging and production migration 025 remain unapplied. Earlier 015/017 and
+operator run at `bef67310adafa041a45ee204ed0fc99ca13b754f`; all 53
+migration-file executions and the full 1824-assertion native harness completed.
+See the [verified evidence](sprint-8.8-m6b-native-validation.md).
+The operator applied 025 once to working staging on October 17; production migration
+remains unperformed. See the [closeout](sprint-8.8-m6b-closeout.md). Earlier 015/017 and
 f729ecf replay failures retain their original historical verdicts.
 
 SHA-256 of 025's LF bytes (the committed canonical representation):
@@ -158,8 +171,12 @@ explicitly reviewed 017/019 DNS CREATE corrections documented below; 020 is unch
 | 023 | `7f487cd11852ee4c05f2bc8766f757134a909716982a47dcfbe5614314189e41` |
 | 024 | `eb81ee47ce8bfdf27d0dc9c1b15fc920bc566c2609cc5eaf6fc8dab7a9ffc5b9` |
 
-Only migration 025 was added. Windows implementation-task migration executions: **0**; the separate operator native run completed **53** disposable executions.
-**Migration 025 NOT APPLIED TO STAGING OR PRODUCTION.** No DDL rollback is claimed.
+Only migration 025 was added. The historical Windows implementation task executed no
+migrations; the later isolated native run completed 53 disposable migration-file executions.
+**Migration 025 was applied once to working staging on October 17, 2026; it remains unapplied
+to production.** The working-staging result is operator-supplied; its private raw report was not
+independently retrieved in this closeout task. See the [closeout](sprint-8.8-m6b-closeout.md)
+for provenance and limitations. No DDL rollback is claimed.
 
 ## Implemented service behavior
 
@@ -366,9 +383,9 @@ and documentation-check files contain development evidence only; no application 
 ## Final review gates
 
 The implemented code now has verified isolated real-MySQL schema/concurrency evidence.
-PR #126 requires review of the documentation/evidence successor and an authorized merge
-decision; M6B is not formally closed. The [native record](sprint-8.8-m6b-native-validation.md)
-separates that completed gate from later deployment/handoff. M6C must implement/review trusted
+PR #126 is merged; the operator subsequently deployed that baseline and applied 025
+to working staging. The [closeout](sprint-8.8-m6b-closeout.md) separates those operations
+from completed authenticated smoke, evidence limits and pending formal closeout review. M6C must implement/review trusted
 wiring, clean toolchain detection, real projection/asset bytes and artifact inspection
 before enabling execution. M6D–M6G must implement their separately scoped behavior.
 Any later staging/production migration, deployment or validation requires separate

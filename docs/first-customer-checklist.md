@@ -1,17 +1,21 @@
 # First Customer Checklist
 
 Current M6: **IN PROGRESS**. **M6A — ARCHITECTURE REVIEWED / MERGED** (PR #125).
-**M6B — IMPLEMENTED / ISOLATED REAL-MYSQL GATE PASS**. **M6C–M6G — NOT STARTED**.
-**PR #126 — EVIDENCE RECORDED / MERGE REVIEW PENDING**; M6B is not formally closed.
-The [native evidence record](sprint-8.8-m6b-native-validation.md) verifies the operator's
-isolated run at `bef67310adafa041a45ee204ed0fc99ca13b754f`: **1824 native assertions**,
-**53/53 migration executions**, all 12 replay conditions, cleanup/publication PASS.
-See the [implementation record](sprint-8.8-m6b-local-implementation.md),
-[host guide](sprint-8.8-m6b-linux-validation.md) and [reviewed M6 plan](sprint-8.8-m6-implementation-plan.md).
-**Working staging deployment/migration — NOT PERFORMED**; 025 ran only in disposable
-databases and remains unapplied to working staging or production.
-**Production — UNAUTHORIZED / NOT DEPLOYED**. M5 acceptance and Narrator deferral are
-unchanged. This documentation task authorizes no new runtime operation or deployment.
+Proposed **M6B — COMPLETE / STAGING PASS / CLOSEOUT REVIEW PENDING**. **M6C — NEXT / NOT STARTED**;
+**M6D–M6G — NOT STARTED**. **PR #126 — MERGED** at
+`f466fc1cdbfb53325a1db11445736bdc5ea7c6f4`, the operator-reported deployed baseline.
+**Migration 025 — APPLIED TO WORKING STAGING**, once on October 17, 2026.
+The [M6B closeout](sprint-8.8-m6b-closeout.md) separates the earlier native PASS,
+operator-executed deployment/migration, retrieved evidence, and completed authenticated
+smoke. Formal closeout acceptance remains pending; unavailable raw operational reports
+are disclosed as a review limitation. The
+[native evidence record](sprint-8.8-m6b-native-validation.md) preserves its dated
+pre-deployment provenance: 1824 native assertions, 53/53 executions, all twelve
+replay conditions and cleanup/publication PASS; no native rerun in this task.
+**Production — UNAUTHORIZED / NOT DEPLOYED**; production migration unperformed.
+M5 remains **COMPLETE FOR SPRINT PROGRESSION**; M5C remains
+**ACCEPTED / NARRATOR FOLLOW-UP DEFERRED**. Subsequent implementation and runtime
+operations require a separate task; this closeout does not authorize them.
 
 ## Purpose
 
@@ -199,7 +203,8 @@ New module development is paused until 247SP is launch-ready. EMD, SSP, TUHWD, a
 # Remaining Critical Path
 
 The current Website Platform milestone is **M6 IN PROGRESS**: M6A reviewed/merged,
-M6B implemented with isolated real-MySQL gate PASS and merge review pending, and M6C–M6G not started; build/deployment/restore is
+M6B implemented and deployed with 025 applied to working staging, limited authenticated smoke PASS
+and formal closeout review pending, M6C next/not started, and M6D–M6G not started; build/deployment/restore is
 followed by the M7/M8 scope in [Sprint 8.8](sprint-8.8.md). M5 progression does not
 complete the launch requirements below.
 

@@ -1,17 +1,21 @@
 # Codex Handoff
 
 Current M6: **IN PROGRESS**. **M6A — ARCHITECTURE REVIEWED / MERGED** (PR #125).
-**M6B — IMPLEMENTED / ISOLATED REAL-MYSQL GATE PASS**. **M6C–M6G — NOT STARTED**.
-**PR #126 — EVIDENCE RECORDED / MERGE REVIEW PENDING**; M6B is not formally closed.
-The [native evidence record](sprint-8.8-m6b-native-validation.md) verifies the operator's
-isolated run at `bef67310adafa041a45ee204ed0fc99ca13b754f`: **1824 native assertions**,
-**53/53 migration executions**, all 12 replay conditions, cleanup/publication PASS.
-See the [implementation record](sprint-8.8-m6b-local-implementation.md),
-[host guide](sprint-8.8-m6b-linux-validation.md) and [reviewed M6 plan](sprint-8.8-m6-implementation-plan.md).
-**Working staging deployment/migration — NOT PERFORMED**; 025 ran only in disposable
-databases and remains unapplied to working staging or production.
-**Production — UNAUTHORIZED / NOT DEPLOYED**. M5 acceptance and Narrator deferral are
-unchanged. This documentation task authorizes no new runtime operation or deployment.
+Proposed **M6B — COMPLETE / STAGING PASS / CLOSEOUT REVIEW PENDING**. **M6C — NEXT / NOT STARTED**;
+**M6D–M6G — NOT STARTED**. **PR #126 — MERGED** at
+`f466fc1cdbfb53325a1db11445736bdc5ea7c6f4`, the operator-reported deployed baseline.
+**Migration 025 — APPLIED TO WORKING STAGING**, once on October 17, 2026.
+The [M6B closeout](sprint-8.8-m6b-closeout.md) separates the earlier native PASS,
+operator-executed deployment/migration, retrieved evidence, and completed authenticated
+smoke. Formal closeout acceptance remains pending; unavailable raw operational reports
+are disclosed as a review limitation. The
+[native evidence record](sprint-8.8-m6b-native-validation.md) preserves its dated
+pre-deployment provenance: 1824 native assertions, 53/53 executions, all twelve
+replay conditions and cleanup/publication PASS; no native rerun in this task.
+**Production — UNAUTHORIZED / NOT DEPLOYED**; production migration unperformed.
+M5 remains **COMPLETE FOR SPRINT PROGRESSION**; M5C remains
+**ACCEPTED / NARRATOR FOLLOW-UP DEFERRED**. Subsequent implementation and runtime
+operations require a separate task; this closeout does not authorize them.
 
 ## Current M5 closeout — 2026-09-17
 
@@ -25,15 +29,17 @@ unchanged. This documentation task authorizes no new runtime operation or deploy
 | M5C | ACCEPTED / NARRATOR FOLLOW-UP DEFERRED |
 | M5 | COMPLETE FOR SPRINT PROGRESSION |
 | M6A | ARCHITECTURE REVIEWED / MERGED |
-| M6B | IMPLEMENTED / ISOLATED REAL-MYSQL GATE PASS; MERGE REVIEW PENDING |
-| M6C–M6G | NOT STARTED |
+| M6B | COMPLETE / STAGING PASS / CLOSEOUT REVIEW PENDING |
+| M6C | NEXT / NOT STARTED |
+| M6D–M6G | NOT STARTED |
 | M6 | IN PROGRESS |
 | Production | UNAUTHORIZED / NOT DEPLOYED |
 
-Authoritative deployed application SHA: `70a3051f73874e7268b9c1bba45bf19d41f9432a`.
+Historical M5 deployed/validated SHA: `70a3051f73874e7268b9c1bba45bf19d41f9432a`.
 Latest deployed title-regression PASS SHA-256:
 `de1e215f7716e550a6ab993872cb50eaaf7d4a2d5a2dc03c4159fb9a569368c7`.
-These M5 references are unchanged. The M6B record above separately documents read-only retrieval of isolated-run evidence; no deployed-checkout operation occurred in that documentation task.
+These M5 evidence references remain unchanged. The October 17 M6B deployment and
+current evidence provenance are recorded in the [M6B closeout](sprint-8.8-m6b-closeout.md).
 
 Further Windows Narrator validation is intentionally deferred. The product owner
 accepts the implemented behavior as sufficient for the current product stage based
@@ -54,8 +60,8 @@ accessibility validation. No known application accessibility failure remains fro
 completed cases; deferred checks are validation items, not established defects.
 
 Migrations 023/024 are unchanged. Migration 025 and build persistence passed the isolated
-M6B native gate; working-staging migration/deployment remains unperformed and requires
-separate authorization. Sprint 8.8 remains **IN PROGRESS**.
+M6B native gate; the operator subsequently deployed M6B and applied 025 to working
+staging on October 17. Production migration remains unperformed. Sprint 8.8 is **IN PROGRESS**.
 This current decision supersedes earlier closure prerequisites; dated snapshots and
 historical failure/tooling-block reports below retain their original verdicts.
 

@@ -1,16 +1,24 @@
 # Sprint 8.8 M6 — Build, Deployment, and Restore Implementation Plan
 
-Status: **M6 IN PROGRESS**. **M6A — ARCHITECTURE REVIEWED / MERGED** (PR #125).
-**M6B — IMPLEMENTED / ISOLATED REAL-MYSQL GATE PASS**. **M6C–M6G — NOT STARTED**.
-**PR #126 — EVIDENCE RECORDED / MERGE REVIEW PENDING**; M6B is not formally closed.
-The [native record](sprint-8.8-m6b-native-validation.md) verifies **1824 native assertions**,
-**53/53 migration executions** and all 12 replay conditions at
-`bef67310adafa041a45ee204ed0fc99ca13b754f`, with cleanup/publication PASS.
-This merged architecture contract and its 77-case planned matrix are unchanged;
-the [implementation record](sprint-8.8-m6b-local-implementation.md) retains the mapping.
-**Working staging deployment/migration — NOT PERFORMED**. Migration 025 ran only in
-disposable databases and remains unapplied to working staging or production.
-**Production — UNAUTHORIZED / NOT DEPLOYED**. M5 acceptance/Narrator deferral remain.
+Current M6: **IN PROGRESS**. **M6A — ARCHITECTURE REVIEWED / MERGED** (PR #125).
+Proposed **M6B — COMPLETE / STAGING PASS / CLOSEOUT REVIEW PENDING**. **M6C — NEXT / NOT STARTED**;
+**M6D–M6G — NOT STARTED**. **PR #126 — MERGED** at
+`f466fc1cdbfb53325a1db11445736bdc5ea7c6f4`, the operator-reported deployed baseline.
+**Migration 025 — APPLIED TO WORKING STAGING**, once on October 17, 2026.
+The [M6B closeout](sprint-8.8-m6b-closeout.md) separates the earlier native PASS,
+operator-executed deployment/migration, retrieved evidence, and completed authenticated
+smoke. Formal closeout acceptance remains pending; unavailable raw operational reports
+are disclosed as a review limitation. The
+[native evidence record](sprint-8.8-m6b-native-validation.md) preserves its dated
+pre-deployment provenance: 1824 native assertions, 53/53 executions, all twelve
+replay conditions and cleanup/publication PASS; no native rerun in this task.
+**Production — UNAUTHORIZED / NOT DEPLOYED**; production migration unperformed.
+M5 remains **COMPLETE FOR SPRINT PROGRESSION**; M5C remains
+**ACCEPTED / NARRATOR FOLLOW-UP DEFERRED**. Subsequent implementation and runtime
+operations require a separate task; this closeout does not authorize them.
+
+The reviewed architecture and 77-case planned matrix below remain authoritative;
+M6B evidence does not establish complete M6 acceptance.
 
 ## 1. Authority and boundaries
 
@@ -19,21 +27,23 @@ disposable databases and remains unapplied to working staging or production.
 | Repository | `fvd8383/ultimate-back-office` |
 | Repository audit baseline | `5c9fee700b83bd04589d612b8bc4e8eea975499a` |
 | M6B implementation baseline / merged PR #125 | `5baae28c9af68cca7694a912d7f35c87c50c9dc5` |
-| Deployed application baseline | `70a3051f73874e7268b9c1bba45bf19d41f9432a` |
-| Why different | PR #124 merged M5 documentation closeout; its diff from the deployed application contains documentation only and requires no staging deployment. |
+| Current operator-reported deployed baseline / merged PR #126 | `f466fc1cdbfb53325a1db11445736bdc5ea7c6f4` |
+| Natively tested source | `bef67310adafa041a45ee204ed0fc99ca13b754f`; only documentation differs from merged main |
+| Historical M5 deployed baseline | `70a3051f73874e7268b9c1bba45bf19d41f9432a`; unchanged as M5 evidence |
 | M5A / M5B | COMPLETE / STAGING PASS / FORMALLY CLOSED |
 | M5C | ACCEPTED / NARRATOR FOLLOW-UP DEFERRED |
 | M5 | COMPLETE FOR SPRINT PROGRESSION |
 | Sprint 8.8 | IN PROGRESS |
 | Production | UNAUTHORIZED / NOT DEPLOYED |
-| Migrations | 023/024 immutable; exact reviewed 017/019 bootstrap-source exception retained; 025 passed in disposable databases only, unapplied to working staging/production |
+| Migrations | 023/024 immutable; exact reviewed 017/019 bootstrap-source exception retained; 025 native PASS and APPLIED TO WORKING STAGING October 17; production migration unperformed; 017/019 not replayed on working staging |
 
 The [merged M6 scope](sprint-8.8.md#m6--build--deployment--restore) is authoritative.
 The [M5 closeout](sprint-8.8-m5-closeout.md) and its evidence are unchanged. The historical
 M6A task was documentation only. M6B's separately authorized persistence slice now has
-isolated native PASS evidence, retrieved and hash-verified read-only. The deployed SHA
-remains operator-recorded evidence; this documentation task did not inspect or change
-the deployed checkout, access an application database, or deploy/migrate working staging.
+isolated native PASS evidence, retrieved and hash-verified read-only. The operator
+subsequently deployed merged PR #126 and applied 025 to working staging. The
+[closeout](sprint-8.8-m6b-closeout.md) records evidence provenance and completed limited
+authenticated smoke separately; this documentation task deploys/migrates nothing.
 
 Names and contracts below originated as reviewed M6A proposals. The M6B record
 identifies the implemented persistence slice; later artifact, deployment and control
@@ -184,9 +194,11 @@ Stripe webhook jobs, or DomainManager status as a build/deployment queue.
 
 ## 5. Proposed migration 025 relational contract
 
-Proposed future filename: `025_site_build_deployment.sql`. **Do not create it in this
-planning task.** Reconfirm 025 is still next before implementation. Do not alter the
-contents of migrations 023/024; new ALTERs belong in 025. No new domain/routing tables.
+The reviewed M6A proposal below was implemented as `025_site_build_deployment.sql`
+in merged PR #126 and applied once to working staging on October 17. This section
+preserves the relational contract, not an instruction to create/reapply 025. Keep
+applied migrations immutable; a future justified correction requires separate review.
+Migrations 023/024 remain unchanged. No new domain/routing tables are introduced.
 
 ### Conventions, ownership, isolation, and deletion
 
@@ -1642,11 +1654,12 @@ count remains **77 planned cases**, not executed schema/service PASS results.
 
 ## 25. Recommended submilestones and PR sequence
 
-Every row is a separate reviewable PR/gate. M6A is reviewed/merged. M6B is implemented
-with isolated real-MySQL gate PASS; evidence/merge review remains pending. M6C–M6G are
-not started. The table retains the reviewed scope and future deployment gates; see the
-[native record](sprint-8.8-m6b-native-validation.md) for the achieved persistence evidence
-and its limitations. It does not establish all 77 planned acceptance cases or M6B closure.
+Every row is a separate reviewable PR/gate. M6A and M6B implementation PRs are merged.
+M6B has isolated native PASS and operator-completed working-staging deployment/025
+application; limited authenticated smoke passed and formal closeout review remains pending. M6C is next/not
+started; M6D–M6G are not started. The [closeout](sprint-8.8-m6b-closeout.md) records
+evidence and limitations. The table preserves reviewed scope and future gates, not
+a claim that all 77 planned acceptance cases or formal M6B acceptance are complete.
 
 | Milestone | Scope and expected files/classes | Migration | Local exit gate | Staging exit gate | Depends on |
 | --- | --- | --- | --- | --- | --- |
@@ -1659,7 +1672,9 @@ and its limitations. It does not establish all 77 planned acceptance cases or M6
 | M6G — Integrated validation/closeout | Proposed `docs/sprint-8.8-m6-staging-validation.md`, `docs/sprint-8.8-m6-closeout.md`; required fixes in focused PRs. | Reconcile applied 025, no rerun; future correction number if needed. | All required regression/lint, fault/concurrency tests and final scoped diff. | Final exact-SHA real-MySQL + external runtime + browser matrix, safe logs, synthetic cleanup and baseline reconciliation, retained known-good restore; production remains unauthorized. | M6B–M6F. |
 
 PR #125 merged the reviewed M6A architecture. A subsequent explicit instruction
-authorized M6B implementation and isolated native validation; evidence/merge review and separately authorized deployment/handoff gates remain outstanding.
+authorized M6B implementation and native validation; PR #126 merged and the operator
+completed its working-staging deployment/migration. Limited authenticated smoke passed;
+formal closeout acceptance remains pending; M6C is a separate, not-started task.
 Staging-only contract/profile can close
 M6 with production denied; live production release and registered-site form routing
 remain separately gated later. Do not claim all of Sprint 8.8 or first-customer
