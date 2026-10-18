@@ -17,6 +17,9 @@ PR #128 correction work follows the completed review of original head
 `d06f9e5ffbd24b8488e61c9ffb307aa9b0125984`. See the
 [review corrections](#pr-128-review-corrections) for current behavior and fresh validation.
 The original local PASS and reviewer observations below remain separate evidence.
+The subsequent review of `7787bec` is addressed in
+[complete inventory admission](#complete-inventory-admission); earlier validation totals
+remain historical results for their respective corrections.
 
 ## Implementation and wiring
 
@@ -501,3 +504,143 @@ remain the lifecycle authority. Native Linux startup/permissions, process/crash 
 power-loss behavior and actual MySQL/filesystem integration remain pending. No server,
 Docker/WSL/package setup, live database, migration, deployment, provider, M6D–M6G or
 Narrator action is part of this correction.
+
+## Complete inventory admission
+
+This focused correction follows [finding 4304989392](https://github.com/fvd8383/ultimate-back-office/pull/128#discussion_r4304989392)
+on `7787bec22b8eb5a8cfed91c4ed183b4f2fe2e511`. The branch and PR are unchanged.
+The previous producer-evidence, active-lease, independent-counter and isolated-CLI
+corrections remain intact. M6C is **IMPLEMENTED LOCALLY / REVIEW REQUIRED**;
+native build-only validation is **PENDING**.
+
+### Admission and accounting
+
+`SiteArtifactBuilder::prepareInput` now constructs the public projection and bounded
+asset descriptors, calls the existing `SiteArtifactValidator::expected` inventory
+validator, and only then verifies asset bytes. No second asset-count formula is added.
+The existing service ordering remains current authorization/source eligibility,
+preparation outside SQL locks, then a locked recheck and insertion. Successful-history
+replay still precedes new-request preparation; the service itself is unchanged.
+
+Total package files are distinct content-addressed media output paths + each HTML page
+plus generated CSS + public release marker + two private metadata files. Thus total files
+are distinct media + pages + 4, bounded by the unchanged `MAX_FILES = 2000`.
+Multiple usages of the same digest/extension occupy one physical path. The existing
+1,997-descriptor cap, 1-MiB input/manifest limits and byte/security limits remain separate
+and unchanged. Deduplication does not waive them. Public manifest/DTO `file_count` still
+counts media + pages + CSS + release marker; it excludes the two private metadata files.
+No serialized field, profile or hash definition changes. Per-write, final inventory,
+observed-byte validation and immutable sealing checks remain in place.
+
+### Before/after evidence and boundaries
+
+The original preparation path reached the first asset-validation call for metadata
+projections of 1 page/1,996 assets, 2 pages/1,995 assets and 100 pages/1,897 assets,
+while `expected` rejected those same 2,001-file projections as `artifact_invalid`.
+Their actual canonical BuildInput sizes were 274,738, 275,078 and 308,670 bytes,
+respectively, below the unchanged 1-MiB limit. MIME and digest formats, per-asset and
+aggregate declared sizes, routes, theme and page-count inventory rules were valid.
+
+These metadata tests deliberately stop at the resolver's existing guard before byte
+validation. Synthetic digests do not establish real byte integrity, and this is not a
+full large-package or native build reproduction. The one-/two-page metadata fixtures
+isolate projection/inventory admission; they do not claim authoring eligibility for
+thousands of usages within component/section cardinality limits.
+
+Separate actual new-request reproductions use valid 80-page/1,917-asset and
+100-page/1,897-asset compositions, authored through the existing composition owner:
+one hero section per page, at most 24 usages per section, real stored snapshot hashes,
+current fixture approvals/rights and unchanged source-eligibility validation. Both
+previously reached the deliberate first-byte-boundary stop. After correction, both
+return `artifact_invalid` with zero asset-validation calls. No invented asset file is
+read or accepted. Both before/after captures retain actual exit/stdout/stderr outside
+the repository; the prior reports remain untouched.
+
+| Pages | Distinct media | Total package files | File-count gate |
+| ---: | ---: | ---: | --- |
+| 1 | 1,995 | 2,000 | Accept |
+| 1 | 1,996 | 2,001 | Reject before asset reads |
+| 2 | 1,994 | 2,000 | Accept |
+| 2 | 1,995 | 2,001 | Reject before asset reads |
+| 100 | 1,896 | 2,000 | Accept |
+| 100 | 1,897 | 2,001 | Reject before asset reads |
+| 1 | 0 | 5 | Accept; preparation completes without media reads |
+| 1 | 1 from 1,997 usages | 6 | Accept inventory; byte integrity not claimed |
+
+An additional 1,998-usage duplicate-path case still fails the descriptor bound, and
+oversized serialized input still fails its independent limit. Acceptance in this table
+means the file-count gate only. No thousands of physical files or oversized payloads
+were generated to exercise arithmetic.
+
+The new-request regressions compare complete fake-database snapshots and mutation
+queries: no job, attempt, requested/start event, execution budget or recovery allocation,
+and no work-directory entry, journal, candidate or sealed output. Exact successful
+historical replay returns the same release without new eligibility/preparation I/O,
+events or attempts. A small real private-filesystem build verifies one deduplicated
+asset, three pages, CSS and marker (public count 6), plus two metadata files (total 8),
+and seals successfully with the existing artifact hash. The full existing determinism,
+producer-failure/heartbeat and safe-CLI suites remain enabled.
+
+Fixture development initially exceeded hero cardinality in the two-page authoring
+sample; the valid service sample now uses 80/100 pages without relaxing eligibility.
+The deliberate stop uses the existing service exception boundary so its signal is not
+wrapped as an unrelated dependency error. An initial sandbox run reached the unchanged
+private-journal rename and failed there; the same admission suite passed in the normal
+Windows execution context. Those intermediate results remain separate from final PASS.
+
+### Admission correction validation and inventory
+
+Fresh execution: **68 standalone suites, all exit 0; eight M6C suites with 651 assertions**.
+The new admission suite passes 58 assertions. The existing M6C suites pass artifact 45,
+bounds 29, CLI 186, integration 54, recovery/progress 135, scope 53 and security 91.
+Each M6C suite ran individually first, then every available `tests/*Test.php` ran with
+`php -n`. The unchanged fake launcher passed 2,131 assertions across 161 Bash scenarios,
+47 mount cases and 27 no-ctype port/type cases per mount form across three profiles;
+the simulated migration runner passed 848 assertions. Neither suite executed Linux,
+containers or a live database. Actual Windows checks include the small sealed package,
+one hardlink case and one CGI denial. Native/platform limits remain explicit.
+
+`php -n -l` passed all 239 tracked/new PHP files. Syntax-only checks passed for
+`node --check tests/WebsitePlatformM5CBrowser.cjs`,
+`C:\Git\bin\bash.exe -n tests/RunM6BMySql.sh` and PowerShell `Parser.ParseFile` on
+`tests/RunM6BMySql.ps1` (zero errors). This document's two local links/anchors, fences
+and milestone/backup status checks pass. Working/staged diff checks pass; committed
+checks are retained in the outside-repository report. Per-suite exits/stdout/stderr
+are captured; expected injected-error diagnostics and Git CRLF warnings remain visible.
+
+Runtime: Windows PHP 8.4.24 CLI ZTS Visual C++ 2022 x64, libxml 2.11.9; no php.ini in
+default or `-n` profiles. Node v24.22.0, PowerShell 7.6.5 and Git Bash 5.3.15.
+These are newly observed results; the preceding 67-suite/593-assertion record belongs
+to the prior correction. Neither historical evidence nor intermediate failures was erased.
+
+Correction-only inventory relative to `7787bec`: three files.
+
+| Change | File |
+| --- | --- |
+| Modified | `private/classes/SiteArtifactBuilder.php` |
+| Added | `tests/WebsitePlatformM6CAdmissionTest.php` |
+| Modified | `docs/sprint-8.8-m6c-local-implementation.md` |
+
+All 25 migration files retain their raw bytes and baseline Git contents, including
+017/019 and the existing pins. Migration 025 remains applied to working staging and
+unchanged at SHA-256 `dab585dc29aac11153f92703c65d3883aeea73a1b2283157cfa9d2f2ece85cb0`.
+No migration, native-test infrastructure, M6B lifecycle, configuration or permission
+change is part of this correction. Native Linux startup/permissions, actual MySQL/
+filesystem integration and native crash/race/durability validation remain pending.
+
+### Next-run handoff: staging backup and Windows download checkpoint
+
+**NOT EXECUTED. This local correction does not authorize server access or a backup.**
+Before the next M6C droplet runtime validation or environment change, prepare a fresh
+backup of the **deployed staging application**, local uploads, relevant recovery
+configuration and an **actual `ubo_staging` SQL export**, including hashes and recovery
+notes. Use the data volume without exhausting the boot disk. Preserve private
+credentials and distinguish any required manual administrator step from restricted
+Codex execution. Do not automatically overwrite or delete existing backups.
+
+After preparing that future backup, pause for **Frank's WinSCP download and verification
+of the Windows copies** before continuing the runtime validation/environment change.
+This backup/download checkpoint is separate from the pending native build-only gates.
+M6B remains formally closed; M6D-M6G remain NOT STARTED; production remains
+UNAUTHORIZED / NOT DEPLOYED. No server, backup, live database, migration, deployment,
+provider, M6D-M6G or Narrator action occurred in this local admission correction.

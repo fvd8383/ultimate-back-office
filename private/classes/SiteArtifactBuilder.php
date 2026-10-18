@@ -13,8 +13,12 @@ final class SiteArtifactBuilder
     {
         $projection = SitePublicRenderContext::project($source);
         $descriptors = $this->assets->descriptors($source);
+        $projection += ['ordered_asset_digests'=>$descriptors];
+        // Admit the same distinct public paths + private metadata as final validation,
+        // before any asset-byte reads. Descriptor/input bounds remain separate.
+        SiteArtifactValidator::expected($projection);
         foreach ($descriptors as $descriptor) $this->assets->bytes($source,$descriptor);
-        return $projection + ['ordered_asset_digests'=>$descriptors];
+        return $projection;
     }
 
     public function build(array $job, array $producer, array $source, callable $pulse): array
