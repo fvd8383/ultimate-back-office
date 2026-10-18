@@ -14,6 +14,10 @@ require_once __DIR__ . '/SiteBuildStore.php';
 final class SiteBuildService
 {
     private static ?SiteBuildDependencies $dependencies = null;
+    /** Single-use construction authority, issued only after an acknowledged fresh claim.
+     * Never exported with the lease. A different process (including a fork), connection,
+     * runtime, or repeated invocation cannot manufacture proof of non-entry. */
+    private static array $freshExecutions = [];
 
     /** @return array Safe BuildJob DTO with existing flag. */
     public static function requestBuild(int $actingUserId, array $input): array
@@ -203,7 +207,13 @@ final class SiteBuildService
                 }
                 return self::allocate($db, $job, 'execution', $worker, $now, null, null);
             });
-            if ($claim !== null) return $claim;
+            if ($claim !== null) {
+                self::$freshExecutions[CanonicalJson::hash($claim['lease'])] = [
+                    'worker' => $worker, 'process' => getmypid(), 'runtime' => self::dependencies(),
+                    'connection' => SiteServiceSupport::read(static fn (object $db): object => $db),
+                ];
+                return $claim;
+            }
         }
         return null;
     }
@@ -346,25 +356,90 @@ final class SiteBuildService
         return self::complete($lease, SiteBuildContract::hint(['receipt_key' => $result['receipt_key']]), $result['disposition'], null);
     }
 
-    /** Recheck the owning execution, then construct entirely outside lifecycle locks. */
+    /** Execute once, in the process that acknowledged claimBuild. A copied lease alone
+     * can resolve history but cannot enter construction. Returns a receipt hint, or
+     * ['completed' => completion DTO] for an atomic denial / committed history. */
     public static function executeBuild(array $lease): array
     {
         $lease = self::leaseInput($lease, 'execution');
         $worker = self::worker('execution');
-        $builder = self::external(static fn (): array => self::dependencies()->builderIdentity());
         $identity = self::jobIdentity($lease['job_id']);
-        [$job,$attempt,$source] = SiteBuildStore::transaction(static function (object $db) use ($identity,$lease,$worker,$builder): array {
+        // Resolve committed history before builder/eligibility/I/O/heartbeat checks.
+        $replay = SiteBuildStore::transaction(static function (object $db) use ($identity,$lease,$worker): ?array {
+            SiteManager::lockSite($db,(int)$identity['site_id']);
+            $job = self::lockJob($db,$identity);
+            $attempt = self::attempt($db,$job,$lease['attempt_id']);
+            self::token($attempt,$lease,$worker);
+            self::confirmWorker($worker,'execution');
+            $replay = self::executionReplay($db,$job,$attempt);
+            if ($replay !== null) return $replay;
+            self::assertLease($job,$attempt,$lease,$worker,SiteBuildStore::now($db));
+            return null;
+        });
+        if ($replay !== null) return ['completed' => $replay];
+        $key = CanonicalJson::hash($lease);
+        $authority = self::$freshExecutions[$key] ?? null;
+        if ($authority === null || $authority['worker'] !== $worker || $authority['process'] !== getmypid()
+            || $authority['runtime'] !== self::dependencies()
+            || $authority['connection'] !== SiteServiceSupport::read(static fn (object $db): object => $db)) {
+            throw new SiteServiceException('conflict','Fresh execution entry is unavailable.');
+        }
+        // Consume BEFORE any callback can reenter. Never restore on exceptions, rollback,
+        // or lost acknowledgement. This invocation alone can now deny OR enter output.
+        unset(self::$freshExecutions[$key]);
+        $builder = null;
+        try { $builder = self::external(static fn (): array => SiteBuildContract::builder(self::dependencies()->builderIdentity())); }
+        catch (SiteArtifactException) { /* Builder identification is a configuration gate. */ }
+        catch (SiteServiceException $e) {
+            if (!in_array($e->classification(), ['conflict','invalid_request','future_gate_required'], true)) throw $e;
+        }
+        $entry = SiteBuildStore::transaction(static function (object $db) use ($identity,$lease,$worker,$builder): array {
             [$job,$attempt,$source,$actors,$error] = self::lockedContext($db,$identity,true,[]);
             self::confirmWorker($worker,'execution');
-            if ($attempt === null) throw new SiteServiceException('conflict','An execution owner is required.');
-            self::assertLease($job,$attempt,$lease,$worker,SiteBuildStore::now($db));
-            if (!self::requesterAllowed($job,$actors)) throw new SiteServiceException('unauthorized','Current requester authority is required.');
-            if ($error !== null) throw $error;
-            self::assertInput($job,$source,$builder);
-            return [$job,$attempt,$source];
+            $attempt = self::attempt($db,$job,$lease['attempt_id']);
+            self::token($attempt,$lease,$worker);
+            if (($replay = self::executionReplay($db,$job,$attempt)) !== null) return ['completed' => $replay];
+            $now = SiteBuildStore::now($db);
+            self::assertLease($job,$attempt,$lease,$worker,$now);
+            $code = !self::requesterAllowed($job,$actors) ? 'requester_not_authorized'
+                : ($error !== null ? 'source_not_eligible'
+                : (self::inputFailure($job,$source,$builder) ?? ($builder === null ? 'builder_unavailable' : SiteBuildContract::policyFailure($job))));
+            if ($code !== null) {
+                // This guarded, nontransient denial preserves the allocated execution.
+                // The system worker records it even when the original requester is revoked.
+                SiteBuildStore::update($db,'site_build_attempts',$attempt,SiteBuildContract::failure($code) + [
+                    'status'=>'failed','completed_at'=>$now,
+                    'external_reference'=>self::failureFingerprint($job,$code)]);
+                $job = self::updateJob($db,$job,SiteBuildContract::failure($code) + [
+                    'status'=>'failed','completed_at'=>$now,'next_attempt_at'=>null,'next_recovery_at'=>null],$now);
+                self::event($db,$job,'site_build_failed',SiteServiceSupport::systemActor(),
+                    ['attempt_id'=>(int)$attempt['id'],'disposition'=>'safely_failed'],$code);
+                return ['completed'=>self::completionDTO($db,$job)];
+            }
+            return ['job'=>$job,'attempt'=>$attempt,'source'=>$source];
         });
+        // Return only after commit. A transaction/commit exception is never compensated.
+        if (isset($entry['completed'])) return $entry;
         $pulse = self::leasePulse($lease);
-        return self::external(static fn (): array => self::dependencies()->execute($job,$attempt,$source,$pulse));
+        // From here onward every failure requires independent producer evidence, even
+        // when no journal exists. No exception can reopen the non-entry branch above.
+        return self::external(static fn (): array => self::dependencies()->execute($entry['job'],$entry['attempt'],$entry['source'],$pulse));
+    }
+
+    private static function failureFingerprint(array $job, string $code): string
+    {
+        return 'result:' . CanonicalJson::hash(['mode'=>'failure','failure_code'=>$code,'hint'=>['receipt_key'=>$job['release_key']]]);
+    }
+
+    private static function executionReplay(object $db, array $job, array $attempt): ?array
+    {
+        if ($job['status'] === 'succeeded') return self::recordedResult($db,$job) + ['replayed'=>true];
+        if ($attempt['completed_at'] === null) return null;
+        if ($attempt['status'] === 'failed' && is_string($attempt['failure_code'])
+            && $attempt['external_reference'] === self::failureFingerprint($job,$attempt['failure_code'])) {
+            return self::completionDTO($db,$job) + ['replayed'=>true];
+        }
+        throw new SiteServiceException('conflict','Execution is already closed.');
     }
     public static function reconcileBuild(array $lease): array
     {

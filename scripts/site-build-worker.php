@@ -31,12 +31,12 @@ try {
                 throw $e;
             }
             // An unknown DB completion outcome is never compensated or retried here.
-            $result = SiteBuildService::completeBuildSuccess($claim['lease'],$receipt);
+            $result = $receipt['completed'] ?? SiteBuildService::completeBuildSuccess($claim['lease'],$receipt);
         }
     }
     $status = $result['job']['status'] ?? 'no_work_claimed';
     echo "Build-only outcome: " . $status . ".\n";
-    if ($status === 'reconciliation_required') exit(1);
+    if (in_array($status,['failed','retry_wait','reconciliation_required'],true)) exit(1);
 } catch (Throwable $e) {
     $code = $e instanceof SiteArtifactException ? $e->failureCode : ($e instanceof SiteServiceException ? $e->classification() : 'builder_unavailable');
     fwrite(STDERR,"Build-only invocation stopped: " . $code . ".\n"); exit(1);

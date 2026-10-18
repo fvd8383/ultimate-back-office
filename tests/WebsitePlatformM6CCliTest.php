@@ -66,5 +66,18 @@ $web=0;if(is_file($cgi)){
     [$exit,$out,$err]=m6process([$cgi,'-n','-d','cgi.force_redirect=0','-f',$script],['REDIRECT_STATUS'=>'1','REQUEST_METHOD'=>'GET','SCRIPT_FILENAME'=>$script,'QUERY_STRING'=>'once=1','SystemRoot'=>getenv('SystemRoot')?:'']);
     m6cli($exit===0&&str_contains($out,'Status: 404')&&!str_contains($out,'Build-only')&&$err==='','Actual CGI denial; no server/socket');$web=1;
 }
+foreach(['revoked','builder-unavailable','builder-mismatch','no-work']as$case){
+    [$exit,$out,$err]=m6process([PHP_BINARY,'-n',__DIR__.'/support/WebsitePlatformM6CExecutionChild.php',$case]);
+    m6cli(preg_match('/\nM6C_EXECUTION_TRACE:(.+)\n$/D',$err,$match)===1,'Execution child reports trace');
+    $trace=json_decode($match[1],true,512,JSON_THROW_ON_ERROR);$err=substr($err,0,-strlen($match[0]));$empty=$case==='no-work';
+    m6cli($exit===($empty?0:1)&&$out==='Build-only outcome: '.($empty?'no_work_claimed':'failed').".\n"&&$err==='','Claimed failure differs from no work with fixed safe output');
+    m6cli($trace['host_config_reads']===0&&$trace['live_database_connections']===0&&$trace['files']===[]&&$trace['artifact_io']===0&&$trace['builds']===0&&$trace['releases']===0,'Isolated execution denial has no artifact/host effects');
+    if(!$empty){
+        m6cli($trace['jobs'][0]['status']==='failed'&&$trace['attempts'][0]['status']==='failed'&&$trace['started']===1&&$trace['failed']===1,'CLI records atomic failed claim');
+        m6cli($trace['jobs'][0]['execution_count']===1&&$trace['jobs'][0]['attempt_count']===1&&$trace['jobs'][0]['recovery_count']===0,'CLI preserves allocated claim counters');
+        m6cli($trace['jobs'][0]['failure_code']===($case==='revoked'?'requester_not_authorized':'builder_unavailable'),'CLI exact denial category');
+    }
+    $GLOBALS['child_results'][]=['case'=>'execution-'.$case,'exit'=>$exit,'stdout'=>$out,'stderr'=>$err,'trace'=>$trace];
+}
 echo 'Isolated child results: '.json_encode($GLOBALS['child_results'],JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR)."\n";
 echo "Website platform M6C CLI: $assertions assertions passed; $web actual CGI invocation; 32 isolated valid-argument denials; Linux/runtime branches simulated.\n";

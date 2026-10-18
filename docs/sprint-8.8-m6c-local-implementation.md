@@ -20,6 +20,9 @@ The original local PASS and reviewer observations below remain separate evidence
 The subsequent review of `7787bec` is addressed in
 [complete inventory admission](#complete-inventory-admission); earlier validation totals
 remain historical results for their respective corrections.
+The review of `3e6871321820f02ddccab7872ae5f69976b91821` is addressed in
+[pre-output execution denials](#pre-output-execution-denials). Its current handoff
+records the operator-reported completed backup/download checkpoint below.
 
 ## Implementation and wiring
 
@@ -628,7 +631,10 @@ No migration, native-test infrastructure, M6B lifecycle, configuration or permis
 change is part of this correction. Native Linux startup/permissions, actual MySQL/
 filesystem integration and native crash/race/durability validation remain pending.
 
-### Next-run handoff: staging backup and Windows download checkpoint
+### Historical admission-correction handoff: backup checkpoint not yet reported
+
+The following was the handoff at the end of the admission correction. The current
+operator report in the next section supersedes its instruction to prepare a backup.
 
 **NOT EXECUTED. This local correction does not authorize server access or a backup.**
 Before the next M6C droplet runtime validation or environment change, prepare a fresh
@@ -644,3 +650,161 @@ This backup/download checkpoint is separate from the pending native build-only g
 M6B remains formally closed; M6D-M6G remain NOT STARTED; production remains
 UNAUTHORIZED / NOT DEPLOYED. No server, backup, live database, migration, deployment,
 provider, M6D-M6G or Narrator action occurred in this local admission correction.
+
+## Pre-output execution denials
+
+Correction for PR #128 comment `4305089747`, relative to
+`3e6871321820f02ddccab7872ae5f69976b91821`. This is local code/test work only.
+
+### Reproduced failure and settlement boundary
+
+Before the change, the actual service with fake SQL and private temporary storage
+reproduced requester revocation, deletion, role loss, source approval loss, builder
+unavailability and builder mismatch after a committed claim. Each left the service
+attempt running with one execution, one attempt, one start event, no outcome event,
+and no artifact I/O, journal, candidate or seal. Controlled expiry followed by actual
+recovery service calls returned `blocked` / `reconciliation_required`.
+
+The isolated actual CLI source reproduced exit 1 with fixed `unauthorized` or
+`conflict` diagnostics for revocation/mismatch, leaving the attempt running. Its
+builder-unavailable catch instead recorded an abandoned attempt and required
+reconciliation, because journal verification could not establish absence. The
+no-work control returned exit 0 and `no_work_claimed`. These are observed local
+results, not native MySQL/Linux claims; before/after outputs are retained outside Git.
+
+Construction now has an explicit nontransferable, single-use service contract.
+Only `claimBuild` after an acknowledged fresh allocation places authority in the
+service's private process memory. Its key binds the exact job/attempt/kind/token;
+its value binds the trusted worker and environment, process ID, runtime object and
+database connection. The lease DTO exposes none of this authority. A new process,
+copied lease, fork with a different PID, runtime/connection substitution, or a
+previous invocation cannot reconstruct it from a missing journal. No schema field
+is reused as an entry flag. No migration or filesystem marker is added.
+
+`executeBuild` first authenticates and resolves committed database history under
+owner locks. It then consumes the authority before builder identification or any
+execution callback. Consumption has no callback/yield point. Reentrant calls cannot
+reach either the denial branch or construction. The sole consuming invocation can
+either settle a gate denial in a short locked transaction or enter the artifact
+dependency after that transaction commits. Settlement rechecks current trusted
+worker, exact token, current attempt ownership, lease/deadline, requester, source,
+input, builder and policy. Ownership transitions use the existing lifecycle locks;
+the first execution pulse rechecks ownership before artifact work after lock release.
+All filesystem/render work stays outside SQL transactions.
+
+This is stronger than a local “not written yet” flag: **all service construction
+requires the unexported authority**, and consumption prevents every later invocation
+of that lease from entering construction or claiming non-entry. The protected
+one-shot CLI already claims and executes in the same process. Persisting a lease
+for construction in another process is deliberately unsupported; such a process
+can only resolve history or use the existing evidence-based recovery path. Direct
+artifact dependencies remain trusted internal wiring, not public entry points.
+
+The pre-output result uses existing post-claim `failed` semantics. It preserves the
+attempt, start event, requester provenance, timestamps and all execution/attempt
+counters. One system-authored `site_build_failed` event commits atomically with the
+job and attempt. Existing categories distinguish requester authorization, source
+eligibility, input mismatch and builder/policy configuration. These gates are
+nontransient and schedule no retry. Existing transient storage/network retry rules
+after independently verified output remain unchanged.
+
+The result is returned as `completed` only after commit. CLI prints the fixed
+`Build-only outcome: failed.` and exits 1, distinct from `no_work_claimed` / exit 0.
+There is no broad CLI exception-to-safe-failure conversion. The unchanged result
+fingerprint supports repeat execution/completion history without new events,
+heartbeats, artifact inspection or eligibility checks. Committed success returns
+the recorded release before new gates and cannot be rewritten by a later denial.
+
+Audit failure rolls the whole settlement back. Consumed authority is never restored,
+including after rollback or a lost commit acknowledgement; unresolved work remains
+conservative. An uncertain commit throws a safe database failure, and only a later
+authoritative read can return an actually committed result. An unacknowledged claim
+never issues construction authority. Neither case triggers blind compensation.
+
+Once the artifact dependency is entered, failures use existing independent producer
+verification, even if the journal is missing. Pending/corrupt journal, interrupted
+write/flush and uncertain seal still remain unknown. Private partial output stays
+retained; recovery never fills it, rerenders, deletes unknown files, or revives an
+expired producer. Producer evidence still precedes fallible execution asset reads.
+The 25-second renewal cadence and 120/900/300-second lease/execution/recovery bounds,
+budgets, 2,000-file admission, byte limits, layout, hashes and public allowlists remain.
+
+### Execution correction validation and inventory
+
+Fresh run: **69 standalone suites, all exit 0; nine M6C suites, 888 assertions**.
+The new execution suite passes 216 assertions; CLI passes 207, recovery/progress 135,
+integration 54, admission 58, artifact 45, bounds 29, scope 53 and security 91.
+All nine M6C suites and four affected M6B suites ran individually first, then every
+available `tests/*Test.php` ran with `php -n`. The unchanged launcher passed 2,131
+assertions across 161 isolated Bash scenarios, 47 mount cases and 27 no-ctype port/type
+cases per mount form across three PHP profiles. The simulated migration runner passed
+848 assertions. Neither executed Linux, containers or a live database.
+
+`php -n -l` passed all 241 tracked/new PHP files. JavaScript and Bash syntax checks
+passed (exit 0) for `tests/WebsitePlatformM5CBrowser.cjs` and `tests/RunM6BMySql.sh`;
+PowerShell `Parser.ParseFile` found zero errors in `tests/RunM6BMySql.ps1`.
+All three local anchor links, both fences and current/historical milestone/backup
+status checks pass. Working and staged diff checks pass; committed checks are retained
+outside Git. Per-suite commands, exits, stdout/stderr and durations are retained there.
+Expected injected PDO diagnostics and Git CRLF warnings remain visible. The first new
+test run exposed an incorrect audit-column assertion with PHP warnings; the assertion
+was corrected to require `actor_user_id` before the successful focused/full runs.
+
+Observed runtime: Windows PHP 8.4.24 CLI ZTS Visual C++ 2022 x64, libxml 2.11.9,
+no php.ini in default or `-n` profiles; Node v24.22.0, PowerShell 7.6.5, Git Bash
+5.3.15. One Windows hardlink case and one actual CGI denial executed; the symlink case
+was unavailable. Earlier 68-suite/651-assertion results remain historical, not reused.
+
+Focused cases include
+revoked/missing/deleted/role-changed requesters, lost source eligibility, unavailable/
+mismatched/malformed builders, input/policy failure, wrong token/owner/worker/
+environment, lease/deadline loss, identity-time ownership changes, database errors,
+audit rollback, lost claim/settlement acknowledgements and committed-success replay.
+Controlled callbacks reenter during identity, artifact entry and journaled progress;
+substituted private authority tests model process/runtime/connection loss. These are
+simulated interleavings and process-identity faults, not native multi-process proof.
+The isolated CLI child uses the actual entry and service with fake SQL and private
+temporary files; no protected host configuration, operational queue or live database.
+
+Correction-only inventory: seven files, two production changes.
+
+| Change | File | Purpose |
+| --- | --- | --- |
+| Modified | `private/classes/SiteBuildService.php` | Issue/consume construction authority; atomically settle known non-entry; resolve history first. |
+| Modified | `scripts/site-build-worker.php` | Report service-completed claims and return nonzero for failed outcomes. |
+| Added | `tests/WebsitePlatformM6CExecutionTest.php` | Focused lifecycle, ownership, interleaving, rollback and replay regressions. |
+| Modified | `tests/WebsitePlatformM6CCliTest.php` | Assert actual isolated CLI failed-claim/no-work reporting. |
+| Added | `tests/support/WebsitePlatformM6CExecutionChild.php` | Actual CLI/service fixture with fake SQL and private temporary storage. |
+| Modified | `tests/support/WebsitePlatformM6CFixture.php` | Test-only builder/worker hooks; production wiring has no new selector. |
+| Modified | `docs/sprint-8.8-m6c-local-implementation.md` | This evidence, boundary and current handoff. |
+
+All 25 migrations and integrity pins remain unchanged. Migration 025 remains applied
+to working staging, canonical SHA-256
+`dab585dc29aac11153f92703c65d3883aeea73a1b2283157cfa9d2f2ece85cb0`.
+No applied SQL, launcher, wrapper, TLS configuration, route, scheduler, provider or
+publication behavior changes. Native Linux startup/permissions, actual MySQL locks/
+FKs/commit behavior, multi-process races and filesystem crash/durability validation
+remain pending under separately authorized build-only validation. The 77-case M6
+acceptance matrix is not claimed passed.
+
+### Current next-run handoff: completed backup and download checkpoint
+
+**BACKUP/DOWNLOAD CHECKPOINT — COMPLETE. SERVER BACKUP — VERIFIED.
+WINDOWS DOWNLOAD — VERIFIED from operator-supplied checksum results.
+RESTORE TEST — NOT EXECUTED.**
+
+The operator reports that all seven hashes, including `SHA256SUMS`, matched. A separate
+private confirmation receipt was retained on the server. Original backup files and
+manifest and the Windows copy were not deleted. This local correction did not retrieve
+or independently verify them; no path, hash value, timestamp or receipt content is
+inferred. The historical “not executed in this local task” passage remains above.
+
+Later authorized droplet validation must reference this completed checkpoint and retain
+the private backups. A local branch correction alone is not a reason to repeat the
+backup. No recreation, download, inspection, restore or deletion is authorized here.
+
+M6B remains formally closed. M6C remains IMPLEMENTED LOCALLY / REVIEW REQUIRED with
+native build-only validation pending. M6D–M6G remain NOT STARTED; production remains
+UNAUTHORIZED / NOT DEPLOYED. The last operator-reported deployed application remains
+`f466fc1cdbfb53325a1db11445736bdc5ea7c6f4`. This task performs zero server, backup,
+live SQL, migration, deployment, Docker, provider, M6D–M6G or Narrator operations.

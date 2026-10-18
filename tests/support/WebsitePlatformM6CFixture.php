@@ -19,6 +19,8 @@ final class WebsitePlatformM6CFixture implements SiteBuildDependencies
     public $duringBuild = null;
     public $duringProgress = null;
     public $verificationProgress = null;
+    public $duringIdentity = null;
+    public ?array $workerOverride = null;
     public static array $roots = [];
     public array $identity;
 
@@ -83,9 +85,9 @@ final class WebsitePlatformM6CFixture implements SiteBuildDependencies
     }
     public function source():array
     { return SiteBuildStore::transaction(fn($db)=>SiteRevisionManager::lockBuildEligibility($db,10,100,$this->db->read->base->revisions[100]['snapshot_hash'])); }
-    public function workerIdentity(string $capability):array { return ['worker_id'=>'synthetic-filesystem-worker','environment'=>'local']; }
+    public function workerIdentity(string $capability):array { return $this->workerOverride ?? ['worker_id'=>'synthetic-filesystem-worker','environment'=>'local']; }
     public function operatorId():int { return 2; }
-    public function builderIdentity():array { return $this->identity; }
+    public function builderIdentity():array { if($this->duringIdentity!==null)($this->duringIdentity)();return $this->identity; }
     public function prepareInput(array $lockedSource):array { SiteBuildRuntime::guard(); return $this->builder->prepareInput($lockedSource); }
     public function execute(array $job,array $producerAttempt,array $lockedSource,callable $pulse):array
     { $this->builds++; if($this->duringBuild!==null)($this->duringBuild)(); return $this->builder->build($job,$producerAttempt,$lockedSource,$this->progress($pulse,$this->duringProgress)); }
