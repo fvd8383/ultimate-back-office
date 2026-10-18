@@ -23,6 +23,10 @@ remain historical results for their respective corrections.
 The review of `3e6871321820f02ddccab7872ae5f69976b91821` is addressed in
 [pre-output execution denials](#pre-output-execution-denials). Its current handoff
 records the operator-reported completed backup/download checkpoint below.
+The subsequent operator-observed CLI failure at `d4fb3d6` is addressed in
+[CLI execution-child profile and diagnostics](#cli-execution-child-profile-and-diagnostics).
+That test/documentation-only correction preserves the earlier Windows results and
+records the partial Linux result separately; the Linux gate has not passed.
 
 ## Implementation and wiring
 
@@ -808,3 +812,196 @@ native build-only validation pending. M6D–M6G remain NOT STARTED; production r
 UNAUTHORIZED / NOT DEPLOYED. The last operator-reported deployed application remains
 `f466fc1cdbfb53325a1db11445736bdc5ea7c6f4`. This task performs zero server, backup,
 live SQL, migration, deployment, Docker, provider, M6D–M6G or Narrator operations.
+
+## CLI execution-child profile and diagnostics
+
+This correction starts at `d4fb3d696fafabc93923915c4b294321d630d21b` on the existing
+PR #128 branch. It changes only the tests/helpers and this implementation record.
+Application, service, runtime, worker, renderer, store, shared M6C fixture and fake
+database implementations are unchanged. This is an operator-observed test failure,
+not a new reviewer finding or a resolved review conversation.
+
+### Operator-reported Linux result at d4fb3d6
+
+| Suite | Result | Assertions |
+| --- | --- | --- |
+| Admission | PASS | 58 |
+| Artifact | PASS | 45 |
+| Bounds | PASS | 29 |
+| CLI | FAILED, exit 255 | Final total not emitted |
+| Execution | PASS | 216 |
+| Integration | PASS | 54 |
+| Recovery | PASS | 135 |
+| Scope | PASS | 53 |
+| Security | PASS | 92 |
+
+The eight passing suites reported **682 assertions**; all **241 tracked PHP files**
+passed lint. Real Linux filesystem operations and both hardlink/symlink rejection
+cases ran. SQL, clocks and interleavings remained simulated. The CLI stopped at
+“Execution child reports trace.” Inspection found the committed `-n` execution-child
+profile lacked PDO/PDOStatement needed by the fixture. Its raw child capture had
+already been deleted: the precise original fatal diagnostic is **not retained** and
+is not inferred here. No Windows CLI assertion count is substituted for that run.
+
+The operator supplied the evidence directory
+`/mnt/ubo_stage_testdata/codex-validation/evidence/m6c-linux-20261018T-readiness`.
+No full report filename or checksum was supplied. This desktop task does not access
+that directory or independently verify the reported Linux evidence. The earlier
+Windows 69-suite/888-assertion results remain historical results at their tested SHA.
+
+### Dependency path, reproduction and selected profile
+
+The execution child loads `WebsitePlatformM6CFixture`, whose fake SQL path is
+M6BDatabase → M5ADatabase → M3ServiceDatabase. Their database and statement classes
+extend PDO/PDOStatement, use PDO constants and PDOException, and override connection
+operations with in-memory behavior. Empty PDO constructors and reflection-injected
+fake connections need **PDO types, not a PDO MySQL driver or a real connection**.
+Fixture construction also needs reflection, date, SPL filesystem iterators, JSON,
+DOM/libxml, hashing/randomness, ctype/filter, image metadata and filesystem/fsync
+functions. The new preflight checks these before requiring any fixture class.
+
+On the available Windows PHP 8.4.24 build, PDO/PDOStatement are built in under `-n`
+and PDO reports no available drivers. The old `-n` revoked execution child succeeds
+in reporting its expected failed-claim trace (exit 1); the operator's missing-PDO
+Linux behavior cannot be reproduced naturally here. A separately captured old-child
+run with process-only `disable_classes=PDO,PDOStatement` exits 255 without a trace.
+This is a controlled capability failure, not the missing original Linux diagnostic.
+With the correction, controlled disabled PDO, DOM and fsync cases fail explicitly
+with prerequisite exit 78 before fixture construction and without a fabricated trace.
+
+The four normal execution scenarios use the same `PHP_BINARY`, without unconditional
+`-n`. A loaded parent INI is passed with `-c`; otherwise the selected executable may
+load its installed default configuration. Relevant effective parent `-d` directives
+(`extension_dir`, disabled functions/classes and temporary directory) are carried
+explicitly. Arbitrary command-line settings are not assumed to propagate. Memory is
+capped at 256 MiB, preserving a smaller positive parent limit; execution time is 10
+seconds, with a separate parent wall-clock deadline. Auto-prepend/append are disabled,
+exception arguments are hidden, and errors go to captured stderr rather than logs.
+
+A capability-only child runs first. If a required PDO/DOM/ctype/filter module is
+missing but already loaded by the parent (for example with `-d extension`), the helper
+can add its existing standard-named module from the parent's `extension_dir` to this
+child only and recheck. It does not install modules, require a database driver, change
+INI files, search PATH for another binary, or silently skip normal execution tests.
+Nonstandard module filenames are not guessed; a still-incapable profile reports a
+retained prerequisite failure and needs an existing capable invocation profile.
+The standard shared-module fallback is not exercised on this built-in Windows build.
+
+The no-INI argument, help, web and runtime-denial tests retain their purpose. Valid
+`--once`/`--recover` remain confined to isolated children. Operational host calls are
+limited to help/invalid arguments and CGI denial. The execution fixture still uses
+actual service/entry code with fake SQL and private files, without protected host
+configuration, a live database, operational claims or non-fixture artifact output.
+
+### Retained diagnostics and cleanup
+
+The small process helper keeps file captures to avoid blocking Windows pipes. The
+existing 64 KiB aggregate output threshold and 10-second default wall timeout remain;
+termination has bounded soft/forced waits and records the observed exit or signal
+and whether the child is still running. Polling can observe output beyond the
+threshold before termination. Evidence reads only a 32 KiB prefix per stream and
+retains at most 4 KiB of sanitized diagnostics per stream, plus byte counts/limits.
+
+Trace parsing and execution assertions now run while captures still exist. Missing
+or malformed traces, startup errors, timeouts, overflow and failed validation retain
+case, profile label, actual exit/termination state and sanitized stdout/stderr in an
+owned temporary `ubo-m6c-cli-failure-<random>/failure.json` outside Git, before raw
+captures are removed. The thrown summary identifies that evidence. Known engine
+capability identities and fixed safe diagnostics are allowlisted; arbitrary messages,
+paths, payloads, arguments, environment and unrecognized identifiers are redacted.
+No assumed success trace or zero-effect counters replace a missing child trace.
+
+Directories/files request 0700/0600. Windows uses the user's inherited temporary
+directory ACLs; POSIX mode assertions run only on POSIX. Successful captures are
+removed. Intentional negative regressions verify and consume only their own retained
+evidence, leaving unrelated failures intact. A failed evidence write leaves the
+original failure and sanitized summary intact and removes partial evidence. Tests
+use an isolated process-only temporary root so concurrent suites cannot affect
+cleanup observations. No installed PHP configuration is edited.
+
+### Fresh desktop validation and exact inventory
+
+The affected CLI suite passes **207 assertions**, including all four real execution
+traces (revoked, builder-unavailable, builder-mismatch, no-work), 32 isolated valid
+argument denials and **one actual CGI invocation**. The new process suite passes
+**85 assertions**: real startup fatal, missing/malformed trace, nonzero exit despite a
+parseable trace, timeout, overflow, payload/identifier redaction, evidence-write
+failure, ownership-scoped cleanup, controlled missing PDO/DOM/fsync/JSON encoding/
+stderr writing, and parent `-c` and relevant `-d` forwarding. Disabled diagnostic
+functions still produce prerequisite exit 78 using a language-level output fallback.
+All ten M6C suites pass **973 assertions** in the fresh standalone validation with
+final affected-suite rechecks: 58/45/29/85/207/216/54/135/53/91 for admission, artifact,
+bounds, CLI process, CLI, execution, integration, recovery, scope and security.
+
+All 245 PHP files pass `php -n -l`; final edited helpers pass lint again. Node syntax,
+Bash syntax and the PowerShell parser pass for the existing browser/launcher scripts.
+The Bash sandbox launch was denied by Windows shared-memory permissions; the same
+syntax-only command passes in normal Windows context. Four local document anchors,
+balanced fences, seven-file inventory and working/staged diff checks pass.
+The full run completed **70 standalone suites, all exit 0**. The unchanged synthetic
+launcher passed 2,131 assertions across 161 Bash scenarios, 47 mount cases and 27
+no-ctype cases per mount form across three PHP profiles; the simulated migration
+runner passed 848 assertions. No native harness, container or live database ran.
+Expected injected PDO/service failure diagnostics remain visible in retained stderr.
+
+Observed runtime: Windows PHP 8.4.24 CLI ZTS Visual C++ 2022 x64, libxml 2.11.9,
+no loaded INI in default or `-n` profiles; Node v24.22.0, PowerShell 7.6.5 and Git Bash
+5.3.15. One hardlink rejection case ran; symlink creation was unavailable. These are
+local filesystem results, not native Linux permissions or real MySQL integration.
+Commands, versions, per-suite exits/stdout/stderr/durations, reproduction captures,
+lint, migration and documentation checks are retained outside Git in this desktop
+task's `m6c-cli-profile` evidence directory. The full run uses `php -n tests/*Test.php`
+one standalone file at a time; only execution children select the capable profile.
+The focused development runs also caught a shared-temp cleanup assertion race and
+an overly short 200 ms startup/timeout expectation; the tests now isolate their temp
+root and use the existing one-second controlled timeout budget. Failed development
+records are retained separately from successful focused/full results.
+
+Correction-only inventory: **seven files; zero production changes**.
+
+| Change | File | Purpose |
+| --- | --- | --- |
+| Modified | `tests/WebsitePlatformM6CCliTest.php` | Select capable execution profile; validate real traces before capture cleanup. |
+| Modified | `tests/support/WebsitePlatformM6CExecutionChild.php` | Capability probe and prerequisite failure before fixture loading. |
+| Added | `tests/support/WebsitePlatformM6CExecutionProfile.php` | Selected-binary, bounded process-only fixture profile and dependency checks. |
+| Added | `tests/support/WebsitePlatformM6CCliProcess.php` | Bounded file captures, sanitized failure retention and owned cleanup. |
+| Added | `tests/support/WebsitePlatformM6CCliProcessChild.php` | Isolated deterministic process faults and profile inspection. |
+| Added | `tests/WebsitePlatformM6CCliProcessTest.php` | Capability, diagnostic, bounds, cleanup and profile regressions. |
+| Modified | `docs/sprint-8.8-m6c-local-implementation.md` | Operator evidence, correction, actual local results and next deliverable. |
+
+All 25 migrations and their integrity pins remain byte-identical to the prior head.
+Migration 025 remains applied to working staging; its canonical SHA-256 remains
+`dab585dc29aac11153f92703c65d3883aeea73a1b2283157cfa9d2f2ece85cb0`.
+The backup/download checkpoint remains **operator-reported COMPLETE** with both
+copies and the separate receipt retained. Restore remains **NOT EXECUTED**. This
+task neither accesses backups nor independently verifies their contents.
+
+### Next Linux check and separate native harness
+
+A later authorized Linux rerun must run the corrected **CLI suite first**, followed
+by its new CLI process regressions. Preserve actual PHP/profile, exits, output,
+optional CGI/link coverage and assertion totals; Windows and Linux totals need not
+match. The eight passing Linux suites remain recorded at `d4fb3d6`. Further suites
+should follow changes to shared fixtures, rather than automatically rerunning them
+because a documentation commit changed HEAD. This correction changes no shared
+M6C/fake-database fixture. No server rerun is performed or authorized here.
+
+The operator inspected the reviewed checkout and found **no executable M6C native
+integration harness**, an existing M6B harness with synthetic build dependencies,
+and absent host protected-worker configuration. These are missing deliverables,
+not a failed native application run. `RunM6BMySql.sh` is not a substitute M6C test;
+no test is improvised against `ubo_staging` and no worker configuration is installed.
+
+The next substantive implementation is a separately reviewed M6C native harness:
+disposable test database/private artifacts, isolated protected-worker configuration
+and exact checkout, non-root worker under actual ownership rules, **same-process
+ordinary claim/construction**, bounded cross-process recovery/fault cases, and
+ownership-scoped cleanup with retained diagnostics. This correction implements no
+native harness or infrastructure expansion and opens no planning-only PR. Earlier
+Docker/WSL proposals are not installation authorization.
+
+M6B remains formally closed; M6C remains IMPLEMENTED LOCALLY / REVIEW REQUIRED with
+native validation pending. M6D–M6G and Narrator remain untouched. PR #128 stays open,
+non-draft and unmerged with auto-merge disabled. No review conversations are resolved
+by this correction. Zero server, live database, SQL/migration, backup/restore,
+deployment, installation, container, provider or production operations occur here.

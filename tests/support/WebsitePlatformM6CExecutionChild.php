@@ -1,10 +1,24 @@
 <?php
 declare(strict_types=1);
 
+// Check the complete fixture prerequisites BEFORE any PDO-derived class loads.
+require_once __DIR__.'/WebsitePlatformM6CExecutionProfile.php';
+$case=$argv[1]??'';
+$missing=m6ExecutionMissingCapabilities();
+// Even diagnostic primitives can be disabled by a configured child profile.
+// Echo is a language construct, so this prerequisite can still be reported.
+if(!function_exists('json_encode')||!function_exists('fwrite')){
+    echo 'M6C_PREREQUISITE: missing '.implode(', ',$missing).".\n";exit(78);
+}
+if($case==='--capabilities'){
+    fwrite(STDERR,"\nM6C_CAPABILITIES:".json_encode(['missing'=>$missing,'ini_loaded'=>php_ini_loaded_file()!==false,
+        'memory_limit'=>ini_get('memory_limit'),'max_execution_time'=>ini_get('max_execution_time')],JSON_THROW_ON_ERROR)."\n");
+    exit($missing===[]?0:78);
+}
+if(!in_array($case,['revoked','builder-unavailable','builder-mismatch','no-work'],true))exit(2);
+if($missing!==[]){fwrite(STDERR,'M6C_PREREQUISITE: missing '.implode(', ',$missing).".\n");exit(78);}
 // Actual entry/service with isolated fake SQL and private temporary artifacts only.
 require_once __DIR__.'/WebsitePlatformM6CFixture.php';
-$case=$argv[1]??'';
-if(!in_array($case,['revoked','builder-unavailable','builder-mismatch','no-work'],true))exit(2);
 $f=new WebsitePlatformM6CFixture();
 if($case!=='no-work')$f->db->request();
 $io=$f->io;$identityCalls=0;

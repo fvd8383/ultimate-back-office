@@ -1,35 +1,26 @@
 <?php
 declare(strict_types=1);
 $assertions=0;$root=dirname(__DIR__);$script=$root.'/scripts/site-build-worker.php';$child=__DIR__.'/support/WebsitePlatformM6CCliChild.php';
+require_once __DIR__.'/support/WebsitePlatformM6CCliProcess.php';
+require_once __DIR__.'/support/WebsitePlatformM6CExecutionProfile.php';
 function m6cli(bool $ok,string $why):void{global $assertions;$assertions++;if(!$ok)throw new RuntimeException($why);}
-function m6process(array $command,array $env=[],int $timeoutNanoseconds=10000000000):array{
-    // Windows anonymous pipes can block despite stream_set_blocking(false).
-    // Private capture files let the parent enforce time/output bounds while the child runs.
-    $stdout=tempnam(sys_get_temp_dir(),'ubo-m6c-out-');$stderr=tempnam(sys_get_temp_dir(),'ubo-m6c-err-');
-    if($stdout===false||$stderr===false)throw new RuntimeException('Capture unavailable');
-    try{
-        $p=proc_open($command,[0=>['pipe','r'],1=>['file',$stdout,'wb'],2=>['file',$stderr,'wb']],$pipes,null,$env===[]?null:$env);
-        if(!is_resource($p))throw new RuntimeException('Process unavailable');fclose($pipes[0]);$start=hrtime(true);
-        do{
-            $status=proc_get_status($p);clearstatcache();
-            if(hrtime(true)-$start>$timeoutNanoseconds||filesize($stdout)+filesize($stderr)>65536){proc_terminate($p);proc_close($p);throw new RuntimeException('Bounded child failed');}
-            if($status['running'])usleep(1000);
-        }while($status['running']);
-        $closed=proc_close($p);return [$status['exitcode']>=0?$status['exitcode']:$closed,file_get_contents($stdout),file_get_contents($stderr)];
-    }finally{unlink($stdout);unlink($stderr);}
-}
 function isolatedCli(string $case,array $args,array $profile=['-n']):array{
     global $child;
-    [$exit,$out,$err]=m6process(array_merge([PHP_BINARY],$profile,[$child,$case],$args));
-    m6cli(preg_match('/\nM6C_TRACE:(.+)\n$/D',$err,$match)===1,'Child reports actual trace: '.$case.' '.$err);
-    $trace=json_decode($match[1],true,512,JSON_THROW_ON_ERROR);$err=substr($err,0,-strlen($match[0]));
+    $trace=null;$cleanErr=null;
+    [$exit,$out]=m6process(array_merge([PHP_BINARY],$profile,[$child,$case],$args),[],10000000000,
+        ['case'=>$case,'profile'=>in_array('-n',$profile,true)?'no-ini':'configured-default'],function($result)use(&$trace,&$cleanErr,$case):void{
+            [$trace,$cleanErr]=m6childTrace($result,'M6C_TRACE');
+            m6cli(true,'Child reports actual trace: '.$case);
+            m6cli($trace['host_config_reads']===0&&$trace['db']===0&&$trace['claims']===0&&$trace['file_output']===0&&!$trace['global_db_initialized'],'No host config/DB/queue/file output: '.$case);
+        });
+    $err=$cleanErr;
     $GLOBALS['child_results'][]=['case'=>$case,'args'=>$args,'profile'=>$profile,'exit'=>$exit,'stdout'=>$out,'stderr'=>$err,'trace'=>$trace];
-    m6cli($trace['host_config_reads']===0&&$trace['db']===0&&$trace['claims']===0&&$trace['file_output']===0&&!$trace['global_db_initialized'],'No host config/DB/queue/file output: '.$case);
     return [$exit,$out,$err,$trace];
 }
 $invalid=[[],['--help','--once'],['--actor','1'],['--dsn','mysql:host=bad'],['--environment','production'],['--root','/'],['--recover','0'],['--recover','1','--once']];
 $start=hrtime(true);$timedOut=false;
-try{m6process([PHP_BINARY,'-n',$child,'timeout','--help'],[],1000000000);}catch(RuntimeException $e){$timedOut=$e->getMessage()==='Bounded child failed';}
+try{m6process([PHP_BINARY,'-n',$child,'timeout','--help'],[],1000000000,['case'=>'timeout','profile'=>'no-ini']);}
+catch(M6CChildFailure $e){$timedOut=$e->reason==='timeout'&&$e->outcome['running']===false;m6discardExpectedFailure($e);}
 m6cli($timedOut&&hrtime(true)-$start<5000000000,'Parent terminates a stalled isolated child without blocking on pipes');
 foreach($invalid as$args){
     [$exit,$out,$err]=m6process(array_merge([PHP_BINARY,'-n',$script],$args));
@@ -49,7 +40,7 @@ $cases=['unsupported-os'=>'future_gate_required','wrong-entry'=>'future_gate_req
 foreach($cases as$case=>$code)foreach([['--once'],['--recover','1']]as$args){
     // Valid work arguments go ONLY to the isolated child, never the host entry point.
     [$exit,$out,$err,$trace]=isolatedCli($case,$args);
-    m6cli($exit===1&&$out===''&&$err==='Build-only invocation stopped: '.$code.".\n",'Exact isolated denial '.$case.' '.$err);
+    m6cli($exit===1&&$out===''&&$err==='Build-only invocation stopped: '.$code.".\n",'Exact isolated denial '.$case);
     m6cli($trace['bootstrap']===2&&$trace['blocked_processes']===($case==='configured-host'?1:0),'Fixed runtime selection / external process denial '.$case);
     if(str_starts_with($case,'missing-')&&$case!=='missing-config')m6cli($trace['virtual_config_reads']===0,'Capabilities checked before configuration');
 }
@@ -66,10 +57,13 @@ $web=0;if(is_file($cgi)){
     [$exit,$out,$err]=m6process([$cgi,'-n','-d','cgi.force_redirect=0','-f',$script],['REDIRECT_STATUS'=>'1','REQUEST_METHOD'=>'GET','SCRIPT_FILENAME'=>$script,'QUERY_STRING'=>'once=1','SystemRoot'=>getenv('SystemRoot')?:'']);
     m6cli($exit===0&&str_contains($out,'Status: 404')&&!str_contains($out,'Build-only')&&$err==='','Actual CGI denial; no server/socket');$web=1;
 }
+$executionProfile=m6ExecutionProfile();
 foreach(['revoked','builder-unavailable','builder-mismatch','no-work']as$case){
-    [$exit,$out,$err]=m6process([PHP_BINARY,'-n',__DIR__.'/support/WebsitePlatformM6CExecutionChild.php',$case]);
-    m6cli(preg_match('/\nM6C_EXECUTION_TRACE:(.+)\n$/D',$err,$match)===1,'Execution child reports trace');
-    $trace=json_decode($match[1],true,512,JSON_THROW_ON_ERROR);$err=substr($err,0,-strlen($match[0]));$empty=$case==='no-work';
+    $trace=null;$err=null;
+    [$exit,$out]=m6process([PHP_BINARY,...$executionProfile['flags'],__DIR__.'/support/WebsitePlatformM6CExecutionChild.php',$case],[],10000000000,
+        ['case'=>'execution-'.$case,'profile'=>$executionProfile['label']],function($result)use($case,&$trace,&$err):void{
+    [$trace,$err]=m6childTrace($result,'M6C_EXECUTION_TRACE');[$exit,$out]=$result;$empty=$case==='no-work';
+    m6cli(true,'Execution child reports real fixture trace');
     m6cli($exit===($empty?0:1)&&$out==='Build-only outcome: '.($empty?'no_work_claimed':'failed').".\n"&&$err==='','Claimed failure differs from no work with fixed safe output');
     m6cli($trace['host_config_reads']===0&&$trace['live_database_connections']===0&&$trace['files']===[]&&$trace['artifact_io']===0&&$trace['builds']===0&&$trace['releases']===0,'Isolated execution denial has no artifact/host effects');
     if(!$empty){
@@ -77,7 +71,8 @@ foreach(['revoked','builder-unavailable','builder-mismatch','no-work']as$case){
         m6cli($trace['jobs'][0]['execution_count']===1&&$trace['jobs'][0]['attempt_count']===1&&$trace['jobs'][0]['recovery_count']===0,'CLI preserves allocated claim counters');
         m6cli($trace['jobs'][0]['failure_code']===($case==='revoked'?'requester_not_authorized':'builder_unavailable'),'CLI exact denial category');
     }
-    $GLOBALS['child_results'][]=['case'=>'execution-'.$case,'exit'=>$exit,'stdout'=>$out,'stderr'=>$err,'trace'=>$trace];
+        });
+    $GLOBALS['child_results'][]=['case'=>'execution-'.$case,'profile'=>$executionProfile['label'],'exit'=>$exit,'stdout'=>$out,'stderr'=>$err,'trace'=>$trace];
 }
 echo 'Isolated child results: '.json_encode($GLOBALS['child_results'],JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR)."\n";
 echo "Website platform M6C CLI: $assertions assertions passed; $web actual CGI invocation; 32 isolated valid-argument denials; Linux/runtime branches simulated.\n";
