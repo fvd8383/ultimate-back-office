@@ -15,7 +15,7 @@ if($case==='forward-execution'){
         ['case'=>'execution-forwarding','profile'=>$profile['label']]);
     echo $result[1];fwrite(STDERR,$result[2]);exit($result[0]);
 }
-if(in_array($case,['observe-execution','controlled-classes','constructor-failure','trace-failure'],true)){
+if(in_array($case,['observe-execution','controlled-classes','constructor-failure','trace-failure','trace-then-fatal'],true)){
     // Observe actual load/root state before the execution child's later cleanup.
     // This is a separate observation, never an execution trace with invented counts.
     register_shutdown_function(static function():void{
@@ -69,6 +69,10 @@ if(in_array($case,['observe-execution','controlled-classes','constructor-failure
             $fixtureSource=$strip(file_get_contents(__DIR__.'/WebsitePlatformM6CFixture.php'));
             $fixtureSource=$replace($fixtureSource,'self::$roots[] = $this->root;','self::$roots[] = $this->root; m6cMissingFixtureFunction();');
             $source=$replace($source,"require_once __DIR__.'/WebsitePlatformM6CFixture.php';",'eval($fixtureSource);');
+        }elseif($case==='trace-then-fatal'){
+            // The actual trace is already written; fail inside the try so its
+            // finally still performs the unchanged tracked-root cleanup.
+            $source=$replace($source,'    }finally{',"        m6cMissingFixtureFunction();\n    }finally{");
         }else $source=$replace($source,'if(!$traceReady||$f===null)return;','if(!$traceReady||$f===null)return; m6cMissingFixtureFunction();');
     }
     $argv=[__FILE__,$executionCase];eval($source);exit(99);

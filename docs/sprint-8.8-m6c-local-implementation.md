@@ -30,6 +30,9 @@ records the partial Linux result separately; the Linux gate has not passed.
 The completed review of `8f04073325b3e01a1851aa0faaa4493fec3d059f` is addressed in
 [execution-fixture prerequisite and initialization review corrections](#execution-fixture-prerequisite-and-initialization-review-corrections).
 The earlier CLI-profile correction's validation remains historical evidence.
+The review of `e067f05bd16ca41a46a1dc174d6471f4c826f5b8` is addressed in
+[execution-fixture cleanup prerequisites](#execution-fixture-cleanup-prerequisites).
+Its basename finding and new validation form a separate evidence layer.
 
 ## Implementation and wiring
 
@@ -1231,3 +1234,254 @@ native validation pending. M6D–M6G and Narrator remain untouched. PR #128 must
 open, non-draft and unmerged with auto-merge disabled. This correction authorizes zero
 server, live SQL/database, migration, backup/restore, deployment, installation,
 container, provider or Narrator actions.
+
+## Execution-fixture cleanup prerequisites
+
+This test/helper/documentation-only correction starts at
+`e067f05bd16ca41a46a1dc174d6471f4c826f5b8` on the existing PR #128 branch and addresses
+[4309456808 — Preflight basename before constructing the fixture](https://github.com/fvd8383/ultimate-back-office/pull/128#discussion_r4309456808).
+The reviewer reports that a selected child profile disabling `basename` passes
+preflight, constructs the fixture and emits an execution trace, then fails during
+owned-root cleanup with exit 255 and leaves its root behind. Presence of a trace,
+process exit and cleanup outcome are separate observations.
+
+The earlier local results remain attached to their own corrections and SHAs. In
+particular, the prior 70-suite/1,100-M6C-assertion record is historical, not fresh
+validation for this finding. The Linux run at `d4fb3d6` still records eight passing
+suites / 682 assertions and the separate CLI exit-255 failure without its final
+assertion count or retained original fatal diagnostic. The subsequent
+[review-gate stop](#operator-reported-review-gate-stop) performed no fetch, checkout
+or tests and produced no new tested SHA, assertion, child-profile or lint result;
+it created no runtime resources and did not independently recheck deployed
+invariants. Its operator-supplied report path/checksum remain recorded above and
+are not retrieved or independently verified here. This basename finding is not
+attributed to a droplet execution.
+
+### Basename reproduction and corrected admission
+
+The actual prior-head isolated child reproduces the finding on local Windows PHP
+8.4.24 under process-only `-d disable_functions=basename`. Its capability-only probe
+exits 0 and incorrectly reports an empty missing list. The normal `no-work` child
+emits a real `M6C_EXECUTION_TRACE`, then exits 255 with an undefined-`basename` fatal.
+One owned fixture root remains, containing `work`, `sealed`, `uploads` and
+`uploads/approved.png`: five observed residual paths including the root. Trace
+presence does not make that process or cleanup successful.
+
+The reproduction confines all child state to a private disposable parent directory.
+Actual exit, bounded stdout/stderr, trace, observed initialization state and residual
+paths are captured in external `m6c-cleanup-prerequisites/basename-before.json`
+before cleanup. The capable parent uses the established fixture cleanup for that
+exact observed owned root, verifies the parent is empty and removes the empty
+parent. No other test root or retained failure evidence is swept. This is local
+Windows process/filesystem evidence, not a native Linux reproduction.
+
+With the correction, the actual basename-disabled capability probe exits 78 and
+reports `missing: [basename]`. The normal execution child also exits 78 with the
+named prerequisite diagnostic and no execution trace. Its separate test observation
+records all five fixture/database/service/runtime classes unloaded, no connection
+or tracked roots, and false fixture-returned/trace-ready states. No fixture,
+request, claim, candidate or artifact is created. There are zero residual paths;
+the private parent is verified empty and removed. These actual observations and
+cleanup confirmation are retained with `basename-after.json`; no zero-effect
+execution trace is substituted for missing initialization.
+
+The selected-parent/profile forwarding regressions pass for both `basename` and
+`base64_decode`: their actual nested capability and normal-execution children retain
+the restriction and exit 78 before fixture effects. Normal capable-profile CLI
+execution still passes for revoked, builder-unavailable, builder-mismatch and
+no-work. Deliberate no-INI help, invalid-argument and isolated runtime-denial cases
+remain; valid work arguments never reach operational host configuration or queues.
+
+### Bounded initialization, trace and cleanup dependency inventory
+
+The audit follows initialization, shutdown registration, trace and tracked-root
+cleanup in the existing helpers/fixture, including concrete immediate initialization
+callees. It adds **33 function checks**: 12 direct lifecycle/cleanup functions, 11
+bootstrap/reporting functions and ten immediate initialization dependencies. Each
+added name is also an exact allowed diagnostic identity. This bounded audit does
+not enumerate all recursive validators, fake-SQL behavior or transitive production
+dependencies; early cleanup still handles other constructor failures.
+
+| Path | Concrete dependencies | Admission and coverage boundary |
+| --- | --- | --- |
+| Optional-directive normalization and class inspection | `ini_get`, `explode`, `trim`, `strtolower`, `array_map`, `array_filter`, `array_values`, `class_exists`, `in_array`, `defined` | Newly checked before normalization or class inspection can call them. The existing false/empty/mixed-case directive normalization and real class-existence checks remain. |
+| Capability metadata | `php_ini_loaded_file`, `ini_get` | Checked before fixture loading; metadata fields use `null` when the corresponding accessor is unavailable. |
+| Direct fixture initialization/composition | `dirname`, `sys_get_temp_dir`, `array_replace`, `strlen`, `str_repeat`, `ucfirst`; existing `bin2hex`, `random_bytes`, `mkdir`, `base64_decode`, `file_put_contents`, `hash`, `realpath` | Concrete omissions are added; existing checks remain. Reflection construction/injection uses the already checked `ReflectionClass` and `ReflectionProperty`. |
+| Immediate initialization callees | `rtrim`, `str_starts_with`, `extension_loaded`, `is_array`, `ksort`, `array_key_exists`, `array_diff`, `array_keys`, `is_string`, `min` | Added for concrete calls reached through store construction, canonical JSON, draft composition replacement and runtime identity/contract/CSS reads. This does not claim an exhaustive audit of those production classes. |
+| Early shutdown registration | `register_shutdown_function` | Newly checked before fixture classes load; registration still precedes construction and request preparation. |
+| Trace projection and serialization | `array_intersect_key`, `array_flip`, `substr`, `strlen`, `count`; `array_map`, `array_values` and event-filter `array_filter`; existing `json_encode`, `fwrite` | All are checked before side effects. `RecursiveDirectoryIterator`, `RecursiveIteratorIterator` and `FilesystemIterator` remain checked classes; trace traversal uses their constructors, iterator protocol and `getPathname`. |
+| Root ownership/path admission | `basename`, `dirname`, `sys_get_temp_dir`, `realpath`, `preg_match` | The first three are added; existing realpath/regular-expression checks remain. Cleanup still requires the tracked random root under the exact current temporary parent. |
+| Owned traversal and mutation | `DirectoryIterator`, its constructor, iterator protocol, `isDot`, `getPathname`, `isLink`, `isDir`; `chmod`, `unlink`, `rmdir` | Existing class/function checks remain. Methods are covered through the SPL class and actual cleanup paths; they are not independent `disable_functions` names. Link handling, ownership checks and deletion scope are unchanged. |
+| Actual entry source loading | `dirname`, `file_get_contents`, `preg_replace` | `dirname` is added; the existing bounded source-boundary checks and other prerequisites remain. |
+
+The existing PDO/PDOStatement/PDOException, date, DOM/libxml and JSON class/constant
+checks remain for the loaded fixture path. Fake SQL still needs PDO types and
+constants, not a PDO database driver or live connection.
+
+The required-function scan now runs first and uses only `function_exists` and PHP
+language constructs. Missing normalization/class-inspection primitives return the
+function report before those primitives are called. An unrelated missing fixture
+function still permits the safe class/constant scan, preserving a complete combined
+module report for the selected profile's existing parent-module forwarding. Rejection
+text uses language-level iteration/concatenation, removing its `implode` dependency.
+When JSON encoding or stderr writing is disabled, the existing language-level output
+fallback still reports the prerequisite failure. No disabled function is restored
+or replaced.
+
+`function_exists` itself and the PHP engine language constructs are the explicit
+bootstrap requirement. Disabling that probe can fail before fixture loading, but
+is outside the prerequisite-status-78 guarantee. The capable parent controller is
+also required for profile selection, bounded capture and safe cleanup; child-only
+restriction tests do not disable the controller's dependencies. This boundary adds
+no PHP configuration framework, production selector or PDO driver requirement.
+
+The table-driven regression individually restricts all eight cleanup functions
+(`basename`, `dirname`, `sys_get_temp_dir`, `realpath`, `preg_match`, `chmod`, `unlink`,
+`rmdir`) and separately restricts `register_shutdown_function`. Existing base64,
+fsync, JSON-encoding and stderr-writing restrictions remain individual cases.
+Additional grouped restrictions require the exact complete missing set in both
+capability and normal-execution checks:
+
+- Initialization, 22 names: `array_replace`, `str_repeat`, `ucfirst`, `rtrim`,
+  `str_starts_with`, `extension_loaded`, `is_array`, `ksort`, `array_key_exists`,
+  `array_diff`, `array_keys`, `is_string`, `min`, `preg_match_all`, `preg_replace`,
+  `bin2hex`, `hash_equals`, `clearstatcache`, `lstat`, `is_link`, `fstat`, `feof`.
+- Trace projection, five names: `array_intersect_key`, `array_flip`, `substr`,
+  `strlen`, `count`.
+- Bootstrap/reporting, the 11 names listed in the first two inventory rows.
+
+The parent controller remains capable. When disabled bootstrap or shutdown
+primitives also prevent the test observer from operating, direct-child cases
+record actual exit, diagnostic, trace and filesystem observations only; they do
+not claim unobserved class state. Existing version-aware PDO/DOM negative tests
+retain their real-versus-controlled distinction. Actual constructor, trace and
+cleanup paths exercise SPL methods through the admitted classes.
+A combined case applies a real child-only `ctype_digit` restriction and controlled
+PDO/PDOStatement absence together, checking that the report retains both function
+and class identities without initializing the fixture.
+
+All listed individual and grouped restriction cases pass in the corrected process
+suite. Capability probes identify the exact required sets; normal rejection retains
+exit 78 and the named diagnostics without an execution trace or new fixture roots.
+The combined real-disabled-ctype/controlled-PDO case reports `ctype_digit`, `PDO`
+and `PDOStatement` together, with observed unloaded fixture state. The actual
+child-only `function_exists` restriction instead exits 255 with its named fatal,
+no execution trace and no new root, confirming the documented bootstrap boundary.
+
+The constructor-failure and trace-generation-failure regressions retain their actual
+255 exits and missing traces while removing only the root observed as owned by that
+child. A further controlled fault emits a real parseable execution trace, then
+exits 255; validation rejects it despite the trace, retains the fatal and verifies
+owned cleanup. No partial initialization is replaced with invented success counters.
+
+Missing/malformed traces, nonzero exit, privacy redaction, timeout, output overflow
+and secondary evidence-write failure checks pass. Each phase also retains a separate
+real failed-child evidence record and an unrelated owned sentinel root throughout
+the child cases, then verifies both hashes are unchanged. Only those controller-owned
+sentinels are removed after verification. Successful and expected-negative cases
+leave no accumulating captures or fixture data; unexpected retained failure evidence
+is not swept. Private modes, bounded capture and failure-before-capture-cleanup
+ordering remain intact.
+
+The shared fixture is unchanged. Early shutdown registration, `finally` cleanup,
+ownership/path/symlink checks, false/empty directive normalization, version-aware
+class tests and base64 admission all remain. The controlled PHP-failure cases do
+not claim cleanup after a forced process termination that runs no shutdown handler.
+
+### Fresh validation and exact correction inventory
+
+The individually run CLI suite passes **207 assertions**, exit 0, in 32.711 seconds;
+the corrected process suite passes **295 assertions**, exit 0, in 24.641 seconds.
+All three existing
+script syntax checks pass: Node `--check` for `tests/WebsitePlatformM5CBrowser.cjs`,
+Bash `-n` for `tests/RunM6BMySql.sh`, and PowerShell `Parser.ParseFile` for
+`tests/RunM6BMySql.ps1`. These are syntax checks, not browser or native-harness runs.
+Fresh observed versions are Windows PHP 8.4.24 CLI ZTS Visual C++ 2022 x64, Node
+v24.22.0, PowerShell 7.6.5, Git 2.56.0.windows.2 and Git Bash 5.3.15.
+
+Expanded sequential regression coverage exposed the actual Windows controller's
+10-second PHP execution limit; the fatal diagnostic is retained with the failed
+development runs. The process suite now schedules five explicit phases: process,
+classes, cleanup, capabilities and fixtures. Each uses the same selected PHP
+profile and its 10-second execution bound; a single aggregate 30-second parent
+wall deadline covers all phases and final cleanup. This preserves the original
+bounds while scheduling the added cases. Successful outer cleanup must leave the
+private parent empty and remove it, with a final deadline check after cleanup.
+
+All **245 tracked PHP files** pass lint, including refreshed checks of the final
+edited code. The actual local process/filesystem runs are distinct from the labeled
+source-copy class/fault controls; no native Linux or other PHP-version run is
+claimed. Commands, versions, per-suite exits/stdout/stderr, before/after captures,
+failed development runs and successful final runs are retained outside Git in
+`m6c-cleanup-prerequisites`.
+
+Fresh standalone validation with final affected-suite rechecks passes **ten M6C
+suites / 1,183 assertions**: admission 58, artifact 45, bounds 29, CLI process 295,
+CLI 207, execution 216, integration 54, recovery 135, scope 53 and security 91.
+The final standalone CLI/process rechecks exit 0 in 25.084/26.739 seconds respectively.
+One actual CGI invocation and 32 isolated valid-argument denials run. Security executes
+one Windows hardlink case; symlink creation is unavailable, so one of two local link
+cases runs. The earlier 291-assertion development passes precede the combined
+function/class report regression and are retained separately from the final 295.
+
+The suites run as individual `php -n tests/<suite>Test.php` commands; the focused
+commands are `php -n tests/WebsitePlatformM6CCliTest.php` and
+`php -n tests/WebsitePlatformM6CCliProcessTest.php`. Execution children select the
+capable bounded profile. Lint uses `php -n -l` for each tracked PHP file. No installed
+INI or PHP binary is changed.
+
+The full available set completes **70 standalone suites, all exit 0; zero failures**,
+with final affected-suite rechecks retained in the combined results. The unchanged
+synthetic launcher exits 0 in 1,431.728 seconds and passes 2,131 assertions across
+161 isolated Bash scenarios, 47 mount cases and 27 no-ctype port/type cases per mount
+form using three PHP profiles. It uses fake commands only; no Linux/container/MySQL
+harness is executed. Documentation checks enumerate 16 Markdown links, verify all
+seven internal anchors and two balanced fence markers, and confirm preserved
+history/status and the exact six-file inventory. There are no local file links to
+resolve. The working diff check passes. Final staged and committed diff results
+will be recorded with the commit evidence in the external `SUMMARY.txt`.
+
+Correction-only inventory: **six modified files; zero production changes**.
+
+| File | Purpose |
+| --- | --- |
+| `tests/support/WebsitePlatformM6CExecutionProfile.php` | Check bounded cleanup/initialization/bootstrap dependencies while retaining complete safe class/module reporting. |
+| `tests/support/WebsitePlatformM6CExecutionChild.php` | Reject missing prerequisites before effects; make rejection/metadata reporting safe when helper primitives are unavailable. |
+| `tests/support/WebsitePlatformM6CCliProcess.php` | Allowlist the exact added diagnostic identities without changing capture/resource limits. |
+| `tests/support/WebsitePlatformM6CCliProcessChild.php` | Isolated observations and trace-then-fatal/combined-capability controls. |
+| `tests/WebsitePlatformM6CCliProcessTest.php` | Bounded phased cleanup/bootstrap coverage, profile propagation and unrelated-state preservation. |
+| `docs/sprint-8.8-m6c-local-implementation.md` | Finding, bounded audit, before/after evidence, actual validation and preserved history. |
+
+Production code, operational worker/runtime, shared fixtures, the main CLI suite and
+resource limits remain unchanged. All 26 tracked SQL files retain their raw hashes
+from this task's starting snapshot. The canonical contents of all 25 migrations
+match baseline `7ed48fbaa4858b1b5299dc7cbea98f96e98f4e45`; migration 025's required
+canonical hash and the unchanged integrity pins are checked. No SQL is edited or
+reapplied.
+
+### Preserved state, review and later Linux check
+
+Migration 025 remains operator-reported applied to working staging, with canonical
+SHA-256 `dab585dc29aac11153f92703c65d3883aeea73a1b2283157cfa9d2f2ece85cb0`.
+The backup/download checkpoint remains **operator-reported COMPLETE**; the server
+and Windows copies and separate confirmation receipt remain retained. Restore
+remains **NOT EXECUTED**. This task does not retrieve, recreate, restore or delete
+backups, or independently recheck deployed invariants.
+
+The M6C native integration harness remains a separate missing deliverable. This
+correction neither implements it nor runs the M6B harness as its substitute, and
+does not provision a protected worker environment. A later authorized Linux run
+must execute the corrected **CLI suite first**, then the process regressions and
+retain its own actual profile, exits, diagnostics and assertions. No Linux/server
+rerun occurs in this desktop correction.
+
+The post-push reply/resolution for finding 4309456808 and observed exact-new-head
+review state will be recorded in PR #128 and the external `SUMMARY.txt`. Only this
+conversation is eligible for resolution after verifying the fix and checking for a
+substantive rebuttal; no unobserved clean review is claimed in this pre-commit record.
+
+M6B remains formally closed; M6C remains IMPLEMENTED LOCALLY / REVIEW REQUIRED with
+native validation pending. M6D–M6G and Narrator remain untouched. PR #128 remains
+open, non-draft and unmerged with auto-merge disabled. Scope remains zero server,
+live SQL/database, migration, backup/restore, deployment, installation, container,
+provider or Narrator operations.

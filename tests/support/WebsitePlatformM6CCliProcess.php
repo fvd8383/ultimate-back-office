@@ -26,6 +26,9 @@ function m6diagnostic(string $raw):string {
         'base64_decode','preg_match_all','preg_replace','bin2hex','hash_equals','clearstatcache','lstat','is_link','fstat','feof',
         'libxml_use_internal_errors','fopen','fread','fwrite','fflush','flock','fclose','mkdir','chmod','rename','unlink','rmdir',
         'file_get_contents','file_put_contents','scandir','stat','realpath','PDO::FETCH_DEFAULT','PDO::FETCH_ASSOC','LIBXML_DOTTED_VERSION',
+        'basename','dirname','sys_get_temp_dir','register_shutdown_function','array_intersect_key','array_flip','substr','strlen','count','array_replace','str_repeat','ucfirst',
+        'rtrim','str_starts_with','extension_loaded','is_array','ksort','array_key_exists','array_diff','array_keys','is_string','min',
+        'function_exists','ini_get','explode','trim','strtolower','array_map','array_filter','array_values','class_exists','in_array','defined','php_ini_loaded_file',
         'PDO::getAvailableDrivers','M6CMissingFixtureDependency','m6cMissingFixtureFunction'];
     foreach(explode("\n",str_replace("\r",'',substr($raw,0,32768)))as$line){
         if(trim($line)==='')continue;

@@ -1,22 +1,28 @@
 <?php
 declare(strict_types=1);
 
-// Check the complete fixture prerequisites BEFORE any PDO-derived class loads.
+// Check fixture initialization and lifecycle prerequisites before PDO-derived classes load.
 require_once __DIR__.'/WebsitePlatformM6CExecutionProfile.php';
 $case=$argv[1]??'';
 $missing=m6ExecutionMissingCapabilities();
+// Assemble rejection text without calling another potentially disabled helper.
+$diagnostic='M6C_PREREQUISITE: missing ';$separator='';
+foreach($missing as$name){$diagnostic.=$separator.$name;$separator=', ';}
+$diagnostic.=".\n";
 // Even diagnostic primitives can be disabled by a configured child profile.
 // Echo is a language construct, so this prerequisite can still be reported.
 if(!function_exists('json_encode')||!function_exists('fwrite')){
-    echo 'M6C_PREREQUISITE: missing '.implode(', ',$missing).".\n";exit(78);
+    echo $diagnostic;exit(78);
 }
 if($case==='--capabilities'){
-    fwrite(STDERR,"\nM6C_CAPABILITIES:".json_encode(['missing'=>$missing,'ini_loaded'=>php_ini_loaded_file()!==false,
-        'memory_limit'=>ini_get('memory_limit'),'max_execution_time'=>ini_get('max_execution_time')],JSON_THROW_ON_ERROR)."\n");
+    fwrite(STDERR,"\nM6C_CAPABILITIES:".json_encode(['missing'=>$missing,
+        'ini_loaded'=>function_exists('php_ini_loaded_file')?php_ini_loaded_file()!==false:null,
+        'memory_limit'=>function_exists('ini_get')?ini_get('memory_limit'):null,
+        'max_execution_time'=>function_exists('ini_get')?ini_get('max_execution_time'):null],JSON_THROW_ON_ERROR)."\n");
     exit($missing===[]?0:78);
 }
+if($missing!==[]){fwrite(STDERR,$diagnostic);exit(78);}
 if(!in_array($case,['revoked','builder-unavailable','builder-mismatch','no-work'],true))exit(2);
-if($missing!==[]){fwrite(STDERR,'M6C_PREREQUISITE: missing '.implode(', ',$missing).".\n");exit(78);}
 // Actual entry/service with isolated fake SQL and private temporary artifacts only.
 require_once __DIR__.'/WebsitePlatformM6CFixture.php';
 $f=null;$io=0;$traceReady=false;

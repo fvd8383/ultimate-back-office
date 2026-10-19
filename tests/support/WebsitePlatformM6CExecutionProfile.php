@@ -7,17 +7,29 @@ function m6ExecutionDisabledClasses(string|false $value):array {
     return array_values(array_filter(array_map('strtolower',array_map('trim',explode(',',$value))),static fn($name):bool=>$name!==''));
 }
 function m6ExecutionMissingCapabilities():array {
-    $missing=[];$disabled=m6ExecutionDisabledClasses(ini_get('disable_classes'));
-    foreach(['PDO','PDOStatement','PDOException','ReflectionClass','ReflectionProperty','DateTimeImmutable','DateTimeZone',
-        'DirectoryIterator','RecursiveDirectoryIterator','RecursiveIteratorIterator','FilesystemIterator',
-        'DOMDocument','DOMXPath','DOMElement','JsonException']as$name){
-        if(!class_exists($name,false)||in_array(strtolower($name),$disabled,true))$missing[]=$name;
-    }
-    foreach(['json_encode','json_decode','hash','random_bytes','preg_match','array_is_list','ctype_digit','filter_var',
+    // Check functions before normalization/class inspection. Only function_exists
+    // and language constructs are assumed at this bounded bootstrap boundary.
+    $missing=[];
+    foreach(['ini_get','explode','trim','strtolower','array_map','array_filter','array_values','class_exists','in_array','defined','php_ini_loaded_file',
+        'basename','dirname','sys_get_temp_dir','register_shutdown_function','array_intersect_key','array_flip','substr','strlen','count','array_replace','str_repeat','ucfirst',
+        'rtrim','str_starts_with','extension_loaded','is_array','ksort','array_key_exists','array_diff','array_keys','is_string','min',
+        'json_encode','json_decode','hash','random_bytes','preg_match','array_is_list','ctype_digit','filter_var',
         'base64_decode','preg_match_all','preg_replace','bin2hex','hash_equals','clearstatcache','lstat','is_link','fstat','feof',
         'getimagesizefromstring','fsync','libxml_use_internal_errors','fopen','fread','fwrite','fflush','flock','fclose',
         'mkdir','chmod','rename','unlink','rmdir','file_get_contents','file_put_contents','scandir','stat','realpath']as$name){
         if(!function_exists($name))$missing[]=$name;
+    }
+    // Only unavailable inspection primitives prevent the class scan. Keep a
+    // complete module report when an unrelated fixture function is missing, so
+    // the existing profile can still carry all already-loaded parent modules.
+    foreach(['ini_get','explode','trim','strtolower','array_map','array_filter','array_values','class_exists','in_array','defined']as$name){
+        if(!function_exists($name))return $missing;
+    }
+    $disabled=m6ExecutionDisabledClasses(ini_get('disable_classes'));
+    foreach(['PDO','PDOStatement','PDOException','ReflectionClass','ReflectionProperty','DateTimeImmutable','DateTimeZone',
+        'DirectoryIterator','RecursiveDirectoryIterator','RecursiveIteratorIterator','FilesystemIterator',
+        'DOMDocument','DOMXPath','DOMElement','JsonException']as$name){
+        if(!class_exists($name,false)||in_array(strtolower($name),$disabled,true))$missing[]=$name;
     }
     foreach(['PDO::FETCH_DEFAULT','PDO::FETCH_ASSOC','LIBXML_DOTTED_VERSION']as$name)if(!defined($name))$missing[]=$name;
     return $missing;
