@@ -27,6 +27,9 @@ The subsequent operator-observed CLI failure at `d4fb3d6` is addressed in
 [CLI execution-child profile and diagnostics](#cli-execution-child-profile-and-diagnostics).
 That test/documentation-only correction preserves the earlier Windows results and
 records the partial Linux result separately; the Linux gate has not passed.
+The completed review of `8f04073325b3e01a1851aa0faaa4493fec3d059f` is addressed in
+[execution-fixture prerequisite and initialization review corrections](#execution-fixture-prerequisite-and-initialization-review-corrections).
+The earlier CLI-profile correction's validation remains historical evidence.
 
 ## Implementation and wiring
 
@@ -1005,3 +1008,226 @@ native validation pending. M6D–M6G and Narrator remain untouched. PR #128 stay
 non-draft and unmerged with auto-merge disabled. No review conversations are resolved
 by this correction. Zero server, live database, SQL/migration, backup/restore,
 deployment, installation, container, provider or production operations occur here.
+
+## Execution-fixture prerequisite and initialization review corrections
+
+This test/helper/documentation-only correction starts at
+`8f04073325b3e01a1851aa0faaa4493fec3d059f` on the existing PR #128 branch and addresses
+the two completed-review findings:
+
+- [4305441338 — Normalize a missing disable_classes directive](https://github.com/fvd8383/ultimate-back-office/pull/128#discussion_r4305441338).
+- [4305441342 — Check base64_decode before constructing the fixture](https://github.com/fvd8383/ultimate-back-office/pull/128#discussion_r4305441342).
+
+The reviewer's PHP 8.5.7-dev reproduction is reviewer-supplied evidence. It is not a
+PHP version observed by this desktop task or a claim of full application support.
+The earlier Windows 70-suite/973-M6C-assertion results above describe the prior
+correction; they are not reused as fresh validation for these findings.
+
+### Operator-reported review-gate stop
+
+The latest droplet task **STOPPED at the completed-review gate**. It performed no
+fetch or checkout, and neither requested suite ran. It produced no new tested SHA,
+assertion total, child-profile result or lint result. No runtime resources were
+created. Deployed invariants were not independently rechecked after that stop.
+This is a blocked validation attempt, not another executed CLI test failure.
+
+Operator-reported evidence file:
+`/mnt/ubo_stage_testdata/codex-validation/evidence/m6c-cli-profile-20261018T235522Z-blocked/M6C-LINUX-CLI-PROFILE-VERIFICATION.txt`.
+Reported SHA-256:
+`02c376cea15cab66b7958ffe1e4112f0b15af7eead2952332ba9d4991cbb7e77`.
+The desktop task does not retrieve this file or independently verify its checksum.
+
+The earlier Linux run at `d4fb3d696fafabc93923915c4b294321d630d21b` remains separate:
+eight passing suites / **682 assertions**, the CLI failure at exit 255 without a
+final assertion total, and 241 passing PHP lint results. Its original child fatal
+was not retained and is not reconstructed. The blocked run supplies no replacement
+execution evidence for any of those results.
+
+### Optional directive and class-capability coverage
+
+The prior-head source snapshot reproduces the unavailable-directive failure under
+strict types on local PHP 8.4.24: a source-local namespace control returns `false`
+from `ini_get('disable_classes')`, and the original `explode` path exits 255 with a
+TypeError. This is a controlled false-return reproduction, not native PHP 8.5
+execution. An initial external reproduction harness accidentally omitted the eval
+source's strict declaration, so that child exited 0; the resulting failed
+assertion/evidence remains retained. The corrected strict-types harness reproduced
+the failure and exited 0 after checking that actual child result.
+
+The small pure `m6ExecutionDisabledClasses(string|false)` boundary maps `false` to an
+empty list, trims and lowercases names, and removes empty entries. The actual
+preflight continues to check `class_exists` for every required class. An unavailable
+directive therefore does not imply that the class exists. The bounded nearby audit
+also guards unavailable `memory_limit` before matching it and unavailable/empty
+`extension_dir` before trimming it for the existing-module fallback. No production
+configuration or general PHP compatibility framework changes.
+
+Class-negative regressions first establish a capable baseline using the selected
+child profile, then inspect whether `disable_classes` is available and whether it
+actually removed known internal PDO/DOM methods. Only a supported,
+demonstrably effective directive is credited with real process-level disabled-class
+coverage. Separately, an isolated strict source copy exercises false optional
+directives and controlled missing PDO/DOM class decisions while retaining actual
+`class_exists` behavior for other classes. This coverage remains available when PHP
+ignores or removes the directive. These controls exist only in the deterministic
+test fault child; no production PDO replacements or worker/configuration bypasses
+are introduced.
+
+On this Windows build both actual PDO/DOM directive groups were effective and ran,
+alongside both controlled false-directive/missing-class groups. A controlled
+false-directive capability probe with no denied classes also reported the real
+capable class state without constructing the fixture.
+
+The local executable/package/location checks found PHP 8.4.24 and no PHP 8.5
+installation in the checked PATH, WinGet PHP package records or common PHP locations.
+No PHP version was installed or downloaded. The reviewer's PHP 8.5.7-dev result stays
+reviewer evidence; the controlled local case does not become a native version test.
+
+### Fixture prerequisites and partial initialization cleanup
+
+With the prior-head source snapshots and actual process-only
+`-d disable_functions=base64_decode`, the capability probe exits 0 and incorrectly
+reports an empty missing list. The normal constructor child exits 255 on the missing
+function, emits no execution trace and leaves one actual tracked fixture root.
+The reproduction confines that root to its own disposable temporary directory; the
+existing fixture cleanup removes that exact owned root and leaves that directory
+empty. Actual exits and sanitized failure evidence are retained before raw-capture
+cleanup. The original sanitizer redacts the unrecognized function identity; the
+corrected bounded allowlist separately preserves the exact `base64_decode` identity
+from the captured pre-fix diagnostic. No original Linux fatal is inferred from this
+local reproduction.
+
+`base64_decode` now belongs to the actual preflight and diagnostic allowlist. A bounded
+comparison of the real fixture constructor/request path also found nine concrete
+function dependencies: `preg_match_all`, `preg_replace`, `bin2hex`, `hash_equals`,
+`clearstatcache`, `lstat`, `is_link`, `fstat` and `feof`. They are checked before loading
+fixture classes and are accepted as exact safe diagnostic identities. The capable
+profile still carries the parent's disabled-function restriction; it does not
+re-enable a function, replace the fixture image or install a module.
+
+The execution child now registers cleanup before construction or request preparation.
+A nullable fixture reference and a separate readiness flag prevent execution-trace
+generation until setup has returned and completed. The shutdown callback always
+calls the existing static tracked-root cleanup in `finally`, including when the
+constructor never returns an instance or trace generation throws. It neither searches
+for roots nor follows unknown paths. The shared fixture and its deletion mechanism
+remain unchanged. A controlled constructor fault is injected immediately after the
+fixture tracks its owned root, and a separate trace fault tests the `finally` path;
+both controls are confined to the source-copy test child.
+
+After correction, the actual selected-parent `base64_decode` restriction reaches the
+nested capability probe, which exits 78 and lists the missing function. A normal
+execution case also exits 78, retains the named prerequisite diagnostic and emits
+no execution trace. Separate test-only observations confirm all five fixture,
+fake-database, database, build-service and runtime classes are unloaded, with no
+connection or tracked roots; the owned temporary directory is unchanged. No fixture,
+request, claim, candidate or artifact is created. These observations are not
+substituted execution-trace counters. All 13 actual disabled-function cases pass,
+covering the ten added functions and existing fsync/JSON-encoding/stderr-writing
+requirements.
+
+The controlled constructor fault exits 255 before returning an instance or setting
+trace readiness. The separate trace-generation fault exits 255 after both are set.
+In both cases the observer sees the real fake-database connection and one existing
+child-owned tracked root before cleanup; the parent verifies that exact root is
+absent after exit. Both preserve the controlled undefined-function diagnostic and
+actual exit without an execution trace. Retained sanitized failure evidence is
+checked before each intentional negative case consumes only its own evidence.
+
+The callback cannot clean after a forcibly killed process that executes no shutdown
+handlers; that is not claimed by these controlled PHP-failure cases. Private file
+modes, bounded output/time limits and sanitized evidence retention before raw-capture
+cleanup remain in force. No zero-effect execution trace substitutes for incomplete
+initialization or a missing trace.
+
+### Fresh local validation and correction-only inventory
+
+The corrected CLI and process suites ran individually with exit 0: **207 CLI
+assertions** and **212 process assertions**. The CLI retains revoked,
+builder-unavailable, builder-mismatch and no-work execution cases, deliberate no-INI
+help/argument/runtime denials and confinement of valid work arguments to isolated
+children. The process suite checks the normalization inputs, actual and controlled
+class mechanisms, all 13 disabled-function cases, selected-parent propagation,
+partial construction and trace-failure cleanup, and the existing diagnostic bounds.
+The final focused process run includes the selected-child baseline correction.
+
+The fresh standalone run passes all **ten M6C suites / 1,100 assertions**: admission
+58, artifact 45, bounds 29, CLI process 212, CLI 207, execution 216, integration 54,
+recovery 135, scope 53 and security 91. One actual CGI denial and one Windows hardlink
+case execute; symlink creation is unavailable, so one of two local link cases runs.
+These are actual local processes and filesystem operations with fake SQL. Controlled
+false-directive/class decisions and injected constructor/trace faults are separately
+identified; no native PHP 8.5 or Linux rerun is claimed.
+
+All **245 PHP files** pass `php -n -l`. Three script checks pass: Node `--check` for
+`tests/WebsitePlatformM5CBrowser.cjs`, Bash `-n` for `tests/RunM6BMySql.sh`, and
+PowerShell `Parser.ParseFile` for `tests/RunM6BMySql.ps1`. These are syntax checks,
+not a native harness or browser run. Observed versions are Windows PHP 8.4.24 CLI
+ZTS Visual C++ 2022 x64, Node v24.22.0, PowerShell 7.6.5, Git Bash 5.3.15 and Git
+2.56.0.windows.2. The available standalone set runs one `php -n tests/*Test.php`
+file per process; only its execution children select the capable profile.
+Commands, versions, exits, per-suite stdout/stderr/durations, before/after evidence
+and integrity checks are retained outside Git in `m6c-bootstrap-review`.
+
+The full available set completes **70 standalone suites, all exit 0; zero failures**,
+with 1,169.402 seconds of summed suite duration. Eleven stderr captures retain
+expected simulated-fault diagnostics.
+The unchanged synthetic launcher passes 2,131 assertions across 161 isolated Bash
+scenarios, 47 mount-inspection cases and 27 no-ctype port/type cases per mount form,
+using three PHP profiles and fake commands only. Its final run takes 1,036.1 seconds;
+it executes no Linux/container/MySQL harness. Documentation checks enumerate 13
+Markdown links, verify all five internal anchors and two balanced fence markers,
+and confirm the six-file inventory and current/historical status requirements.
+At document preparation, working-diff and staged five-file PHP diff checks pass.
+Final six-file staged and committed diff results will be recorded in the external
+`SUMMARY.txt` with the commit evidence.
+
+Correction-only inventory: **six modified files; zero production changes**.
+
+| File | Purpose |
+| --- | --- |
+| `tests/support/WebsitePlatformM6CExecutionProfile.php` | Normalize optional directives; check concrete fixture dependencies before loading. |
+| `tests/support/WebsitePlatformM6CExecutionChild.php` | Register owned-root cleanup before construction; gate traces on completed setup. |
+| `tests/support/WebsitePlatformM6CCliProcess.php` | Allowlist the exact added prerequisite identities in bounded diagnostics. |
+| `tests/support/WebsitePlatformM6CCliProcessChild.php` | Isolated directive/capability observations and controlled initialization/trace faults. |
+| `tests/WebsitePlatformM6CCliProcessTest.php` | Version-aware class checks, function propagation and partial-initialization cleanup regressions. |
+| `docs/sprint-8.8-m6c-local-implementation.md` | Both findings, preserved operator evidence, correction and fresh validation. |
+
+The main CLI suite, shared M6C fixture and fake-database implementations are unchanged.
+
+### Preserved state and later validation
+
+The exact six-file diff contains no production, worker/runtime, build-service,
+renderer, store, resource-limit, shared-fixture or main-CLI-test change. All 26 tracked
+SQL files retain their raw hashes from this task's starting snapshot. The canonical
+contents of all 25 migrations match the M6C baseline
+`7ed48fbaa4858b1b5299dc7cbea98f96e98f4e45` using the existing line-ending normalization;
+no migration or integrity pin was edited. Migration 025's canonical hash matches the
+value below. No applied SQL or deployed invariant is changed or remotely rechecked.
+
+Migration 025 remains operator-reported applied to working staging, with canonical
+SHA-256 `dab585dc29aac11153f92703c65d3883aeea73a1b2283157cfa9d2f2ece85cb0`.
+The backup/download checkpoint remains **operator-reported COMPLETE**: both backup
+copies and the separate confirmation receipt remain retained. Restore remains
+**NOT EXECUTED**. This task does not retrieve, recreate, inspect, restore or delete
+backups, and does not independently recheck deployed invariants.
+
+A later authorized Linux check must run the corrected **CLI suite first**, then the
+CLI process regressions, retaining its own actual profile, exit, diagnostic and
+assertion evidence. That rerun is not performed here. The separately reviewed M6C
+native harness remains a missing deliverable; it requires a disposable database and
+private artifacts, protected configuration and exact checkout, a non-root worker,
+same-process ordinary claim/construction, bounded cross-process recovery/fault cases,
+and owned cleanup with retained diagnostics. This correction implements no native
+harness, runs no M6B harness as a substitute, and provisions no worker environment.
+
+At commit preparation, both original findings are verified locally. Post-push
+responses/resolutions and the observed exact-new-head review state are recorded in
+PR #128 and the external `SUMMARY.txt`; this pre-commit record does not claim an
+unobserved clean review. Only the two named conversations are eligible for resolution.
+
+M6B remains formally closed; M6C remains IMPLEMENTED LOCALLY / REVIEW REQUIRED with
+native validation pending. M6D–M6G and Narrator remain untouched. PR #128 must remain
+open, non-draft and unmerged with auto-merge disabled. This correction authorizes zero
+server, live SQL/database, migration, backup/restore, deployment, installation,
+container, provider or Narrator actions.

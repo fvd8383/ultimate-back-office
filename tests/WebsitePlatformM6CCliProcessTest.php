@@ -16,6 +16,40 @@ if(($argv[1]??'')!=='--owned-temp'){
 $assertions=0;$observed=[];$child=__DIR__.'/support/WebsitePlatformM6CCliProcessChild.php';
 function m6cp(bool $ok,string $why):void{global $assertions;$assertions++;if(!$ok)throw new RuntimeException($why);}
 function m6cpDirectories(string $prefix):array{$dirs=glob(sys_get_temp_dir().'/'.$prefix.'*')?:[];sort($dirs);return $dirs;}
+function m6cpBootstrap(array $result):array {
+    $state=null;$count=0;
+    foreach([1,2]as$stream){
+        $result[$stream]=preg_replace_callback('/^M6C_BOOTSTRAP_STATE:([^\r\n]+)\r?\n/m',static function($match)use(&$state,&$count):string{
+            $state=json_decode($match[1],true,512,JSON_THROW_ON_ERROR);$count++;return '';
+        },$result[$stream]);
+    }
+    if($count!==1||!is_array($state))throw new RuntimeException('Missing actual bootstrap observation');
+    return [$result,$state];
+}
+function m6cpNoFixture(array $state,string $label):void {
+    $classes=['WebsitePlatformM6CFixture','WebsitePlatformM6BDatabase','Database','SiteBuildService','SiteBuildRuntime'];
+    m6cp($state['classes']===array_fill_keys($classes,false)&&$state['connection']===null&&$state['roots']===null,
+        'Actual fixture/SQL/service classes remain unloaded: '.$label);
+    m6cp($state['fixture_returned']===false&&$state['trace_ready']===false,'No initialized fixture or execution trace state: '.$label);
+}
+function m6cpPrerequisite(array $command,string $required,string $label):void {
+    global $observed,$fixtureRoots;
+    $caught=false;$state=null;$executionTrace=null;
+    try{
+        m6process($command,[],10000000000,['case'=>$label,'profile'=>'controlled-capability'],static function($r)use(&$state,&$executionTrace):void{
+            $executionTrace=str_contains($r[1].$r[2],'M6C_EXECUTION_TRACE:');
+            [$r,$state]=m6cpBootstrap($r);m6childTrace($r,'M6C_EXECUTION_TRACE');
+        });
+    }catch(M6CChildFailure $e){
+        $caught=true;$observed[$label]=$e->outcome;$diagnostic=$e->outcome['stdout'].$e->outcome['stderr'];
+        m6cp($e->reason==='prerequisite'&&$e->outcome['exit']===78&&str_contains($diagnostic,$required),'Clear actual prerequisite outcome: '.$label);
+        m6cp($executionTrace===false,'No manufactured execution trace: '.$label);
+        m6cp(is_string($e->evidence)&&is_file($e->evidence)&&json_decode(file_get_contents($e->evidence),true,512,JSON_THROW_ON_ERROR)===$e->outcome,
+            'Sanitized actual prerequisite evidence retained: '.$label);
+        m6cpNoFixture($state,$label);m6discardExpectedFailure($e);
+    }
+    m6cp($caught&&m6cpDirectories('ubo-m6c-')===$fixtureRoots,'Preflight precedes owned fixture roots and request/claim/artifact work: '.$label);
+}
 $captures=m6cpDirectories('ubo-m6c-cli-capture-');$failures=m6cpDirectories('ubo-m6c-cli-failure-');
 $fixtureRoots=m6cpDirectories('ubo-m6c-');
 $flags=['-n','-d','display_errors=stderr','-d','log_errors=0','-d','html_errors=0','-d','memory_limit=64M','-d','max_execution_time=10','-d','zend.exception_ignore_args=1'];
@@ -60,22 +94,101 @@ m6cp($caught&&m6cpDirectories('ubo-m6c-cli-failure-')===$failures,'Partial faile
 m6cp([$exit,$out,$err]===[0,'ok',''],'Successful output/exit unchanged');
 m6cp(m6cpDirectories('ubo-m6c-cli-capture-')===$captures&&m6cpDirectories('ubo-m6c-cli-failure-')===$failures,'Successful and expected-failure captures do not accumulate');
 
+// Strict-types reproduction and the actual pure normalization boundary. This is
+// controlled false input, not a claim of native PHP 8.5 execution.
+$originalFailure=false;
+try{explode(',',false);}catch(TypeError){$originalFailure=true;}
+m6cp($originalFailure,'Original unavailable-directive expression throws under strict types');
+foreach([[false,[]],['',[]],[" \t\r\n",[]],[', ,,,',[]],['PDO',['pdo']],
+    [' PDO, pDoStatement, , DOMDocument ,,, ',['pdo','pdostatement','domdocument']],
+    [',pdo,,PDO, ',['pdo','pdo']]]as[$input,$expected]){
+    m6cp(m6ExecutionDisabledClasses($input)===$expected,'Actual disabled-class normalization handles false, whitespace, case and empty entries');
+}
+
 // Controlled capabilities, not a reproduction of the operator's missing Linux PDO module.
 $base=m6ExecutionBaseProfile();
-foreach(['disable_classes=PDO,PDOStatement'=>'PDO','disable_classes=DOMDocument,DOMXPath'=>'DOMDocument','disable_functions=fsync'=>'fsync',
-    'disable_functions=json_encode'=>'json_encode','disable_functions=fwrite'=>'fwrite']as$directive=>$required){
-    $caught=false;
+$baseline=null;
+m6process([PHP_BINARY,...$base['flags'],$child,'class-directive'],[],10000000000,
+    ['case'=>'class-directive-baseline','profile'=>'selected-child-profile'],static function($r)use(&$baseline):void{
+        [$baseline]=m6childTrace($r,'M6C_CLASS_DIRECTIVE');if($r[0]!==0)throw new RuntimeException('Class directive baseline failed');
+    });
+m6cp(($baseline['pdo_effective']??null)===false&&($baseline['dom_effective']??null)===false,'Class directive effects have actual capable selected-child baselines');
+$observed['class-directive-baseline']=$baseline;
+$directive=null;
+m6process([PHP_BINARY,...$base['flags'],'-d','disable_classes=PDO,PDOStatement,DOMDocument,DOMXPath',$child,'class-directive'],[],10000000000,
+    ['case'=>'class-directive-probe','profile'=>'actual-process-directive'],static function($r)use(&$directive):void{
+        [$directive]=m6childTrace($r,'M6C_CLASS_DIRECTIVE');if($r[0]!==0)throw new RuntimeException('Class directive probe failed');
+    });
+m6cp(isset($directive['supported'],$directive['pdo_effective'],$directive['dom_effective'])
+    &&is_bool($directive['supported'])&&is_bool($directive['pdo_effective'])&&is_bool($directive['dom_effective']),'Actual directive support and class effect reported');
+$observed['class-directive']=$directive;$mechanisms=['controlled_false_directive'=>['PDO','DOMDocument'],'actual_directive'=>[]];
+foreach(['PDO'=>['PDO,PDOStatement','pdo_effective'],'DOMDocument'=>['DOMDocument,DOMXPath','dom_effective']]as$required=>[$classes,$effective]){
+    m6cpPrerequisite([PHP_BINARY,...$base['flags'],$child,'controlled-classes',$required,'no-work'],$required,'controlled-class-'.$required);
+    if($directive['supported']&&$directive[$effective]){
+        m6cpPrerequisite([PHP_BINARY,...$base['flags'],'-d','disable_classes='.$classes,$child,'observe-execution','no-work'],$required,'actual-disabled-class-'.$required);
+        $mechanisms['actual_directive'][]=$required;
+    }
+}
+$observed['class-capability-mechanisms']=$mechanisms;
+$caps=null;$state=null;
+m6process([PHP_BINARY,...$base['flags'],$child,'controlled-classes','none','--capabilities'],[],10000000000,
+    ['case'=>'false-optional-directives','profile'=>'controlled-false-return'],static function($r)use(&$caps,&$state):void{
+        [$r,$state]=m6cpBootstrap($r);[$caps]=m6childTrace($r,'M6C_CAPABILITIES');
+        if($r[0]!==0)throw new RuntimeException('False directive capability probe failed');
+    });
+m6cp($caps['missing']===[],'Missing optional directive retains actual capable-class checks');
+m6cpNoFixture($state,'false-optional-directives');
+m6cp(m6cpDirectories('ubo-m6c-')===$fixtureRoots,'False-directive capability report creates no fixture roots');
+
+foreach(['base64_decode','preg_match_all','preg_replace','bin2hex','hash_equals','clearstatcache','lstat','is_link','fstat','feof',
+    'fsync','json_encode','fwrite']as$required){
+    m6cpPrerequisite([PHP_BINARY,...$base['flags'],'-d','disable_functions='.$required,$child,'observe-execution','no-work'],
+        $required,'actual-disabled-function-'.$required);
+}
+
+// Restrict the parent of the selected profile, then inspect the actual nested
+// execution child. The disabled function is never restored or replaced.
+$caps=null;$state=null;$probeExit=null;
+m6process([PHP_BINARY,...$base['flags'],'-d','disable_functions=base64_decode',$child,'forward-execution','--capabilities'],[],10000000000,
+    ['case'=>'forwarded-base64-capabilities','profile'=>'selected-parent-restriction'],static function($r)use(&$caps,&$state,&$probeExit):void{
+        [$r,$state]=m6cpBootstrap($r);$probeExit=$r[0];[$caps]=m6childTrace($r,'M6C_CAPABILITIES');
+        if($r[0]!==78)throw new RuntimeException('Forwarded restriction was not reported');
+    });
+m6cp($probeExit===78&&in_array('base64_decode',$caps['missing'],true),'Selected parent restriction reaches actual child capability probe');
+m6cpNoFixture($state,'forwarded-base64-capabilities');
+m6cp(m6cpDirectories('ubo-m6c-')===$fixtureRoots,'Forwarded capability probe creates no fixture roots');
+$observed['forwarded-base64-capabilities']=['exit'=>$probeExit,'missing'=>$caps['missing']];
+m6cpPrerequisite([PHP_BINARY,...$base['flags'],'-d','disable_functions=base64_decode',$child,'forward-execution','no-work'],
+    'base64_decode','forwarded-base64-prerequisite');
+
+// Exact counted source injections are process-only. Observe the actual tracked
+// root before shutdown cleanup, then prove its absence after the real child exits.
+foreach(['constructor-failure'=>false,'trace-failure'=>true]as$case=>$initialized){
+    $caught=false;$state=null;$executionTrace=null;
     try{
-        m6process([PHP_BINARY,...$base['flags'],'-d',$directive,__DIR__.'/support/WebsitePlatformM6CExecutionChild.php','no-work'],[],10000000000,
-            ['case'=>'missing-'.$required,'profile'=>'controlled-capability'],static function($r):void{m6childTrace($r,'M6C_EXECUTION_TRACE');});
+        m6process([PHP_BINARY,...$base['flags'],$child,$case],[],10000000000,['case'=>$case,'profile'=>'controlled-fixture-fault'],
+            static function($r)use(&$state,&$executionTrace):void{
+                $executionTrace=str_contains($r[1].$r[2],'M6C_EXECUTION_TRACE:');
+                [$r,$state]=m6cpBootstrap($r);m6childTrace($r,'M6C_EXECUTION_TRACE');
+            });
     }catch(M6CChildFailure $e){
-        $caught=true;$observed['missing-'.$required]=$e->outcome;
-        $diagnostic=$e->outcome['stdout'].$e->outcome['stderr'];
-        m6cp($e->reason==='prerequisite'&&$e->outcome['exit']===78&&str_contains($diagnostic,$required),'Clear capability prerequisite failure');
-        m6cp(!str_contains($diagnostic,'M6C_EXECUTION_TRACE')&&($e->outcome['stdout']===''||str_starts_with($e->outcome['stdout'],'M6C_PREREQUISITE:')),'No manufactured execution trace');
+        $caught=true;$observed[$case]=$e->outcome;
+        m6cp($e->reason==='trace_missing'&&$e->outcome['exit']===255
+            &&str_contains($e->outcome['stderr'],'m6cMissingFixtureFunction'),'Primary constructor/trace fatal and actual exit retained: '.$case);
+        m6cp($executionTrace===false,'Partial initialization or failed trace does not invent execution output: '.$case);
+        m6cp($state['fixture_returned']===$initialized&&$state['trace_ready']===$initialized,'Actual fixture return/readiness observed: '.$case);
+        m6cp($state['classes']['WebsitePlatformM6CFixture']&&$state['connection']==='WebsitePlatformM6BDatabase'
+            &&is_array($state['roots'])&&count($state['roots'])===1,'Actual constructor reached fake database and tracked one root: '.$case);
+        foreach($state['roots']as$root){
+            m6cp($root['exists']===true&&realpath(dirname($root['path']))===realpath(sys_get_temp_dir())
+                &&preg_match('/^ubo-m6c-[a-f0-9]{24}$/D',basename($root['path']))===1,'Observer saw the child-owned root before cleanup: '.$case);
+            m6cp(!file_exists($root['path'])&&!is_link($root['path']),'Early shutdown cleanup removes root even without an instance/trace: '.$case);
+        }
+        m6cp(is_string($e->evidence)&&is_file($e->evidence)&&json_decode(file_get_contents($e->evidence),true,512,JSON_THROW_ON_ERROR)===$e->outcome,
+            'Constructor/trace failure evidence retained before capture cleanup: '.$case);
         m6discardExpectedFailure($e);
     }
-    m6cp($caught&&m6cpDirectories('ubo-m6c-')===$fixtureRoots,'Preflight fails before fixture root/construction');
+    m6cp($caught&&m6cpDirectories('ubo-m6c-')===$fixtureRoots,'No owned partial-fixture roots or captures remain: '.$case);
 }
 
 // An owned, disposable process-only INI verifies intentional parent -c and -d.

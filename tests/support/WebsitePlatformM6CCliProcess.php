@@ -23,6 +23,7 @@ function m6diagnostic(string $raw):string {
     $lines=[];$identities=['PDO','PDOStatement','PDOException','ReflectionClass','ReflectionProperty','DateTimeImmutable','DateTimeZone',
         'DirectoryIterator','RecursiveDirectoryIterator','RecursiveIteratorIterator','FilesystemIterator','DOMDocument','DOMXPath','DOMElement','JsonException',
         'json_encode','json_decode','hash','random_bytes','preg_match','array_is_list','ctype_digit','filter_var','getimagesizefromstring','fsync',
+        'base64_decode','preg_match_all','preg_replace','bin2hex','hash_equals','clearstatcache','lstat','is_link','fstat','feof',
         'libxml_use_internal_errors','fopen','fread','fwrite','fflush','flock','fclose','mkdir','chmod','rename','unlink','rmdir',
         'file_get_contents','file_put_contents','scandir','stat','realpath','PDO::FETCH_DEFAULT','PDO::FETCH_ASSOC','LIBXML_DOTTED_VERSION',
         'PDO::getAvailableDrivers','M6CMissingFixtureDependency','m6cMissingFixtureFunction'];

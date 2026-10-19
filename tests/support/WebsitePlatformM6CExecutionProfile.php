@@ -2,14 +2,19 @@
 declare(strict_types=1);
 
 // Test-only prerequisites. PDO supplies types/constants to fake SQL; no driver/DSN.
+function m6ExecutionDisabledClasses(string|false $value):array {
+    if($value===false)return [];
+    return array_values(array_filter(array_map('strtolower',array_map('trim',explode(',',$value))),static fn($name):bool=>$name!==''));
+}
 function m6ExecutionMissingCapabilities():array {
-    $missing=[];$disabled=array_map('strtolower',array_map('trim',explode(',',ini_get('disable_classes'))));
+    $missing=[];$disabled=m6ExecutionDisabledClasses(ini_get('disable_classes'));
     foreach(['PDO','PDOStatement','PDOException','ReflectionClass','ReflectionProperty','DateTimeImmutable','DateTimeZone',
         'DirectoryIterator','RecursiveDirectoryIterator','RecursiveIteratorIterator','FilesystemIterator',
         'DOMDocument','DOMXPath','DOMElement','JsonException']as$name){
         if(!class_exists($name,false)||in_array(strtolower($name),$disabled,true))$missing[]=$name;
     }
     foreach(['json_encode','json_decode','hash','random_bytes','preg_match','array_is_list','ctype_digit','filter_var',
+        'base64_decode','preg_match_all','preg_replace','bin2hex','hash_equals','clearstatcache','lstat','is_link','fstat','feof',
         'getimagesizefromstring','fsync','libxml_use_internal_errors','fopen','fread','fwrite','fflush','flock','fclose',
         'mkdir','chmod','rename','unlink','rmdir','file_get_contents','file_put_contents','scandir','stat','realpath']as$name){
         if(!function_exists($name))$missing[]=$name;
@@ -28,7 +33,7 @@ function m6ExecutionBaseProfile():array {
         $value=ini_get($key);if($value!==false&&$value!=='')$flags=array_merge($flags,['-d',$key.'='.$value]);
     }
     $memory=ini_get('memory_limit');$bytes=268435456;
-    if(preg_match('/^([0-9]+)([KMG]?)$/i',$memory,$m)){
+    if($memory!==false&&preg_match('/^([0-9]+)([KMG]?)$/i',$memory,$m)){
         $size=(int)$m[1]*(1024**(int)array_search(strtoupper($m[2]),['','K','M','G'],true));
         if($size>0)$bytes=min($bytes,$size);
     }
@@ -50,14 +55,14 @@ function m6ExecutionProfile():array {
             });
         return $caps;
     };
-    $caps=$probe($profile);$added=[];
+    $caps=$probe($profile);$added=[];$extensionDir=ini_get('extension_dir');
     // Parent -d extension additions may not be in its INI. Carry only missing
     // fixture modules already loaded by the parent, from its existing extension_dir.
     // No PDO driver, package install, alternate binary or global configuration edit.
     foreach(['pdo'=>['PDO','PDOStatement'],'dom'=>['DOMDocument','DOMXPath','DOMElement'],
         'ctype'=>['ctype_digit'],'filter'=>['filter_var']]as$module=>$needs){
-        if(array_intersect($needs,$caps['missing'])===[]||!extension_loaded($module))continue;
-        $file=rtrim(ini_get('extension_dir'),'/\\').DIRECTORY_SEPARATOR.(PHP_OS_FAMILY==='Windows'?'php_'.$module.'.dll':$module.'.so');
+        if(array_intersect($needs,$caps['missing'])===[]||!extension_loaded($module)||$extensionDir===false||$extensionDir==='')continue;
+        $file=rtrim($extensionDir,'/\\').DIRECTORY_SEPARATOR.(PHP_OS_FAMILY==='Windows'?'php_'.$module.'.dll':$module.'.so');
         if(is_file($file)&&is_readable($file)){$profile['flags']=array_merge($profile['flags'],['-d','extension='.realpath($file)]);$added[]=$module;}
     }
     if($added!==[]){$profile['label'].=';parent-modules='.implode(',',$added);$caps=$probe($profile);}

@@ -1,8 +1,78 @@
 <?php
 declare(strict_types=1);
 
-// Deterministic process faults only. Never loads application/fixture configuration.
+// Deterministic process faults and isolated fixture controls only; no host config.
 $case=$argv[1]??'';
+if($case==='class-directive'){
+    fwrite(STDERR,"\nM6C_CLASS_DIRECTIVE:".json_encode(['supported'=>ini_get('disable_classes')!==false,
+        'pdo_effective'=>!method_exists('PDO','getAvailableDrivers'),'dom_effective'=>!method_exists('DOMDocument','loadXML')],JSON_THROW_ON_ERROR)."\n");exit(0);
+}
+if($case==='forward-execution'){
+    require_once __DIR__.'/WebsitePlatformM6CCliProcess.php';
+    require_once __DIR__.'/WebsitePlatformM6CExecutionProfile.php';
+    $profile=m6ExecutionBaseProfile();
+    $result=m6process([PHP_BINARY,...$profile['flags'],__FILE__,'observe-execution',$argv[2]??'no-work'],[],10000000000,
+        ['case'=>'execution-forwarding','profile'=>$profile['label']]);
+    echo $result[1];fwrite(STDERR,$result[2]);exit($result[0]);
+}
+if(in_array($case,['observe-execution','controlled-classes','constructor-failure','trace-failure'],true)){
+    // Observe actual load/root state before the execution child's later cleanup.
+    // This is a separate observation, never an execution trace with invented counts.
+    register_shutdown_function(static function():void{
+        global $f,$traceReady;
+        $classes=[];foreach(['WebsitePlatformM6CFixture','WebsitePlatformM6BDatabase','Database','SiteBuildService','SiteBuildRuntime']as$name)$classes[$name]=class_exists($name,false);
+        $connection=$classes['Database']?(new ReflectionProperty('Database','connection'))->getValue():null;
+        $roots=$classes['WebsitePlatformM6CFixture']?array_map(static fn($root)=>['path'=>$root,'exists'=>is_dir($root)],WebsitePlatformM6CFixture::$roots):null;
+        $returned=isset($f)&&$f instanceof WebsitePlatformM6CFixture;$ready=$traceReady??false;
+        $state=['classes'=>$classes,'connection'=>is_object($connection)?get_class($connection):null,
+            'roots'=>$roots,'fixture_returned'=>$returned,'trace_ready'=>$ready];
+        if(function_exists('json_encode'))$json=json_encode($state,JSON_THROW_ON_ERROR);
+        else{
+            // json_encode itself is a negative prerequisite case. Encode only
+            // the observed unloaded shape; never substitute it for loaded state.
+            if($connection!==null||$roots!==null)throw new RuntimeException('Unexpected loaded primitive-fault state');
+            $fields=[];foreach($classes as$name=>$loaded)$fields[]='"'.$name.'":'.($loaded?'true':'false');
+            $json='{"classes":{'.implode(',',$fields).'},"connection":null,"roots":null,"fixture_returned":'.($returned?'true':'false').',"trace_ready":'.($ready?'true':'false').'}';
+        }
+        echo "\nM6C_BOOTSTRAP_STATE:".$json."\n";
+    });
+    if($case==='observe-execution'){
+        $argv=[__FILE__,$argv[2]??'no-work'];require __DIR__.'/WebsitePlatformM6CExecutionChild.php';exit(99);
+    }
+    $strip=static function(string $source):string{
+        $source=preg_replace('/^<\?php\s*declare\(strict_types=1\);\s*/','',$source,1,$count);
+        if($count!==1)throw new RuntimeException('Controlled source header changed');
+        return 'declare(strict_types=1); '.$source;
+    };
+    $replace=static function(string $source,string $from,string $to):string{
+        $source=str_replace($from,$to,$source,$count);
+        if($count!==1)throw new RuntimeException('Controlled source boundary changed');return $source;
+    };
+    $source=$strip(file_get_contents(__DIR__.'/WebsitePlatformM6CExecutionChild.php'));
+    if($case==='controlled-classes'){
+        $denied=match($argv[2]??''){ 'PDO'=>['PDO','PDOStatement'],'DOMDocument'=>['DOMDocument','DOMXPath'],'none'=>[],default=>throw new RuntimeException('Unknown class control') };
+        $profile=$strip(file_get_contents(__DIR__.'/WebsitePlatformM6CExecutionProfile.php'));
+        // Source-local replacements only: unavailable directives plus genuinely
+        // denied class decisions, while every other class uses real class_exists.
+        $prefix='namespace M6CCapabilityControl; function ini_get(string $key):string|false { return in_array($key,["disable_classes","memory_limit","extension_dir"],true)?false:\\ini_get($key); } '
+            .'function class_exists(string $name,bool $autoload=true):bool { return !in_array($name,'.var_export($denied,true).',true)&&\\class_exists($name,$autoload); } ';
+        $profile=$replace($profile,'declare(strict_types=1);','declare(strict_types=1); '.$prefix);
+        eval($profile);
+        // Also traverse the nearby optional memory-limit/extension-dir copying path.
+        $controlledProfile=\M6CCapabilityControl\m6ExecutionBaseProfile();
+        if(!in_array('memory_limit=268435456',$controlledProfile['flags'],true))throw new RuntimeException('False optional profile limit');
+        $source=$replace($source,'$missing=m6ExecutionMissingCapabilities();','$missing=\\M6CCapabilityControl\\m6ExecutionMissingCapabilities();');
+        $executionCase=$argv[3]??'no-work';
+    }else{
+        $executionCase='no-work';
+        if($case==='constructor-failure'){
+            $fixtureSource=$strip(file_get_contents(__DIR__.'/WebsitePlatformM6CFixture.php'));
+            $fixtureSource=$replace($fixtureSource,'self::$roots[] = $this->root;','self::$roots[] = $this->root; m6cMissingFixtureFunction();');
+            $source=$replace($source,"require_once __DIR__.'/WebsitePlatformM6CFixture.php';",'eval($fixtureSource);');
+        }else $source=$replace($source,'if(!$traceReady||$f===null)return;','if(!$traceReady||$f===null)return; m6cMissingFixtureFunction();');
+    }
+    $argv=[__FILE__,$executionCase];eval($source);exit(99);
+}
 if($case==='startup')new M6CMissingFixtureDependency();
 if($case==='malformed'){
     register_shutdown_function(static function():void{fwrite(STDERR,"\nM6C_EXECUTION_TRACE:{broken}\n");});
