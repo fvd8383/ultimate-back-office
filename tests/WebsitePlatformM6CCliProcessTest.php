@@ -88,7 +88,40 @@ $captures=m6cpDirectories('ubo-m6c-cli-capture-');$failures=m6cpDirectories('ubo
 $fixtureRoots=m6cpDirectories('ubo-m6c-');
 $flags=['-n','-d','display_errors=stderr','-d','log_errors=0','-d','html_errors=0','-d','memory_limit=64M','-d','max_execution_time=10','-d','zend.exception_ignore_args=1'];
 $base=m6ExecutionBaseProfile();
+// Source-audited initialization inventory, independent of the prerequisite list.
+// Read only these fixed call sites as text; do not discover/include application code.
+$initializationSites=[
+    'str_contains'=>['tests/support/WebsitePlatformM3ServiceDatabase.php','str_contains($n,'],
+    'usort'=>['tests/support/WebsitePlatformM3ServiceDatabase.php','usort($rows, fn ($a, $b)'],
+    'str_replace'=>['private/classes/ComponentRegistry.php','ucwords(str_replace('],
+    'array_shift'=>['tests/support/WebsitePlatformM3ServiceDatabase.php','array_shift($this->rows)'],
+    'array_unique'=>['tests/support/WebsitePlatformM6BDatabase.php','array_unique($matches[1])'],
+    'array_slice'=>['tests/support/WebsitePlatformM6BDatabase.php','array_slice($rows, 0, (int) $limit[1])'],
+    'ucwords'=>['private/classes/ComponentRegistry.php','ucwords(str_replace('],
+    'array_fill_keys'=>['private/classes/ComponentRegistry.php',"array_fill_keys(['home', 'service', 'about', 'contact']"],
+    'array_count_values'=>['private/classes/SiteAuthoringCatalog.php','array_count_values(array_column($sections,'],
+    'array_column'=>['private/classes/SiteAuthorizationPolicy.php','array_column($rows,'],
+    'array_intersect'=>['private/classes/SiteAuthorizationPolicy.php','array_intersect(self::INTERNAL_ADMIN_ROLES, $roles)'],
+    'is_int'=>['private/classes/ComponentSchemaValidator.php','is_int($value)'],
+    'is_bool'=>['private/classes/ComponentSchemaValidator.php','is_bool($value)'],
+    'strtoupper'=>['private/classes/ThemeRegistry.php','strtoupper($primary)'],
+    'strcmp'=>['private/classes/SiteBuildContract.php','strcmp($last, $key)'],
+    'is_scalar'=>['private/classes/SitePublicRenderContext.php','is_scalar($v)'],
+    'str_ends_with'=>['private/classes/SiteArtifactFiles.php','str_ends_with($part,'],
+    'chr'=>['private/classes/SiteServiceSupport.php','chr((ord($bytes[6])'],
+    'ord'=>['private/classes/SiteServiceSupport.php','ord($bytes[6])'],
+    'implode'=>['private/classes/SiteBuildStore.php',"implode(', ', \$columns)"],
+    'sort'=>['private/classes/SiteBuildService.php','sort($ids, SORT_NUMERIC)'],
+    'method_exists'=>['private/classes/SiteRevisionManager.php','method_exists($connection,'],
+    'array_key_first'=>['private/classes/SiteCompositionEditor.php','array_key_first($definition['],
+    'array_push'=>['private/classes/SiteCompositionEditor.php','array_push($selections, ...$page['],
+];
 if($runProcess){
+foreach($initializationSites as$name=>[$path,$call]){
+    m6cp(str_contains(file_get_contents(dirname(__DIR__).'/'.$path),$call),'Audited initialization call site still exists: '.$name);
+    $diagnostic='M6C_PREREQUISITE: missing '.$name.'.';
+    m6cp(m6diagnostic($diagnostic)===$diagnostic,'Audited function has an exact safe diagnostic identity: '.$name);
+}
 foreach(['startup'=>'trace_missing','missing'=>'trace_missing','malformed'=>'trace_malformed','nonzero'=>'validation','timeout'=>'timeout','overflow'=>'output_limit']as$case=>$reason){
     $start=hrtime(true);$caught=false;
     try{
@@ -236,7 +269,7 @@ m6cp($caught&&m6cpDirectories('ubo-m6c-')===$fixtureRoots,'Inspection-primitive 
 // Batch these adjacent prerequisites to keep the controller's original 10-second
 // PHP limit and 30-second parent bound. Every member is truly disabled together;
 // assert the complete reported set, without claiming individual process cases.
-foreach([[$initializationFunctions,'batched-initialization',true],[$traceFunctions,'batched-trace',true],
+foreach([[$initializationFunctions,'batched-initialization',true],[array_keys($initializationSites),'batched-supporting-initialization',true],[$traceFunctions,'batched-trace',true],
     [$bootstrapFunctions,'batched-bootstrap',false]]as[$required,$label,$observe]){
     $caps=null;$state=null;
     $command=[PHP_BINARY,...$base['flags'],'-d','disable_functions='.implode(',',$required)];
@@ -258,24 +291,28 @@ foreach([[$initializationFunctions,'batched-initialization',true],[$traceFunctio
 
 // Restrict the parent of the selected profile, then inspect the actual nested
 // execution child. The disabled function is never restored or replaced.
-if($runFixtures){
-foreach(['base64_decode','basename']as$required){
+// Keep each reviewer-named restriction independent. Run their selected-profile
+// probes in the process phase, leaving the committed five-phase/deadline structure.
+if($runFixtures||$runProcess){
+foreach([...($runProcess?['str_contains','usort','str_replace']:[]),...($runFixtures?['base64_decode','basename']:[])]as$required){
     $caps=null;$state=null;$probeExit=null;
     m6process([PHP_BINARY,...$base['flags'],'-d','disable_functions='.$required,$child,'forward-execution','--capabilities'],[],10000000000,
         ['case'=>'forwarded-'.$required.'-capabilities','profile'=>'selected-parent-restriction'],static function($r)use(&$caps,&$state,&$probeExit):void{
             [$r,$state]=m6cpBootstrap($r);$probeExit=$r[0];[$caps]=m6childTrace($r,'M6C_CAPABILITIES');
             if($r[0]!==78)throw new RuntimeException('Forwarded restriction was not reported');
         });
-    m6cp($probeExit===78&&in_array($required,$caps['missing'],true),'Selected parent restriction reaches actual child capability probe: '.$required);
+    m6cp($probeExit===78&&$caps['missing']===[$required],'Selected parent restriction reports exactly the individually disabled function: '.$required);
     m6cpNoFixture($state,'forwarded-'.$required.'-capabilities');
     m6cp(m6cpDirectories('ubo-m6c-')===$fixtureRoots,'Forwarded capability probe creates no fixture roots');
     $observed['forwarded-'.$required.'-capabilities']=['exit'=>$probeExit,'missing'=>$caps['missing']];
     m6cpPrerequisite([PHP_BINARY,...$base['flags'],'-d','disable_functions='.$required,$child,'forward-execution','no-work'],
         $required,'forwarded-'.$required.'-prerequisite');
 }
+}
 
 // Exact counted source injections are process-only. Observe the actual tracked
 // root before shutdown cleanup, then prove its absence after the real child exits.
+if($runFixtures){
 foreach(['constructor-failure'=>false,'trace-failure'=>true,'trace-then-fatal'=>true]as$case=>$initialized){
     $caught=false;$state=null;$executionTrace=null;$emittedTrace=null;
     try{

@@ -28,6 +28,9 @@ function m6diagnostic(string $raw):string {
         'file_get_contents','file_put_contents','scandir','stat','realpath','PDO::FETCH_DEFAULT','PDO::FETCH_ASSOC','LIBXML_DOTTED_VERSION',
         'basename','dirname','sys_get_temp_dir','register_shutdown_function','array_intersect_key','array_flip','substr','strlen','count','array_replace','str_repeat','ucfirst',
         'rtrim','str_starts_with','extension_loaded','is_array','ksort','array_key_exists','array_diff','array_keys','is_string','min',
+        'str_contains','usort','str_replace','array_shift','array_unique','array_slice','ucwords','array_fill_keys',
+        'array_count_values','array_column','array_intersect','is_int','is_bool','strtoupper','strcmp','is_scalar',
+        'str_ends_with','chr','ord','implode','sort','method_exists','array_key_first','array_push',
         'function_exists','ini_get','explode','trim','strtolower','array_map','array_filter','array_values','class_exists','in_array','defined','php_ini_loaded_file',
         'PDO::getAvailableDrivers','M6CMissingFixtureDependency','m6cMissingFixtureFunction'];
     foreach(explode("\n",str_replace("\r",'',substr($raw,0,32768)))as$line){

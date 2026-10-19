@@ -33,6 +33,8 @@ The earlier CLI-profile correction's validation remains historical evidence.
 The review of `e067f05bd16ca41a46a1dc174d6471f4c826f5b8` is addressed in
 [execution-fixture cleanup prerequisites](#execution-fixture-cleanup-prerequisites).
 Its basename finding and new validation form a separate evidence layer.
+The review of `b8c20c479bdbf29f4659add30d97e9b57e01cac9` is addressed in
+[supporting fake-database initialization prerequisites](#supporting-fake-database-initialization-prerequisites).
 
 ## Implementation and wiring
 
@@ -1485,3 +1487,189 @@ native validation pending. M6D–M6G and Narrator remain untouched. PR #128 rema
 open, non-draft and unmerged with auto-merge disabled. Scope remains zero server,
 live SQL/database, migration, backup/restore, deployment, installation, container,
 provider or Narrator operations.
+
+## Supporting fake-database initialization prerequisites
+
+This test/helper/documentation correction starts at
+`b8c20c479bdbf29f4659add30d97e9b57e01cac9` and addresses
+[4319523117 — Add all fixture-init functions to the prerequisite scan](https://github.com/fvd8383/ultimate-back-office/pull/128#discussion_r4319523117).
+It independently reproduces the three reported restrictions on local Windows PHP
+8.4.24. This is not a new droplet result. The preceding 70-suite/1,183-M6C-assertion
+record remains historical evidence for its own correction.
+
+### Individual reproduction and correction
+
+Each process-only restriction runs separately through the existing isolated
+execution child/observer in a private disposable parent. The capable controller
+retains actual capability result, exit, bounded stdout/stderr, loaded classes,
+connection, constructor/trace readiness and owned paths before any parent cleanup.
+
+| Disabled function | Before capability / execution exits | Actual before bootstrap observation and diagnostic | Corrected capability / execution exits |
+| --- | --- | --- | --- |
+| `str_contains` | 0 / 255 | All five observed bootstrap classes loaded; fake `WebsitePlatformM3ServiceDatabase` connection initialized; read error wrapped as `SiteServiceException`. | 78 / 78, missing `str_contains` |
+| `usort` | 0 / 255 | All five classes loaded; fake M3 connection initialized; transaction error wrapped as `SiteServiceException`. | 78 / 78, missing `usort` |
+| `str_replace` | 0 / 255 | All five classes loaded; connection still null; actual undefined-function fatal in `ComponentRegistry::component`. | 78 / 78, missing `str_replace` |
+
+Every before case reports constructor-returned false and trace-ready false, no
+execution trace, no tracked root and zero residual paths. None of these three
+cases produces an orphan; no parent root deletion is needed. Each empty disposable
+parent is verified and removed. A fake connection is an in-process SQL double,
+not live MySQL. The first two original errors are wrapped by the existing service;
+their captured output is not misrepresented as a retained undefined-function fatal.
+
+After correction, all three cases report the five observed fixture/database/service/
+runtime classes unloaded, connection and roots null, and constructor-returned/
+trace-ready false. There is no request, claim, root, journal, artifact or execution
+trace. The process regression independently forwards each of these three restrictions
+through the selected parent profile, checks the exact one-function capability list,
+then checks normal exit 78 and observed no-bootstrap state. Restrictions stay active.
+
+### Bounded supporting-path inventory
+
+The source audit starts with `WebsitePlatformM6CFixture::__construct`, follows
+`WebsitePlatformM6BDatabase::fixture` into M5A/M3 construction and wiring, then the
+`initialize_new` composition operation, stored snapshot hashing, M6C composition
+replacement, store/runtime identity setup, and the common `requestBuild` preparation
+used by the three non-empty execution scenarios. It ends at trace readiness and the
+existing trace/owned-cleanup paths. It includes reached SQL-double dispatch, fetch,
+sort, placeholder and LIMIT branches, not just the top-level fixture calls.
+
+The following **24 additions** were identified from those call sites, independently
+of the preflight list. Twenty-one extend the three reviewer-named dependencies. Each
+is added to both preflight and the bounded diagnostic identity allowlist. Every row
+also has a fixed source-text call-site assertion and a diagnostic identity assertion;
+normal test execution does not scan for or load arbitrary application code.
+
+| Function | Actual reached call site | Preflight / regression mechanism |
+| --- | --- | --- |
+| `str_contains` | M3 `executeSql` dispatch, then M5A/M6B SQL routing | Added; independent forwarded capability and normal rejection; group below |
+| `usort` | M3 `hashPages`/`hashSections`/`hashAssets`; composition ordering | Added; independent forwarded capability and normal rejection; group below |
+| `str_replace` | `ComponentRegistry::component` variant labels; M5A SQL classification | Added; independent forwarded capability and normal rejection; group below |
+| `array_shift` | M3 statement `fetch`/`fetchColumn` | Added; exact-list grouped rejection |
+| `array_unique` | M3/M5A/M6B `prepare` placeholder uniqueness | Added; exact-list grouped rejection |
+| `array_slice` | M6B `executeSql` LIMIT branch during request history lookup | Added; exact-list grouped rejection |
+| `ucwords`, `array_fill_keys` | `ComponentRegistry::component` and `manifest` | Added; exact-list grouped rejection |
+| `array_count_values`, `array_column` | `SiteAuthoringCatalog::forActor`; authorization role projection and page types | Added; exact-list grouped rejection |
+| `array_intersect` | `SiteAuthorizationPolicy::actorContext` role membership | Added; exact-list grouped rejection |
+| `is_int`, `is_bool` | `ComponentSchemaValidator::validate`; build identity validation | Added; exact-list grouped rejection |
+| `strtoupper` | `ThemeRegistry::normalize` color normalization | Added; exact-list grouped rejection |
+| `method_exists` | `SiteRevisionManager::lockMutableRevisionForComposition` and snapshot application | Added; exact-list grouped rejection |
+| `sort` | `SiteBuildService::actors` lock ordering during request preparation | Added; exact-list grouped rejection |
+| `strcmp` | `SiteBuildContract::input` ordered asset-digest validation | Added; exact-list grouped rejection |
+| `is_scalar` | `SitePublicRenderContext::fields` projection | Added; exact-list grouped rejection |
+| `str_ends_with` | `SiteArtifactFiles::path` during route/asset admission | Added; exact-list grouped rejection |
+| `chr`, `ord` | `SiteServiceSupport::uuidV4` job/release identities | Added; exact-list grouped rejection |
+| `implode` | `SiteBuildStore::insert` request persistence | Added; exact-list grouped rejection |
+| `array_key_first`, `array_push` | `SiteCompositionEditor::draftSelection` and `assertAuthorable` during `initialize_new` | Added; exact-list grouped rejection |
+
+Separate external before-admission-fix child probes confirm that each of the twenty-one
+additional omissions stops construction or common request preparation before trace
+readiness. Request-stage cases can return the fixture and track a root first; the
+unchanged child cleanup removes those exact roots. Actual observations are retained,
+without assigning zero-effect counters to partial initialization. The observer's
+normal-return sentinel exit 99 is recorded as such where no-work does not reach a
+particular request dependency; the subsequent revoked case establishes its use.
+
+The added group truly disables all 24 names together. It requires the capability
+report to equal the entire explicit inventory, not merely to fail because one member
+is missing; its normal child also rejects before bootstrap. The three named cases
+remain independent. Existing 22-function initialization, five-function trace and
+11-function bootstrap groups remain additional coverage. Grouped after-fix results
+are not claimed as individual after-fix processes for every added function.
+
+Previously admitted dependencies are traced through the same path: JSON/hash and
+canonicalization (`is_array`, `array_is_list`, `array_map`, `ksort`), schema and SQL
+normalization (`is_string`, `array_keys`, `array_diff`, `array_key_exists`, `count`,
+`trim`, `strtolower`, `preg_match`, `preg_match_all`, `preg_replace`, `array_values`,
+`array_filter`, `in_array`), composition/identity (`array_replace`, `str_repeat`,
+`ucfirst`, `bin2hex`, `random_bytes`, `hash_equals`), and the file/trace/cleanup
+inventory in the preceding section. Callback review includes the role `is_string`
+filter, canonicalization/JSON callbacks, SQL predicate/order closures and trace
+projection closures; these use admitted functions or language operators.
+
+The current schemas' optional `mb_strlen` path retains its existing `strlen`
+fallback. `is_float` numeric-schema branches, expiry-time branches for non-null
+rights, unrelated editing operations and unreached SQL branches are outside this
+fixed fixture path. Separate source/case checks do not show `is_callable` or
+`array_merge` as a new pre-trace prerequisite here, so they are not added. This
+inventory does not claim exhaustive transitive application compatibility.
+The documented `function_exists` bootstrap limitation remains unchanged.
+
+### Preserved behavior, fresh checks and handoff
+
+The committed five phases, 10-second selected child profile and aggregate 30-second
+deadline remain. Independent new forwarding cases run in the existing process
+phase; existing base64/basename cases remain in the fixture phase. No assertion is
+removed and no bound is increased. False/empty directive normalization, real versus
+controlled class restrictions, mixed function/class reporting, early registration,
+constructor-without-instance and trace-fault cleanup, trace-present/nonzero rejection,
+sanitized evidence/privacy and primary-error preservation all remain covered.
+
+Earlier checks during this correction passed CLI **207 assertions**, exit 0, 20.948
+seconds and process **379 assertions**, exit 0, 21.765 seconds. Those checks preceded
+the two final editor-path additions; refreshed final results are recorded below.
+The CLI retains all four execution cases,
+one actual CGI invocation and 32 isolated valid-argument denials. These are local
+Windows results; no native Linux or PHP 8.5 execution is claimed.
+
+Final focused CLI passes **207 assertions**, exit 0 in 29.995 seconds;
+final focused process passes **383 assertions**, exit 0 in 24.115 seconds.
+The available standalone set has **70 suites with successful fresh results**
+after affected-suite rechecks. Its **10 M6C suites total 1271 assertions**.
+The final standalone CLI passes in 15.656 seconds, and the serialized final
+process run passes in 14.947 seconds. The unchanged synthetic launcher
+regression passes in 994.791 seconds; it invokes fake commands, with no
+native Docker, SQL or M6C harness execution. The initial pass is not claimed clean.
+
+Actual invocations use the existing PHP executable with `-n` and each standalone
+test path, including `tests/WebsitePlatformM6CCliTest.php` and
+`tests/WebsitePlatformM6CCliProcessTest.php`. Complete executable paths, process-only
+flags, versions, commands, exits, durations and stdout/stderr remain outside Git in
+the `m6c-fake-db-init` evidence directory. Observed versions are PHP 8.4.24 CLI ZTS
+(Visual C++ 2022 x64), Node v24.22.0, PowerShell 7.6.5,
+Git 2.56.0.windows.2 and GNU Bash 5.3.15(2).
+
+All **245 tracked PHP files** pass `php -n -l`; the three changed PHP files
+were refreshed after the final source edits. All **3 existing script checks**
+pass: `node --check tests/WebsitePlatformM5CBrowser.cjs`, Bash `-n` for
+`tests/RunM6BMySql.sh`, and PowerShell parser validation for
+`tests/RunM6BMySql.ps1`. Documentation checks pass for 18 links, eight internal
+anchors, no missing local links, two balanced fence markers, historical status
+evidence and the exact four-file inventory. Working, staged and committed diff
+checks pass. Raw SQL hashes and canonical migration comparisons remain unchanged.
+
+The first standalone process run, concurrent with the unchanged synthetic launcher
+and lint jobs, exits 255 after 31.068 seconds: the aggregate deadline expires in
+the fixtures phase. Its retained `M6CChildFailure` reports timeout, termination
+requested and the actual child exit 255. This failed run remains separate evidence;
+the final process recheck passes without concurrent validation jobs in 14.947
+seconds. No time limit or assertion is relaxed to obtain a pass.
+
+Correction-only inventory: four modified files:
+`tests/support/WebsitePlatformM6CExecutionProfile.php`,
+`tests/support/WebsitePlatformM6CCliProcess.php`,
+`tests/WebsitePlatformM6CCliProcessTest.php`, and
+`docs/sprint-8.8-m6c-local-implementation.md`.
+Production code, execution/observer child helpers, shared database/artifact fixtures,
+main CLI suite and resource limits are unchanged. All 25 migration contents and
+the task-start raw hashes of all 26 tracked SQL files are checked unchanged;
+migration 025's canonical SHA-256 remains
+`dab585dc29aac11153f92703c65d3883aeea73a1b2283157cfa9d2f2ece85cb0` and it is not reapplied.
+
+Earlier Windows evidence stays at its own SHAs; Linux `d4fb3d6` retains eight passing
+suites / 682 assertions and the separate original CLI failure. Later review-gate
+stops ran no tests and supplied no new tested SHA or independent deployed-invariant
+check. Backup/download remains **operator-reported COMPLETE**, both copies and the
+confirmation receipt retained, restore **NOT EXECUTED**. Operator-performed removal
+of two obsolete validation-user Codex releases reportedly recovered 709,808,128 bytes;
+last reported root usage was 81% with 1,775,374,336 bytes available. These are historical
+capacity figures, not a measurement or additional maintenance in this task.
+
+The post-push reply/resolution and exact-new-head review observation are recorded
+in PR #128 and the external `m6c-fake-db-init/SUMMARY.txt`. Only finding 4319523117's
+conversation is eligible for resolution after verification and a rebuttal check.
+PR #128 stays open, non-draft and unmerged with auto-merge disabled. Later authorized
+Linux order remains corrected CLI first, process regressions second. The executable
+M6C native integration harness remains a separate missing deliverable; it is not
+implemented or provisioned here. Zero server, live SQL, migration, backup, deployment,
+installation, container, provider or Narrator actions occur in this correction.
