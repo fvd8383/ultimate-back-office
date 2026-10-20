@@ -13,6 +13,8 @@ is **IMPLEMENTED LOCALLY / REVIEW REQUIRED**; native container/MySQL/protected-w
 execution is **NOT PERFORMED**. See [native harness implementation](#native-harness-implementation)
 and the [operating guide](sprint-8.8-m6c-native-validation.md). Earlier outstanding
 Linux/native statements below describe their dated correction, not this handoff.
+The subsequent `648fd0d` review findings and their local corrections are recorded
+under [native teardown review corrections](#native-teardown-review-corrections).
 
 Baseline: `7ed48fbaa4858b1b5299dc7cbea98f96e98f4e45`; current origin/main was verified
 at that exact merged PR #127 commit. No intervening main changes were found.
@@ -1783,3 +1785,136 @@ provider, public activation or Narrator operation occurs in this authoring task.
 PR #128 remains open, non-draft, unmerged and without auto-merge. The exact new-head
 review request/observation and nine-point handoff are saved outside Git in
 `m6c-native-harness/SUMMARY.txt`; no old threads are bulk-resolved.
+
+## Native teardown review corrections
+
+Starting branch/head: `codex/sprint-8.8-m6c-artifact-builder`,
+`648fd0dd6c7da8d9ef19e5c6e2d276959595e32b`, initially clean. Harness authoring baseline
+remains `96715eb35ac1ae2eb69c3a39a14ec009048128ad`. Only the five files listed below
+change in this correction. Native image preparation and execution remain
+**NOT PERFORMED**. This section supersedes the prior harness section's launcher
+status semantics; its earlier counts remain historical results.
+
+### Reproductions and correction
+
+[P1](https://github.com/fvd8383/ultimate-back-office/pull/128#discussion_r4320474823)
+reported Linux/Bash 5.2 exiting 255 at `lost-create-reply`: fake inspection printed
+the correct runtime ID but a bare return retained the incoming EXIT-trap failure,
+leading to fallback and retained synthetic markers. Locally, the unchanged suite
+passed **292 assertions / 25 scenarios**, exit 0 in **57.179448 s**. A separate
+actual EXIT trap after operation exit 17 printed the exact 64-character runtime ID,
+inspection status 0, branch `owned_identity`, verified-absence status 0 and process
+exit 17. That minimal probe intentionally retained its runtime/network marker files;
+it did not remove a runtime. There was no local first failed assertion in the
+unchanged suite. This Git Bash 5.3.15 result does not reproduce the reviewer's Bash
+5.2 behavior. No installed Bash 5.2 was found; native Linux/Bash 5.2 was not tested.
+
+Every successful fake output/file/test leaf now returns an explicit numeric result.
+Failed writes, copies and removals propagate their status, as do uncached images,
+create/start/stop failures, lost create acknowledgment, missing/malformed reports,
+foreign ownership and unexpected commands. Network/container listings reflect the
+private synthetic markers. The launcher's absent-resource fallback returns zero
+only for a successful empty listing; a present or uncertain resource fails closed.
+Exact owner/token/name/role/image/network guards are unchanged.
+
+[P2](https://github.com/fvd8383/ultimate-back-office/pull/128#discussion_r4320474831)
+was reproduced against the unchanged launcher in **12 real-signal probes**: INT and
+TERM at runtime stop, DB cleanup, network cleanup, status preparation, manifest
+hashing and receipt publication. Every intended handler ran (130/143 recorded),
+but every process exited 0 with cleanup PASS, a zero final status and a published
+receipt. The corrected probe run completed in **43.889702 s**. An initial probe-generator template-literal syntax error is retained separately.
+The first generated signal probe then had a JavaScript replacement-string `$$`/PID error, then failed its handshake
+and capture cleanup; that failed attempt is retained separately and is not signal
+proof. All probes used private files/fake commands and foreground dedicated Bash
+children, with bounded handshakes and no signal to a terminal or process group.
+
+The launcher now retains the original operation exit separately from interruption.
+Precedence is original nonzero operation, first accepted INT=130/TERM=143, secondary
+cleanup/publication failure=2, then zero. Recording traps remain active through
+substantive cleanup, provisional status and payload hashing. They never recurse
+into teardown or reset its 90-second deadline. The 1200-second suite limit remains.
+
+The precise terminal boundary is the single `trap '' INT TERM` builtin in
+`m6n_close_signals`, after substantive evidence preparation. The outcome is refreshed
+then, status is regenerated once and its finalized hash appended to the prehashed
+payload manifest. One bounded commit (4 seconds plus 1-second kill grace) atomically
+renames the receipt last. One failure diagnostic attempt (2 plus 1 seconds) removes
+any receipt and records publication failure. Both fit inside the original cleanup
+budget; earlier cleanup/preparation commands reserve those eight seconds. Accepted
+signals before the boundary affect final status; later INT/TERM cannot alter the
+committed decision. There is no unbounded retry or payload rehash loop.
+
+Status, console and receipt record primary, interruption, cleanup, publication and
+final exit separately. The receipt binds `SHA256SUMS`, which covers finalized
+`.txt`/`.json` bytes. Failed publication leaves no completion receipt; if failure
+status itself cannot be written, console/exit remain the diagnosis and files are
+incomplete evidence. Publication PASS can describe a valid failure report. The
+coordinator's `native.json` is preserved as observed, including native-case PASS
+followed by a launcher interruption. No production reader or native contract change
+was needed: the directly affected launcher-format reader lives in its regression
+suite and accepts GNU checksum text/binary markers while verifying exact hashes.
+
+### Correction validation
+
+The unchanged baseline result above is separate from correction runs. Expanded
+attempt 1 exited 255 in 17.987200 s: the new checksum reader initially accepted
+only GNU's text marker, while Git Bash emitted its valid binary marker. The reader
+now accepts either marker and still verifies each exact SHA-256. Expanded attempt
+2 passed **3813 assertions / 80 scenarios**, exit 0 in **359.048950 s**. A final
+recheck adds receipt-header/committed-status write faults and explicit deadline
+reservation/expiry assertions. Every attempt and its synthetic evidence directory
+is retained separately; no timeout or resource limit was increased to obtain PASS.
+
+Final synthetic suite: **3981 assertions / 86 fake-command scenarios**, exit 0,
+**390.008614 s**. This includes the actual pure-contract/JSON evidence reader checks,
+34 successful/deliberately failing fake-command leaves in a nonzero EXIT trap,
+verified absence versus uncertainty/foreign ownership, real signal handshakes,
+first/repeated/mixed signal precedence, publication faults/timeouts and finalized
+byte checks. All original 25 scenarios remain. No detached finalization algorithm
+or operational worker was substituted for the real launcher functions.
+
+Sequential commands/results:
+
+- `php -n tests/WebsitePlatformM6CNativeLauncherTest.php` — results above; optional `M6C_NATIVE_TEST_EVIDENCE` pointed to the existing private external evidence directory.
+- `php -n tests/WebsitePlatformM6BScopeTest.php` — **42 assertions**, exit 0, **11.605460 s**.
+- `php -n tests/WebsitePlatformM6CScopeTest.php` — **53 assertions**, exit 0, **6.907649 s**.
+- `php -n -l PATH`, separately for all **253 tracked PHP files** — exit 0 for every file, **49.835970 s** total.
+
+Versions: PHP **8.4.24 CLI ZTS**, Visual C++ 2022 x64; GNU Git Bash **5.3.15(2)**,
+Git **2.56.0.windows.2**, Node **v24.22.0**, PowerShell **7.6.5**. No timed suite
+ran concurrently with lint or other validation. No completed Linux CLI/process
+runtime suite was rerun.
+
+Bash `-n` passed the launcher, fixture and two documented Bash blocks: **four
+syntax-only checks**, exit 0, **0.644399 s**, with no script bodies executed.
+Documentation checks pass **34 links** (local destinations and external URL syntax),
+**11 local anchors** and **six balanced fence markers**. Raw SHA-256 comparison
+against the task-start snapshot confirms exactly five changed files and **441
+other tracked files byte-identical**; all 25 migrations and canonical pins remain
+unchanged. Working/staged/committed diff checks are retained with the final Git
+handoff outside the repository.
+
+### Exact correction inventory and preserved limits
+
+1. `tests/RunM6CNative.sh` — explicit absence result, first-signal recording, bounded cleanup/evidence finalization and coherent outcome fields.
+2. `tests/support/WebsitePlatformM6CNativeLauncherFixture.sh` — explicit fake command statuses, real child-only signal handshakes, synthetic file and publication faults.
+3. `tests/WebsitePlatformM6CNativeLauncherTest.php` — EXIT-trap, signal/lifecycle, checksum and outcome consistency regressions; optional retained synthetic evidence.
+4. `docs/sprint-8.8-m6c-native-validation.md` — exact signal boundary, deadlines, evidence semantics and local reproduction limits.
+5. `docs/sprint-8.8-m6c-local-implementation.md` — this correction record.
+
+All 20 native cases, their protected/instrumented lane distinction, isolation,
+privilege/network/storage guards, production application/worker/runtime/renderer/
+artifact-store bytes, all 25 migrations/pins and the older M6B launcher remain
+unchanged. Migration 025 remains already applied to working staging, canonical
+SHA-256 `dab585dc29aac11153f92703c65d3883aeea73a1b2283157cfa9d2f2ece85cb0`; it was not reapplied.
+
+The operator-reported Linux prerequisite PASS at `96715eb` remains **206 CLI / 389
+process assertions**, independently reported, not rerun or combined with these
+synthetic results. Last reported deployed application remains
+`f466fc1cdbfb53325a1db11445736bdc5ea7c6f4`. Backup/download remains operator-reported
+COMPLETE, both copies and receipt retained; restore NOT EXECUTED. No server, live
+SQL, migration, backup, deployment, installation, real container, provider or
+Narrator action occurs. PR #128 remains open/non-draft/unmerged with no auto-merge.
+Exact pushed SHA, the two thread replies/resolutions, one new-head review observation
+and the nine-point plain-text handoff are retained outside Git in
+`m6c-native-teardown-fixes/SUMMARY.txt`.

@@ -128,7 +128,7 @@ not the isolation proof. There is no connection or probe of `ubo_staging`.
 | Host disk | Root free floor 1 GiB; shared volume admission 10 GiB, running floor 4 GiB. Count shared Docker/evidence free space once. |
 | Disk budget | Cached images combined at most 5 GiB; runtime writable layer at most 256 MiB; run scratch/evidence at most 640 MiB; bounded logs 2 × 1 MiB per container. Aggregate below 6 GiB, monitored rather than a disk quota. |
 | Diagnostics | Source pack 64 MiB; native JSON 1 MiB; each child stream normally 64 KiB; source-index read 1 MiB; container local logs capped. Host worker stdout/stderr use a 1 MiB file limit. |
-| Time | One 1200-second suite deadline, plus a separate 90-second container cleanup budget. Inspection/Git calls 15 seconds plus 2-second forced termination. Worker children 90 seconds, barriers 15 seconds; SIGTERM escalates to SIGKILL within 4 seconds. |
+| Time | One 1200-second suite deadline, plus one 90-second cleanup/evidence deadline. Cleanup calls reserve eight seconds for final publication/failure diagnostics. Evidence preparation: at most 15 seconds plus 1-second kill grace; terminal commit: at most 4 + 1 seconds; one failure diagnostic write: at most 2 + 1 seconds, all clipped to that same deadline. Inspection/Git calls otherwise use 15 + 2 seconds. Worker children 90 seconds, barriers 15 seconds; SIGTERM escalates to SIGKILL within 4 seconds. |
 
 The memory allowance for host controller utilities is admission accounting, not a
 new host cgroup. Effective container CPU/memory/swap/PID limits and OOM/PID events
@@ -151,13 +151,67 @@ the exact newly created path, device/inode/UID/mode; credential files are not co
 to evidence. If cleanup fails, retained resources may still contain test-only
 credentials and need separately reviewed recovery, not broad pruning.
 
-`status.txt` records primary exit and cleanup independently. `SHA256SUMS` covers
-bounded `.txt`/`.json` evidence; `PUBLICATION` is written atomically afterward and
-contains the manifest hash. No publication receipt means publication is incomplete.
+`status.txt` records `primary_exit`, `interruption_exit`, `cleanup`, `publication`
+and `final_exit` independently, along with the source SHA. Final precedence is:
+nonzero original operation result, otherwise the first accepted INT (130) or TERM
+(143), otherwise cleanup/publication failure (2), otherwise zero. Signal handlers
+only record the first signal. They never invoke cleanup or reset its deadline.
+
+Signals remain accepted through container stop/inspection/removal, network/scratch
+cleanup, provisional status preparation and substantive evidence hashing. Once
+these have settled, `m6n_close_signals` executes the single `trap '' INT TERM`
+terminal boundary. All signals handled before that builtin affect the final
+decision; INT/TERM after it are ignored through the bounded commit and exit.
+This includes signals received while a bounded evidence child is running: Bash
+dispatches the parent's pending trap when the foreground command returns.
+
+Before that boundary, payload `.txt`/`.json` files are hashed with status excluded.
+After the boundary, the launcher refreshes the decision and regenerates the small
+status file once, adds its finalized hash to `SHA256SUMS`, and atomically renames
+`PUBLICATION` last. The receipt contains the manifest hash and the same outcome
+fields as status and console. There is no repeated-signal rewrite loop or second
+substantive payload-hashing pass. Provisional/pending files are not completion
+evidence. A failed write/hash/rename/timeout fails publication; one bounded attempt
+removes any receipt and writes diagnostic failure status. If even that write fails,
+console/exit remain authoritative and the evidence is incomplete.
+
+`publication=PASS` means the evidence was committed successfully. A valid failure
+report can have publication PASS and a nonzero final exit. `native.json` remains
+the coordinator's observed result, including native-case PASS when the launcher
+was later interrupted. Native PASS requires all 20 named cases, the correct lane
+for each, positive assertions, exact SHA/token and native=true; launcher success
+also requires zero primary/interruption/final exits and cleanup/publication PASS.
 Missing/malformed reports, failed capture, cleanup or publication cannot yield a
-successful launcher exit; a nonzero primary child exit is preserved. Completed,
-failed and unreached cases remain distinct. Native PASS requires all 20 named cases,
-the correct lane for each, positive assertions, exact SHA/token and native=true.
+successful launcher exit. Completed, failed and unreached cases remain distinct.
+
+### Review corrections and synthetic proof
+
+The [fake-command return finding](https://github.com/fvd8383/ultimate-back-office/pull/128#discussion_r4320474823)
+reported Bash 5.2 retaining a nonzero EXIT-trap status after a successful fake
+inspection. Fake leaf commands now explicitly return their actual output/file/test
+status; intentional failures remain nonzero. Lost-create recovery still requires
+exact ownership. The absent-resource fallback explicitly returns zero only when
+listing succeeds and is empty; failed inspection with a present or uncertain
+resource fails cleanup. Fake files are synthetic markers, not Docker resources.
+
+The [teardown interruption finding](https://github.com/fvd8383/ultimate-back-office/pull/128#discussion_r4320474831)
+was reproduced locally against unchanged `648fd0d`: INT and TERM at runtime stop,
+DB cleanup, network cleanup, status preparation, manifest hashing and receipt
+publication all reached their handlers yet exited zero (12 probes). Original
+status, manifests, receipts and handler observations are retained outside Git.
+Git Bash 5.3.15's unchanged suite passed 292 assertions/25 scenarios; its nonzero
+EXIT probe returned inspection status zero and verified-absence zero. That is not
+a reproduction of the reviewer's Linux/Bash 5.2 failure. Bash 5.2 was unavailable;
+no shell, WSL, Docker or other software was installed to obtain it.
+
+The expanded suite uses the actual launcher functions with fake side-effect leaves,
+private files and foreground Bash children. Bounded PID/signal/phase handshakes
+deliver real INT/TERM only to the recorded synthetic child's PID. Handler logs,
+first-signal preservation, unchanged cleanup deadline, single removals and both
+sides of the terminal boundary are asserted, along with finalized manifest hashes,
+receipt/status/console/exit agreement and failure injection. Fresh counts and
+retained attempts appear in the implementation record. These tests establish no
+actual Docker teardown, native Linux namespace, MySQL or protected-worker result.
 
 ## Authored native acceptance cases
 
@@ -264,7 +318,7 @@ Earlier `d4fb3d6` eight-suite/682-assertion Linux results and its separate CLI f
 remain historical evidence; later blocked review-gate tasks ran no tests.
 
 Fresh desktop results and retained failures are recorded in the implementation
-record's native-harness section. The recipe, MySQL integration, namespace ownership,
+record's [teardown correction section](sprint-8.8-m6c-local-implementation.md#native-teardown-review-corrections). The recipe, MySQL integration, namespace ownership,
 effective Linux cgroups and protected worker acceptance remain **UNEXECUTED** here.
 First authorized native execution may expose a prerequisite or production-contract
 blocker; stop and record it, without weakening the factory or applying staging SQL.

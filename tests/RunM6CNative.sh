@@ -11,14 +11,29 @@ m6n_client() { env -i PATH=/usr/bin:/bin HOME=/nonexistent LC_ALL=C docker --con
 m6n_docker() {
     local seconds=15
     if [[ -n ${cleanup_deadline:-} ]]; then
-        (( cleanup_deadline>SECONDS )) || return 124
-        (( cleanup_deadline-SECONDS>=seconds )) || seconds=$((cleanup_deadline-SECONDS))
+        # Leave eight seconds for terminal publication/failure evidence, plus kill grace.
+        (( cleanup_deadline-SECONDS>10 )) || return 124
+        (( cleanup_deadline-SECONDS-10>=seconds )) || seconds=$((cleanup_deadline-SECONDS-10))
     fi
     timeout --kill-after=2s "${seconds}s" env -i PATH=/usr/bin:/bin HOME=/nonexistent LC_ALL=C docker --config "$client" --host unix:///run/user/1000/docker.sock "$@"
 }
-m6n_guard() { "$php" -n -d memory_limit=128M "$repo/tests/support/WebsitePlatformM6CNativeContract.php" "$@"; }
+m6n_cleanup_command() {
+    local seconds=$((cleanup_deadline-SECONDS-9))
+    (( seconds>0 )) || return 124
+    (( seconds<=15 )) || seconds=15
+    timeout --kill-after=1s "${seconds}s" "$@"
+}
+m6n_guard() {
+    if [[ -n ${cleanup_deadline:-} ]]; then
+        m6n_cleanup_command "$php" -n -d memory_limit=128M "$repo/tests/support/WebsitePlatformM6CNativeContract.php" "$@"
+    else "$php" -n -d memory_limit=128M "$repo/tests/support/WebsitePlatformM6CNativeContract.php" "$@"; fi
+}
 m6n_private() { [[ -d $1 && ! -L $1 && $(realpath "$1") == "$1" && $(stat -c '%u:%a' "$1") == 1000:700 ]]; }
-m6n_checkpoint() { [[ -z ${interrupted:-} ]] || m6n_fail interrupted "$interrupted"; (( SECONDS-started < 1200 )) || m6n_fail overall_deadline 124; }
+m6n_checkpoint() {
+    # EXIT owns the interruption result; do not relabel a successful operation as a primary failure.
+    [[ -z ${interrupted:-} ]] || exit 0
+    (( SECONDS-started < 1200 )) || m6n_fail overall_deadline 124
+}
 m6n_volume() {
     [[ $(realpath /mnt/ubo_stage_testdata) == /mnt/ubo_stage_testdata \
         && $(findmnt -rn --mountpoint /mnt/ubo_stage_testdata -o TARGET) == /mnt/ubo_stage_testdata \
@@ -130,7 +145,8 @@ m6n_owned_remove() {
     if [[ -z $id ]]; then
         id=$(m6n_docker inspect "$name" --format '{{.Id}}' 2>/dev/null) || {
             found=$(m6n_docker container ls -aq --no-trunc --filter "name=^/$name$") || return 1
-            [[ -z $found ]]; return
+            [[ -z $found ]] || return 1
+            return 0
         }
     fi
     [[ $id =~ ^[a-f0-9]{64}$ ]] || return 1
@@ -143,12 +159,62 @@ m6n_owned_remove() {
     found=$(m6n_docker container ls -aq --no-trunc --filter "id=$id") || return 1
     [[ -z $found ]]
 }
+m6n_signal() { interrupted=${interrupted:-$1}; }
+m6n_close_signals() { trap '' INT TERM; }
+m6n_outcome() {
+    final=$primary
+    if [[ $final == 0 ]]; then final=${interrupted:-0}; fi
+    [[ $final != 0 || ( $cleanup == PASS && $publication == PASS ) ]] || final=2
+}
+m6n_status() {
+    printf 'source=%s\nprimary_exit=%s\ninterruption_exit=%s\ncleanup=%s\npublication=%s\nfinal_exit=%s\n' "$@"
+}
+m6n_evidence_job() {
+    # Executed in a bounded child, with values passed as arguments, never shell code.
+    local mode=$1 directory=$2 digest file; shift 2
+    cd "$directory" || return 1
+    if [[ $mode == failure ]]; then
+        rm -f -- PUBLICATION || return 1
+        m6n_status "$@" > status.failed && mv -- status.failed status.txt
+        return $?
+    fi
+    if [[ $mode == prepare ]]; then
+        m6n_status "$@" > status.provisional || return 1
+        # Hash substantive evidence while INT/TERM are still accepted by the parent.
+        # Status is small and regenerated once after the terminal boundary.
+        local -a files=()
+        for file in ./*.txt ./*.json; do
+            [[ $file == ./status.txt || ! -f $file ]] || files+=("$file")
+        done
+        sha256sum -- "${files[@]}" > payload.pending || return 1
+        sha256sum -- status.provisional > provisional.pending || return 1
+        return 0
+    fi
+    [[ $mode == commit ]] || return 1
+    m6n_status "$@" > status.pending && mv -- status.pending status.txt || return 1
+    cat payload.pending > SHA256SUMS.pending || return 1
+    sha256sum -- ./status.txt >> SHA256SUMS.pending || return 1
+    digest=$(sha256sum -- SHA256SUMS.pending) || return 1
+    digest=${digest%% *}; [[ $digest =~ ^[a-f0-9]{64}$ ]] || return 1
+    { printf 'manifest_sha256=%s\n' "$digest" && m6n_status "$@"; } > PUBLICATION.pending || return 1
+    mv -- SHA256SUMS.pending SHA256SUMS || return 1
+    # Receipt is last. Nothing fallible follows its atomic rename in this child.
+    mv -- PUBLICATION.pending PUBLICATION
+}
+m6n_evidence_run() {
+    local mode=$1 cap reserve seconds
+    case $mode in prepare) cap=15;reserve=8;;commit) cap=4;reserve=3;;failure) cap=2;reserve=0;;*)return 1;;esac
+    seconds=$((cleanup_deadline-SECONDS-reserve-1))
+    (( seconds>0 )) || return 124
+    (( seconds<=cap )) || seconds=$cap
+    export -f m6n_evidence_job m6n_status
+    timeout --kill-after=1s "${seconds}s" bash -c 'm6n_evidence_job "$@"' _ "$@"
+}
 m6n_finish() {
-    local primary=$? cleanup=PASS publication=PASS final=$? found
+    local primary=$? cleanup=PASS publication=PASS final=0 found
     trap - EXIT
     set +e
     cleanup_deadline=$((SECONDS+90))
-    [[ -z ${interrupted:-} || $primary != 0 ]] || primary=$interrupted
     # Capture the sanitized native report BEFORE removing the exact runtime container.
     if [[ -n ${runtime_id:-} && -n ${evidence:-} && ! -f $evidence/native.json ]]; then
         m6n_docker cp "$runtime_id:/run/m6c/report.json" "$evidence/native.json" >/dev/null 2>&1 || :
@@ -172,20 +238,29 @@ m6n_finish() {
     fi
     # Only this exact newly-created directory on the pinned filesystem is eligible.
     if [[ -n ${disk:-} ]]; then
-        if [[ $disk == "$storage/tmp/m6c."* && ! -L $disk && $(stat -c '%d:%i:%u:%a' "$disk") == "$disk_identity" ]]; then rm -rf -- "$disk" || cleanup=FAIL
+        if [[ $disk == "$storage/tmp/m6c."* && ! -L $disk && $(m6n_cleanup_command stat -c '%d:%i:%u:%a' "$disk") == "$disk_identity" ]]; then m6n_cleanup_command rm -rf -- "$disk" || cleanup=FAIL
         else cleanup=FAIL; fi
     fi
-    [[ -z ${lock_identity:-} ]] || { [[ $(stat -c '%d:%i:%u:%a' "$storage/tmp/m6c-native.lock") == "$lock_identity" ]] && rmdir -- "$storage/tmp/m6c-native.lock"; } || cleanup=FAIL
-    final=$primary; [[ $final != 0 || $cleanup == PASS ]] || final=2
+    [[ -z ${lock_identity:-} ]] || { [[ $(m6n_cleanup_command stat -c '%d:%i:%u:%a' "$storage/tmp/m6c-native.lock") == "$lock_identity" ]] && m6n_cleanup_command rmdir -- "$storage/tmp/m6c-native.lock"; } || cleanup=FAIL
+    m6n_outcome
     if [[ -n ${evidence:-} ]]; then
-        printf 'source=%s\nprimary_exit=%s\ncleanup=%s\nfinal_exit_before_publication=%s\n' "$sha" "$primary" "$cleanup" "$final" > "$evidence/status.txt" || publication=FAIL
-        (cd "$evidence" && sha256sum -- ./*.txt ./*.json > SHA256SUMS.pending && mv SHA256SUMS.pending SHA256SUMS) || publication=FAIL
+        m6n_evidence_run prepare "$evidence" "$sha" "$primary" "${interrupted:-0}" "$cleanup" "$publication" "$final" || publication=FAIL
+    fi
+    # Terminal boundary: all substantive cleanup and payload hashing have finished.
+    # Freeze only for one <=5s commit and, on failure, <=3s diagnostic write, both
+    # inside the original 90s deadline. No retry loop; repeated signals never reset it.
+    m6n_close_signals
+    m6n_outcome
+    if [[ -n ${evidence:-} ]]; then
         if [[ $publication == PASS ]]; then
-            printf 'publication=PASS\nmanifest_sha256=%s\n' "$(sha256sum "$evidence/SHA256SUMS" | cut -d' ' -f1)" > "$evidence/PUBLICATION.pending" \
-                && mv "$evidence/PUBLICATION.pending" "$evidence/PUBLICATION" || publication=FAIL
+            m6n_evidence_run commit "$evidence" "$sha" "$primary" "${interrupted:-0}" "$cleanup" "$publication" "$final" || publication=FAIL
         fi
-        [[ $publication == PASS ]] || { [[ $final != 0 ]] || final=2; printf 'M6C evidence publication FAILED; primary exit=%s\n' "$primary" >&2; }
-        printf 'M6C native primary=%s cleanup=%s evidence-publication=%s final=%s; evidence=%s\n' "$primary" "$cleanup" "$publication" "$final" "$evidence_path"
+        if [[ $publication != PASS ]]; then
+            m6n_outcome
+            m6n_evidence_run failure "$evidence" "$sha" "$primary" "${interrupted:-0}" "$cleanup" "$publication" "$final" || :
+            printf 'M6C evidence publication FAILED; primary exit=%s interruption=%s final=%s\n' "$primary" "${interrupted:-0}" "$final" >&2
+        fi
+        printf 'M6C native primary=%s interruption=%s cleanup=%s evidence-publication=%s final=%s; evidence=%s\n' "$primary" "${interrupted:-0}" "$cleanup" "$publication" "$final" "$evidence_path"
     fi
     unset MYSQL_ROOT_PASSWORD worker_password
     exit "$final"
@@ -315,8 +390,8 @@ m6n_main() {
     repo=$(realpath "${BASH_SOURCE[0]%/*}/..");base=/mnt/ubo_stage_testdata/codex-validation;client=/run/user/1000/ubo-m6c-client
     started=$SECONDS;interrupted='';volume_id='';network_id='';db_id='';runtime_id='';evidence='';disk='';supervisor='';lock_identity=''
     network_attempted=0;db_attempted=0;runtime_attempted=0
-    trap 'interrupted=${interrupted:-130}' INT
-    trap 'interrupted=${interrupted:-143}' TERM
+    trap 'm6n_signal 130' INT
+    trap 'm6n_signal 143' TERM
     trap m6n_finish EXIT
     m6n_preflight
     if [[ $mode == --check-only ]]; then printf 'Prerequisites accepted; no files, credentials, containers, networks, SQL or worker resources created. NATIVE EXECUTION NOT PERFORMED.\n';return;fi
