@@ -7,6 +7,13 @@ M6D–M6G — NOT STARTED. Migration 025 — APPLIED TO WORKING STAGING; do not 
 Production — UNAUTHORIZED / NOT DEPLOYED. This task performs local implementation
 and synthetic/filesystem validation only. The 77-case M6 plan is not a passed matrix.
 
+Current handoff: the operator reports the focused Linux CLI/process correction
+passed at `96715eb35ac1ae2eb69c3a39a14ec009048128ad`. The new executable native harness
+is **IMPLEMENTED LOCALLY / REVIEW REQUIRED**; native container/MySQL/protected-worker
+execution is **NOT PERFORMED**. See [native harness implementation](#native-harness-implementation)
+and the [operating guide](sprint-8.8-m6c-native-validation.md). Earlier outstanding
+Linux/native statements below describe their dated correction, not this handoff.
+
 Baseline: `7ed48fbaa4858b1b5299dc7cbea98f96e98f4e45`; current origin/main was verified
 at that exact merged PR #127 commit. No intervening main changes were found.
 Branch: `codex/sprint-8.8-m6c-artifact-builder`. The operator-reported deployed app
@@ -1673,3 +1680,106 @@ Linux order remains corrected CLI first, process regressions second. The executa
 M6C native integration harness remains a separate missing deliverable; it is not
 implemented or provisioned here. Zero server, live SQL, migration, backup, deployment,
 installation, container, provider or Narrator actions occur in this correction.
+
+## Native harness implementation
+
+Authoring starts from clean branch/head `96715eb35ac1ae2eb69c3a39a14ec009048128ad`.
+PR #128's exact-head review was completed with no findings/unresolved findings in
+[the canonical review summary](https://github.com/fvd8383/ultimate-back-office/pull/128#issuecomment-6242505861)
+before this work. The new harness changes require their own review; the earlier
+clean result is not attributed to them. M6C implementation baseline remains
+`7ed48fbaa4858b1b5299dc7cbea98f96e98f4e45`.
+
+The [native operating guide](sprint-8.8-m6c-native-validation.md) specifies executable
+help/check-only/run commands, exact source/image prerequisites, separately authorized
+image preparation, containment/resource/evidence/cleanup contracts, 20 authored
+acceptance cases and partial B/C case mappings. All native cases remain UNEXECUTED.
+The protected lane runs the actual production factory/CLI as a capability-free
+non-root worker. The explicitly instrumented lane uses real PDO, builder, validator
+and store with process barriers and targeted SQL faults. Synthetic launcher tests
+are not native acceptance evidence. There are no production fault hooks or runtime
+authorization changes.
+
+### Newly completed operator Linux prerequisite result
+
+Operator-tested SHA: `96715eb35ac1ae2eb69c3a39a14ec009048128ad`.
+CLI: exit 0, **206 assertions**, **2.854755 seconds**, profile
+`parent-ini;bounded;parent-directives`; four normal cases and 32 isolated runtime
+denials passed. CGI unavailable; **zero actual CGI calls**.
+Process: exit 0, **389 assertions**, **5.150861 seconds**; all five phases passed,
+original deadlines unchanged. Six changed PHP files linted successfully; cleanup
+completed with no surviving processes or temporary fixtures.
+
+Operator report:
+`/mnt/ubo_stage_testdata/codex-validation/evidence/m6c-cli-process-20261020T000240Z-1gba0qjh/M6C-LINUX-CLI-PROCESS-VERIFICATION.txt`.
+Operator-supplied SHA-256:
+`585cb438af58046d99717a00111d87e2474a82a805b446de78507e463a715885`.
+The operator verified **26/26 manifest entries**. This desktop task did not retrieve
+the report or independently verify its checksum. The focused suites were not rerun.
+Earlier Linux `d4fb3d6` eight-suite/**682-assertion** results and its separate original
+CLI failure remain at that SHA; later blocked tasks executed no tests. Counts are
+not combined into an all-suite run at `96715eb`.
+
+### Fresh desktop checks and retained failures
+
+The final new synthetic launcher suite passes **292 assertions / 25 fake-command
+scenarios**, exit 0 in **57.877231 seconds**. It exercises pure host/source/socket/
+volume/image/resource/container/network contracts; actual launcher cached-image,
+startup, cleanup and evidence functions with fake commands; JSON report boundaries;
+failed/timeout/output-limited PHP children; and a real disposable local Git export
+that omits ignored and deleted historical canaries while preserving the exact commit.
+Ordinary test discovery cannot invoke the native entries. No real engine or SQL is
+involved. Admission OS/service leaves in shell fixtures are explicitly doubled;
+effective Linux cgroups, image recipes and worker startup remain unexecuted.
+
+Retained attempts, in order: (1) uninitialized typed pipe array, exit 255;
+(2) Windows anonymous-pipe hang, verified synthetic parent/child stopped, exit -1;
+(3) source-export fixture could not find Windows Git under Linux's minimal PATH,
+exit 255; (4) the discovery guard's self-path comparison mixed Windows separators,
+exit 255; (5) corrected suite passed 273 assertions/21 scenarios in 54.918738 s;
+(6) expanded suite passed 292 assertions/25 scenarios in 59.592542 s;
+(7) the final capability-contract recheck passed as above. File-backed capture fixed the blocking
+read; no timeout was raised to obtain a pass. The initial sandbox Bash syntax call
+also failed to initialize its MSYS synchronization object; the authorized syntax-only
+retry outside that sandbox passed. Failures and rechecks remain separate files in
+the external `m6c-native-harness` evidence directory.
+
+Sequential scope checks pass: M6B **42 assertions** (12.903642 s), M6C **53 assertions**
+(8.066212 s). PHP `-n -l` passes **253 files** (245 tracked plus eight new), with all
+eight new files refreshed after the final edits. Bash `-n` passes both new scripts,
+both documented command blocks and the extracted Dockerfile RUN block: **five
+syntax-only checks**, no commands executed. Documentation checks pass **28 links,
+nine local anchors, six balanced fence markers**. Versions: PHP **8.4.24 CLI ZTS**
+(Visual C++ 2022 x64), Git **2.56.0.windows.2**, GNU Bash **5.3.15(2)**,
+Node **v24.22.0**, PowerShell **7.6.5**. No prior CLI/process runtime suite was rerun.
+The current raw checksum comparison confirms **264 protected tracked files** are
+byte-identical to task start. All 25 migration files and canonical pins are retained;
+025 SHA-256 is `dab585dc29aac11153f92703c65d3883aeea73a1b2283157cfa9d2f2ece85cb0`.
+No structural guard exemption was needed.
+
+### Exact harness change inventory
+
+1. `tests/RunM6CNative.sh` — explicit admission, isolated orchestration and cleanup.
+2. `tests/WebsitePlatformM6CNative.php` — isolated coordinator and protected cases.
+3. `tests/WebsitePlatformM6CNativeLauncherTest.php` — synthetic discovery-safe suite.
+4. `tests/support/WebsitePlatformM6CNativeContract.php` — pure inspection contracts.
+5. `tests/support/WebsitePlatformM6CNativeProcess.php` — bounded children/barriers/capture.
+6. `tests/support/WebsitePlatformM6CNativeSource.php` — exact raw tracked-blob checks.
+7. `tests/support/WebsitePlatformM6CNativeFixture.php` — real-service fixture/request adapter.
+8. `tests/support/WebsitePlatformM6CNativeWorker.php` — protected exec and instrumented children.
+9. `tests/support/WebsitePlatformM6CNativeCases.php` — remaining native acceptance assertions.
+10. `tests/support/WebsitePlatformM6CNativeLauncherFixture.sh` — fake-command scenarios.
+11. `tests/native/m6c/Dockerfile` — unexecuted digest-pinned preparation recipe.
+12. `docs/sprint-8.8-m6c-native-validation.md` — operating and coverage guide.
+13. `docs/sprint-8.8-m6c-local-implementation.md` — this implementation/evidence record.
+
+The last operator-reported deployed application remains
+`f466fc1cdbfb53325a1db11445736bdc5ea7c6f4`. Working-staging migration 025 is already
+applied and is not reapplied. Backup/download remains operator-reported COMPLETE,
+both copies and the confirmation receipt retained; restore remains NOT EXECUTED.
+Historical disk figures above are not new measurements. No server, real database,
+image pull/build, container, installation, backup/restore, maintenance, deployment,
+provider, public activation or Narrator operation occurs in this authoring task.
+PR #128 remains open, non-draft, unmerged and without auto-merge. The exact new-head
+review request/observation and nine-point handoff are saved outside Git in
+`m6c-native-harness/SUMMARY.txt`; no old threads are bulk-resolved.
