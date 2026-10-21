@@ -6,13 +6,11 @@ if(PHP_SAPI==='cli'&&array_slice($argv,1)===['--help']){
 }
 require_once __DIR__.'/support/WebsitePlatformM6CNativeContract.php';
 require_once __DIR__.'/support/WebsitePlatformM6CNativeProcess.php';
-$report=['version'=>M6CNativeContract::VERSION,'native'=>true,'sha'=>$argv[2]??'','token'=>$argv[3]??'',
-    'status'=>'FAIL','assertions'=>0,'cases'=>array_fill_keys(M6CNativeContract::CASES,['status'=>'UNREACHED']),
-    'children'=>[],'limitations'=>['Direct synthetic identity/approval seeding is not UI approval coverage.',
-        'Instrumented request/fault adapters are not protected factory evidence.','File fsync and SIGKILL are not power-loss durability proof.']];
-$current=null;$safeReport=false;$admin=null;$config=null;$context=null;
+require_once __DIR__.'/support/WebsitePlatformM6CNativeReport.php';
+$report=M6CNativeReport::initial($argv[2]??'',$argv[3]??'');
+$current=null;$reportLocation=null;$admin=null;$config=null;$context=null;
 function m6nCheck(bool $ok,string $why): void
-{global $report;$report['assertions']++;if(!$ok)throw new RuntimeException($why);}
+{global $report;$report['assertions']++;if(!$ok)throw new RuntimeException($why);$report['completed_assertions']++;}
 function m6nCase(string $name,string $lane,callable $body): void
 {
     global $report,$current;$current=$name;$start=hrtime(true);$count=$report['assertions'];
@@ -135,38 +133,49 @@ function m6nSetup(array $identity): array
     $config=['version'=>1,'environment'=>'staging','worker_id'=>'m6c-native-'.$identity['token'],'worker_uid'=>2000,
         'builder_code_sha'=>$identity['sha'],'work_root'=>'/var/lib/ubo-m6c/work','artifact_root'=>'/var/lib/ubo-m6c/sealed',
         'legacy_upload_root'=>'/var/lib/ubo-m6c/uploads'];
-    foreach(['work','sealed','uploads'] as $dir){
-        $path='/var/lib/ubo-m6c/'.$dir;m6nCheck(mkdir($path,$dir==='uploads'?0755:0700),'new_private_root');
-        if($dir!=='uploads')m6nCheck(chown($path,2000)&&chgrp($path,2000)&&chmod($path,0700),'worker_storage_owner');
-    }
-    m6nCheck(stat($config['work_root'])['dev']===stat($config['artifact_root'])['dev'],'same_filesystem_storage');
-    $context=$identity;$name='ubo_m6c_'.$identity['token'];
-    $env=['DB_HOST'=>$identity['db_ip'],'DB_PORT'=>3306,'DB_NAME'=>$name,'DB_USER'=>'m6c_worker','DB_PASSWORD'=>$credentials['worker'],
-        'APP_ENV'=>'staging','APP_DEBUG'=>false,'APP_BASE_URL'=>'https://m6c.invalid','ACCOUNTS_BASE_URL'=>'https://m6c.invalid'];
-    m6nCheck(!file_exists('/opt/ubo/private/config/env.php')&&!file_exists('/etc/ubo-site-build-worker.json'),'no_operational_configuration');
-    file_put_contents('/opt/ubo/private/config/env.php',"<?php\nreturn ".var_export($env,true).";\n");
-    chgrp('/opt/ubo/private/config/env.php',2000);chmod('/opt/ubo/private/config/env.php',0440);
-    file_put_contents('/etc/ubo-site-build-worker.json',json_encode($config,JSON_THROW_ON_ERROR));chmod('/etc/ubo-site-build-worker.json',0444);
-    file_put_contents('/run/m6c/context.json',json_encode($context,JSON_THROW_ON_ERROR));chmod('/run/m6c/context.json',0444);
-    $deadline=hrtime(true)+55000000000;
-    do{
-        try{$admin=new PDO('mysql:host='.$identity['db_ip'].';port=3306;charset=utf8mb4','root',$credentials['root'],[
-            PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION,PDO::ATTR_EMULATE_PREPARES=>false,PDO::ATTR_DEFAULT_FETCH_MODE=>PDO::FETCH_ASSOC,PDO::ATTR_TIMEOUT=>2]);break;
-        }catch(PDOException $error){if(hrtime(true)>=$deadline)throw $error;usleep(100000);}
-    }while(true);
-    $server=$admin->query('SELECT @@server_uuid AS uuid,@@hostname AS hostname,@@version AS version')->fetch();
-    m6nCheck($server['uuid']===$identity['server_uuid']&&$server['hostname']==='m6c-db-'.$identity['token']&&str_starts_with($server['version'],'8.4.'),'exact_disposable_server_before_SQL_mutation');
-    m6nCheck(m6nScalar('SELECT SCHEMA_NAME FROM information_schema.SCHEMATA WHERE SCHEMA_NAME=?',[$name])===false,'new_owned_schema_only');
-    $admin->exec('CREATE DATABASE `'.$name.'` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci');$admin->exec('USE `'.$name.'`');
-    $admin->exec("SET time_zone='+00:00'");$admin->exec('SET SESSION innodb_lock_wait_timeout=5');
-    require_once __DIR__.'/support/WebsitePlatformM6BMigrations.php';
-    m6mysqlMigrate($admin,1,25);
-    $admin->exec("CREATE USER 'm6c_worker'@'%' IDENTIFIED BY '".$credentials['worker']."'");
-    $admin->exec("GRANT SELECT,INSERT,UPDATE,DELETE ON `".$name."`.* TO 'm6c_worker'@'%'");
-    $grants=$admin->query("SHOW GRANTS FOR 'm6c_worker'@'%'")->fetchAll(PDO::FETCH_COLUMN);
-    foreach($grants as $grant)m6nCheck(!preg_match('/ALL PRIVILEGES|GRANT OPTION|CREATE|ALTER|DROP/',$grant),'worker_has_no_schema_or_admin_privileges');
-    $report['server']=$server;$report['database']=$name;$report['runtime']=['php'=>PHP_VERSION,'os'=>PHP_OS_FAMILY,'setup_uid'=>posix_geteuid(),'worker_uid'=>2000];
-    unset($credentials,$env);return $config;
+    $report['stage']='storage_setup';
+    return M6CNativeSetup::beforeDatabase(function()use($identity,$credentials,$config):array{
+        global $admin,$context,$report;
+        $report['stage']='configuration_setup';
+        $context=$identity;$name='ubo_m6c_'.$identity['token'];
+        $env=['DB_HOST'=>$identity['db_ip'],'DB_PORT'=>3306,'DB_NAME'=>$name,'DB_USER'=>'m6c_worker','DB_PASSWORD'=>$credentials['worker'],
+            'APP_ENV'=>'staging','APP_DEBUG'=>false,'APP_BASE_URL'=>'https://m6c.invalid','ACCOUNTS_BASE_URL'=>'https://m6c.invalid'];
+        foreach(['/opt/ubo/private/config/env.php','/etc/ubo-site-build-worker.json','/run/m6c/context.json'] as $path)
+            m6nCheck(!is_link($path)&&!file_exists($path),'no_operational_configuration');
+        $bytes="<?php\nreturn ".var_export($env,true).";\n";
+        m6nCheck(m6nStep('setup_env_write',fn()=>file_put_contents('/opt/ubo/private/config/env.php',$bytes))===strlen($bytes),'setup_env_write');
+        m6nStep('setup_env_chmod',fn()=>chmod('/opt/ubo/private/config/env.php',0440));
+        m6nStep('setup_env_chgrp',fn()=>chgrp('/opt/ubo/private/config/env.php',2000));
+        foreach(['config'=>['/etc/ubo-site-build-worker.json',$config],'context'=>['/run/m6c/context.json',$context]] as $label=>[$path,$data]){
+            $bytes=json_encode($data,JSON_THROW_ON_ERROR);
+            m6nCheck(m6nStep('setup_'.$label.'_write',fn()=>file_put_contents($path,$bytes))===strlen($bytes),'setup_'.$label.'_write');
+            m6nStep('setup_'.$label.'_chmod',fn()=>chmod($path,0444));
+        }
+        foreach(['/opt/ubo/private/config/env.php'=>[2000,0440],'/etc/ubo-site-build-worker.json'=>[0,0444],'/run/m6c/context.json'=>[0,0444]] as $path=>[$gid,$mode]){
+            clearstatcache(true,$path);$s=m6nStep('setup_configuration_stat',fn()=>lstat($path));
+            m6nCheck(($s['mode']&0170000)===0100000&&$s['uid']===0&&$s['gid']===$gid&&($s['mode']&07777)===$mode,'setup_configuration_metadata');
+        }
+        $report['stage']='database_setup';
+        $deadline=hrtime(true)+55000000000;
+        do{
+            try{$admin=new PDO('mysql:host='.$identity['db_ip'].';port=3306;charset=utf8mb4','root',$credentials['root'],[
+                PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION,PDO::ATTR_EMULATE_PREPARES=>false,PDO::ATTR_DEFAULT_FETCH_MODE=>PDO::FETCH_ASSOC,PDO::ATTR_TIMEOUT=>2]);break;
+            }catch(PDOException $error){if(hrtime(true)>=$deadline)throw $error;usleep(100000);}
+        }while(true);
+        $server=$admin->query('SELECT @@server_uuid AS uuid,@@hostname AS hostname,@@version AS version')->fetch();
+        m6nCheck($server['uuid']===$identity['server_uuid']&&$server['hostname']==='m6c-db-'.$identity['token']&&str_starts_with($server['version'],'8.4.'),'exact_disposable_server_before_SQL_mutation');
+        m6nCheck(m6nScalar('SELECT SCHEMA_NAME FROM information_schema.SCHEMATA WHERE SCHEMA_NAME=?',[$name])===false,'new_owned_schema_only');
+        $admin->exec('CREATE DATABASE `'.$name.'` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci');$admin->exec('USE `'.$name.'`');
+        $admin->exec("SET time_zone='+00:00'");$admin->exec('SET SESSION innodb_lock_wait_timeout=5');
+        require_once __DIR__.'/support/WebsitePlatformM6BMigrations.php';
+        m6mysqlMigrate($admin,1,25);
+        $admin->exec("CREATE USER 'm6c_worker'@'%' IDENTIFIED BY '".$credentials['worker']."'");
+        $admin->exec("GRANT SELECT,INSERT,UPDATE,DELETE ON `".$name."`.* TO 'm6c_worker'@'%'");
+        $grants=$admin->query("SHOW GRANTS FOR 'm6c_worker'@'%'")->fetchAll(PDO::FETCH_COLUMN);
+        foreach($grants as $grant)m6nCheck(!preg_match('/ALL PRIVILEGES|GRANT OPTION|CREATE|ALTER|DROP/',$grant),'worker_has_no_schema_or_admin_privileges');
+        $report['server']=$server;$report['database']=$name;$report['runtime']=['php'=>PHP_VERSION,'os'=>PHP_OS_FAMILY,'setup_uid'=>posix_geteuid(),'worker_uid'=>2000];
+        unset($credentials,$env);return $config;
+    },'m6nCheck');
 }
 
 try{
@@ -181,7 +190,8 @@ try{
         &&($identity['token']??'')===$argv[3]&&($identity['worker_uid']??0)===2000&&M6CNativeContract::privateIp($identity['db_ip']??''),'run_binding');
     foreach(['db_id','runtime_id','network_id'] as $key)M6CNativeContract::need(M6CNativeContract::hex($identity[$key]??'',64),'run_resource_id');
     M6CNativeContract::need(preg_match('/^[a-f0-9-]{36}$/D',$identity['server_uuid']??'')===1,'server_uuid');
-    $safeReport=true;
+    $reportLocation=M6CNativeReport::location();
+    $report['stage']='source_verification';
     $git=M6CNativeProcess::capture(['/usr/bin/git','-C','/opt/ubo','rev-parse','HEAD'],10);
     m6nCheck($git['exit']===0&&trim($git['stdout'])===$identity['sha'],'exact_source_commit');
     require_once __DIR__.'/support/WebsitePlatformM6CNativeSource.php';
@@ -192,23 +202,30 @@ try{
     $report['tracked_files_verified']=count($files);unset($index,$files);
     m6nCheck(hash_file('sha256','/opt/ubo/database/migrations/025_site_build_deployment.sql')==='dab585dc29aac11153f92703c65d3883aeea73a1b2283157cfa9d2f2ece85cb0','canonical_025');
     require_once __DIR__.'/support/WebsitePlatformM6CNativeFixture.php';
+    $report['stage']='runtime_setup';
     $config=m6nSetup($identity);
     // The application connection uses the restricted worker account, even for request setup.
     $worker=Database::connection();$worker->exec("SET time_zone='+00:00'");$worker->exec('SET SESSION innodb_lock_wait_timeout=5');
     m6nCheck($worker->query('SELECT @@server_uuid')->fetchColumn()===$identity['server_uuid'],'application_connection_same_disposable_server');
-    $first=m6nFixture($admin,$config);
+    $report['stage']='native_cases';$first=m6nFixture($admin,$config);
     m6nCase('protected-startup-denials','protected',function()use($first,$config):void{
         $before=[m6nTree($config['work_root']),m6nTree($config['artifact_root'])];$file='/etc/ubo-site-build-worker.json';$original=file_get_contents($file);
         foreach(['uid','config-mode','checkout-owner','source-sha'] as $fault){
             try{
-                if($fault==='config-mode')chmod($file,0666);
-                if($fault==='checkout-owner')chown('/opt/ubo/scripts/site-build-worker.php',2000);
-                if($fault==='source-sha'){$bad=$config;$bad['builder_code_sha']=str_repeat('0',40);file_put_contents($file,json_encode($bad,JSON_THROW_ON_ERROR));}
+                if($fault==='config-mode')m6nStep('denial_config_chmod',fn()=>chmod($file,0666));
+                if($fault==='checkout-owner')m6nStep('denial_checkout_chown',fn()=>chown('/opt/ubo/scripts/site-build-worker.php',2000));
+                if($fault==='source-sha'){$bad=$config;$bad['builder_code_sha']=str_repeat('0',40);$bytes=json_encode($bad,JSON_THROW_ON_ERROR);
+                    m6nCheck(m6nStep('denial_config_write',fn()=>file_put_contents($file,$bytes))===strlen($bytes),'denial_config_write');}
                 $r=m6nProtected($first,$fault==='uid'?0:2000,['--once'],1);
                 m6nCheck(str_contains($r['stderr'],'Build-only invocation stopped: builder_unavailable.'),'actual_factory_denial_'.$fault);
                 m6nCheck((int)m6nScalar('SELECT COUNT(*) FROM site_build_attempts')===0&&m6nJob($first)['status']==='requested','denial_no_claim');
                 m6nCheck([m6nTree($config['work_root']),m6nTree($config['artifact_root'])]===$before,'denial_no_artifact');
-            }finally{chown('/opt/ubo/scripts/site-build-worker.php',0);file_put_contents($file,$original);chmod($file,0444);}
+            }finally{
+                // The checkout owner is restored via CHOWN; config always remains root-owned.
+                m6nStep('denial_restore_owner',fn()=>chown('/opt/ubo/scripts/site-build-worker.php',0));
+                m6nCheck(m6nStep('denial_restore_write',fn()=>file_put_contents($file,$original))===strlen($original),'denial_restore_write');
+                m6nStep('denial_restore_mode',fn()=>chmod($file,0444));
+            }
         }
     });
     m6nCase('protected-multipage-build','protected',function()use($first):void{
@@ -225,20 +242,11 @@ try{
     });
     // Remaining cases are defined below, after the protected startup/build path.
     require __DIR__.'/support/WebsitePlatformM6CNativeCases.php';
-    M6CNativeProcess::cleanup();$report['status']='PASS';M6CNativeContract::evidence($report,$identity['sha'],$identity['token']);
+    M6CNativeProcess::cleanup();$report['status']='PASS';M6CNativeContract::evidence($report,$identity['sha'],$identity['token']);$report['stage']='completed';
 }catch(Throwable $e){
-    if($current!==null)$report['cases'][$current]['status']='FAIL';
-    $report['failure']=['class'=>get_class($e),'case'=>$current,
-        'code'=>preg_match('/^[a-zA-Z0-9_]{1,100}$/D',$e->getMessage())?$e->getMessage():'native_failure'];
-    if($e instanceof PDOException)$report['failure']['sql']=['sqlstate'=>$e->errorInfo[0]??null,'driver'=>$e->errorInfo[1]??null];
-    elseif(preg_match('/SQLSTATE ([A-Z0-9]{5}), driver ([0-9]{1,10})/',$e->getMessage(),$sql))$report['failure']['sql']=['sqlstate'=>$sql[1],'driver'=>(int)$sql[2]];
-    $report['status']='FAIL';
+    M6CNativeReport::failure($report,$e,$current);
 }finally{
-    try{$report['terminated_children']=M6CNativeProcess::cleanup();}catch(Throwable){$report['status']='FAIL';$report['cleanup']='FAILED';}
-    if($safeReport){
-        try{$json=json_encode($report,JSON_PRETTY_PRINT|JSON_THROW_ON_ERROR);if(strlen($json)>1048576||file_put_contents('/run/m6c/report.json',$json)!==strlen($json))throw new RuntimeException('report_write');chmod('/run/m6c/report.json',0644);}
-        catch(Throwable){$report['status']='FAIL';fwrite(STDERR,"Native report publication failed.\n");}
-    }
+    M6CNativeReport::finish($report,$reportLocation,[M6CNativeProcess::class,'cleanup'],static fn(string $line)=>fwrite(STDERR,$line));
 }
 echo 'M6C native '.$report['status'].'; '.$report['assertions']." assertions; protected and instrumented lanes remain distinct.\n";
 exit($report['status']==='PASS'?0:1);

@@ -1,7 +1,8 @@
 # M6C native build-only validation
 
 HARNESS IMPLEMENTED LOCALLY / REVIEW REQUIRED.
-NATIVE CONTAINER/MYSQL/PROTECTED-WORKER EXECUTION — NOT PERFORMED.
+OPERATOR NATIVE RUN AT 740431f — FAILED IN SETUP; ALL 20 CASES UNREACHED.
+OCTOBER 21 DESKTOP CORRECTION — LOCAL ONLY; NO NATIVE RERUN.
 
 This is the operating procedure for the executable harness on PR #128, branch
 `codex/sprint-8.8-m6c-artifact-builder`. The authoring baseline is
@@ -25,9 +26,92 @@ argument exists. Unknown arguments and incomplete identities fail closed.
 contract is `--container-run SHA TOKEN`, Linux, namespace UID 0, `/opt/ubo`, exact
 runtime hostname, and root-owned launcher attestation. Its `--help` does not load
 application configuration. `tests/support/WebsitePlatformM6CNativeWorker.php` is
-an internal child; neither is named `*Test.php`. The only new discovery test is
-`WebsitePlatformM6CNativeLauncherTest.php`, which uses pure contracts, fake engine
-commands, disposable local Git fixtures and bounded synthetic PHP children.
+an internal child; neither is named `*Test.php`. Discovery tests are synthetic:
+`WebsitePlatformM6CNativeLauncherTest.php` uses pure contracts, fake engine commands,
+disposable local Git fixtures and bounded synthetic PHP children;
+`WebsitePlatformM6CNativeSetupTest.php` exercises the actual setup/report helpers
+with a labeled permission model and real private local filesystem operations.
+
+## Failed operator run and storage correction
+
+The operator reports one full invocation at
+`740431fd1f3cae6f747983d75f6bb5309ecaddc3`: exit **1**, **18.60 seconds**, first
+failure `chmod(): Operation not permitted` during coordinator storage setup,
+before SQL or worker execution. Stdout reported **465 assertions**, which are
+not 465 passing native cases. Overall **FAILED** and all **20 UNREACHED** remain
+the historical result. Host-side `native.json` was missing. Cleanup and evidence
+publication were PASS; the original launcher manifest verified 11/11. Both
+containers and the network were removed; Docker returned inactive/disabled with
+one start and one stop. Deployed source was unchanged and Apache active. No
+retry, patch, merge or deployment occurred in that operator run.
+
+Operator evidence directory:
+`/mnt/ubo_stage_testdata/codex-validation/evidence/m6c-isolated-native-operator-20261021-z12w5b24`.
+Report: `M6C-ISOLATED-NATIVE-VALIDATION.txt`; summary: `SUMMARY.txt`.
+The operator-supplied SHA-256 of **that SUMMARY.txt only** is
+`dc452d0fa040670f26a17b85760ee3fffd14a257d8d0263998b51df2f65a5957`.
+The operator reports 47/47 manifest entries verified. This desktop task did not
+retrieve these files or independently verify either manifest or checksum.
+
+The old sequence was mkdir, chown(2000), chgrp(2000), chmod(0700).
+Linux chmod requires the caller to own the inode or hold CAP_FOWNER;
+CAP_DAC_OVERRIDE permits read/write/search bypass, not chmod ownership bypass.
+After chown, the coordinator no longer owns the root. This is a source-level
+diagnosis consistent with the reported failure, not a local Linux reproduction.
+See [chmod(2)](https://man7.org/linux/man-pages/man2/chmod.2.html) and
+[capabilities(7)](https://man7.org/linux/man-pages/man7/capabilities.7.html).
+
+The coordinator now calls the tested storage gate before configuration or SQL:
+verify protected root-owned ancestors and absent names; create restrictive roots;
+check newly created metadata; chmod and verify while root-owned; chgrp(2000) and
+verify; chown(2000) last; clear stat cache and verify directory type, UID 2000,
+GID 2000, mode **0700** and the parent's device. Both worker roots must share that
+filesystem. Uploads remain root:root 0755. Config remains root:2000 0440 for
+`env.php`, and root:root 0444 for worker config/context. Each mutation is checked
+separately; failures have bounded step codes and cannot reach configuration,
+connections or worker launch. Existing names, links, unsafe ancestors or metadata
+mismatches stop setup without repair. No capabilities or worker privileges change.
+
+The bounded related-path audit found root-owned config/fixture assets and newly
+created pending journals; their chmod calls do not follow a worker-owner transfer.
+Startup-denial restoration uses CHOWN to restore checkout ownership and chmod on
+the separate, still-root-owned config. Those mutation results are now checked.
+The existing sealed-artifact byte fault still uses DAC_OVERRIDE and never changes
+worker ownership or mode. Fixture/case/process-helper files are byte-identical.
+
+Previously `safeReport` became true after namespace/attestation checks, before
+source verification and storage setup. No coordinator warning-to-exception
+handler was installed by the included Linux guard (its handler is CLI-only).
+A false chmod therefore reaches `m6nCheck`, while a thrown warning is also caught
+by the outer Throwable catch. Finally attempted direct serialization/write to
+`/run/m6c/report.json`; chmod's return was unchecked. The source does not establish
+why the original host report was absent. The unchanged launcher logs the main
+capture PASS/FAIL in `report.txt`, leaves main docker-cp stderr on its caller's
+stderr, preserves a nonzero native exit, and attempts a silent fallback copy
+before teardown. Missing host evidence alone cannot distinguish in-container
+absence, report finalization failure, capture failure or another cause.
+
+The new reporter verifies the fixed protected report directory after attestation
+and rechecks its identity before publication. It retains FAIL, stage, attempted
+assertions, separately completed successful assertions, primary failure and all
+UNREACHED cases. One exclusive pending file receives at most 1 MiB; write, flush,
+mode, file metadata, close and final rename are checked. Only the rename publishes
+`report.json`; incomplete pending bytes are never accepted as completed evidence.
+Primary and publication failures have separate bounded sanitized stderr messages;
+no raw exception/config/environment dump is emitted. Unattested direct invocation
+has no report target and cannot choose one. This remains within the existing suite
+deadline, with no retry. The original missing-report cause remains **UNPROVEN**.
+Launcher capture, signal handling, precedence, ownership, hashes and receipts are
+unchanged; its regression suite was not rerun for this correction. Publication
+PASS still does not establish native PASS, and absent native evidence cannot pass.
+
+Focused local validation: **734 assertions / 62 scenarios**, exit 0, **1.0195261 s**;
+M6B scope **42**, **13.7497797 s**; M6C scope **53**, **8.4790726 s**, both exit 0.
+The setup order/capabilities are explicitly simulated. Directory creation, report
+write/flush/rename, rejected existing paths and private fixture cleanup use actual
+local files; no successful Windows chmod/chown is Linux permission proof. Initial
+sandbox rename failures and all rechecks are retained in the
+[implementation record](sprint-8.8-m6c-local-implementation.md#native-storage-setup-and-report-correction).
 
 Lane A, `protected`: a root coordinator starts `setpriv`, changes to UID/GID 2000,
 clears groups, drops every capability including the bounding set, sets
@@ -240,7 +324,19 @@ variants, C07 execution-limit and C09 lost-acknowledgment cases retain existing
 local-only behavioral coverage or remain native-unexecuted. D/R/publication/provider
 cases are outside this harness. No claim covers all 77 planned cases.
 
-## Later preparation and operating commands — NOT RUN
+## Later preparation and operating commands — not run by this correction
+
+The operator separately reports Linux launcher PASS (**3981 assertions / 86
+scenarios**) and image preparation/check-only PASS at **740431f**, followed by the
+failed native invocation above. These are historical reports, not rerun here.
+The existing runtime image is source-labeled for 740431f. After this correction is
+committed, separately authorized preparation must satisfy runtime-image provenance
+for the **new exact reviewed SHA**, followed by separately authorized check-only
+and isolated native execution. Do not relax the source check, rewrite old labels
+as evidence, invent a digest or claim a new image already exists. Verified pinned
+base/MySQL images may be reusable. No pulls or builds occur in this desktop task.
+The recipe below describes initial provisioning; an existing verified client or
+cached images must not be deleted or recreated merely to replay it.
 
 The operator must separately authorize preparing images and the empty client
 directory, and later authorize the native run. Required existing tools include
@@ -318,10 +414,12 @@ Earlier `d4fb3d6` eight-suite/682-assertion Linux results and its separate CLI f
 remain historical evidence; later blocked review-gate tasks ran no tests.
 
 Fresh desktop results and retained failures are recorded in the implementation
-record's [teardown correction section](sprint-8.8-m6c-local-implementation.md#native-teardown-review-corrections). The recipe, MySQL integration, namespace ownership,
-effective Linux cgroups and protected worker acceptance remain **UNEXECUTED** here.
-First authorized native execution may expose a prerequisite or production-contract
-blocker; stop and record it, without weakening the factory or applying staging SQL.
+record's [teardown correction section](sprint-8.8-m6c-local-implementation.md#native-teardown-review-corrections)
+and [storage correction section](sprint-8.8-m6c-local-implementation.md#native-storage-setup-and-report-correction).
+This desktop correction executes no recipe, native namespace, container, MySQL or
+protected worker. The operator's native setup failure remains separate from these
+local results. A later authorized rerun may expose further blockers; stop and
+record them without weakening the factory or applying working-staging SQL.
 
 Last operator-reported deployed application remains
 `f466fc1cdbfb53325a1db11445736bdc5ea7c6f4`. Migration 025 is already applied to working

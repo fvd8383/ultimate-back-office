@@ -7,10 +7,11 @@ M6D–M6G — NOT STARTED. Migration 025 — APPLIED TO WORKING STAGING; do not 
 Production — UNAUTHORIZED / NOT DEPLOYED. This task performs local implementation
 and synthetic/filesystem validation only. The 77-case M6 plan is not a passed matrix.
 
-Current handoff: the operator reports the focused Linux CLI/process correction
-passed at `96715eb35ac1ae2eb69c3a39a14ec009048128ad`. The new executable native harness
-is **IMPLEMENTED LOCALLY / REVIEW REQUIRED**; native container/MySQL/protected-worker
-execution is **NOT PERFORMED**. See [native harness implementation](#native-harness-implementation)
+Current handoff, October 21: the operator reports the native invocation at
+`740431fd1f3cae6f747983d75f6bb5309ecaddc3` **FAILED IN STORAGE SETUP** before SQL or
+workers; **all 20 cases UNREACHED**. The local ownership/report correction is
+**IMPLEMENTED LOCALLY / REVIEW REQUIRED**, with no native rerun. See
+[storage setup and report correction](#native-storage-setup-and-report-correction)
 and the [operating guide](sprint-8.8-m6c-native-validation.md). Earlier outstanding
 Linux/native statements below describe their dated correction, not this handoff.
 The subsequent `648fd0d` review findings and their local corrections are recorded
@@ -1918,3 +1919,183 @@ Narrator action occurs. PR #128 remains open/non-draft/unmerged with no auto-mer
 Exact pushed SHA, the two thread replies/resolutions, one new-head review observation
 and the nine-point plain-text handoff are retained outside Git in
 `m6c-native-teardown-fixes/SUMMARY.txt`.
+
+## Native storage setup and report correction
+
+October 21, 2026. Local harness correction only. Starting branch
+`codex/sprint-8.8-m6c-artifact-builder` was clean at
+`740431fd1f3cae6f747983d75f6bb5309ecaddc3`; PR #128 was open, non-draft, unmerged,
+with no auto-merge. Its exact-head review had completed with no findings. This
+correction responds to an operator-observed runtime failure, not a new review
+finding; no review-thread ID is attributed to it. The authoring baseline remains
+`96715eb35ac1ae2eb69c3a39a14ec009048128ad`.
+
+### Failed native history and evidence limits
+
+The operator reports **one** full invocation at 740431f: launcher exit **1** after
+**18.60 s**, first error `chmod(): Operation not permitted`, in coordinator storage
+setup before SQL or worker execution. Stdout's **465 assertions** are not 465
+passing native cases. Overall **FAILED** and **all 20 cases UNREACHED** remain
+history. Host `native.json` was missing. Cleanup and evidence publication PASS,
+original launcher manifest 11/11 verified, both containers/network removed,
+Docker restored inactive/disabled with one start/one stop, deployed source
+unchanged and Apache active are all operator-supplied facts. No retry, patch,
+merge or deployment occurred in that run.
+
+Evidence directory:
+`/mnt/ubo_stage_testdata/codex-validation/evidence/m6c-isolated-native-operator-20261021-z12w5b24`.
+Files: `M6C-ISOLATED-NATIVE-VALIDATION.txt` and `SUMMARY.txt`.
+Operator-supplied **SUMMARY.txt-only** SHA-256:
+`dc452d0fa040670f26a17b85760ee3fffd14a257d8d0263998b51df2f65a5957`.
+Operator manifest: **47/47 verified**. This desktop task did not access the server,
+retrieve those files or independently verify those hashes/manifests. The summary
+hash is not assigned to the validation report or this task's new SUMMARY.txt.
+
+### Diagnosis, correction and bounded audit
+
+The prior mkdir/chown(2000)/chgrp(2000)/chmod(0700) sequence transfers ownership
+before a caller-owner check. Linux chmod requires matching ownership or
+CAP_FOWNER. CHOWN allows UID/GID changes; DAC_OVERRIDE bypasses file access
+permissions, not chmod ownership. The approved coordinator lacks FOWNER. This
+explains the source defect and is consistent with the operator's error; no local
+Linux reproduction was performed. References:
+[chmod(2)](https://man7.org/linux/man-pages/man2/chmod.2.html),
+[capabilities(7)](https://man7.org/linux/man-pages/man7/capabilities.7.html).
+
+`m6nSetup` now uses the actual testable `beforeDatabase` gate. It verifies protected
+root-owned ancestors and all three absent names before mutation. Work/sealed are
+created restrictively, verified as new root-owned directories on the expected
+device, chmodded/verified while still root-owned, then chgrp/verified, then chown
+**last**. Cache-cleared final metadata must be directory, **UID 2000 / GID 2000 /
+0700**, on that same device. Uploads remain **root:root / 0755**. No recursive
+repair, suppressed chmod, broadened mode or capability is introduced. Every
+mutation's false return or warning becomes a bounded step-specific failure.
+Configuration writes, connections and subsequent worker launch cannot run after
+partial storage setup. Config ownership/modes remain **root:2000 / 0440** for
+env.php and **root:root / 0444** for worker config/context; writes and metadata
+are now checked before connecting.
+
+The one related-path audit covered coordinator setup, startup-denial restoration,
+fixture/case mutations and process capture files. Root-owned config/assets and
+new coordinator-owned pending journals have no worker-owner-before-chmod sequence.
+Startup denial transfers the checkout script back to root via CHOWN and chmods
+the separate config that remained root-owned; its existing mutations now check
+their results. The worker-owned sealed-byte tamper remains a write through the
+already-approved DAC_OVERRIDE, without chmod/chown. Fixture, cases and process
+helper files are byte-identical. The 20 case names/lanes, production factory,
+normal worker UID 2000 and complete capability drop remain intact; the pre-existing
+wrong-UID startup-denial case remains negative coverage. Launcher/contract enforce
+exactly CHOWN, DAC_OVERRIDE, KILL, SETUID, SETGID, SETPCAP for setup; no FOWNER,
+SYS_ADMIN, privileged mode or additional capability is added.
+
+### Separate report investigation
+
+Before this correction, `safeReport=true` was reached after argument, namespace,
+launcher identity and resource binding checks, before source/storage checks.
+The included Linux guard installs its warning handler only when directly invoked
+as its own CLI; it does not install one in the coordinator. A chmod warning/false
+result is followed by the throwing `m6nCheck`; an exception also reaches the outer
+Throwable catch. Catch records FAIL, and finally cleans children then attempts
+JSON serialization and a direct write to the final report path. Size/write checks
+existed; chmod's boolean result was unchecked. Reporting exceptions emitted only
+a generic message. This trace does **not** establish the original container's
+unseen state or the exact missing-report cause.
+
+The main launcher capture records `native-report-capture=PASS/FAIL` in report.txt,
+retains main docker-cp stderr on the caller's stderr and preserves the primary
+native exit. Its fallback copy suppresses output/errors before teardown. Those
+paths remain byte-identical. Host absence alone cannot distinguish a missing
+container report, failed finalization, failed capture or another cause. Original
+cause: **UNPROVEN**; no server diagnostics were run to resolve it.
+
+The actual catch/finally now call the tested reporter. After attestation it pins
+the fixed protected report directory's metadata; publication rechecks identity.
+FAIL, stage, attempted assertions, separate successfully completed assertions,
+primary error and 20 UNREACHED cases survive early setup failure. One exclusive
+pending file, one write bounded to 1 MiB, flush, mode, regular-file ownership/
+device/link-count/size checks, close and one final rename publish the report under
+the unchanged overall deadline. Failed pending bytes are never a completed report.
+Primary failure and secondary publication failure have distinct bounded sanitized
+stderr diagnostics. No secret, raw exception, config or environment dump is added.
+Unattested invocation has no publication target; no CLI report path exists.
+Cleanup/publication success does not change a native FAIL into PASS. The unchanged
+evidence reader still rejects missing/failed/incomplete native results.
+
+### Sequential local validation
+
+All timed validation ran sequentially. Actual commands, outputs, exits, durations,
+initial failures, later rechecks and raw-byte snapshots are retained outside Git
+in `m6c-native-storage-setup` under the authorized desktop evidence directory.
+
+- `php -n tests/WebsitePlatformM6CNativeSetupTest.php`, attempt 1: exit **255**, **0.3682076 s**. The expected report was absent and the test tried to decode it.
+- Same command, attempt 2 with a clearer test assertion: exit **255**, **0.5673583 s**, exposing `report_rename`. A minimal independent private-file probe reproduced Windows sandbox rename access denial after successful write/flush/chmod/close. Its output is retained; this is not Linux permission evidence.
+- Same command outside that sandbox, attempt 3: exit **0**, **682 assertions / 60 scenarios**, **2.0019934 s**. No limits were increased and no publication check was removed.
+- Final recheck after adding actual local storage creation/existing-path coverage: exit **0**, **734 assertions / 62 scenarios**, **1.0195261 s**.
+- `php -n tests/WebsitePlatformM6BScopeTest.php`: exit **0**, **42 assertions**, **13.7497797 s**.
+- `php -n tests/WebsitePlatformM6CScopeTest.php`: exit **0**, **53 assertions**, **8.4790726 s**.
+
+The focused suite executes the actual storage gate and reporter, including the old
+ordering's modeled rejection; exact mutation order/final metadata; false/warning
+failures for mkdir/chmod/chgrp/chown; lying transitions; wrong UID/GID/mode/type/
+device and failed stat; unsafe ancestors/existing/link paths without repair; and
+configuration/connection/worker continuation exclusion. Real local directory
+creation, file writes/flush/chmod/rename and cleanup complement the explicitly
+simulated Linux ownership/capability model. Reporting faults include short/failed
+write, serialization/size, flush, chmod/stat/metadata/close/rename, pre-existing
+or substituted target and cleanup failure. Actual direct coordinator invocations
+reject missing attestation and arbitrary report arguments before setup. These are
+local synthetic results, **not native PASS**. No Linux, container, MySQL or
+protected-worker acceptance was executed here.
+
+Runtime versions: PHP **8.4.24 CLI ZTS**, Visual C++ 2022 x64; GNU Git Bash
+**5.3.15(2)**, Git **2.56.0.windows.2**, Node **v24.22.0**, PowerShell **7.6.5**.
+`php -n -l PATH` passed all **256 tracked/new PHP files**, each separately, exit
+0, **53.0003889 s** total. Bash `-n` passed **four syntax-only checks** (launcher,
+fixture and two documented blocks), exit 0, **0.5500166 s**; no bodies executed.
+The external `check-docs-integrity.cjs` check passed **40 links** (local destinations
+and external URL syntax), **13 local anchors**, **six balanced fence markers** and
+current failure/uncertainty/migration status, exit 0, **0.9526573 s**. The final
+documentation-only completion and Git handoff receive a separate retained recheck.
+Raw SHA-256 comparison with the 446-file task-start snapshot found **443 tracked
+files byte-identical**, exactly three tracked edits and three additions listed
+below. All 25 migrations and the launcher/fixture/contract/cases/process boundaries
+are unchanged. Working, staged and committed diff checks accompany the final
+handoff outside Git.
+
+### Exact inventory and next authorized work
+
+1. `tests/WebsitePlatformM6CNative.php` — storage gate, bounded checked setup/denial mutations, stages, successful assertion count and reporter integration.
+2. `tests/support/WebsitePlatformM6CNativeSetup.php` — fixed private-root setup order and test operation seam; bounded step codes.
+3. `tests/support/WebsitePlatformM6CNativeReport.php` — report state/failure preservation, fixed trusted location and checked pending-file publication.
+4. `tests/WebsitePlatformM6CNativeSetupTest.php` — actual-helper ordering/failure/report tests, simulated permissions and real local files.
+5. `docs/sprint-8.8-m6c-native-validation.md` — failed operator history, correction/diagnostic limits and later image/rerun requirements.
+6. `docs/sprint-8.8-m6c-local-implementation.md` — this correction record.
+
+Production application/worker/runtime/renderer/store, all **25 migrations** and
+canonical integrity pins remain byte-identical. Migration 025 is already applied
+to working staging, SHA-256
+`dab585dc29aac11153f92703c65d3883aeea73a1b2283157cfa9d2f2ece85cb0`; no reapply.
+Last operator-reported deployed application remains
+`f466fc1cdbfb53325a1db11445736bdc5ea7c6f4`. Backup/download remains **COMPLETE**, both
+copies and receipt retained; restore **NOT EXECUTED**.
+
+Historical operator Linux CLI/process PASS at 96715eb remains **206 / 389
+assertions**. Linux launcher regression PASS remains **3981 assertions / 86
+scenarios**. Image preparation/check-only PASS at 740431f precedes the failed
+native run above. None is rerun or relabeled. Launcher/fixture/contract paths are
+unchanged, so the launcher regression and historical CLI/process suites were
+**not rerun** for this correction.
+
+The prepared runtime image is source-labeled for 740431f. A later separately
+authorized image refresh must satisfy provenance for the **new exact reviewed
+commit**, before check-only and another separately authorized isolated native run.
+Existing pinned base/MySQL images may be reused only if verified. No old-label
+rewrite, relaxed source check, invented digest or claim of a newly prepared image
+is permitted. No image pull/build or real container run occurred here.
+
+One concise PR update and at most one exact-new-head review request are authorized;
+no invented finding thread, duplicate request, repeated polling, merge or
+auto-merge. Final pushed SHA, actual review state and nine-point handoff are saved
+outside Git in `m6c-native-storage-setup/SUMMARY.txt`. Zero server, live SQL,
+migration, image/container, backup, deployment, host-configuration, provider or
+Narrator actions occur in this desktop correction.
