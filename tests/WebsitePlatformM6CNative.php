@@ -97,7 +97,7 @@ function m6nVerify(array $f): void
     $path=m6nReleasePath($f);$manifest=$e['manifest'];$release=SiteBuildStore::one($admin,'SELECT * FROM site_releases WHERE build_job_id=:id',['id'=>$f['job_id']]);
     m6nCheck($job['status']==='succeeded'&&$release!==null,'persisted_success_release');
     m6nCheck($release['manifest_hash']===CanonicalJson::hash($manifest)&&$release['artifact_hash']===CanonicalJson::hash($manifest['files']),'persisted_hash_layers');
-    m6nCheck(hash('sha256',$job['input_manifest_json'])===$job['build_input_hash']&&$release['build_input_hash']===$job['build_input_hash'],'input_hash');
+    m6nCheck(M6CNativeInput::matches($job,$release),'input_hash');
     m6nCheck(hash_file('sha256',$path.'/metadata/validation.json')===$manifest['validation_hash'],'validation_byte_hash');
     $marker=json_decode(file_get_contents($path.'/public/_release.json'),true,32,JSON_THROW_ON_ERROR);
     m6nCheck($marker['public_payload_hash']===CanonicalJson::hash(array_values(array_filter($manifest['files'],static fn($x)=>$x['relative_path']!=='public/_release.json'))),'payload_hash_excludes_marker');
@@ -202,6 +202,7 @@ try{
     $report['tracked_files_verified']=count($files);unset($index,$files);
     m6nCheck(hash_file('sha256','/opt/ubo/database/migrations/025_site_build_deployment.sql')==='dab585dc29aac11153f92703c65d3883aeea73a1b2283157cfa9d2f2ece85cb0','canonical_025');
     require_once __DIR__.'/support/WebsitePlatformM6CNativeFixture.php';
+    require_once __DIR__.'/support/WebsitePlatformM6CNativeInput.php';
     $report['stage']='runtime_setup';
     $config=m6nSetup($identity);
     // The application connection uses the restricted worker account, even for request setup.

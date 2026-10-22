@@ -6,11 +6,35 @@ OCTOBER 22 CANONICAL-INPUT CORRECTION — REPRODUCED LOCALLY; NO NATIVE RERUN.
 
 This is the operating procedure for the executable harness on PR #128, branch
 `codex/sprint-8.8-m6c-artifact-builder`. The authoring baseline is
-`96715eb35ac1ae2eb69c3a39a14ec009048128ad`. The latest change from `8118138` modifies
-production artifact input-hash verification. The worker, renderer, artifact store,
-transport, all 25 migrations and their integrity pins remain unchanged in this correction.
+`96715eb35ac1ae2eb69c3a39a14ec009048128ad`. The correction from `8118138` to `9a35b59`
+changed production artifact input-hash verification. The latest follow-up changes
+only its native harness assertion, regressions and docs; production, transport,
+all 25 migrations and integrity pins remain unchanged in this follow-up.
 The [implementation record](sprint-8.8-m6c-local-implementation.md) retains earlier
 results separately. This guide does not authorize image preparation or a native run.
+
+## Native input assertion P1 follow-up
+
+Review **5622132063** on `9a35b593f5214773c04de664ea283fb256b0350a` identified
+[P1 4354571137: Canonicalize the native input-hash assertion](https://github.com/fvd8383/ultimate-back-office/pull/128#discussion_r4354571137).
+The coordinator now calls a pure shared predicate that bounded-decodes stored
+input, checks its canonical digest, and independently retains strict release/job
+digest equality. `input_hash` remains the assertion label; every other native
+verification is unchanged. The production validator is untouched.
+
+The actual extracted predicate rejected two equivalent noncanonical encodings
+before correction; it now accepts all three tested representations and rejects
+seven tamper/binding/invalid-JSON cases. This is local fake-SQL/real-file evidence,
+not a new MySQL/native run. See the [focused implementation record](sprint-8.8-m6c-local-implementation.md#native-input-assertion-review-correction)
+for exact files, audit dispositions, timings and fresh validation counts. The
+earlier 19-suite/2346-assertion result belongs to the production-fix task.
+
+No native run of `9a35b59` has been reported. Historical 8118138 remains FAILED,
+its exception origin unconfirmed; transport successes retain their own SHAs.
+Later authorized preparation must establish the new reviewed SHA's image
+provenance before protected native acceptance. No image ID is invented or image
+built here. No automatic repeat of unchanged transport smoke; all migration,
+backup/restore and operational boundaries below remain in force.
 
 ## October 22 failed run and canonical-input correction
 

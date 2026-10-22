@@ -13,6 +13,9 @@ report capture. A canonical-input hash defect is reproduced and corrected locall
 the historical native exception origin remains unconfirmed. See
 [stored JSON input correction](#stored-json-input-verification-correction) for the
 source trace, before/after evidence, exact scope and remaining native gate.
+The subsequent exact-head P1 at `9a35b59` identifies the same raw-text assumption
+in the native assertion. Its [harness-only follow-up](#native-input-assertion-review-correction)
+preserves the production fix; no native run of `9a35b59` has been reported.
 
 Previous handoff, October 21: the operator reports native attempts at 740431f and
 `e2998fdadaeb19048556d303cc9d310fde2c2276` **FAILED**. The retry has one explicit
@@ -2520,3 +2523,126 @@ configuration, backup/restore/prune, provider, M6D–M6G or Narrator action occu
 Cleanup is limited to this task's owned local fixture trees. PR #128 stays open,
 non-draft and unmerged; one concise update and one exact-head review are recorded
 with final SHA/status in the external `m6c-artifact-origin/SUMMARY.txt`.
+
+## Native input assertion review correction
+
+October 22, 2026; clean starting head `9a35b593f5214773c04de664ea283fb256b0350a`.
+Verified review **5622132063**, [P1 comment 4354571137](https://github.com/fvd8383/ultimate-back-office/pull/128#discussion_r4354571137):
+**Canonicalize the native input-hash assertion**, at `tests/WebsitePlatformM6CNative.php:100`.
+This is **HARNESS/REGRESSION/DOCUMENTATION ONLY**. The production validator's
+canonical-hash correction and every other production file remain byte-identical.
+
+The old `m6nVerify` predicate was first extracted unchanged into the pure
+`M6CNativeInput::matches` test-support helper. Both the coordinator and the new
+executable regression call it; the coordinator is never included or executed by
+the regression. The existing stored-input fixture/model functions were moved
+unchanged into a shared support file. The regression uses that same UTF-8
+three-page composition, fake lifecycle SQL, real artifact files and an actual
+fake-DB completed release. It changes only input serialization in copies, never
+persisted rows or expected hashes. Modeled JSON formatting is neither captured
+MySQL row data nor a MySQL emulator.
+
+Before correction, canonical input passed the actual predicate, while both
+modeled database formatting and reordered/pretty/escaped JSON failed. All three
+had the same canonical digest and valid release/job binding; only the two
+noncanonical raw-text digests differed. The retained regression exited 1 before
+changing the helper. The helper now uses the existing bounded decoder and
+`CanonicalJson::hash`, AND the unchanged strict release/job digest comparison;
+the coordinator retains its single `input_hash` assertion and failure meaning.
+
+After correction all three representations pass. Changed content, scalar type,
+list order, job digest and release digest fail; malformed/oversized JSON still
+throw the existing decoder's `invalid_request`. The independent release-negative
+first proves canonical input/job hashing succeeds. This small predicate does not
+claim to detect a coherent rewrite of input and all trusted expected hashes;
+source/authorization checks retain that responsibility. The production
+stored-input artifact/hash/privacy/replay regression retains all 95 assertions.
+Both focused attempts observed removal of their one owned private fixture root.
+
+One bounded `rg` audit covered M6 input creation/readback/verification and M6
+tests/support, searching `input_manifest_json`, `build_input_hash`, `hash` and
+`CanonicalJson` calls. Relevant dispositions:
+
+| Inspected path(s) | Disposition |
+| --- | --- |
+| `SiteBuildContract::input`, `recordedInput`, policy/options checks | Raw hash at input creation deliberately hashes freshly canonical `self::json` bytes; readback canonicalizes decoded values. Correct, unchanged. |
+| `SiteBuildService` successful replay, input admission and evidence; `LocalSiteArtifactStore` binding | Strict persisted identity comparisons and canonical contract checks; no second raw stored-input digest found. Unchanged. |
+| `SiteArtifactValidator::verify` | Already corrected canonical decoded-input digest at `9a35b59`; unchanged. |
+| `m6nVerify` / new `M6CNativeInput::matches` | Sole additional demonstrated contract mistake; corrected here. |
+| StoredInput/NativeInput regressions; M6B contract/behavior/MySQL test definitions | Raw checks are deliberate canonical-byte expectations or evidence that representations differ. Synthetic tamper/coherent-rewrite cases are not production readback checks. No SQL tests executed. |
+| Builder/validator/store artifact bytes; native validation file/marker/file checks; NativeReport/Transport/Diagnostics, source and migration pins | Exact-byte checksums or existing canonical manifest/payload identities, each retained as designed. No global hash replacement or canonicalization of file/report bytes. |
+
+Fresh sequential validation uses `php -n -d zend.exception_ignore_args=1
+tests/WebsitePlatform<Suite>Test.php`. Before-fix NativeInput exited **1** in
+**1.0635724 s**; the raw predicate accepted canonical input and
+rejected both equivalent noncanonical inputs. The initial after-fix run passed
+**29 assertions**, exit 0, **1.5858443 s**. One supplemental
+coordinator-source read assertion was subsequently removed from the ordinary test
+to respect the unchanged launcher's discovery rule; source wiring is instead
+verified privately. The final executable checks below all exited **0**:
+
+| Suite | Assertions | Seconds |
+| --- | ---: | ---: |
+| M6CNativeInput | 28 | 1.6611009 |
+| M6CStoredInput | 95 | 2.1034186 |
+| M6CArtifact | 45 | 2.3713811 |
+| M6CIntegration | 54 | 5.5945146 |
+| M6BScope | 42 | 22.8683199 |
+| M6CScope | 53 | 15.6806031 |
+
+Total: **six suites / 317 assertions**. This is fresh coverage, not a reuse of the
+earlier production-fix 19-suite/2346-assertion result. Existing integration fault
+tests intentionally emit bounded fake-PDO error labels. No real DB, operational
+worker, native coordinator or container was invoked. Fixture cleanup was observed.
+
+`php -n -l FILE` for all `rg --files -g '*.php'` entries passed **263 PHP files**
+in **82.5746869 s**. Git Bash `bash -n -- FILE` passed **five syntax checks**
+in **1.2924568 s** (launcher, fixture and three unchanged guide blocks;
+no proposed command executed). The initial private `node check-integrity.cjs`
+passed in **3.1741591 s**, checking **52 links / 20 local anchors /
+eight balanced fence markers**, unchanged extracted functions and regression body,
+the exact two-line coordinator wiring change, and **73 ordinary tests** against
+the unchanged launcher discovery rule. External URLs were checked for syntax.
+It is rechecked after filling this record; working/staged/committed diff checks
+and committed integrity are retained outside Git. Raw hashes show **449 of 453**
+starting tracked files unchanged, four tracked edits and three new test files.
+
+Observed tools: PHP **8.4.24 CLI ZTS VC++ 2022 x64**, PowerShell **7.6.5**, Git
+**2.56.0.windows.2**, Git Bash **5.3.15(2)**, Node **v24.22.0**. Exact commands,
+durations, exits, before/after output and audit inventory are retained outside Git
+in `m6c-native-input-review`. Windows/fake-SQL checks establish no real MySQL
+serialization, Linux ownership/runtime or protected native acceptance.
+
+Exact seven-file correction inventory:
+
+- `tests/WebsitePlatformM6CNative.php` — call the shared predicate, load it after existing admission/source verification; all other native assertions unchanged.
+- `tests/support/WebsitePlatformM6CNativeInput.php` — new pure bounded canonical-input AND strict release-binding predicate.
+- `tests/WebsitePlatformM6CNativeInputTest.php` — new executable positive/negative predicate regression.
+- `tests/support/WebsitePlatformM6CStoredInputFixture.php` — existing fixture/model functions moved unchanged for reuse.
+- `tests/WebsitePlatformM6CStoredInputTest.php` — require shared fixture; original regression body unchanged.
+- `docs/sprint-8.8-m6c-local-implementation.md` — this focused record.
+- `docs/sprint-8.8-m6c-native-validation.md` — current harness correction and remaining gate.
+
+Raw integrity checks preserve all production code, protected CLI/worker,
+diagnostics/transport/acknowledgement, launcher admission/signals/cleanup/deadlines/
+finalization and all 25 migrations/pins. The large launcher suite is not rerun:
+its actual capture/validation/finalization dependencies are unchanged. Its
+ordinary-test discovery restriction is checked separately; the optional
+coordinator source-wiring check lives in the private integrity checker, not an
+ordinary test that names a destructive entry. No allowlist or guard was relaxed.
+
+The 8118138 native run remains FAILED and its exact exception origin unconfirmed;
+no native run of `9a35b59` or this correction is reported. Earlier production-fix
+and transport results remain at their own SHAs. No automatic transport smoke
+repeat is needed. A later authorized task must satisfy the **new reviewed SHA's**
+runtime-image provenance and protected native acceptance; cached 8118138 images
+are not relabeled as evidence. Migration 025 remains applied to working staging,
+SHA-256 `dab585dc29aac11153f92703c65d3883aeea73a1b2283157cfa9d2f2ece85cb0`.
+Backup/download remains operator-reported COMPLETE, both copies/receipt retained,
+restore NOT EXECUTED; no evidence or backup retrieved here. No server, real SQL,
+migration execution, image/container, deployment, installation/host change,
+backup/restore/prune, provider, M6D–M6G or Narrator action. Only the exact finding
+may be replied to/resolved after checking rebuttals; one new-head review request,
+no repeated polling. Final SHA, reply/resolution and observed review state are in
+the external `m6c-native-input-review/SUMMARY.txt`. PR #128 stays open, non-draft,
+unmerged and without auto-merge.
