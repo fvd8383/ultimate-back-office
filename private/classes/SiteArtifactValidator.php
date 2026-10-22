@@ -136,7 +136,8 @@ final class SiteArtifactValidator
     public static function verify(string $directory, array $job, array $identity, callable $pulse): array
     {
         $input = SiteBuildContract::decode($job['input_manifest_json']);
-        if (hash('sha256', $job['input_manifest_json']) !== $job['build_input_hash']) SiteArtifactFiles::fail();
+        // JSON columns may reformat stored text; input() and recordedInput() bind canonical values.
+        if (CanonicalJson::hash($input) !== $job['build_input_hash']) SiteArtifactFiles::fail();
         $expected = array_merge(array_keys(self::expected($input)), ['metadata/manifest.json','metadata/validation.json']);
         sort($expected, SORT_STRING);
         $pulse();

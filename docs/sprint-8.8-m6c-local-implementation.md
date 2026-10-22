@@ -7,7 +7,14 @@ M6D–M6G — NOT STARTED. Migration 025 — APPLIED TO WORKING STAGING; do not 
 Production — UNAUTHORIZED / NOT DEPLOYED. This task performs local implementation
 and synthetic/filesystem validation only. The 77-case M6 plan is not a passed matrix.
 
-Current handoff, October 21: the operator reports native attempts at 740431f and
+Current handoff, October 22: the operator reports the native run at
+`8118138c890105f689fa145de7f5566f3263eee5` **FAILED**, with successful acknowledged
+report capture. A canonical-input hash defect is reproduced and corrected locally;
+the historical native exception origin remains unconfirmed. See
+[stored JSON input correction](#stored-json-input-verification-correction) for the
+source trace, before/after evidence, exact scope and remaining native gate.
+
+Previous handoff, October 21: the operator reports native attempts at 740431f and
 `e2998fdadaeb19048556d303cc9d310fde2c2276` **FAILED**. The retry has one explicit
 startup-denials PASS, one source-order-attributed protected-multipage-build failure
 and **18 UNREACHED**; the underlying build cause is unknown. The local diagnostic/
@@ -2311,3 +2318,205 @@ Exact committed/pushed SHA, actual review observation and nine-point handoff liv
 outside Git in `m6c-native-child-transport/SUMMARY.txt`. No server, live SQL,
 migration, image/container, deployment, backup, installation, provider or Narrator
 action occurs in this desktop task.
+
+## Stored JSON input verification correction
+
+October 22, 2026; starting branch/head verified clean at
+`8118138c890105f689fa145de7f5566f3263eee5`, PR #128 open, non-draft, unmerged,
+auto-merge disabled. **REPRODUCED CANONICAL-INPUT DEFECT / CORRECTED LOCALLY /
+NATIVE ACCEPTANCE STILL REQUIRED.** This is a small functional production change,
+not a diagnostic-only or test-only change. No diagnostic fallback was added because
+the contract violation reproduced with the actual builder, resolver, renderer,
+validator and store before changing production behavior.
+
+### Operator-reported run at 8118138
+
+The operator reports one native invocation: **27.711082493 s, launcher exit 1**;
+`actual_child_exit`, stage `native_cases`, case `protected-multipage-build`,
+expected child exit 0 / actual 1 / signal 0, last barrier `IDENTITY` and
+`Build-only invocation stopped: artifact_invalid.` The result remains **FAILED**:
+**1 PASS / 1 FAIL / 18 UNREACHED**, **563 attempted / 562 completed assertions**
+including setup. Startup denials passed; five protected children were recorded
+(four expected denials and the failed multipage build); no instrumented case ran.
+Reported runtime versions: PHP **8.4.27**, MySQL **8.4.11**; all 25 migrations ran
+only in the disposable schema.
+
+Report transport succeeded: publication acknowledgement **MATCH**, capture
+identity **PASS**, reader/Docker, consumer and verification exits **0/0/0**;
+`native.json` **8502 bytes**, SHA-256
+`4d62ae8f98070343f18a608f308903cdbb1939877a614c8e6ae13f8c25e760fd`.
+No fallback was needed and FAIL was preserved, not accepted as PASS.
+
+The launcher evidence directory is
+`/mnt/ubo_stage_testdata/codex-validation/evidence/m6c-native-20261022T224833Z-255afaa6947b3c56b8be5e22b16fc35b`;
+its MANIFEST SHA-256 is
+`e6f8fc92ecae3810e51e55b3e6dbb029705680c3a7e38500159d15c4c0438dcf`
+(operator verified **17/17 entries and receipt**). Operator evidence directory:
+`/mnt/ubo_stage_testdata/codex-validation/evidence/m6c-native-retry-operator-20261022T224733Z-c4f684fb35eda2cd`;
+its MANIFEST SHA-256 is
+`ab133c380ecf109179d8a6faf68a8040338e10f804a2f3728484d8f4a96d14a6`
+(operator verified **73/73 entries and receipt**). These hashes identify the
+specified manifests, not SUMMARY.txt. This desktop task did not download or
+independently verify any server evidence.
+
+The operator reports cleanup/publication PASS and Docker inactive/disabled.
+Exact scratch removal is launcher-attested, not independently path-verified.
+The reported new `moby-detect-rro` temporary directory remains untouched.
+Neither that directory nor the last barrier establishes the exception's cause.
+
+### Exception boundary and reproduced predicate
+
+Source references below name repository paths and line numbers in this correction
+(the rejected old hash comparison was validator line 139 at `8118138`).
+
+| Phase | Actual call path and possible artifact_invalid origins |
+| --- | --- |
+| Harness handoff | `tests/support/WebsitePlatformM6CNativeWorker.php:32` prints IDENTITY **before** `pcntl_exec` at line 33 transfers to the real CLI. `tests/WebsitePlatformM6CNative.php:46` checks that barrier; line 231 starts the protected multipage case. It proves no production initialization, claim, render or seal progress. |
+| Before claim | `scripts/site-build-worker.php:26` → `SiteBuildService::claimBuild` (`private/classes/SiteBuildService.php:163`) → `worker`/`dependencies` (818/799) → `SiteBuildRuntime::fromTrustedCli` (`private/classes/SiteBuildRuntime.php:14`). Protected config/checkout/ancestor checks call `SiteArtifactFiles::regular` (files helper line 41); config/CSS reads call its bounded read (66), and local-store roots are checked at construction. Missing/nonregular/link/hardlink/integrity failures can produce artifact_invalid here; identity/ownership/configuration predicates often instead produce builder_unavailable. |
+| Claim / execute admission | Service claim line 196 and execute lines 362–426 validate source, requester, policy and canonical recorded input before the dependency executes outside SQL. `SiteBuildContract::recordedInput` (`private/classes/SiteBuildContract.php:139`) already canonicalizes stored JSON. No arbitrary database recasting or eligibility changes are needed. |
+| Execute files | `SiteArtifactBuilder::build` (`private/classes/SiteArtifactBuilder.php:24`) checks projection, creates a candidate, resolves and validates asset bytes, renders pages and writes the exact inventory. Resolver (`private/classes/SiteArtifactAssetResolver.php:29`) can reject missing/ambiguous metadata, rights/site/status/MIME/size/hash mismatch; files helper can reject unsafe paths, missing/nonregular/link/hardlink files, bounded reads or inventory. Store binding/write checks can also emit artifact_invalid. This classification is not HTML-specific. |
+| Seal / verify | Builder line 83 → `LocalSiteArtifactStore::sealIfAbsent` (`private/classes/LocalSiteArtifactStore.php:119`, validator call at 124) → `SiteArtifactValidator::verify` (`private/classes/SiteArtifactValidator.php:136`). Input digest precedes inventory, public HTML/CSS/assets, marker and exact metadata comparisons. Store verifies again after rename. The local failure was specifically the **input digest**, before any seal proof or rename. |
+| Completion / masking boundary | CLI lines 29–31 catch the original execute SiteArtifactException, call `completeBuildFailure`, then rethrow it. Common service completion (`private/classes/SiteBuildService.php:624`, external verification at 652) → runtime `verifyOutcome` (132) → store `verifyRelease` (142). Store binding/progress errors can escape; most internal artifact inspection errors become unknown evidence, with service recovery/state handling. A later thrown completion error can mask the original in the CLI outer catch. The local reproduction observed completion status failed and **no completion exception**; no masking claim is made about the native run. CLI line 42 emits the unchanged human classification and exit 1. |
+
+Migration `database/migrations/025_site_build_deployment.sql:24` declares
+`input_manifest_json JSON NOT NULL`. `SiteBuildContract::input` (line 109) derives
+`build_input_hash` from `CanonicalJson::encode`; recorded input uses the same
+canonical representation. The old validator instead hashed the stored JSON
+**text**, rejecting equivalent values after database serialization. MySQL documents
+normalized separators and object-key ordering whose exact order is not guaranteed:
+[MySQL 8.4 JSON normalization](https://dev.mysql.com/doc/refman/8.4/en/json.html#json-normalization).
+The regression models these representation differences; it does not claim to have
+captured the native row bytes or to emulate MySQL.
+
+`tests/WebsitePlatformM6CStoredInputTest.php` uses the existing fake PDO lifecycle
+fixture and the native fixture's pure `m6nComposition` definition, never its real
+SQL seeder/adapter/coordinator. It proves equality with the local three-page
+composition and replaces the local fixture's extra facts with the exact native
+Synthetic Café facts. It retains home/roof-cleaning/contact, header/footer/mobile
+CTA/navigation, self-canonical SEO, the shared PNG's two usage references, inert
+lead fields, public projection, inventory and hash contracts. Stored input,
+options and policy JSON get only separators/key-order changes; decoded scalar
+types, list order and values stay intact. No IDs, URLs, PHP version or OS are
+coerced to make it pass. SQL remains fake; trusted ownership is fixture wiring,
+not execution of the Linux factory or proof of Linux UID/mode behavior.
+
+Before production edits, the canonical case built, sealed, verified, completed
+and replayed. The formatted JSON case passed claim and recorded-input validation,
+then threw artifact_invalid through files helper line 18 → validator line 139 →
+store line 124 → builder line 83 → service execution. **Eight candidate files**
+existed, **no seal proof**, **no release**; raw text hash mismatched while canonical
+hash matched. Failure completion returned **failed**, without a secondary
+exception. Both private fixture roots were observed removed. Only bounded
+repository-relative code locations, classification and phase/count booleans were
+recorded privately: no arguments, raw traces, configuration, SQL, credentials,
+generated HTML or source content.
+
+The minimal functional correction hashes the already decoded input with
+`CanonicalJson::hash` in validator verification. It preserves the hash equality
+check and all later integrity checks. The identical regression then passed:
+canonical and JSON-column representations seal/verify/complete/replay; equivalent
+pretty/escaped representations retain manifest identity; modified content,
+scalar type, page list order, hash, malformed and oversized JSON remain rejected.
+No duplicate build/release/validation/event or altered output bytes occur on replay.
+Existing authorization, asset, immutable-storage and recovery regressions remain
+required. No public API, diagnostic flag, bypass, production logging or CLI change
+was introduced. Invalid artifact error classification/message/exit remain intact.
+
+This establishes the local contract defect and its correction. It is consistent
+with the reported native symptom, but **does not prove that the native run reached
+this predicate**; its last recorded barrier precedes application initialization.
+The historical native result remains FAILED and its exact origin unconfirmed.
+
+### Validation and exact scope
+
+All post-fix checks below passed sequentially, exit 0. Command for each named
+suite: `php -n -d zend.exception_ignore_args=1 tests/WebsitePlatform<Suite>Test.php`.
+The focused StoredInput before-fix run exited 1 in **3.1165446 s**;
+the identical post-fix test passed **95 assertions in 2.1790962 s**.
+Both runs observed removal of their two private fixture roots.
+
+The retained initial probe used configured PHP (no `-n`), exit 1,
+**2.0384544 s**, rejecting an equivalent verification encoding.
+The next `-n` probe, exit 1, **1.6867205 s**, located that
+rejection at validator line 139. Refining the test to reach the full build path
+exposed a test-authoring error (private classification property instead of its
+accessor), exit 1, **1.6362704 s**. That accessor was corrected
+before the definitive before-fix run; no production edit preceded that run.
+These earlier failures and the final before/after records remain separate.
+
+| Suite | Assertions | Seconds |
+| --- | ---: | ---: |
+| M6BAuthorization | 83 | 0.7922538 |
+| M6BBehavior | 401 | 2.6854842 |
+| M6BContract | 58 | 0.4859621 |
+| M6BRecovery | 49 | 0.5749691 |
+| M6BReplayComparison | 141 | 0.3370068 |
+| M6BSchema | 110 | 0.9570075 |
+| M6BScope | 42 | 25.1285606 |
+| M6CAdmission | 58 | 3.2426400 |
+| M6CArtifact | 45 | 2.6485830 |
+| M6CBounds | 29 | 0.7131213 |
+| M6CCli | 207 | 21.3635295 |
+| M6CCliProcess | 383 | 27.8274461 |
+| M6CExecution | 216 | 4.5943817 |
+| M6CIntegration | 54 | 5.7870329 |
+| M6CNativeDiagnostics | 96 | 4.0082807 |
+| M6CRecovery | 135 | 9.3361366 |
+| M6CScope | 53 | 14.7084325 |
+| M6CSecurity | 91 | 1.8365086 |
+
+Including StoredInput: **19 suites / 2346 assertions**. CLI includes one actual
+local CGI invocation and 32 isolated valid-argument denials; its Linux/runtime
+branches are simulated. CLI-process faults are controlled. Security ran one of
+two native local link cases; unavailable Windows link coverage is not a pass.
+Diagnostics/transport covers **41 scenarios**, real local children/files and
+simulated Linux metadata. Fake-database error messages in fault tests are expected.
+No test invokes real SQL, a native coordinator, protected host worker or container.
+
+`php -n -l FILE` for every `rg --files -g '*.php'` entry passed **260 PHP files**
+in **85.3563492 s**. Existing Git Bash `bash -n -- FILE` passed **five
+syntax checks** in **1.4124268 s** (launcher, fixture, three unchanged
+guide blocks; no proposed command executed). Initial `node check-docs-integrity.cjs`
+passed **48 links / 18 local anchors / eight balanced fence markers** in
+**2.6067355 s**; external URLs were checked for syntax only.
+The same checker is rerun after this evidence text is filled. Working/staged/committed
+diff checks and raw integrity comparisons are retained with the final handoff.
+
+Tools observed: PHP **8.4.24 CLI ZTS VC++ 2022 x64**, PowerShell **7.6.5**, Git
+**2.56.0.windows.2**, Git Bash **5.3.15(2)**, Node **v24.22.0**. Full commands,
+durations, exits, assertion counts and inventory logs are outside Git under
+`C:\Users\fvd83\.codex\visualizations\2026\10\17\01a14be9-d0ff-7ae1-96f5-649327b11ec1\m6c-artifact-origin`.
+The passing local results establish no native PHP 8.4.27/MySQL 8.4.11, rootless
+ownership/capability, concurrency or image-provenance coverage.
+
+Exact changed-file inventory from `8118138`:
+
+1. `private/classes/SiteArtifactValidator.php` — functional canonical input-hash verification (one predicate plus explanatory comment).
+2. `tests/WebsitePlatformM6CStoredInputTest.php` — new native-content/fake-SQL/real-files before/after regression and invalid neighbors.
+3. `docs/sprint-8.8-m6c-local-implementation.md` — this implementation/evidence record.
+4. `docs/sprint-8.8-m6c-native-validation.md` — current failed result, correction limits and later verification gate.
+
+All other 449 of the 452 starting tracked files are byte-identical, including
+transport/acknowledgement/hash validation, launcher signals/cleanup/finalization,
+native worker/cases, CLI, all 25 migrations and integrity pins. No full launcher
+regression is repeated: its capture/validation/finalization path and dependencies
+are unchanged. Earlier transport smoke and failed native attempts retain their
+own SHAs, including the 8118138 run; none become results for this correction.
+
+The cached runtime image belongs to **8118138**. A later separately authorized
+task must establish the new reviewed SHA's image provenance, run the focused
+stored-input and relevant artifact verification checks in that runtime, then
+perform protected native acceptance. No automatic repeat of the successful
+transport smoke is required for this unchanged transport. No image ID is invented,
+no provenance check is relaxed, and this task authorizes no native execution.
+
+Migration 025 remains applied to working staging; canonical SHA-256
+`dab585dc29aac11153f92703c65d3883aeea73a1b2283157cfa9d2f2ece85cb0`.
+Last operator-reported deployed application remains
+`f466fc1cdbfb53325a1db11445736bdc5ea7c6f4`. Backup/download is operator-reported
+COMPLETE, both copies and receipt retained; restore NOT EXECUTED.
+No server, live SQL/migration, image/container, deployment, installation/host
+configuration, backup/restore/prune, provider, M6D–M6G or Narrator action occurs.
+Cleanup is limited to this task's owned local fixture trees. PR #128 stays open,
+non-draft and unmerged; one concise update and one exact-head review are recorded
+with final SHA/status in the external `m6c-artifact-origin/SUMMARY.txt`.

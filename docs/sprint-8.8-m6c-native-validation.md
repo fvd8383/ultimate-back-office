@@ -1,15 +1,66 @@
 # M6C native build-only validation
 
 HARNESS IMPLEMENTED LOCALLY / REVIEW REQUIRED.
-OPERATOR NATIVE ATTEMPTS AT 740431f AND e2998fd — FAILED; NO NATIVE ACCEPTANCE PASS.
-OCTOBER 21 DESKTOP DIAGNOSTIC/TRANSPORT CORRECTION — LOCAL ONLY; NO NATIVE RERUN.
+OPERATOR NATIVE ATTEMPTS AT 740431f, e2998fd AND 8118138 — FAILED; NO NATIVE ACCEPTANCE PASS.
+OCTOBER 22 CANONICAL-INPUT CORRECTION — REPRODUCED LOCALLY; NO NATIVE RERUN.
 
 This is the operating procedure for the executable harness on PR #128, branch
 `codex/sprint-8.8-m6c-artifact-builder`. The authoring baseline is
-`96715eb35ac1ae2eb69c3a39a14ec009048128ad`. The protected application, worker,
-renderer, artifact store, all 25 migrations and their integrity pins are unchanged.
+`96715eb35ac1ae2eb69c3a39a14ec009048128ad`. The latest change from `8118138` modifies
+production artifact input-hash verification. The worker, renderer, artifact store,
+transport, all 25 migrations and their integrity pins remain unchanged in this correction.
 The [implementation record](sprint-8.8-m6c-local-implementation.md) retains earlier
 results separately. This guide does not authorize image preparation or a native run.
+
+## October 22 failed run and canonical-input correction
+
+At `8118138c890105f689fa145de7f5566f3263eee5`, the operator reports one native
+invocation, **27.711082493 s / launcher exit 1**, ending with `actual_child_exit`
+in `native_cases`, `protected-multipage-build`: expected 0, actual 1, signal 0,
+last barrier IDENTITY, `Build-only invocation stopped: artifact_invalid.`
+It remains **FAILED: 1 PASS / 1 FAIL / 18 UNREACHED; 563 attempted / 562 completed
+assertions** including setup. Startup denials passed; four expected-denial children
+and one failed protected build were recorded; no instrumented case ran. Reported
+PHP **8.4.27** / MySQL **8.4.11**, 25 migrations only in the disposable schema.
+
+Transport succeeded: acknowledgement MATCH, capture identity PASS, reader/Docker,
+consumer and verification exits **0/0/0**, native.json **8502 bytes**, SHA-256
+`4d62ae8f98070343f18a608f308903cdbb1939877a614c8e6ae13f8c25e760fd`.
+No fallback; FAIL remained FAIL. Launcher evidence:
+`/mnt/ubo_stage_testdata/codex-validation/evidence/m6c-native-20261022T224833Z-255afaa6947b3c56b8be5e22b16fc35b`,
+MANIFEST SHA-256 `e6f8fc92ecae3810e51e55b3e6dbb029705680c3a7e38500159d15c4c0438dcf`
+(17/17 entries plus receipt operator-verified). Operator evidence:
+`/mnt/ubo_stage_testdata/codex-validation/evidence/m6c-native-retry-operator-20261022T224733Z-c4f684fb35eda2cd`,
+MANIFEST SHA-256 `ab133c380ecf109179d8a6faf68a8040338e10f804a2f3728484d8f4a96d14a6`
+(73/73 entries plus receipt operator-verified). These are attributed operator
+reports, not desktop downloads/checksum verification, and not SUMMARY.txt hashes.
+Cleanup/publication passed, Docker inactive/disabled; scratch removal was
+launcher-attested only. Leave the new reported `moby-detect-rro` directory alone.
+
+The [implementation record's call-path map and validation](sprint-8.8-m6c-local-implementation.md#stored-json-input-verification-correction)
+identify a reproduced local defect: the JSON-column text was hashed raw during
+artifact verification even though the input contract hashes canonical decoded
+values. A native-content fixture with modeled JSON separators/key order failed
+at the old validator line 139 after eight files were written, before sealing;
+failure completion did not mask that exception. The one-predicate production
+correction uses the existing canonical hash. The same regression passes 95
+assertions including tampered neighbors, immutable bytes and replay. It uses real
+files/renderer/builder/validator/store and fake SQL, not the protected Linux runtime.
+Exact changed files are `private/classes/SiteArtifactValidator.php`, the new
+`tests/WebsitePlatformM6CStoredInputTest.php`, this guide and the implementation record.
+No diagnostic-only CLI addition was needed; error semantics and safety gates remain.
+
+The reported native origin is still **unconfirmed**: IDENTITY is emitted before
+the protected CLI exec and establishes no claim/render/seal milestone. This local
+correction is not native acceptance. Prior transport smoke and native failures
+remain at their original SHAs. The cached runtime image belongs to **8118138**;
+after review, a separately authorized task must establish provenance for the new
+exact SHA, run the focused stored-input/artifact checks in that source-matching
+runtime and perform protected native acceptance. Do not invent an image ID or
+relax admission. Transport, acknowledgement/hash validation, launcher signals,
+owned cleanup and finalization are byte-identical, so do not automatically repeat
+the transport smoke. The historical smoke proposal below remains reference only.
+No server, SQL, image/container, install or native command is executed here.
 
 ## Entries and evidence lanes
 
@@ -429,7 +480,7 @@ The operator separately reports Linux launcher PASS (**3981 assertions / 86
 scenarios**) and image preparation/check-only PASS at **740431f**, followed by the
 failed native invocation above. These are historical reports, not rerun here.
 That historical runtime image was source-labeled for 740431f; the operator's latest
-prepared runtime is source-labeled for **e2998fd**. After this correction is
+prepared runtime is source-labeled for **8118138**. After this correction is
 committed, separately authorized preparation must satisfy runtime-image provenance
 for the **new exact reviewed SHA**, followed by separately authorized check-only
 and isolated native execution. Do not relax the source check, rewrite old labels
@@ -497,9 +548,14 @@ primary/cleanup/publication status and verify `SHA256SUMS` plus `PUBLICATION` be
 attributing a future result to its SHA. Preserve failures and unreached cases.
 Do not point this harness at the working checkout/database or edit migration 025.
 
-### Proposed separate transport smoke procedure — NOT EXECUTED
+### Historical separate transport smoke proposal
 
-This is a separately executable proposal for later approval, not permission to
+This proposal was not executed by the desktop authoring task. The operator's
+subsequent transport smoke and acknowledged native capture at 8118138 remain
+historical evidence at their own SHAs. Do not automatically repeat the smoke for
+the canonical-input correction; the transport path is unchanged.
+
+If separately authorized for a demonstrated transport change, this is a proposal, not permission to
 provision or run it now. An operator must first prepare exactly one fresh isolated
 runtime and one internal run-owned network, with no MySQL container and no
 application worker. Use the reviewed native runtime image/source SHA, existing
