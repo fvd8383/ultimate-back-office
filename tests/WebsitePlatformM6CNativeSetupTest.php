@@ -175,11 +175,14 @@ try{
             setupCheck(is_file($final),'expected published report: '.$diagnostic);
             $stored=json_decode(file_get_contents($final),true,32,JSON_THROW_ON_ERROR);
             setupCheck(!file_exists($final.'.pending'),'atomic rename consumed pending file');
+            setupCheck(str_contains($diagnostic,'M6C REPORT PUBLISHED source='.$report['sha'].' run='.$report['token']
+                .' bytes='.filesize($final).' sha256='.hash_file('sha256',$final)), 'publication acknowledgement binds exact bytes');
             setupCheck($stored['status']==='FAIL'&&$stored['stage']==='storage_setup'&&$stored['completed_assertions']===$completed,'early FAIL counters and stage published');
             setupCheck(count($stored['cases'])===20&&array_unique(array_column($stored['cases'],'status'))===['UNREACHED'],'all twenty cases remain unreached');
             setupReject(fn()=>M6CNativeContract::evidence($stored,str_repeat('1',40),str_repeat('2',32)),'M6C native: evidence_result');
             if($fault==='cleanup')setupCheck($stored['cleanup']==='FAILED','cleanup failure is secondary');
         }else{
+            setupCheck(!str_contains($diagnostic,'M6C REPORT PUBLISHED'),'no acknowledgement before successful publication');
             setupCheck(isset($report['report_failure'])&&str_contains($diagnostic,'Native report publication FAIL:'),'distinct publication failure');
             setupCheck($fault==='preexisting'?file_get_contents($final)==='existing canary':!file_exists($final),'failed pending bytes never completed evidence');
             if($fault==='symlink_model'||$fault==='location_changed')setupCheck(!in_array('fopen',$operations,true),'untrusted report target never opened');

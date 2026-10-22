@@ -7,11 +7,13 @@ M6D–M6G — NOT STARTED. Migration 025 — APPLIED TO WORKING STAGING; do not 
 Production — UNAUTHORIZED / NOT DEPLOYED. This task performs local implementation
 and synthetic/filesystem validation only. The 77-case M6 plan is not a passed matrix.
 
-Current handoff, October 21: the operator reports the native invocation at
-`740431fd1f3cae6f747983d75f6bb5309ecaddc3` **FAILED IN STORAGE SETUP** before SQL or
-workers; **all 20 cases UNREACHED**. The local ownership/report correction is
-**IMPLEMENTED LOCALLY / REVIEW REQUIRED**, with no native rerun. See
-[storage setup and report correction](#native-storage-setup-and-report-correction)
+Current handoff, October 21: the operator reports native attempts at 740431f and
+`e2998fdadaeb19048556d303cc9d310fde2c2276` **FAILED**. The retry has one explicit
+startup-denials PASS, one source-order-attributed protected-multipage-build failure
+and **18 UNREACHED**; the underlying build cause is unknown. The local diagnostic/
+transport correction is **IMPLEMENTED LOCALLY / REVIEW REQUIRED**, with no native
+rerun here. See [child diagnostics and tmpfs transport](#native-child-diagnostics-and-tmpfs-transport),
+[historical storage setup correction](#native-storage-setup-and-report-correction)
 and the [operating guide](sprint-8.8-m6c-native-validation.md). Earlier outstanding
 Linux/native statements below describe their dated correction, not this handoff.
 The subsequent `648fd0d` review findings and their local corrections are recorded
@@ -2099,3 +2101,213 @@ auto-merge. Final pushed SHA, actual review state and nine-point handoff are sav
 outside Git in `m6c-native-storage-setup/SUMMARY.txt`. Zero server, live SQL,
 migration, image/container, backup, deployment, host-configuration, provider or
 Narrator actions occur in this desktop correction.
+
+## Native child diagnostics and tmpfs transport
+
+October 21 desktop correction, starting from clean branch
+`codex/sprint-8.8-m6c-artifact-builder` at
+`e2998fdadaeb19048556d303cc9d310fde2c2276`. PR #128 was open/non-draft/unmerged,
+auto-merge off; that exact head's review had completed with no findings. This is
+an operator-failure correction, not a fabricated review finding or thread reply.
+No speculative production/multipage-build fix is included.
+
+### Retained evidence and its limits
+
+Operator OBSERVED: retry exit **1**, duration **24.156694505 seconds**; migrations
+001–025 explicitly recorded as applied to the new disposable schema; last explicit
+PASS `PASS protected-startup-denials (protected)` at child.stdout.txt:26;
+**560 attempted / 559 completed assertions**, including setup. The coordinator
+emitted a primary diagnostic and terminal summary, with no `Native report
+publication FAIL` message. Host docker-cp reported it could not find
+`/run/m6c/report.json` in the runtime; fallback outcome was suppressed and
+host native.json is absent. Cleanup/evidence publication succeeded and both
+containers/network were removed. Working staging was not used; overall FAILED.
+
+SOURCE-ORDER INFERENCE: the next failure is protected-multipage-build, before
+success-text/artifact verification. One explicit PASS, one attributed failure,
+**18 UNREACHED**; five protected launches inferred from progression, not a surviving
+per-child process inventory. Instrumented workers were not reached. The excerpt
+does not provide the exact first primary error; `actual_child_exit` is not an
+established historical error merely because it occurs in source. No SQLSTATE/driver
+or exact container PHP/MySQL version was retained. Successful in-container report
+publication remains **UNPROVEN**; the protected build's underlying cause remains
+**UNKNOWN**. These changes do not recover lost historical child output.
+
+Operator-only diagnosis directory:
+`/mnt/ubo_stage_testdata/codex-validation/evidence/m6c-retry-failure-diagnosis-20261022-aub94vi6`.
+Reported `M6C-RETRY-FAILURE-DIAGNOSIS.txt` SHA-256:
+`5eee6e59ecb00b559e51428c55c9f86271490a957493901018b5295ce84020e3`.
+Reported operator `SUMMARY.txt` SHA-256:
+`53e5357061417b6e93a9ff0eb631a68a44eac0ca94e77660dc6ba17b8374691d`.
+The operator reports eight payloads verified. This task did not retrieve or verify
+server evidence; these distinct hashes are not assigned to this desktop SUMMARY.
+The supplied directory's 20261022 name is retained verbatim.
+
+The earlier 740431f setup failure remains separate: exit 1 / 18.60 seconds / 465
+reported assertions / all 20 UNREACHED. The prior storage correction, historical
+Linux CLI/process 206/389, launcher 3981/86, and image/check-only results are not
+relabeled as new validation or native success.
+
+### Child evidence independent of JSON
+
+The existing process helper observes stream sizes before close removes private
+capture files and retains captured bytes. An observation can report a live child
+with null exit; negative/unknown exits are never invented as zero or a signal exit.
+The existing line/finish/stop timeout, child ownership and termination behavior is
+preserved. `m6nRead` and `m6nFinish` use a small diagnostic helper around the actual
+process calls and original assertions. Unexpected result/barrier/JSON/timeout/
+overflow failures emit a bounded `M6C CHILD FAILURE` record to existing coordinator
+stderr before the generic assertion propagates. Expected nonzero startup denials
+retain expected/actual status without unexpected-failure diagnostics. The native
+business-case assertions and normal protected lane are unchanged.
+
+Sanitized entries contain case/phase/last barrier, expected exit when known,
+observed exit/signal/running/termination state, actual stream sizes, bounded captured
+lengths, truncation flags and SHA-256 with complete/prefix scope. Only exact known
+worker outcome/error lines are allowlisted, at most two per stream. Unknown output
+is not printed; it contributes safe metadata/digest. No commands, credentials,
+environment/config dumps, raw SQL or lease tokens are emitted. JSON escapes controls.
+Lines are capped at 2 KiB and aggregate emitted child diagnostics at 16 KiB.
+Structured report children and final cleanup entries use the same sanitized
+summaries. Diagnostic write/record failures are secondary flags and do not replace
+the primary exception or turn a failure into PASS.
+
+### Publication, capture and acceptance remain separate
+
+The report publisher now returns exact byte count/hash only after its checked
+final rename. It emits a single source/run-bound `M6C REPORT PUBLISHED` line for
+both FAIL and PASS reports. This is publication acknowledgement, not acceptance or
+power-loss durability. No report JSON is dumped to ordinary console. Publication
+failure retains its distinct sanitized message; acknowledgement/sink failure cannot
+overwrite the primary native result. The tested storage setup order is unchanged.
+
+[Docker documents tmpfs among copy corner cases](https://docs.docker.com/reference/cli/docker/container/cp/#corner-cases).
+Both former docker-cp paths now call the same narrow `m6n_capture`. That is a
+source-level transport correction, not proof that the missing historical report
+existed or that tmpfs caused that particular absence. Normal and at most one
+fallback capture run before owned runtime teardown. Exact ID/token/name/role/image/
+network mode, the sole current network attachment and Running are checked before
+exec; unknown, foreign, merely name-matching, disconnected, additionally networked,
+stopped or unavailable containers are not executed or restarted.
+
+The fixed no-bootstrap PHP reader accepts only `/run/m6c/report.json`, root-owned
+0644 regular single-link file on the protected report filesystem, canonical paths,
+size 1 through 1,048,576 bytes. It compares opened metadata and reads at most limit
+plus one byte to detect change/partial transport. Pending/symlink/special files are
+rejected before open. No archive, TTY, shell, new privilege/mount or application/SQL
+worker is used. A host consumer bounds the pipe before creating a private attempt
+pending file; separate producer (reader/Docker exec) and consumer exits must both
+succeed. The combined exec exit does not fabricate a separately unobserved reader
+status. Valid-looking stdout with a nonzero producer exit is never promoted.
+
+Host verification checks complete JSON, exact source/run, native=true, PASS/FAIL,
+nonnegative assertion count and exact case/status inventory. FAIL reports are
+preserved without changing their bytes. Full PASS acceptance still uses the original
+strict validator requiring all 20 cases and correct lanes/positive assertions.
+Acknowledgement observation is ABSENT or MATCH; when present, exactly one correctly
+bound byte count/hash must match, otherwise capture fails. Absent acknowledgement
+is not retroactive proof of failed publication. Only verified complete pending
+captures become native.json; malformed, empty, truncated or over-limit data does not.
+Host Linux directory/file owner checks use the effective UID from a bounded
+`/proc/self/status` read, without relying on POSIX being loaded under `php -n`.
+
+Each attempt has one 15-second budget shared across stages, clipped to existing
+1200-second execution or 90-second cleanup/evidence time, preserving terminal
+publication reserve. Normal/fallback metadata and bounded reader/consumer/verification
+diagnostics are finalized before evidence hashing. No file is appended after final
+manifest/receipt publication. Original primary, first signal and secondary failure
+precedence, signal acceptance through cleanup/hashing, terminal boundary and exact
+cleanup ownership are preserved. Fallback success cannot erase the normal failure;
+native exit zero plus capture failure cannot yield launcher PASS. Evidence
+publication PASS remains independent of native success.
+
+### Local validation and exact inventory
+
+Timed suites run sequentially; actual output/exit/duration, initial attempts and
+rechecks are retained outside Git in `m6c-native-child-transport`. Diagnostics use
+real local PHP children/private files. Linux owner/mode metadata and Docker leaves
+are explicitly simulated; no local result is native/container proof.
+
+Initial focused results: `php -n tests/WebsitePlatformM6CNativeDiagnosticsTest.php`
+passed **91 assertions / 36 scenarios**, exit 0, **3.061311 s**. This covers
+unexpected exit after IDENTITY, expected nonzero denial, pre-barrier exit, timeout,
+overflow, malformed barrier JSON, failed/throwing diagnostic sink, secret/control
+canaries, unknown running exit, aggregate bound, fixed-reader metadata faults,
+partial bytes, exact/over limit, PASS/FAIL envelope, source/run and acknowledgement
+hash/size/binding mismatches. `php -n tests/WebsitePlatformM6CNativeSetupTest.php`
+passed **751 assertions / 62 scenarios**, exit 0, **0.8673126 s**, including
+acknowledgement only after successful publication and the unchanged storage order.
+Initial launcher run passed **7227 assertions / 102 synthetic scenarios**, exit 0,
+**647.2216248 s**. Review then tightened host `-n` compatibility, live network
+attachment validation, the inspection step's capture deadline and pending-size
+consistency; the pending-only fixture now contains only an unpublished file.
+Focused diagnostic recheck passed **96 assertions / 41 scenarios**, exit 0,
+**3.2375518 s**, adding bounded effective-UID parsing checks with modeled proc data.
+Final launcher recheck passed **7378 assertions / 104 synthetic
+scenarios**, exit 0, **656.8067472 s**, including rejection without exec for
+disconnected or additionally networked runtimes. No local regression failed; both
+complete passing fixture trees and all initial/recheck logs are retained.
+The first Bash syntax launch was blocked before parsing by Windows sandbox MSYS
+named-object access (`NtCreateDirectoryObject`, `0xC0000022`). Its raw failure is
+retained: wrapper exit 1; exact native exit/duration were not saved because the
+wrapper threw before writing metadata. All five syntax checks passed in a separate
+authorized recheck outside the sandbox. No source syntax or approval-review failure
+was observed.
+
+Additional sequential checks, all exit 0:
+
+- `php -n tests/WebsitePlatformM6BScopeTest.php`: **42 assertions**, **16.437832 s**.
+- `php -n tests/WebsitePlatformM6CScopeTest.php`: **53 assertions**, **10.4777418 s**.
+- `php -n -l FILE` for every `rg --files -g '*.php'` entry: **259 PHP files**, **53.634092 s**.
+- Git Bash `bash -n -- FILE`: **5 syntax checks**, **0.8253992 s**, covering launcher, fixture and all three guide Bash blocks; no proposed commands executed.
+- Documentation checker: **45 links / 16 local anchors / 8 balanced fence markers**; external URLs checked for syntax.
+
+Tools: Windows PowerShell **7.6.5**, PHP **8.4.24 CLI ZTS VC++ 2022 x64**,
+Git Bash **5.3.15(2)**, Git **2.56.0.windows.2**, Node **v24.22.0**. Exact executable
+arguments, elapsed seconds, exits, full lint/syntax inventories and raw output are
+retained outside Git. Working/staged/committed diff checks accompany the final
+handoff. Raw SHA-256 comparison of the 449-file starting inventory finds **439
+unchanged**, **10 tracked edits**, plus **3 new files**. All 25 migrations, protected
+native business/setup/acceptance sections and eight guarded launcher functions
+remain unchanged. Linux UID/mode/proc data are modeled here, not real Linux proof.
+
+Exact correction inventory:
+
+1. `tests/WebsitePlatformM6CNative.php` — use tested child diagnostic wrappers; sanitize expected-kill report entries.
+2. `tests/support/WebsitePlatformM6CNativeProcess.php` — retain observed stream lengths and expose bounded observations without fabricating exits.
+3. `tests/support/WebsitePlatformM6CNativeDiagnostics.php` — new bounded allowlisted child summaries and failure-safe emission.
+4. `tests/support/WebsitePlatformM6CNativeReport.php` — sanitized cleanup entries, publication acknowledgement and secondary sink failures.
+5. `tests/support/WebsitePlatformM6CNativeContract.php` — minimal FAIL/PASS transport envelope and exact running-runtime capture admission; strict acceptance remains unchanged.
+6. `tests/support/WebsitePlatformM6CNativeTransport.php` — new fixed-path reader, bounded host consumer and verified pending promotion.
+7. `tests/RunM6CNative.sh` — shared verified exec capture for normal/fallback with visible independent statuses and existing deadlines.
+8. `tests/support/WebsitePlatformM6CNativeLauncherFixture.sh` — fake exec/copy visibility and capture-failure leaves, no real engine.
+9. `tests/WebsitePlatformM6CNativeLauncherTest.php` — transport, FAIL preservation, byte/hash/exit and capture-order scenarios alongside existing signal/receipt tests; explicit discovery allowance for the established deny-only setup test.
+10. `tests/WebsitePlatformM6CNativeSetupTest.php` — publication-acknowledgement regressions.
+11. `tests/WebsitePlatformM6CNativeDiagnosticsTest.php` — new real-child/private-file diagnostics and transport regressions with modeled Linux metadata.
+12. `docs/sprint-8.8-m6c-native-validation.md` — current evidence limits, capture contract and proposed unexecuted transport smoke procedure.
+13. `docs/sprint-8.8-m6c-local-implementation.md` — this record.
+
+Production application/runtime/worker/renderer/store, native business-case files,
+storage setup helper, capability set and all 25 migrations/pins remain unchanged.
+Migration 025 is already applied to working staging; canonical SHA-256
+`dab585dc29aac11153f92703c65d3883aeea73a1b2283157cfa9d2f2ece85cb0`; no reapply.
+Last operator-reported deployed SHA remains
+`f466fc1cdbfb53325a1db11445736bdc5ea7c6f4`. Backup/download remains COMPLETE with both
+copies/receipt retained; restore NOT EXECUTED. No backup or disk maintenance.
+
+The existing prepared runtime image is source-labeled for **e2998fd**. Later
+authorized preparation must satisfy the new exact reviewed SHA's provenance.
+The guide proposes a separately approved one-runtime tmpfs transport smoke check
+using the same capture routine, a known bounded FAIL report, no MySQL and no worker.
+It was authored and syntax-checked only, not provisioned or executed. It does not
+replace later separately authorized native acceptance or diagnose the multipage
+build. No pulls/builds/relabeling occur here.
+
+The current PR description must identify both failed native attempts and retain
+older no-execution language as historical. One concise operator-correction update
+and one exact-new-head review request are permitted; no fabricated review finding,
+duplicate request, repeated polling, bulk resolution, merge or auto-merge.
+Exact committed/pushed SHA, actual review observation and nine-point handoff live
+outside Git in `m6c-native-child-transport/SUMMARY.txt`. No server, live SQL,
+migration, image/container, deployment, backup, installation, provider or Narrator
+action occurs in this desktop task.

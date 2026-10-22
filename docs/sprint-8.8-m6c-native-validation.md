@@ -1,8 +1,8 @@
 # M6C native build-only validation
 
 HARNESS IMPLEMENTED LOCALLY / REVIEW REQUIRED.
-OPERATOR NATIVE RUN AT 740431f — FAILED IN SETUP; ALL 20 CASES UNREACHED.
-OCTOBER 21 DESKTOP CORRECTION — LOCAL ONLY; NO NATIVE RERUN.
+OPERATOR NATIVE ATTEMPTS AT 740431f AND e2998fd — FAILED; NO NATIVE ACCEPTANCE PASS.
+OCTOBER 21 DESKTOP DIAGNOSTIC/TRANSPORT CORRECTION — LOCAL ONLY; NO NATIVE RERUN.
 
 This is the operating procedure for the executable harness on PR #128, branch
 `codex/sprint-8.8-m6c-artifact-builder`. The authoring baseline is
@@ -30,9 +30,108 @@ an internal child; neither is named `*Test.php`. Discovery tests are synthetic:
 `WebsitePlatformM6CNativeLauncherTest.php` uses pure contracts, fake engine commands,
 disposable local Git fixtures and bounded synthetic PHP children;
 `WebsitePlatformM6CNativeSetupTest.php` exercises the actual setup/report helpers
-with a labeled permission model and real private local filesystem operations.
+with a labeled permission model and real private local filesystem operations;
+`WebsitePlatformM6CNativeDiagnosticsTest.php` uses real local child processes and
+private files with explicitly modeled Linux metadata.
 
-## Failed operator run and storage correction
+## Current child-diagnostic and report-transport correction
+
+The operator reports a retry at `e2998fdadaeb19048556d303cc9d310fde2c2276`:
+exit **1**, **24.156694505 seconds**. OBSERVED: migrations 001–025 were explicitly
+recorded as applied to the disposable schema; the last explicit PASS was
+`PASS protected-startup-denials (protected)` at child.stdout.txt:26. There were
+**560 attempted / 559 completed assertions**, including setup checks. SOURCE-ORDER
+INFERENCE: the next failure belongs to protected-multipage-build before success
+text/artifact verification; five protected launches are inferred from progression,
+not a surviving child inventory. Thus one explicit PASS, one source-order-attributed
+failure and **18 UNREACHED**; instrumented workers were not reached.
+
+The supplied excerpt omits the exact first primary error text. It is not evidence
+that the error was `actual_child_exit`. No SQLSTATE/driver or exact container
+PHP/MySQL version survived. Coordinator primary diagnostic and terminal summary
+were emitted; no `Native report publication FAIL` appeared. Successful container
+publication is nevertheless **UNPROVEN**. Host capture explicitly reported that
+the daemon could not find `/run/m6c/report.json`; native.json is absent and the
+fallback result was suppressed. Original cleanup/publication succeeded, owned
+containers/network were removed, and working staging was not used. Overall FAILED
+stands. The protected multipage build's underlying cause remains **UNKNOWN**.
+
+Operator-only evidence directory:
+`/mnt/ubo_stage_testdata/codex-validation/evidence/m6c-retry-failure-diagnosis-20261022-aub94vi6`.
+`M6C-RETRY-FAILURE-DIAGNOSIS.txt` reported SHA-256:
+`5eee6e59ecb00b559e51428c55c9f86271490a957493901018b5295ce84020e3`.
+That directory's `SUMMARY.txt` reported SHA-256:
+`53e5357061417b6e93a9ff0eb631a68a44eac0ca94e77660dc6ba17b8374691d`.
+The operator reports eight payloads verified. This desktop task did not retrieve or
+verify server evidence. The supplied directory date is retained verbatim.
+
+Unexpected exits and barrier/timeout/output failures now emit `M6C CHILD FAILURE`
+to the existing coordinator stderr capture before the generic assertion propagates.
+Entries include case/phase, last successful barrier, expected exit when defined,
+observed exit/signal/termination/running state, stream byte counts, bounded capture
+lengths, truncation and digests. Unknown exits remain null. Expected nonzero startup
+denials retain expected/actual status without unexpected-failure messages. Process
+capture sizes are observed before temporary-file deletion; retained bytes remain
+available afterward. Cleanup stays ownership-scoped with its original deadlines.
+
+Only exact allowlisted worker outcome/error lines can appear as excerpts (at most
+two per stream); arbitrary output becomes metadata and a SHA-256 of the bounded
+capture, labeled as complete or prefix. No command, config, environment, raw SQL,
+lease token or unfiltered child stderr is emitted. JSON escapes controls; individual
+diagnostic lines are at most 2 KiB and aggregate emitted child diagnostics at most
+16 KiB. Structured report/cleanup child entries also use sanitized summaries.
+Diagnostic-write failure is secondary and cannot replace the primary exception.
+
+After the existing checked final report rename, the coordinator emits one
+`M6C REPORT PUBLISHED source=... run=... bytes=... sha256=...` acknowledgement.
+This acknowledges exact published bytes for either PASS or FAIL, not acceptance
+success or power-loss durability. Publication and acknowledgement-write failures
+remain separate; acknowledgement failure does not overwrite the native outcome.
+
+[Docker's documented copy corner cases](https://docs.docker.com/reference/cli/docker/container/cp/#corner-cases)
+include tmpfs-mounted files. Both old docker-cp paths are replaced by the same
+`m6n_capture` routine. This fixes an unsuitable transport mechanism; it does not
+prove the original container report existed or explain the multipage build failure.
+Before exec, inspection must match exact runtime ID, token/name/role/image and
+network mode and the sole current network attachment, and Running must be true.
+Unknown, foreign, disconnected, additionally networked, stopped or unavailable
+containers are never executed or restarted for capture.
+
+The fixed PHP reader opens only `/run/m6c/report.json`, after protected-parent,
+canonical-path, regular-file, root UID/GID, 0644, single-link, device and <=1 MiB
+checks. Opened metadata must match the checked inode; bounded reading detects
+growth/partial bytes. No pending file, special file, archive extraction, shell,
+TTY, additional mount/capability or application/SQL/worker bootstrap is used.
+The host consumer reads at most 1 MiB + one rejection byte before writing a new
+private `native-normal.pending` or `native-fallback.pending`. Reader/Docker and
+consumer pipeline exits are retained separately; nonzero producer status cannot
+be hidden by valid stdout. Verification requires complete JSON, exact SHA/token,
+native flag, PASS/FAIL state, assertion count and the exact case/status inventory.
+Only then may the pending capture become native.json. A valid FAIL is preserved;
+the unchanged full acceptance validator still requires every case/lane to PASS.
+Linux host owner checks read the effective UID from bounded `/proc/self/status`
+using core PHP; they do not require a POSIX extension under `php -n`.
+
+When present, the single publication acknowledgement must match source/run,
+captured byte count and SHA-256. ABSENT is an explicit observation, not proof of
+publication failure; contradictory acknowledgements fail verification. Normal and
+at most one fallback attempt have separate exit/status/diagnostic files included
+in the evidence manifest before finalization. Reader/Docker exit is the observed
+combined exec result; it does not invent a distinct unobserved internal exit.
+Each capture attempt shares a 15-second deadline across its stages, clipped to the
+existing 1200-second run or 90-second cleanup deadline with finalization reserve.
+Fallback cannot erase a failed normal attempt's primary exit. Capture failure after
+native exit zero still prevents launcher success. Signal acceptance, primary/first
+signal/secondary precedence, terminal boundary and manifest/receipt rules remain.
+
+Local results and exact file inventory are recorded in the implementation record's
+[child diagnostic and transport section](sprint-8.8-m6c-local-implementation.md#native-child-diagnostics-and-tmpfs-transport).
+The existing prepared runtime image now matches **e2998fd**, not this correction's
+future commit. Later authorized preparation must satisfy the new exact reviewed
+SHA, followed by the focused transport smoke check below and separately authorized
+native execution. No image pull/build/relabel or real container work occurs here.
+
+## Historical failed operator run and storage correction
 
 The operator reports one full invocation at
 `740431fd1f3cae6f747983d75f6bb5309ecaddc3`: exit **1**, **18.60 seconds**, first
@@ -79,7 +178,7 @@ the separate, still-root-owned config. Those mutation results are now checked.
 The existing sealed-artifact byte fault still uses DAC_OVERRIDE and never changes
 worker ownership or mode. Fixture/case/process-helper files are byte-identical.
 
-Previously `safeReport` became true after namespace/attestation checks, before
+At the historical storage correction, `safeReport` had become true after namespace/attestation checks, before
 source verification and storage setup. No coordinator warning-to-exception
 handler was installed by the included Linux guard (its handler is CLI-only).
 A false chmod therefore reaches `m6nCheck`, while a thrown warning is also caught
@@ -91,7 +190,7 @@ stderr, preserves a nonzero native exit, and attempts a silent fallback copy
 before teardown. Missing host evidence alone cannot distinguish in-container
 absence, report finalization failure, capture failure or another cause.
 
-The new reporter verifies the fixed protected report directory after attestation
+The storage correction's reporter verifies the fixed protected report directory after attestation
 and rechecks its identity before publication. It retains FAIL, stage, attempted
 assertions, separately completed successful assertions, primary failure and all
 UNREACHED cases. One exclusive pending file receives at most 1 MiB; write, flush,
@@ -101,8 +200,8 @@ Primary and publication failures have separate bounded sanitized stderr messages
 no raw exception/config/environment dump is emitted. Unattested direct invocation
 has no report target and cannot choose one. This remains within the existing suite
 deadline, with no retry. The original missing-report cause remains **UNPROVEN**.
-Launcher capture, signal handling, precedence, ownership, hashes and receipts are
-unchanged; its regression suite was not rerun for this correction. Publication
+At that correction, launcher capture, signal handling, precedence, ownership, hashes
+and receipts were unchanged; its regression suite was not rerun then. Publication
 PASS still does not establish native PASS, and absent native evidence cannot pass.
 
 Focused local validation: **734 assertions / 62 scenarios**, exit 0, **1.0195261 s**;
@@ -329,7 +428,8 @@ cases are outside this harness. No claim covers all 77 planned cases.
 The operator separately reports Linux launcher PASS (**3981 assertions / 86
 scenarios**) and image preparation/check-only PASS at **740431f**, followed by the
 failed native invocation above. These are historical reports, not rerun here.
-The existing runtime image is source-labeled for 740431f. After this correction is
+That historical runtime image was source-labeled for 740431f; the operator's latest
+prepared runtime is source-labeled for **e2998fd**. After this correction is
 committed, separately authorized preparation must satisfy runtime-image provenance
 for the **new exact reviewed SHA**, followed by separately authorized check-only
 and isolated native execution. Do not relax the source check, rewrite old labels
@@ -397,6 +497,80 @@ primary/cleanup/publication status and verify `SHA256SUMS` plus `PUBLICATION` be
 attributing a future result to its SHA. Preserve failures and unreached cases.
 Do not point this harness at the working checkout/database or edit migration 025.
 
+### Proposed separate transport smoke procedure — NOT EXECUTED
+
+This is a separately executable proposal for later approval, not permission to
+provision or run it now. An operator must first prepare exactly one fresh isolated
+runtime and one internal run-owned network, with no MySQL container and no
+application worker. Use the reviewed native runtime image/source SHA, existing
+approved capabilities and tmpfs layout (including `/run/m6c`), the existing single
+read-only input bind/source-pack checkout procedure, and native owner/name/role/
+network labels. No new mount, capability, host configuration or image-label edit.
+The namespace checkout must contain the exact reviewed helper files. Prepare the
+fixed rootless client and volume admission prerequisites separately; the script
+below assumes those have passed native admission and refuses foreign/stopped
+resources. Its inputs identify only those freshly approved smoke resources.
+
+Save the following as a private proposal outside the clean checkout. It invokes
+the actual shared capture routine and existing guarded teardown, not a substitute
+copy demonstration. Run only after explicit approval of that preparation and this
+procedure. All generated report cases are UNREACHED with status FAIL; transport
+success is not a native acceptance result. The final manifest should cover the
+acknowledgement, captured bytes, capture metadata and teardown status.
+
+```bash
+# PROPOSED ONLY. Run from the exact clean, independent volume checkout.
+set -Eeuo pipefail
+: "${WORK_SHA:?exact reviewed source SHA}"
+: "${SMOKE_TOKEN:?fresh 32-hex run token}"
+: "${SMOKE_RUNTIME_ID:?verified full runtime ID}"
+: "${SMOKE_NETWORK_ID:?verified full internal network ID}"
+: "${SMOKE_RUNTIME_IMAGE:?verified source-matching image ID}"
+: "${PHP_BASE_DIGEST:?verified base image digest}"
+: "${HOST_PHP:?absolute real executable host PHP}"
+source tests/RunM6CNative.sh
+repo=$(pwd -P); sha=$WORK_SHA; token=$SMOKE_TOKEN; php=$HOST_PHP
+runtime_id=$SMOKE_RUNTIME_ID; runtime_image=$SMOKE_RUNTIME_IMAGE
+network_id=$SMOKE_NETWORK_ID; php_base=$PHP_BASE_DIGEST
+base=/mnt/ubo_stage_testdata/codex-validation
+client=/run/user/1000/ubo-m6c-client
+started=$SECONDS; interrupted=''; volume_id=''
+[[ $(uname -s) == Linux && $(hostname -s) == ubo-stage-app && $(id -un) == codex-validation && $(id -u) == 1000 ]]
+[[ $repo == "$base/checkouts/"* && $(m6n_git rev-parse HEAD) == "$sha" && -z $(m6n_git status --porcelain=v1 --untracked-files=all) ]]
+m6n_volume
+m6n_docker image inspect "$runtime_image" | m6n_guard runtime-image "$runtime_image" "$sha" "$php_base" >/dev/null
+m6n_docker inspect "$runtime_id" | m6n_guard capture-owner "$token" "$runtime_id" "$runtime_image" "$network_id" >/dev/null
+m6n_docker network inspect "$network_id" | m6n_guard network "$token" "$network_id" "$runtime_id" >/dev/null
+# Pin all evidence writes to the verified volume, as in the native launcher.
+exec {base_fd}<"$base"; storage="/proc/$$/fd/$base_fd/."
+[[ $(stat -c '%d:%i' "$storage") == "$(stat -c '%d:%i' "$base")" ]]
+evidence=$(mktemp -d "$storage/evidence/m6c-transport-smoke.XXXXXXXX")
+evidence_path="$base/evidence/${evidence##*/}"
+printf 'PROPOSED TRANSPORT SMOKE; no SQL or worker; source=%s\n' "$sha" > "$evidence/report.txt"
+runtime_attempted=1; network_attempted=1; db_attempted=0
+db_id=''; disk=''; supervisor=''; lock_identity=''
+trap 'm6n_signal 130' INT
+trap 'm6n_signal 143' TERM
+trap m6n_finish EXIT
+# Constant PHP program, synthetic FAIL only; publisher writes the known tmpfs path.
+m6n_docker exec "$runtime_id" /usr/local/bin/php -n -d memory_limit=128M -r '
+require "/opt/ubo/tests/support/WebsitePlatformM6CNativeReport.php";
+$r=M6CNativeReport::initial($argv[1],$argv[2]); $r["transport_smoke"]=true;
+M6CNativeReport::finish($r,M6CNativeReport::location(),fn()=>[],fn($s)=>fwrite(STDERR,$s));
+exit(isset($r["report_failure"])||isset($r["acknowledgement_write"])?2:0);
+' "$sha" "$token" > "$evidence/child.stdout.txt" 2> "$evidence/child.stderr.txt"
+m6n_capture normal
+"$php" -n -r '
+$r=json_decode(file_get_contents($argv[1]."/native.json"),true,32,JSON_THROW_ON_ERROR);
+$m=json_decode(file_get_contents($argv[1]."/capture-normal.json"),true,32,JSON_THROW_ON_ERROR);
+if($r["status"]!=="FAIL"||($r["transport_smoke"]??false)!==true||count($r["cases"])!==20
+ ||array_unique(array_column($r["cases"],"status"))!==["UNREACHED"]||$m["acknowledgement"]!=="MATCH")exit(2);
+echo "Transport smoke captured exact acknowledged FAIL bytes; native cases NOT EXECUTED.\n";
+' "$evidence"
+# EXIT uses exact-owner cleanup and existing bounded manifest/receipt publication.
+exit 0
+```
+
 ## Completed Linux prerequisite evidence and desktop validation
 
 The operator reports the focused Linux correction passed at
@@ -415,9 +589,10 @@ remain historical evidence; later blocked review-gate tasks ran no tests.
 
 Fresh desktop results and retained failures are recorded in the implementation
 record's [teardown correction section](sprint-8.8-m6c-local-implementation.md#native-teardown-review-corrections)
-and [storage correction section](sprint-8.8-m6c-local-implementation.md#native-storage-setup-and-report-correction).
+and [storage correction section](sprint-8.8-m6c-local-implementation.md#native-storage-setup-and-report-correction),
+with the current results in [child diagnostics and transport](sprint-8.8-m6c-local-implementation.md#native-child-diagnostics-and-tmpfs-transport).
 This desktop correction executes no recipe, native namespace, container, MySQL or
-protected worker. The operator's native setup failure remains separate from these
+protected worker. Both operator-reported native failures remain separate from these
 local results. A later authorized rerun may expose further blockers; stop and
 record them without weakening the factory or applying working-staging SQL.
 

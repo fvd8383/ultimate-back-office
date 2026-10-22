@@ -139,6 +139,10 @@ try{
         'start-failure'=>2,'inspection-mismatch'=>2,'mount-loss'=>2,'timeout'=>124,'signal'=>143,'failed-child'=>17,'failed-child-missing'=>17,
         'missing-evidence'=>2,'malformed-evidence'=>2,'foreign-cleanup'=>2,'stop-failure'=>2,'primary-and-cleanup-failure'=>17,'publication-failure'=>2,'source-pack'=>0];
     $expected+=['leaf-status'=>17,'inspect-failure'=>2,'list-failure'=>2,'lost-create-stop'=>2,'status-failure'=>2];
+    $expected+=['tmpfs-copy-unavailable'=>0,'valid-fail'=>17,'pending-only'=>2,'empty-report'=>2,'partial-report'=>2,
+        'reader-nonzero'=>2,'wrong-source'=>2,'wrong-run'=>2,'ack-hash'=>2,'ack-size'=>2,'ack-match'=>0,
+        'capture-stopped'=>2,'capture-disconnected'=>2,'capture-extra-network'=>2,
+        'fallback-success'=>2,'failed-fallback-success'=>17,'exact-size'=>0,'oversize-report'=>2];
     foreach(['status','hash','rename','publish','receipthash','receiptwrite','commitstatus','hash-timeout','commit-timeout','primarypublish'] as $fault)$expected['fault-'.$fault]=$fault==='primarypublish'?17:2;
     $plans=[];
     foreach(['INT'=>130,'TERM'=>143] as $sig=>$code){
@@ -161,6 +165,28 @@ try{
         $occupied=$network;$occupied['Containers']=[$dbId=>['IPv4Address'=>'172.20.0.2/16'],$runtimeId=>['IPv4Address'=>'172.20.0.3/16']];
         foreach(['db'=>[nativeFixture('db')],'runtime'=>[nativeFixture('runtime')],'foreign'=>[$foreign],'network'=>[$network],
             'network-occupied'=>[$occupied],'db-image'=>[$dbImage],'runtime-image'=>[$runtimeImage],'report'=>$report] as $file=>$data)file_put_contents($dir.'/'.$file.'.json',json_encode($data,JSON_THROW_ON_ERROR));
+        $observed=$report;
+        if($scenario==='valid-fail'){
+            $observed['status']='FAIL';foreach($observed['cases'] as &$case)$case=['status'=>'UNREACHED'];unset($case);
+            $observed['cases']['protected-startup-denials']=$report['cases']['protected-startup-denials'];
+            $observed['cases']['protected-multipage-build']=['status'=>'FAIL','lane'=>'protected'];
+        }
+        if($scenario==='wrong-source')$observed['sha']=str_repeat('9',40);
+        if($scenario==='wrong-run')$observed['token']=str_repeat('9',32);
+        $transportBytes=json_encode($observed,JSON_THROW_ON_ERROR);
+        if(in_array($scenario,['exact-size','oversize-report'],true))$transportBytes.=str_repeat(' ',1048576+($scenario==='oversize-report'?1:0)-strlen($transportBytes));
+        file_put_contents($dir.'/report.json',$transportBytes);
+        if($scenario==='pending-only')nativeCheck(rename($dir.'/report.json',$dir.'/report.json.pending'),'only unpublished pending bytes exist');
+        if(in_array($scenario,['ack-match','ack-size','ack-hash'],true))file_put_contents($dir.'/ack.txt',
+            'M6C REPORT PUBLISHED source='.$sha.' run='.$token.' bytes='.(strlen($transportBytes)+($scenario==='ack-size'?1:0))
+            .' sha256='.($scenario==='ack-hash'?str_repeat('0',64):hash('sha256',$transportBytes))."\n");
+        if($scenario==='capture-stopped'){$stopped=nativeFixture('runtime');$stopped['State']['Running']=false;file_put_contents($dir.'/runtime.json',json_encode([$stopped]));}
+        if(in_array($scenario,['capture-disconnected','capture-extra-network'],true)){
+            $bad=nativeFixture('runtime');
+            if($scenario==='capture-disconnected')$bad['NetworkSettings']['Networks']=[];
+            else $bad['NetworkSettings']['Networks']['foreign']=['NetworkID'=>str_repeat('8',64),'IPAddress'=>'172.21.0.3'];
+            file_put_contents($dir.'/runtime.json',json_encode([$bad]));
+        }
         $command=[$bash,__DIR__.'/support/WebsitePlatformM6CNativeLauncherFixture.sh',$scenario,$dir,PHP_BINARY];$begin=hrtime(true);
         if(isset($plans[$scenario])){
             [$sequence,$phase,$fault,$signal]=$plans[$scenario];$p=new M6CNativeProcess($command,35,65536);
@@ -174,6 +200,24 @@ try{
         $scenarios++;$r['seconds']=(hrtime(true)-$begin)/1e9;file_put_contents($dir.'/result.json',json_encode($r,JSON_PRETTY_PRINT|JSON_THROW_ON_ERROR));
         nativeCheck($r['exit']===$exit,$scenario.' exit expected '.$exit.' got '.$r['exit'].' '.$r['stdout'].' '.$r['stderr']);
         $log=file_get_contents($dir.'/commands');nativeCheck(!str_contains($log,'FORBIDDEN')&&($scenario==='leaf-status'||!str_contains($log,'UNEXPECTED')),$scenario.' no infrastructure calls');
+        if(file_exists($dir.'/evidence/capture-normal.txt')){
+            $capture=nativeFields($dir.'/evidence/capture-normal.txt');
+            nativeCheck(str_contains(file_get_contents($dir.'/evidence/report.txt'),'native-report-capture normal='),'normal capture visible');
+            if($capture['capture']==='PASS'){
+                nativeCheck(file_get_contents($dir.'/evidence/native.json')===$transportBytes,'transport preserves exact PASS/FAIL bytes');
+                $metadata=json_decode(file_get_contents($dir.'/evidence/capture-normal.json'),true);
+                nativeCheck($metadata['bytes']===strlen($transportBytes)&&$metadata['sha256']===hash('sha256',$transportBytes),'capture byte/hash metadata');
+                nativeCheck(strpos($log,'exec '.$runtimeId)<strpos($log,'stop --time'),'capture before runtime stop');
+                nativeCheck($metadata['acknowledgement']===($scenario==='ack-match'?'MATCH':'ABSENT'),'ack observation explicit');
+            }else{
+                nativeCheck(file_exists($dir.'/evidence/capture-fallback.txt'),'one visible fallback after failure');
+                nativeCheck(substr_count($log,'exec '.$runtimeId)<=2,'bounded normal/fallback attempts');
+                if(!in_array($scenario,['fallback-success','failed-fallback-success'],true))nativeCheck(!file_exists($dir.'/evidence/native.json'),'bad/partial capture never finalized');
+            }
+            if(in_array($scenario,['foreign-cleanup','capture-stopped','capture-disconnected','capture-extra-network'],true))nativeCheck(!str_contains($log,'exec '.$runtimeId),'unavailable/foreign container not executed');
+            if($scenario==='reader-nonzero')nativeCheck($capture['reader_docker_exit']==='43'&&$capture['consumer_exit']==='0','valid stdout cannot hide producer failure');
+            if($scenario==='valid-fail')nativeCheck($observed['status']==='FAIL'&&$r['exit']===17,'valid FAIL transport preserves primary result');
+        }
         if($scenario==='leaf-status'){
             preg_match_all('/leaf=([^ ]+) expected=(\d+) actual=(\d+)/',$r['stdout'],$leaves,PREG_SET_ORDER);
             nativeCheck(count($leaves)===34,'all fake success/failure leaves inside actual EXIT trap');
@@ -216,7 +260,7 @@ try{
         nativeCheck(!str_ends_with($path,'Test.php'),'native entry outside discovery');
     }
     foreach(glob(__DIR__.'/*Test.php') as $test){
-        if(realpath($test)===__FILE__)continue;$s=file_get_contents($test);
+        if(realpath($test)===__FILE__||basename($test)==='WebsitePlatformM6CNativeSetupTest.php')continue;$s=file_get_contents($test);
         nativeCheck(!str_contains($s,'RunM6CNative.sh')&&!str_contains($s,'WebsitePlatformM6CNative.php'),'ordinary suites do not invoke native entry');
     }
     echo "Website platform M6C native launcher: $assertions assertions passed; $scenarios fake-command scenarios; native execution NOT PERFORMED.\n";

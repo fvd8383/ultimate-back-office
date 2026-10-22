@@ -10,6 +10,10 @@ m6n_git() { timeout --kill-after=2s 15s env -i PATH=/usr/bin:/bin HOME=/nonexist
 m6n_client() { env -i PATH=/usr/bin:/bin HOME=/nonexistent LC_ALL=C docker --config "$client" --host unix:///run/user/1000/docker.sock "$@"; }
 m6n_docker() {
     local seconds=15
+    if [[ -n ${capture_deadline:-} ]]; then
+        (( capture_deadline-SECONDS>2 )) || return 124
+        (( capture_deadline-SECONDS-2>=seconds )) || seconds=$((capture_deadline-SECONDS-2))
+    fi
     if [[ -n ${cleanup_deadline:-} ]]; then
         # Leave eight seconds for terminal publication/failure evidence, plus kill grace.
         (( cleanup_deadline-SECONDS>10 )) || return 124
@@ -24,7 +28,11 @@ m6n_cleanup_command() {
     timeout --kill-after=1s "${seconds}s" "$@"
 }
 m6n_guard() {
-    if [[ -n ${cleanup_deadline:-} ]]; then
+    if [[ -n ${capture_deadline:-} ]]; then
+        local seconds=$((capture_deadline-SECONDS-1))
+        (( seconds>0 )) || return 124
+        timeout --kill-after=1s "${seconds}s" "$php" -n -d memory_limit=128M "$repo/tests/support/WebsitePlatformM6CNativeContract.php" "$@"
+    elif [[ -n ${cleanup_deadline:-} ]]; then
         m6n_cleanup_command "$php" -n -d memory_limit=128M "$repo/tests/support/WebsitePlatformM6CNativeContract.php" "$@"
     else "$php" -n -d memory_limit=128M "$repo/tests/support/WebsitePlatformM6CNativeContract.php" "$@"; fi
 }
@@ -217,7 +225,7 @@ m6n_finish() {
     cleanup_deadline=$((SECONDS+90))
     # Capture the sanitized native report BEFORE removing the exact runtime container.
     if [[ -n ${runtime_id:-} && -n ${evidence:-} && ! -f $evidence/native.json ]]; then
-        m6n_docker cp "$runtime_id:/run/m6c/report.json" "$evidence/native.json" >/dev/null 2>&1 || :
+        m6n_capture fallback || printf 'native-report-capture fallback=FAIL\n' >&2
     fi
     if [[ ${runtime_attempted:-0} == 1 ]]; then m6n_owned_remove runtime "${runtime_id:-}" "$runtime_image" || cleanup=FAIL; fi
     if [[ ${db_attempted:-0} == 1 ]]; then m6n_owned_remove db "${db_id:-}" "$db_image" || cleanup=FAIL; fi
@@ -301,11 +309,42 @@ m6n_start_containers() {
     m6n_docker start "$runtime_id" >/dev/null || m6n_fail runtime_start
     m6n_inspect || m6n_fail inspection_mismatch
 }
+m6n_transport() {
+    local seconds=$((capture_deadline-SECONDS-1))
+    (( seconds>0 )) || return 124
+    timeout --kill-after=1s "${seconds}s" "$php" -n -d memory_limit=128M "$repo/tests/support/WebsitePlatformM6CNativeTransport.php" "$@"
+}
+m6n_capture() {
+    local attempt=$1 capture_deadline=$((SECONDS+15)) ceiling identity=FAIL reader=UNREACHED consumer=UNREACHED verification=UNREACHED result=FAIL
+    local -a codes
+    if [[ -n ${cleanup_deadline:-} ]];then ceiling=$((cleanup_deadline-8));else ceiling=$((started+1200));fi
+    (( capture_deadline<=ceiling )) || capture_deadline=$ceiling
+    if [[ ${runtime_id:-} =~ ^[a-f0-9]{64}$ ]] &&
+        m6n_docker inspect "$runtime_id" | m6n_guard capture-owner "$token" "$runtime_id" "$runtime_image" "$network_id" >/dev/null; then
+        identity=PASS
+        # No TTY, archive, shell or application bootstrap. The consumer bounds the pipe
+        # before any host write; PIPESTATUS retains both producer and consumer results.
+        (ulimit -f 4; m6n_docker exec "$runtime_id" /usr/local/bin/php -n -d memory_limit=128M \
+            /opt/ubo/tests/support/WebsitePlatformM6CNativeTransport.php read "$sha" "$token") \
+            2> "$evidence/capture-$attempt-reader.txt" |
+            m6n_transport receive "$evidence" "$attempt" 2> "$evidence/capture-$attempt-consumer.txt"
+        codes=("${PIPESTATUS[@]}");reader=${codes[0]};consumer=${codes[1]}
+        if [[ $reader == 0 && $consumer == 0 ]]; then
+            verification=0
+            m6n_transport verify "$evidence" "$attempt" "$sha" "$token" > "$evidence/capture-$attempt.json" \
+                2> "$evidence/capture-$attempt-verification.txt" || verification=$?
+            [[ $verification != 0 ]] || result=PASS
+        fi
+    fi
+    printf 'attempt=%s\nidentity=%s\nreader_docker_exit=%s\nconsumer_exit=%s\nverification_exit=%s\ncapture=%s\n' \
+        "$attempt" "$identity" "$reader" "$consumer" "$verification" "$result" > "$evidence/capture-$attempt.txt" || return 1
+    printf 'native-report-capture %s=%s\n' "$attempt" "$result" >> "$evidence/report.txt" || return 1
+    [[ $result == PASS ]]
+}
 m6n_collect_result() {
     local code=$1 capture=PASS
     printf 'docker-exec exit=%s\n' "$code" >> "$evidence/report.txt"
-    m6n_docker cp "$runtime_id:/run/m6c/report.json" "$evidence/native.json" >/dev/null || capture=FAIL
-    [[ $capture != PASS || $(stat -c %s "$evidence/native.json") -le 1048576 ]] || capture=FAIL
+    m6n_capture normal || capture=FAIL
     printf 'native-report-capture=%s\n' "$capture" >> "$evidence/report.txt"
     [[ $code == 0 ]] || exit "$code"
     [[ $capture == PASS ]] || m6n_fail missing_native_evidence

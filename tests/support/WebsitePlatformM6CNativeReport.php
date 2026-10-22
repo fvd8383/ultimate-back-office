@@ -2,6 +2,7 @@
 declare(strict_types=1);
 require_once __DIR__.'/WebsitePlatformM6CNativeContract.php';
 require_once __DIR__.'/WebsitePlatformM6CNativeSetup.php';
+require_once __DIR__.'/WebsitePlatformM6CNativeDiagnostics.php';
 
 /** Coordinator diagnostics only; no application bootstrap, CLI or report-path argument. */
 final class M6CNativeReport
@@ -39,20 +40,24 @@ final class M6CNativeReport
     }
     public static function finish(array &$report,?array $location,callable $cleanup,callable $diagnostic,?callable $io=null): void
     {
-        try{$report['terminated_children']=$cleanup();}
+        try{$report['terminated_children']=array_map([M6CNativeDiagnostics::class,'summary'],$cleanup());}
         catch(Throwable){$report['status']='FAIL';$report['cleanup']='FAILED';}
-        if(isset($report['failure']))$diagnostic('Native primary FAIL: '.$report['failure']['code'].'; stage='.$report['stage']
-            .'; assertions='.$report['assertions'].'; completed='.$report['completed_assertions'].".\n");
+        if(isset($report['failure']))M6CNativeDiagnostics::emit($report,'Native primary FAIL: '.$report['failure']['code'].'; stage='.$report['stage']
+            .'; assertions='.$report['assertions'].'; completed='.$report['completed_assertions'].".\n",$diagnostic,'primary_diagnostic_write');
         if($location===null)return; // Untrusted invocation never attempts any report write.
-        try{self::publish($report,$location,$io);}
+        try{
+            $receipt=self::publish($report,$location,$io);
+            M6CNativeDiagnostics::emit($report,'M6C REPORT PUBLISHED source='.$report['sha'].' run='.$report['token']
+                .' bytes='.$receipt['bytes'].' sha256='.$receipt['sha256']."\n",$diagnostic,'acknowledgement_write');
+        }
         catch(Throwable $error){
             $report['status']='FAIL';
             $code=preg_match('/^report_[a-z_]{1,60}$/D',$error->getMessage())?$error->getMessage():'report_failure';
             $report['report_failure']=$code;
-            $diagnostic('Native report publication FAIL: '.$code.".\n");
+            M6CNativeDiagnostics::emit($report,'Native report publication FAIL: '.$code.".\n",$diagnostic,'publication_diagnostic_write');
         }
     }
-    private static function publish(array $report,array $location,?callable $io): void
+    private static function publish(array $report,array $location,?callable $io): array
     {
         $io??=static fn(string $op,...$args)=>$op(...$args);
         $current=self::location($io);
@@ -81,5 +86,6 @@ final class M6CNativeReport
         }
         m6nStep('report_close',fn()=>$io('fclose',$stream));
         m6nStep('report_rename',fn()=>$io('rename',$pending,$final));
+        return ['bytes'=>strlen($json),'sha256'=>hash('sha256',$json)];
     }
 }

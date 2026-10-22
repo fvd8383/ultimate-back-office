@@ -150,6 +150,24 @@ final class M6CNativeContract
         return ['id'=>$id,'role'=>$role,'image'=>$imageId,'network'=>$network,'ip'=>$net['IPAddress'],
             'setup_uid'=>$role==='db'?999:0,'memory'=>$memory,'pids'=>$pids,'running'=>true];
     }
+    public static function captureRuntime(array $c,string $token,string $id,string $image,string $network):void
+    {
+        self::owner($c,'runtime',$token,$id,$image);
+        self::need(self::hex($network,64)&&($c['HostConfig']['NetworkMode']??'')===$network,'capture_network');
+        $nets=$c['NetworkSettings']['Networks']??[];
+        self::need(is_array($nets)&&count($nets)===1&&(array_values($nets)[0]['NetworkID']??'')===$network,'capture_network');
+        self::need(($c['State']['Running']??false)===true,'capture_runtime_unavailable');
+    }
+    /** Transport envelope accepts failed evidence; acceptance still uses evidence(). */
+    public static function envelope(array $report,string $sha,string $token):void
+    {
+        self::need(self::hex($sha,40)&&self::hex($token,32)&&($report['version']??'')===self::VERSION
+            &&($report['sha']??'')===$sha&&($report['token']??'')===$token,'envelope_identity');
+        self::need(($report['native']??false)===true&&in_array($report['status']??'', ['PASS','FAIL'],true)
+            &&is_int($report['assertions']??null)&&$report['assertions']>=0,'envelope_result');
+        self::need(array_keys($report['cases']??[])===self::CASES,'envelope_cases');
+        foreach($report['cases'] as $case)self::need(is_array($case)&&in_array($case['status']??'', ['PASS','FAIL','UNREACHED'],true),'envelope_case_status');
+    }
     public static function evidence(array $report,string $sha,string $token): void
     {
         self::need(($report['version']??'')===self::VERSION&&($report['sha']??'')===$sha&&($report['token']??'')===$token,'evidence_identity');
@@ -176,6 +194,7 @@ if(realpath($_SERVER['SCRIPT_FILENAME']??'')===__FILE__){
             case 'runtime-image':$out=M6CNativeContract::runtimeImage($data[0],$argv[2],$argv[3],$argv[4]);break;
             case 'network':M6CNativeContract::network($data[0],$argv[2],$argv[3],$argv[4]===''?[]:explode(',',$argv[4]));break;
             case 'owner':M6CNativeContract::owner($data[0],...array_slice($argv,2));break;
+            case 'capture-owner':M6CNativeContract::captureRuntime($data[0],...array_slice($argv,2));break;
             case 'container':$out=json_encode(M6CNativeContract::container($data[0],$data[1],$argv[2],$argv[3],$argv[4],$argv[5],$argv[6],$argv[7],getenv('MYSQL_ROOT_PASSWORD')?:null),JSON_THROW_ON_ERROR);break;
             case 'evidence':M6CNativeContract::evidence($data,$argv[2],$argv[3]);break;
             default:throw new RuntimeException('M6C native: unknown_contract');

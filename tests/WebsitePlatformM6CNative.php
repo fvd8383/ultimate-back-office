@@ -33,13 +33,13 @@ function m6nStart(array $f,string $mode='build',int $uid=2000,array $protectedAr
 }
 function m6nRead(M6CNativeProcess $p,string $expected): array
 {
-    $line=$p->line();m6nCheck(str_starts_with($line,$expected.' '),'barrier_'.$expected);
-    return json_decode(substr($line,strlen($expected)+1),true,32,JSON_THROW_ON_ERROR);
+    global $report,$current;
+    return M6CNativeDiagnostics::read($p,$expected,$report,$current,'m6nCheck',static fn($line)=>fwrite(STDERR,$line));
 }
 function m6nFinish(M6CNativeProcess $p,int $exit=0): array
 {
-    global $report,$current;$result=$p->finish();$report['children'][]=['case'=>$current]+$result;
-    m6nCheck($result['exit']===$exit&&!$result['running'],'actual_child_exit');return $result;
+    global $report,$current;
+    return M6CNativeDiagnostics::finish($p,$exit,$report,$current,'m6nCheck',static fn($line)=>fwrite(STDERR,$line));
 }
 function m6nResult(M6CNativeProcess $p): array
 { $result=m6nRead($p,'RESULT');m6nFinish($p);return $result; }
@@ -60,7 +60,7 @@ function m6nSeal(array $f,string $mode='build'): array
 {[$p,$claim]=m6nClaim($f,$mode);$p->send('CONTINUE');m6nRead($p,'SEALED');return [$p,$claim];}
 function m6nKill(M6CNativeProcess $p): void
 {
-    global $report,$current;$result=$p->stop(9);$report['children'][]=['case'=>$current]+$result;
+    global $report,$current;$result=$p->stop(9);$report['children'][]=['case'=>$current]+M6CNativeDiagnostics::summary($result);
     m6nCheck($result['termination_requested']&&!$result['running']&&$result['signaled']&&$result['signal']===9,'actual_SIGKILL');
 }
 function m6nExpire(int $id): void

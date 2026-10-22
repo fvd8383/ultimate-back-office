@@ -18,6 +18,7 @@ network_id='';db_id='';runtime_id='';network_attempted=0;db_attempted=0;runtime_
 started=$SECONDS;interrupted='';supervisor='';disk='';lock_identity=''
 input=/synthetic/input; evidence="$fixture/evidence";evidence_path=$evidence;log="$fixture/commands"
 mkdir "$evidence";printf 'synthetic fixture only\n' > "$evidence/report.txt"; : > "$log"
+if [[ -f $fixture/ack.txt ]];then cp "$fixture/ack.txt" "$evidence/child.stderr.txt";fi
 docker() { printf 'FORBIDDEN docker binary\n' >> "$log"; return 97; }
 systemctl() { printf 'FORBIDDEN systemctl\n' >> "$log"; return 97; }
 m6n_volume() { [[ $scenario != mount-loss ]]; }
@@ -58,9 +59,24 @@ m6n_docker() {
     fi
     if [[ $1 == start ]]; then [[ $scenario != start-failure || $2 != "$expected_runtime" ]];return $?;fi
     if [[ $1 == cp ]]; then
+        [[ $scenario != tmpfs-copy-unavailable ]] || return 66
         [[ $scenario != missing-evidence && $scenario != failed-child-missing ]] || return 1
         [[ $scenario != malformed-evidence ]] || { printf '{broken' > "$3";return $?; }
         cp "$fixture/report.json" "$3";return $?
+    fi
+    if [[ $1 == exec ]]; then
+        [[ $2 == "$expected_runtime" && $3 == /usr/local/bin/php && $4 == -n && $5 == -d && $6 == memory_limit=128M \
+            && $7 == /opt/ubo/tests/support/WebsitePlatformM6CNativeTransport.php && $8 == read && $9 == "$sha" && ${10} == "$token" && $# == 10 ]] || return 97
+        [[ -f $fixture/runtime ]] || return 45
+        case $scenario in
+            missing-evidence|failed-child-missing|pending-only) return 44;;
+            fallback-success|failed-fallback-success) [[ -f $evidence/capture-normal.txt ]] || return 44;;
+            malformed-evidence) printf '{broken';return $?;;
+            empty-report) return 0;;
+            partial-report) head -c 20 "$fixture/report.json";return $?;;
+            reader-nonzero) cat "$fixture/report.json";return 43;;
+        esac
+        cat "$fixture/report.json";return $?
     fi
     local role=db; [[ ${2:-} != "$expected_runtime" && ${2:-} != "ubo-m6c-runtime-$token" ]] || role=runtime
     if [[ $1 == inspect ]]; then
@@ -270,6 +286,10 @@ trap m6n_finish EXIT
 trap 'm6n_signal 130' INT
 trap 'm6n_signal 143' TERM
 m6n_start_containers
+if [[ $scenario == tmpfs-copy-unavailable ]]; then
+    code=0;m6n_docker cp dummy "$fixture/copy-api-result" || code=$?
+    printf 'SYNTHETIC copy_api_exit=%s; mounted report remains readable by exec\n' "$code" >> "$evidence/report.txt"
+fi
 if [[ -n $signal_plan ]]; then
     m6n_collect_result 0
     m6f_barrier operation || exit 98
@@ -278,7 +298,7 @@ fi
 case $scenario in
     timeout) started=$((SECONDS-1200));m6n_checkpoint;;
     signal) kill -TERM $$;m6n_checkpoint;;
-    failed-child|failed-child-missing) m6n_collect_result 17;;
+    failed-child|failed-child-missing|valid-fail|failed-fallback-success) m6n_collect_result 17;;
     primary-and-cleanup-failure) scenario=stop-failure;exit 17;;
     publication-failure|status-failure) m6n_collect_result 0;;
     *) m6n_collect_result 0;;

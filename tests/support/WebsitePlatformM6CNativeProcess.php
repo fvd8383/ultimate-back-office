@@ -16,6 +16,8 @@ final class M6CNativeProcess
     public bool $terminationRequested=false;
     public readonly int $pid;
     private int $started;
+    private array $streamBytes=['stdout'=>0,'stderr'=>0];
+    public ?string $lastBarrier=null;
     public function __construct(public readonly array $command,private int $seconds=60,private int $limit=65536)
     {
         $active=0;foreach(self::$live as $p)if($p->running())$active++;
@@ -43,6 +45,8 @@ final class M6CNativeProcess
     private function readCapture(): void
     {
         if(!is_dir($this->captureDirectory))return;
+        foreach(['stdout','stderr'] as $stream){clearstatcache(true,$this->captureDirectory.'/'.$stream);
+            $this->streamBytes[$stream]=(int)filesize($this->captureDirectory.'/'.$stream);}
         $stdout=(string)file_get_contents($this->captureDirectory.'/stdout',false,null,0,$this->limit+1);
         $this->buffer.=substr($stdout,strlen($this->stdout));$this->stdout=$stdout;
         $this->stderr=(string)file_get_contents($this->captureDirectory.'/stderr',false,null,0,$this->limit+1);
@@ -81,7 +85,15 @@ final class M6CNativeProcess
         }
         return ['pid'=>$this->pid,'exit'=>$this->stopped['exitcode']??-1,'signaled'=>$this->stopped['signaled']??false,
             'signal'=>$this->stopped['termsig']??0,'termination_requested'=>$this->terminationRequested,
-            'stdout'=>$this->stdout,'stderr'=>$this->stderr,'running'=>false];
+            'stdout'=>$this->stdout,'stderr'=>$this->stderr,'running'=>false,'stream_bytes'=>$this->streamBytes];
+    }
+    /** Retained bytes survive close; a live observation never invents a reaped exit. */
+    public function observation(): array
+    {
+        $this->readCapture();$running=$this->running();
+        return ['pid'=>$this->pid,'exit'=>$this->stopped['exitcode']??null,'signaled'=>$this->stopped['signaled']??null,
+            'signal'=>$this->stopped['termsig']??null,'termination_requested'=>$this->terminationRequested,
+            'running'=>$running,'stdout'=>$this->stdout,'stderr'=>$this->stderr,'stream_bytes'=>$this->streamBytes];
     }
     public function stop(int $signal=15): array
     {
