@@ -18,6 +18,8 @@ final class M6CNativeProcess
     private int $started;
     private array $streamBytes=['stdout'=>0,'stderr'=>0];
     public ?string $lastBarrier=null;
+    public array $diagnosticContext=[];
+    public ?array $failureObservation=null;
     public function __construct(public readonly array $command,private int $seconds=60,private int $limit=65536)
     {
         $active=0;foreach(self::$live as $p)if($p->running())$active++;
@@ -110,5 +112,24 @@ final class M6CNativeProcess
     public static function capture(array $command,int $seconds=60,int $limit=65536): array
     { $p=new self($command,$seconds,$limit);$p->closeInput();try{return $p->finish();}finally{if($p->running())$p->stop();} }
     public static function cleanup(): array
-    { $out=[];foreach(self::$live as $p){if(is_resource($p->process))$out[]=$p->stop();elseif($p->interrupted!==null)$out[]=$p->interrupted;}self::$live=[];return $out; }
+    {
+        $out=[];$before=[];
+        // Snapshot every peer before terminating any child; a cleanup signal is secondary evidence.
+        foreach(self::$live as $i=>$p)if(is_resource($p->process)||$p->interrupted!==null)$before[$i]=$p->state();
+        foreach(self::$live as $i=>$p){
+            if(!array_key_exists($i,$before))continue;
+            $result=is_resource($p->process)?$p->stop():$p->interrupted;
+            $out[]=$result+['context'=>$p->diagnosticContext+['last_barrier'=>$p->lastBarrier],
+                'failure_observation'=>$p->failureObservation,'cleanup_observation'=>$before[$i]];
+        }
+        self::$live=[];return $out;
+    }
+    public function state():array
+    {
+        $running=$this->running();
+        return ['exit'=>$this->stopped['exitcode']??null,'signal'=>$this->stopped['termsig']??null,
+            'signaled'=>$this->stopped['signaled']??null,'running'=>$running,'termination_requested'=>$this->terminationRequested];
+    }
+    public static function observeFailure():void
+    {foreach(self::$live as $p)if($p->failureObservation===null)$p->failureObservation=$p->state();}
 }

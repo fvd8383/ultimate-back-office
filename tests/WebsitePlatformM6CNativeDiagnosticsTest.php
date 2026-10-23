@@ -28,7 +28,7 @@ try{
         elseif($scenario==='overflow')$code.='echo str_repeat("SECRET-CONTROL\x1b",1000);';
         elseif($scenario==='before-barrier')$code.='exit(7);';
         elseif($scenario==='bad-json')$code.='echo "IDENTITY {SECRET-CANARY\n";exit(7);';
-        else $code.='echo "IDENTITY {}\n";exit(7);';
+        else $code.='echo "IDENTITY {\"uid\":2000,\"gid\":2000,\"pid\":1,\"capabilities\":{\"CapInh\":\"0\",\"CapPrm\":\"0\",\"CapEff\":\"0\",\"CapBnd\":\"0\",\"CapAmb\":\"0\",\"NoNewPrivs\":\"1\"}}\n";exit(7);';
         $p=new M6CNativeProcess([PHP_BINARY,'-n','-r',$code],$scenario==='timeout'?1:5,$scenario==='overflow'?256:65536);
         $case='protected-multipage-build';$primary=null;
         try{

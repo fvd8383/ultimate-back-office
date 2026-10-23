@@ -40,7 +40,7 @@ final class M6CNativeReport
     }
     public static function finish(array &$report,?array $location,callable $cleanup,callable $diagnostic,?callable $io=null): void
     {
-        try{$report['terminated_children']=array_map([M6CNativeDiagnostics::class,'summary'],$cleanup());}
+        try{$report['terminated_children']=array_map([M6CNativeDiagnostics::class,'cleanupSummary'],$cleanup());}
         catch(Throwable){$report['status']='FAIL';$report['cleanup']='FAILED';}
         if(isset($report['failure']))M6CNativeDiagnostics::emit($report,'Native primary FAIL: '.$report['failure']['code'].'; stage='.$report['stage']
             .'; assertions='.$report['assertions'].'; completed='.$report['completed_assertions'].".\n",$diagnostic,'primary_diagnostic_write');

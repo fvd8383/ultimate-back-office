@@ -26,10 +26,12 @@ function m6nAttempt(int $id): array
 {global $admin;return SiteBuildStore::one($admin,'SELECT * FROM site_build_attempts WHERE id=:id',['id'=>$id]);}
 function m6nStart(array $f,string $mode='build',int $uid=2000,array $protectedArgs=['--once']): M6CNativeProcess
 {
+    global $current;
     $arguments=$mode==='--protected'?['--protected',...$protectedArgs]:[$mode,(string)$f['job_id'],(string)$f['operator']];
-    return new M6CNativeProcess(['/usr/bin/setpriv','--reuid='.$uid,'--regid='.$uid,'--clear-groups','--no-new-privs',
+    $p=new M6CNativeProcess(['/usr/bin/setpriv','--reuid='.$uid,'--regid='.$uid,'--clear-groups','--no-new-privs',
         '--bounding-set=-all','--inh-caps=-all','--ambient-caps=-all',PHP_BINARY,'-d','memory_limit=128M',
         '-d','display_errors=stderr','-d','zend.exception_ignore_args=1',__DIR__.'/support/WebsitePlatformM6CNativeWorker.php',...$arguments],90);
+    M6CNativeDiagnostics::context($p,$current,$mode);return $p;
 }
 function m6nRead(M6CNativeProcess $p,string $expected): array
 {
@@ -45,7 +47,7 @@ function m6nResult(M6CNativeProcess $p): array
 { $result=m6nRead($p,'RESULT');m6nFinish($p);return $result; }
 function m6nProtected(array $f,int $uid=2000,array $arguments=['--once'],int $exit=0): array
 {
-    $p=m6nStart($f,'--protected',$uid,$arguments);$identity=m6nRead($p,'IDENTITY');
+    $p=m6nStart($f,'--protected',$uid,$arguments);$p->diagnosticContext['expected_exit']=$exit;$identity=m6nRead($p,'IDENTITY');
     m6nCheck($identity['uid']===$uid&&$identity['gid']===$uid,'actual_worker_uid');
     foreach($identity['capabilities'] as $key=>$value)m6nCheck($key==='NoNewPrivs'?$value==='1':trim($value,'0')==='','actual_worker_capabilities');
     return m6nFinish($p,$exit);
@@ -60,7 +62,8 @@ function m6nSeal(array $f,string $mode='build'): array
 {[$p,$claim]=m6nClaim($f,$mode);$p->send('CONTINUE');m6nRead($p,'SEALED');return [$p,$claim];}
 function m6nKill(M6CNativeProcess $p): void
 {
-    global $report,$current;$result=$p->stop(9);$report['children'][]=['case'=>$current]+M6CNativeDiagnostics::summary($result);
+    global $report,$current;$result=$p->stop(9);
+    M6CNativeDiagnostics::record($p,$report,$current,'intentional_stop',null,$result,false,static fn($line)=>fwrite(STDERR,$line));
     m6nCheck($result['termination_requested']&&!$result['running']&&$result['signaled']&&$result['signal']===9,'actual_SIGKILL');
 }
 function m6nExpire(int $id): void

@@ -27,12 +27,13 @@ function m6nWaitDatabaseTime(callable $ready,int $seconds,string $purpose): void
     $report['real_elapsed_waits'][]=['purpose'=>$purpose,'seconds'=>(hrtime(true)-$start)/1e9];
 }
 m6nCase('concurrent-claims','instrumented',function()use($admin,$config):void{
+    global $report,$current;
     $f=m6nFixture($admin,$config);$children=[m6nStart($f),m6nStart($f)];
     foreach($children as $p)m6nRead($p,'READY');
-    foreach($children as $p)$p->send('CONTINUE');
+    foreach($children as $p){$p->diagnosticContext['expected_messages']=['CLAIM','RESULT'];$p->send('CONTINUE');}
     $winners=[];
     foreach($children as $p){
-        $line=$p->line();[$kind,$json]=explode(' ',$line,2);$r=json_decode($json,true,32,JSON_THROW_ON_ERROR);
+        [$kind,$r]=M6CNativeDiagnostics::readAllowed($p,['CLAIM','RESULT'],$report,$current,'m6nCheck',static fn($line)=>fwrite(STDERR,$line));
         if($kind==='CLAIM'){m6nCheck($r['job_id']===$f['job_id'],'concurrent_claim_identity');$winners[]=$p;}
         else{m6nCheck($kind==='RESULT'&&$r['claimed']===false&&$r['builds']===0,'concurrent_loser_no_authority');m6nFinish($p);}
     }

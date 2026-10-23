@@ -1,17 +1,91 @@
 # M6C native build-only validation
 
 HARNESS IMPLEMENTED LOCALLY / REVIEW REQUIRED.
-OPERATOR NATIVE ATTEMPTS AT 740431f, e2998fd AND 8118138 — FAILED; NO NATIVE ACCEPTANCE PASS.
-OCTOBER 22 CANONICAL-INPUT CORRECTION — REPRODUCED LOCALLY; NO NATIVE RERUN.
+LATEST OPERATOR NATIVE RUN AT 79e6d63 — 3 PASS / 1 FAIL / 16 UNREACHED.
+DIAGNOSTICS IMPROVED / NATIVE ROOT CAUSE STILL UNKNOWN. NO NATIVE RERUN IN THIS TASK.
 
 This is the operating procedure for the executable harness on PR #128, branch
 `codex/sprint-8.8-m6c-artifact-builder`. The authoring baseline is
 `96715eb35ac1ae2eb69c3a39a14ec009048128ad`. The correction from `8118138` to `9a35b59`
-changed production artifact input-hash verification. The latest follow-up changes
-only its native harness assertion, regressions and docs; production, transport,
-all 25 migrations and integrity pins remain unchanged in this follow-up.
+changed production artifact input-hash verification. Its native assertion was
+corrected at `79e6d63`. This follow-up changes test-worker diagnostics, observed
+protocol reads and child context retention; production, canonical verification,
+transport publication/acknowledgement, all 25 migrations and pins remain unchanged.
 The [implementation record](sprint-8.8-m6c-local-implementation.md) retains earlier
 results separately. This guide does not authorize image preparation or a native run.
+
+## Instrumented worker failure at 79e6d63
+
+The operator reports one invocation at `79e6d63e63a018f0f2f8dcf4aa75cee341b7bf8e`:
+launcher exit **1**, **26.527271014 s** measured at a two-second monitoring cadence,
+**671 attempted / 671 completed assertions** including setup. Explicit PASS:
+`protected-startup-denials`, `protected-multipage-build`, `protected-replay`.
+The multipage worker exited 0, outcome succeeded, and its case completed independent
+artifact verification and the corrected canonical input_hash/release binding.
+These passes do not establish the exact exception origin of the older failed run.
+
+The instrumented `concurrent-claims` case failed in `native_cases` with
+`RuntimeException / native_child_before_barrier`; 16 cases stayed UNREACHED.
+Two cleanup-recorded children exited 1 with signal 0. Expected exits, last barrier,
+recognized worker error and SQLSTATE/driver were not retained. The cause is
+**UNKNOWN**; neither claim ownership, deadlock, lease failure nor a race is proven.
+Six protected children finished. SQL/connection totals were not recorded.
+Reported PHP **8.4.27**, MySQL **8.4.11**; 25 migrations ran only in the disposable schema.
+
+Transport/capture passed: acknowledgement MATCH, normal identity PASS,
+producer/consumer/verification exits **0/0/0**, no fallback. Native report:
+**11411 bytes**, SHA-256 `5b4ff55506d4a2c761214d0d8aa124b7067341777072c881431c4fd479fe3dbf`.
+Launcher evidence directory:
+`/mnt/ubo_stage_testdata/codex-validation/evidence/m6c-native-20261023T001836Z-ec7247295bac388b7df5b3613f9a7cb3`.
+Launcher MANIFEST SHA-256:
+`32b4bf6797b979c6be32fca32ea7cbab46f13c71c863da8b960cc258113c9042`.
+The operator reports 17/17 payloads and receipt/status agreement verified.
+
+Operator evidence directory:
+`/mnt/ubo_stage_testdata/codex-validation/evidence/m6c-canonical-native-operator-20261023T001750Z-57b69c51473987c3`.
+Distinct operator file hashes:
+
+| File | SHA-256 |
+| --- | --- |
+| M6C-CANONICAL-NATIVE-ACCEPTANCE.txt | `81aef562f74ca23e9fe5bb960ef812476e9fe9ea1c4424e735dd4c89de3bcb0f` |
+| SUMMARY.txt | `90e6f469731e008b7f6676d3bb79dd314e6893ad0cb0942ea61266fb2206d89c` |
+| MANIFEST | `91d7f871ed0a4b0b5021df51c637269370971c63e90660a874e62d65b31a8a70` |
+
+The operator reports 72/72 payloads verified, cleanup/publication PASS and Docker
+restored inactive/disabled. Exact scratch removal is launcher-attested, not
+independently verified. `moby-detect-rro81790848` remains untouched. These are
+operator-supplied facts; this desktop task retrieved or verified none of those files.
+
+Local real synthetic children reproduced the missing pre-READY error information,
+unobserved post-READY CLAIM/RESULT failure, waiting-peer context loss and both-child
+cleanup loss, with a normal winner/loser control. The shared reader now validates
+tags/payloads and retains expected messages, last observed barrier, identity/mode,
+actual state and safe worker errors before rethrowing. Cleanup separately records
+failure-time and pre-cleanup observations. A still-running peer or later cleanup
+signal is not an explanation for the original failure. Unknown exits remain null.
+
+The strict test-worker record uses fixed mode/attempted-phase/class/code enums,
+plus typed PDO SQLSTATE/driver only when available in at most four existing causes.
+It never records message, stack, SQL, DSN, credential, parameter, path or token.
+Unknown JSON is digest/size metadata only; existing Build-only recognition and
+2 KiB individual / 16 KiB aggregate diagnostic output bounds remain. Expected
+audit/validation/stale RESULT semantics and protected exec stay intact. A phase is
+an attempted operation, not proof of commit. Existing service wrappers can discard
+causes; the helper cannot recover them or historical output.
+
+A 300-child local terminal-read probe missed no final lines, so no read/exit change
+was made. Actual instrumented adapter construction/wiring succeeds with canonical
+private roots and existing fake PDO. Neither establishes the native root cause.
+See [the implementation record](sprint-8.8-m6c-local-implementation.md#instrumented-worker-observation)
+for exact source analysis, before/after evidence and fresh validation.
+
+All 20 native requirements remain. The cached image is source-labeled **79e6d63**;
+later authorized preparation must satisfy the **new reviewed SHA's** provenance.
+No image was built, pulled or relabeled here. No automatic repeat of unchanged
+transport smoke, backup or broad historical suites is prescribed. Migration 025
+remains applied with SHA-256 `dab585dc29aac11153f92703c65d3883aeea73a1b2283157cfa9d2f2ece85cb0`.
+Backup/download remains operator-reported COMPLETE, both copies and receipt retained;
+restore NOT EXECUTED. Leave all `moby-detect-rro` directories alone.
 
 ## Native input assertion P1 follow-up
 

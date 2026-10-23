@@ -7,7 +7,15 @@ M6D–M6G — NOT STARTED. Migration 025 — APPLIED TO WORKING STAGING; do not 
 Production — UNAUTHORIZED / NOT DEPLOYED. This task performs local implementation
 and synthetic/filesystem validation only. The 77-case M6 plan is not a passed matrix.
 
-Current handoff, October 22: the operator reports the native run at
+Current handoff, October 23 operator evidence: **DIAGNOSTICS IMPROVED / NATIVE ROOT
+CAUSE STILL UNKNOWN**. At `79e6d63`, three protected cases explicitly passed,
+including independent artifact verification and canonical input/release binding;
+instrumented concurrent-claims failed, with 16 cases unreached. Transport passed.
+This desktop task performs no native rerun. See
+[instrumented worker observation](#instrumented-worker-observation) for the
+operator evidence, local reproductions, bounded diagnostic changes and validation.
+
+Previous handoff, October 22: the operator reports the native run at
 `8118138c890105f689fa145de7f5566f3263eee5` **FAILED**, with successful acknowledged
 report capture. A canonical-input hash defect is reproduced and corrected locally;
 the historical native exception origin remains unconfirmed. See
@@ -2646,3 +2654,160 @@ may be replied to/resolved after checking rebuttals; one new-head review request
 no repeated polling. Final SHA, reply/resolution and observed review state are in
 the external `m6c-native-input-review/SUMMARY.txt`. PR #128 stays open, non-draft,
 unmerged and without auto-merge.
+
+## Instrumented worker observation
+
+Starting branch/head/worktree: clean `codex/sprint-8.8-m6c-artifact-builder` at
+`79e6d63e63a018f0f2f8dcf4aa75cee341b7bf8e`. **DIAGNOSTICS IMPROVED / NATIVE ROOT
+CAUSE STILL UNKNOWN**. The [current native guide](sprint-8.8-m6c-native-validation.md#instrumented-worker-failure-at-79e6d63)
+records the operator-supplied invocation and distinct report, summary and manifest
+hashes. No evidence was fetched from the server. The reported result is **3 PASS /
+1 FAIL / 16 UNREACHED**, **671/671 assertions**, exit 1, **26.527271014 s** at
+two-second monitoring cadence. Protected startup denials, multipage build and replay
+explicitly passed; independent artifact and canonical input/release verification
+completed. Instrumented concurrent-claims failed with `native_child_before_barrier`;
+both cleanup-recorded children exited 1, signal 0, without retained cause/context.
+Those facts do not prove two claims, deadlock, lease failure or a concurrency race.
+Transport/capture succeeded; native rerun **NOT PERFORMED** in this desktop task.
+
+Source trace (read-only production inspection; phases mean attempted operations):
+
+| Interval | Existing operations and possible failures |
+| --- | --- |
+| Before READY: context/config | Fixed Linux/container/context ownership guards, JSON decode/version and builder SHA binding; mode/UID validation and fixture class loading. Literal context/argument failures, JSON or engine errors can occur here. |
+| Before READY: database | Database::config reads/validates the existing private environment; worker compares host/schema/user, opens PDO, queries UUID/hostname/database and checks disposable-server identity. Configuration, PDO and binding failures can precede READY. No new query was added. |
+| Before READY: dependencies | Positive integer arguments, actual LocalSiteArtifactStore/asset resolver/builder construction, dependency wiring; audit/validation install their existing forwarding PDO adapter. Store root/guard checks and construction errors can occur here. |
+| READY to CLAIM/RESULT | Worker writes READY, waits for exact CONTINUE, calls claimBuild and checks job identity. Service worker/source identity, database reads/transactions and claim logic run inside existing contracts. No claim authority is inferred until valid observed output; RESULT with claimed=false is only normal when the child exits 0. |
+| Subsequent execution | CLAIM waits for release; executeBuild can return a settled denial or build receipt; SEALED/VERIFY barriers precede completion/replay. Recovery uses RECOVERY and the existing reconcile/complete path. No ordering, retry or production lifecycle behavior changed. |
+
+Three confirmed observability defects were separate from the unknown native cause:
+the concurrency loop directly called line()/json_decode without the diagnostic
+reader; cleanup mapped raw results to context-free summaries; and the worker catch
+reduced ordinary RuntimeException literals to native_child_failure while its JSON
+was excluded by the production-only message filter. SiteServiceSupport::transaction
+and SiteBuildService::external can wrap errors without a previous cause; new
+diagnostics preserve what reaches the worker, not information those wrappers lost.
+
+Before correction, the exact concurrent reader was extracted unchanged into the
+definitions-only diagnostics helper and wired into its real caller. An external
+local driver used this helper and actual process/report helpers for five controlled
+scenarios: pre-READY failure, post-release failure, failure with a waiting peer, two
+self-exiting children, and a normal CLAIM/losing RESULT sequence. The original
+supervisor exception, synthetic available output, report and missing fields are in
+`m6c-instrumented-observation/before.json`, outside Git. The fixture used the old
+worker's generic JSON wire form for a known binding error; it did not run the guarded
+worker or coordinator. The desired retention contract failed (driver exit 1).
+Including the separate **300-child** read/exit probe, it took **67.9860162 s**.
+That probe missed **0/300** final lines. The terminal output handling is unchanged;
+there is no claim that a read/exit race caused the native exit-1 observations.
+
+The new worker error helper emits a fixed prefix and bounded, strict schema:
+mode, attempted phase, known class, service/artifact classification or literal
+harness code. Unknown class/message information becomes generic. Only a valid
+five-character SQLSTATE and integer driver code from PDO within four existing
+causes can enter the optional SQL field. No message parsing, stack, SQL, DSN,
+parameters, credentials, paths or tokens are emitted. Consumer validation rejects
+extra/missing fields, wrong types/enums, duplicate keys, controls, oversized and
+noncanonical records; arbitrary JSON remains size/digest metadata. Existing
+Build-only recognition remains. The record limit is 768 bytes; stream capture,
+2 KiB per diagnostic and 16 KiB aggregate output limits remain unchanged.
+
+The same shared reader now handles explicit CLAIM/RESULT alternatives and all
+existing barrier tags with payload validation. It records case/PID/mode, expected
+messages/exit, last successful barrier, actual observed state and recognized worker
+error before propagating the original exception. Both claimers still reach READY
+before release; both are released before either result is read. All owner/loser,
+job identity, one-attempt/render/release and exact replay assertions are unchanged.
+Cleanup preserves context and separately records first-failure and pre-cleanup
+state for each child. A waiting peer has unknown exit until observed; later
+termination is explicitly secondary. Intentional SIGKILL records retain context
+without being relabeled unexpected. Diagnostic write failures remain secondary.
+Expected audit/validation/stale results and the protected exec block are unchanged.
+
+The new ordinary regression exercises actual shared helpers with real children,
+including invalid neighboring payloads, missing/malformed/oversized/unexpected
+lines, final buffered output, timeout/overflow, SQL present/absent, secret/control
+canaries, both-child/peer cleanup, worker and supervisor sink failures, expected
+fault RESULTs and a nonzero child impersonating a normal loser. No native PASS is
+manufactured. The actual native dependency constructor/wire also succeeds with
+private canonical roots and existing fake PDO. Its initial test fixture used mixed
+Windows separators and correctly failed the unchanged store root contract (exit
+255, **8.9691805 s**); only the test paths were corrected with realpath. That local
+fixture error is not a native adapter defect. Intermediate focused passes preceded
+additional result-shape, sink and control coverage; those attempts are separate.
+A final control-character case failed (exit 255, **0.5923422 s**) because legacy
+production CRLF normalization ran before strict worker-record parsing. Parsing
+now runs first, rejecting the tainted worker record while preserving existing
+production text handling. The final focused recheck below passes.
+
+Fresh sequential local validation (PHP with `-n -d zend.exception_ignore_args=1`):
+
+| Suite | Assertions / scenarios | Seconds | Exit |
+| --- | ---: | ---: | ---: |
+| M6CNativeObservation | 273 / 103; 45 real synthetic children | 10.3511309 | 0 |
+| M6CNativeDiagnostics | 95 / 41 | 2.8954811 | 0 |
+| M6CNativeSetup | 751 / 62 | 0.7887233 | 0 |
+| M6CNativeInput | 28 | 0.5788778 | 0 |
+| M6CStoredInput | 95 | 1.2952274 | 0 |
+| M6CArtifact | 45 | 1.6289570 | 0 |
+| M6CIntegration | 54 | 3.8953509 | 0 |
+| M6BScope | 42 | 19.1974979 | 0 |
+| M6CScope | 53 | 10.6748813 | 0 |
+| M6CNativeLauncher | 7381 / 104 | 671.2586778 | 0 |
+
+Final total: **ten suites / 8817 assertions**, all exit 0. These are local results,
+not native acceptance. The final launcher export retained all 104 synthetic scenario
+directories outside Git and removed its owned temporary root.
+
+The first full launcher run reached **7381 assertions / 104 scenarios**, then
+failed its test-only evidence export because the external runner had supplied a
+destination directory that did not yet exist: **exit 255 / 700.4089729 s**.
+That is a failed attempt, not a clean suite pass. The identified owned 104-scenario
+fixture was preserved as `launcher-initial-evidence` outside Git, removing its
+temporary source by an explicitly checked move. Only the external destination was
+prepared; no launcher source, assertion, deadline or retry policy was changed.
+The full recheck above obtained a clean exit and observed evidence export.
+
+PHP lint (`php -n -l FILE` for `rg --files -g '*.php'`) passed **265 files** in
+**59.5845921 s**; the two files changed for final control-character coverage were
+linted again, exit 0. Git Bash `bash -n -- FILE` passed **five syntax checks** in
+**0.9599351 s**: launcher, fixture and three unchanged guide blocks. No guide command
+was executed. Tools: PHP **8.4.24 CLI ZTS VC++ 2022 x64**, PowerShell **7.6.5**, Git
+**2.56.0.windows.2**, Node **v24.22.0**, Git Bash **5.3.15(2)**. Documentation/raw
+integrity checks cover **55 links / 23 local anchors / eight balanced fence markers**,
+**74 ordinary tests** against the unchanged discovery rule and **447/456** unchanged
+starting tracked files. The private checker initially needed whitespace normalization
+for a wrapped status phrase; the final checker passes. External links were checked
+for URL syntax. Full commands, measured durations, exits, before/after reports and
+working/staged/committed checks are retained in `m6c-instrumented-observation` outside Git.
+
+Exact eleven-file inventory:
+
+- `tests/support/WebsitePlatformM6CNativeWorkerError.php` — new pure error producer/parser and fixed enums.
+- `tests/support/WebsitePlatformM6CNativeWorker.php` — attempted phases and unexpected instrumented error emission.
+- `tests/support/WebsitePlatformM6CNativeDiagnostics.php` — strict record recognition, payload validation, observed alternatives and context summaries.
+- `tests/support/WebsitePlatformM6CNativeProcess.php` — retain child context and separate failure/cleanup state; execution/read/deadline logic unchanged.
+- `tests/support/WebsitePlatformM6CNativeReport.php` — retain cleanup context through the existing finalizer; publication unchanged.
+- `tests/support/WebsitePlatformM6CNativeCases.php` — observed concurrent read and expected-alternative context; all business assertions unchanged.
+- `tests/WebsitePlatformM6CNative.php` — establish child context, expected protected exit and intentional-stop evidence.
+- `tests/WebsitePlatformM6CNativeObservationTest.php` — new local process/schema/protocol/adapter regression.
+- `tests/WebsitePlatformM6CNativeDiagnosticsTest.php` — replace incomplete IDENTITY fixture with its actual payload shape.
+- `docs/sprint-8.8-m6c-local-implementation.md` — this record.
+- `docs/sprint-8.8-m6c-native-validation.md` — operator result and current diagnostic/native boundary.
+
+Production, canonical predicate/release binding, all 20 requirements, all 25
+migrations/pins, protected CLI/exec, transport publication/acknowledgement, launcher
+admission/signals/finalization, image recipe and capability/deadline settings remain
+unchanged. The launcher suite is rerun because its process cleanup helper and
+transitive report/diagnostics dependency changed; historical launcher results stay
+at their original SHAs. No automatic transport smoke or backup repeat is prescribed.
+Later authorized preparation must satisfy the new reviewed SHA's image provenance;
+the cached image remains source-labeled 79e6d63. Migration 025 remains applied,
+`dab585dc29aac11153f92703c65d3883aeea73a1b2283157cfa9d2f2ece85cb0`.
+Backup/download remains operator-reported COMPLETE with both copies/receipt retained;
+restore NOT EXECUTED. No server, live SQL/migrations, image/container, deployment,
+installation/configuration/permission, backup/restore/prune, provider, M6D–M6G or
+Narrator action; `moby-detect-rro` directories untouched. Final commit/review state
+and complete commands/results are in the external task SUMMARY.txt. This is an
+operator failure update, not an invented review finding. PR #128 remains open,
+non-draft, unmerged and without auto-merge.
