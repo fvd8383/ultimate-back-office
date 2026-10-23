@@ -1,21 +1,20 @@
 # Sprint 8.8 M6 — Build, Deployment, and Restore Implementation Plan
 
 Current M6: **IN PROGRESS**. **M6A — ARCHITECTURE REVIEWED / MERGED** (PR #125).
-Proposed **M6B — COMPLETE / STAGING PASS / CLOSEOUT REVIEW PENDING**. **M6C — NEXT / NOT STARTED**;
+**M6B — COMPLETE / STAGING PASS / FORMALLY CLOSED**. **M6C — IMPLEMENTED LOCALLY / REVIEW REQUIRED**;
 **M6D–M6G — NOT STARTED**. **PR #126 — MERGED** at
 `f466fc1cdbfb53325a1db11445736bdc5ea7c6f4`, the operator-reported deployed baseline.
 **Migration 025 — APPLIED TO WORKING STAGING**, once on October 17, 2026.
 The [M6B closeout](sprint-8.8-m6b-closeout.md) separates the earlier native PASS,
 operator-executed deployment/migration, retrieved evidence, and completed authenticated
-smoke. Formal closeout acceptance remains pending; unavailable raw operational reports
+smoke. [PR #127 acceptance](https://github.com/fvd8383/ultimate-back-office/pull/127#issuecomment-6241852763) establishes formal M6B closure; unavailable raw operational reports
 are disclosed as a review limitation. The
 [native evidence record](sprint-8.8-m6b-native-validation.md) preserves its dated
 pre-deployment provenance: 1824 native assertions, 53/53 executions, all twelve
 replay conditions and cleanup/publication PASS; no native rerun in this task.
 **Production — UNAUTHORIZED / NOT DEPLOYED**; production migration unperformed.
 M5 remains **COMPLETE FOR SPRINT PROGRESSION**; M5C remains
-**ACCEPTED / NARRATOR FOLLOW-UP DEFERRED**. Subsequent implementation and runtime
-operations require a separate task; this closeout does not authorize them.
+**ACCEPTED / NARRATOR FOLLOW-UP DEFERRED**. The [M6C local implementation](sprint-8.8-m6c-local-implementation.md) records the completed artifact slice, local checks and remaining native gate. Runtime operations remain separately gated.
 
 The reviewed architecture and 77-case planned matrix below remain authoritative;
 M6B evidence does not establish complete M6 acceptance.
@@ -43,11 +42,10 @@ M6A task was documentation only. M6B's separately authorized persistence slice n
 isolated native PASS evidence, retrieved and hash-verified read-only. The operator
 subsequently deployed merged PR #126 and applied 025 to working staging. The
 [closeout](sprint-8.8-m6b-closeout.md) records evidence provenance and completed limited
-authenticated smoke separately; this documentation task deploys/migrates nothing.
+authenticated smoke separately; this local M6C task deploys/migrates nothing.
 
 Names and contracts below originated as reviewed M6A proposals. The M6B record
-identifies the implemented persistence slice; later artifact, deployment and control
-facilities remain unimplemented. Actual host capabilities require the future gate in section
+identifies the implemented persistence slice; M6C implements local artifacts; deployment and control facilities remain unimplemented. Actual host capabilities require the future gate in section
 18. No customer DNS, Host-to-site resolution, LeadHub ingestion, domain conversion,
 EMD launch, or legacy runtime cutover is added to M6. Those remain M7/M8.
 
@@ -543,8 +541,7 @@ approved one-time operation, not wrapped in a fictitious transactional migration
 
 Follow existing static PHP service/associative-array conventions, with explicit
 allowlists and PHPDoc array shapes, rather than a framework or generic job platform.
-The M6B persistence service is `private/classes/SiteBuildService.php`; external
-execution remains fail-closed until the separately implemented M6C dependencies exist.
+The M6B persistence service is `private/classes/SiteBuildService.php`; M6C now connects the artifact implementation through protected CLI wiring; absent or untrusted configuration fails closed.
 
 | Proposed operation | Inputs and output | Boundary |
 | --- | --- | --- |
@@ -1656,10 +1653,9 @@ count remains **77 planned cases**, not executed schema/service PASS results.
 
 Every row is a separate reviewable PR/gate. M6A and M6B implementation PRs are merged.
 M6B has isolated native PASS and operator-completed working-staging deployment/025
-application; limited authenticated smoke passed and formal closeout review remains pending. M6C is next/not
-started; M6D–M6G are not started. The [closeout](sprint-8.8-m6b-closeout.md) records
+application; limited authenticated smoke passed and formal closeout was accepted in PR #127. M6C is implemented locally / review required; M6D–M6G are not started. The [closeout](sprint-8.8-m6b-closeout.md) records
 evidence and limitations. The table preserves reviewed scope and future gates, not
-a claim that all 77 planned acceptance cases or formal M6B acceptance are complete.
+a claim that all 77 planned acceptance cases are complete. M6B formal closure is accepted.
 
 | Milestone | Scope and expected files/classes | Migration | Local exit gate | Staging exit gate | Depends on |
 | --- | --- | --- | --- | --- | --- |
@@ -1674,7 +1670,7 @@ a claim that all 77 planned acceptance cases or formal M6B acceptance are comple
 PR #125 merged the reviewed M6A architecture. A subsequent explicit instruction
 authorized M6B implementation and native validation; PR #126 merged and the operator
 completed its working-staging deployment/migration. Limited authenticated smoke passed;
-formal closeout acceptance remains pending; M6C is a separate, not-started task.
+formal closeout was accepted in PR #127; M6C artifact construction is implemented locally and requires review/native validation.
 Staging-only contract/profile can close
 M6 with production denied; live production release and registered-site form routing
 remain separately gated later. Do not claim all of Sprint 8.8 or first-customer

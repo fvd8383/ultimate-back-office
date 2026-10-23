@@ -48,13 +48,17 @@ final class WebsitePlatformM6BDependencies implements SiteBuildDependencies
         return array_replace(['public_facts' => ['name' => 'Synthetic café'], 'public_composition' => ['synthetic' => true],
             'ordered_asset_digests' => $assets], $this->projectionOverrides);
     }
-    public function verifyOutcome(array $job, array $producerAttempt, array $hint): array
+    public function verifyOutcome(array $job, array $producerAttempt, array $hint, callable $pulse): array
     {
         if (Database::connection()->inTransaction()) throw new LogicException('External work inside transaction');
         $this->verified++;
         if ($this->duringVerify !== null) { $hook = $this->duringVerify; $this->duringVerify = null; $hook(); }
         if (!isset($this->receipts[$hint['receipt_key']])) throw new SiteServiceException('conflict', 'Unknown synthetic receipt.');
         return $this->receipts[$hint['receipt_key']];
+    }
+    public function execute(array $job, array $producerAttempt, array $lockedSource, callable $pulse): array
+    {
+        throw new SiteServiceException('future_gate_required', 'Synthetic M6B persistence fixture has no artifact builder.');
     }
     public function inspectManifest(array $release): array
     {

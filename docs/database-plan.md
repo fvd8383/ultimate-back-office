@@ -1,21 +1,20 @@
 # Ultimate Back Office Database Plan
 
 Current M6: **IN PROGRESS**. **M6A — ARCHITECTURE REVIEWED / MERGED** (PR #125).
-Proposed **M6B — COMPLETE / STAGING PASS / CLOSEOUT REVIEW PENDING**. **M6C — NEXT / NOT STARTED**;
+**M6B — COMPLETE / STAGING PASS / FORMALLY CLOSED**. **M6C — IMPLEMENTED LOCALLY / REVIEW REQUIRED**;
 **M6D–M6G — NOT STARTED**. **PR #126 — MERGED** at
 `f466fc1cdbfb53325a1db11445736bdc5ea7c6f4`, the operator-reported deployed baseline.
 **Migration 025 — APPLIED TO WORKING STAGING**, once on October 17, 2026.
 The [M6B closeout](sprint-8.8-m6b-closeout.md) separates the earlier native PASS,
 operator-executed deployment/migration, retrieved evidence, and completed authenticated
-smoke. Formal closeout acceptance remains pending; unavailable raw operational reports
+smoke. [PR #127 acceptance](https://github.com/fvd8383/ultimate-back-office/pull/127#issuecomment-6241852763) establishes formal M6B closure; unavailable raw operational reports
 are disclosed as a review limitation. The
 [native evidence record](sprint-8.8-m6b-native-validation.md) preserves its dated
 pre-deployment provenance: 1824 native assertions, 53/53 executions, all twelve
 replay conditions and cleanup/publication PASS; no native rerun in this task.
 **Production — UNAUTHORIZED / NOT DEPLOYED**; production migration unperformed.
 M5 remains **COMPLETE FOR SPRINT PROGRESSION**; M5C remains
-**ACCEPTED / NARRATOR FOLLOW-UP DEFERRED**. Subsequent implementation and runtime
-operations require a separate task; this closeout does not authorize them.
+**ACCEPTED / NARRATOR FOLLOW-UP DEFERRED**. The [M6C local implementation](sprint-8.8-m6c-local-implementation.md) records the completed artifact slice, local checks and remaining native gate. Runtime operations remain separately gated.
 
 ## Purpose
 
@@ -2124,7 +2123,7 @@ through M4 are **COMPLETE / STAGING PASS / FORMALLY CLOSED**, on final M4 deploy
 `d33589da5eebbf8e2ae0dc203837d6667abd1f71`. Sprint 8.8 remains **IN PROGRESS**.
 M5 is **COMPLETE FOR SPRINT PROGRESSION**; M5C is
 **ACCEPTED / NARRATOR FOLLOW-UP DEFERRED**. M6 is **IN PROGRESS**; M6B staging deployment/025 application are operator-complete,
-with limited authenticated smoke PASS and formal closeout review pending. M6C is **NEXT / NOT STARTED**.
+with limited authenticated smoke PASS and formal closeout accepted in PR #127. M6C is **IMPLEMENTED LOCALLY / REVIEW REQUIRED**.
 Public build/deploy/restore and later runtime work remain outstanding; production
 is **UNAUTHORIZED / NOT DEPLOYED**. See [M5 closeout](sprint-8.8-m5-closeout.md). See `docs/sprint-8.8-m4-closeout.md`.
 Sprint 8.7 Milestone 6 completed the implementation-ready schema design in

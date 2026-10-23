@@ -9,6 +9,20 @@ final class SiteCompositionRenderer
 {
     public static function render(array $composition, array $context = []): string
     {
+        return self::renderPages($composition, $context, null);
+    }
+
+    /** One page's main content, preserving navigation from the complete composition. */
+    public static function renderPage(array $composition, string $pageKey, array $context = []): string
+    {
+        if (count(array_filter($composition['pages'] ?? [], static fn ($p) => $p['page_key'] === $pageKey)) !== 1) {
+            throw new SiteServiceException('invalid_request', 'Exactly one stored page is required.');
+        }
+        return self::renderPages($composition, $context, $pageKey);
+    }
+
+    private static function renderPages(array $composition, array $context, ?string $pageKey): string
+    {
         if (($composition['validated_for_rendering'] ?? false) !== true) {
             throw new SiteServiceException('invalid_request', 'A validated composition render model is required.');
         }
@@ -40,7 +54,9 @@ final class SiteCompositionRenderer
             $html .= self::renderSelection($layouts['site_header'], $context, 'layout', false);
         }
         foreach ($pages as $page) {
-            $html .= '<main data-page-key="' . SiteComponentRenderers::escape($page['page_key']) . '">';
+            if ($pageKey !== null && $page['page_key'] !== $pageKey) continue;
+            $width = $pageKey === null ? '' : ' class="layout-' . SiteComponentRenderers::escape($page['presentation']['layout_width']) . '"';
+            $html .= '<main data-page-key="' . SiteComponentRenderers::escape($page['page_key']) . '"' . $width . '>';
             if (($context['preview_mode'] ?? false) === true) {
                 $html .= '<p class="preview-page-label">Page: ' . SiteComponentRenderers::escape($page['title']) . '</p>';
             }

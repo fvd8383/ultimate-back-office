@@ -8,12 +8,16 @@ require_once __DIR__ . '/SiteBuildStore.php';
 
 /**
  * M6B database owner. No routes, rendering, filesystem, deployment or scheduling.
- * Private dependency slot intentionally has no runtime adapter or public setter.
- * Worker arrays cannot authenticate: only future trusted internal wiring can.
+ * Private dependency slot has no public setter. Only protected CLI wiring can
+ * authenticate a worker; request arrays never create authority.
  */
 final class SiteBuildService
 {
     private static ?SiteBuildDependencies $dependencies = null;
+    /** Single-use construction authority, issued only after an acknowledged fresh claim.
+     * Never exported with the lease. A different process (including a fork), connection,
+     * runtime, or repeated invocation cannot manufacture proof of non-entry. */
+    private static array $freshExecutions = [];
 
     /** @return array Safe BuildJob DTO with existing flag. */
     public static function requestBuild(int $actingUserId, array $input): array
@@ -203,7 +207,13 @@ final class SiteBuildService
                 }
                 return self::allocate($db, $job, 'execution', $worker, $now, null, null);
             });
-            if ($claim !== null) return $claim;
+            if ($claim !== null) {
+                self::$freshExecutions[CanonicalJson::hash($claim['lease'])] = [
+                    'worker' => $worker, 'process' => getmypid(), 'runtime' => self::dependencies(),
+                    'connection' => SiteServiceSupport::read(static fn (object $db): object => $db),
+                ];
+                return $claim;
+            }
         }
         return null;
     }
@@ -346,16 +356,110 @@ final class SiteBuildService
         return self::complete($lease, SiteBuildContract::hint(['receipt_key' => $result['receipt_key']]), $result['disposition'], null);
     }
 
-    /** Runtime artifact execution and reconciliation remain absent in M6B. */
-    public static function executeBuild(array $lease): never
+    /** Execute once, in the process that acknowledged claimBuild. A copied lease alone
+     * can resolve history but cannot enter construction. Returns a receipt hint, or
+     * ['completed' => completion DTO] for an atomic denial / committed history. */
+    public static function executeBuild(array $lease): array
     {
-        self::leaseInput($lease, 'execution');
-        throw new SiteServiceException('future_gate_required', 'Artifact construction requires M6C.');
+        $lease = self::leaseInput($lease, 'execution');
+        $worker = self::worker('execution');
+        $identity = self::jobIdentity($lease['job_id']);
+        // Resolve committed history before builder/eligibility/I/O/heartbeat checks.
+        $replay = SiteBuildStore::transaction(static function (object $db) use ($identity,$lease,$worker): ?array {
+            SiteManager::lockSite($db,(int)$identity['site_id']);
+            $job = self::lockJob($db,$identity);
+            $attempt = self::attempt($db,$job,$lease['attempt_id']);
+            self::token($attempt,$lease,$worker);
+            self::confirmWorker($worker,'execution');
+            $replay = self::executionReplay($db,$job,$attempt);
+            if ($replay !== null) return $replay;
+            self::assertLease($job,$attempt,$lease,$worker,SiteBuildStore::now($db));
+            return null;
+        });
+        if ($replay !== null) return ['completed' => $replay];
+        $key = CanonicalJson::hash($lease);
+        $authority = self::$freshExecutions[$key] ?? null;
+        if ($authority === null || $authority['worker'] !== $worker || $authority['process'] !== getmypid()
+            || $authority['runtime'] !== self::dependencies()
+            || $authority['connection'] !== SiteServiceSupport::read(static fn (object $db): object => $db)) {
+            throw new SiteServiceException('conflict','Fresh execution entry is unavailable.');
+        }
+        // Consume BEFORE any callback can reenter. Never restore on exceptions, rollback,
+        // or lost acknowledgement. This invocation alone can now deny OR enter output.
+        unset(self::$freshExecutions[$key]);
+        $builder = null;
+        try { $builder = self::external(static fn (): array => SiteBuildContract::builder(self::dependencies()->builderIdentity())); }
+        catch (SiteArtifactException) { /* Builder identification is a configuration gate. */ }
+        catch (SiteServiceException $e) {
+            if (!in_array($e->classification(), ['conflict','invalid_request','future_gate_required'], true)) throw $e;
+        }
+        $entry = SiteBuildStore::transaction(static function (object $db) use ($identity,$lease,$worker,$builder): array {
+            [$job,$attempt,$source,$actors,$error] = self::lockedContext($db,$identity,true,[]);
+            self::confirmWorker($worker,'execution');
+            $attempt = self::attempt($db,$job,$lease['attempt_id']);
+            self::token($attempt,$lease,$worker);
+            if (($replay = self::executionReplay($db,$job,$attempt)) !== null) return ['completed' => $replay];
+            $now = SiteBuildStore::now($db);
+            self::assertLease($job,$attempt,$lease,$worker,$now);
+            $code = !self::requesterAllowed($job,$actors) ? 'requester_not_authorized'
+                : ($error !== null ? 'source_not_eligible'
+                : (self::inputFailure($job,$source,$builder) ?? ($builder === null ? 'builder_unavailable' : SiteBuildContract::policyFailure($job))));
+            if ($code !== null) {
+                // This guarded, nontransient denial preserves the allocated execution.
+                // The system worker records it even when the original requester is revoked.
+                SiteBuildStore::update($db,'site_build_attempts',$attempt,SiteBuildContract::failure($code) + [
+                    'status'=>'failed','completed_at'=>$now,
+                    'external_reference'=>self::failureFingerprint($job,$code)]);
+                $job = self::updateJob($db,$job,SiteBuildContract::failure($code) + [
+                    'status'=>'failed','completed_at'=>$now,'next_attempt_at'=>null,'next_recovery_at'=>null],$now);
+                self::event($db,$job,'site_build_failed',SiteServiceSupport::systemActor(),
+                    ['attempt_id'=>(int)$attempt['id'],'disposition'=>'safely_failed'],$code);
+                return ['completed'=>self::completionDTO($db,$job)];
+            }
+            return ['job'=>$job,'attempt'=>$attempt,'source'=>$source];
+        });
+        // Return only after commit. A transaction/commit exception is never compensated.
+        if (isset($entry['completed'])) return $entry;
+        $pulse = self::leasePulse($lease);
+        // From here onward every failure requires independent producer evidence, even
+        // when no journal exists. No exception can reopen the non-entry branch above.
+        return self::external(static fn (): array => self::dependencies()->execute($entry['job'],$entry['attempt'],$entry['source'],$pulse));
     }
-    public static function reconcileBuild(array $lease): never
+
+    private static function failureFingerprint(array $job, string $code): string
     {
-        self::leaseInput($lease, 'recovery');
-        throw new SiteServiceException('future_gate_required', 'Artifact reconciliation requires M6C.');
+        return 'result:' . CanonicalJson::hash(['mode'=>'failure','failure_code'=>$code,'hint'=>['receipt_key'=>$job['release_key']]]);
+    }
+
+    private static function executionReplay(object $db, array $job, array $attempt): ?array
+    {
+        if ($job['status'] === 'succeeded') return self::recordedResult($db,$job) + ['replayed'=>true];
+        if ($attempt['completed_at'] === null) return null;
+        if ($attempt['status'] === 'failed' && is_string($attempt['failure_code'])
+            && $attempt['external_reference'] === self::failureFingerprint($job,$attempt['failure_code'])) {
+            return self::completionDTO($db,$job) + ['replayed'=>true];
+        }
+        throw new SiteServiceException('conflict','Execution is already closed.');
+    }
+    public static function reconcileBuild(array $lease): array
+    {
+        $lease = self::leaseInput($lease,'recovery');
+        $worker = self::worker('recovery');
+        $identity = self::jobIdentity($lease['job_id']);
+        [$job,$producer] = SiteBuildStore::transaction(static function (object $db) use ($identity,$lease,$worker): array {
+            SiteManager::lockSite($db,(int)$identity['site_id']);
+            $job = self::lockJob($db,$identity);
+            $attempt = self::attempt($db,$job,$lease['attempt_id']);
+            self::confirmWorker($worker,'recovery');
+            self::assertLease($job,$attempt,$lease,$worker,SiteBuildStore::now($db));
+            return [$job,self::producer($db,$job,$attempt)];
+        });
+        $hint = ['receipt_key'=>$job['release_key']];
+        $pulse = self::leasePulse($lease);
+        $evidence = self::external(static fn (): array => SiteBuildContract::evidence(self::dependencies()->verifyOutcome($job,$producer,$hint,$pulse),$job,$producer));
+        return ['disposition'=>match($evidence['disposition']) {
+            'sealed'=>'adopted', 'safe_absence','quarantined'=>'safely_failed', default=>'blocked',
+        }] + $hint;
     }
 
     public static function buildJobForActor(int $actingUserId, int $jobId): array
@@ -544,7 +648,8 @@ final class SiteBuildService
             return ['job' => $job, 'attempt' => $attempt, 'producer' => self::producer($db, $job, $attempt)];
         });
         if (isset($preflight['replay'])) return $preflight['replay'] + ['replayed' => true];
-        $verified = self::external(static fn (): array => self::dependencies()->verifyOutcome($preflight['job'], $preflight['producer'], $hint));
+        $pulse = self::leasePulse($lease);
+        $verified = self::external(static fn (): array => self::dependencies()->verifyOutcome($preflight['job'], $preflight['producer'], $hint, $pulse));
         try { $evidence = SiteBuildContract::evidence($verified, $preflight['job'], $preflight['producer']); }
         catch (SiteServiceException) {
             // Conflicting trusted inspection evidence blocks; never adopt or persist its untrusted payload.
@@ -677,28 +782,44 @@ final class SiteBuildService
         return $job['status'] === 'succeeded' ? self::recordedResult($db, $job) : ['job' => self::jobDTO($db, $job)];
     }
 
+    /** Renew only the active lease, never the producer's expired token.
+     * The private clock argument permits isolated reflection tests of the cadence. */
+    private static function leasePulse(array $lease, ?Closure $clock = null): Closure
+    {
+        $clock ??= static fn (): int => hrtime(true);
+        $last = null;
+        return static function (bool $force = false) use ($lease,$clock,&$last): void {
+            $now = $clock();
+            if ($force || $last === null || $now - $last >= 25000000000) {
+                self::renewBuildLease($lease); $last = $now;
+            }
+        };
+    }
+
     private static function dependencies(): SiteBuildDependencies
     {
         if (self::$dependencies === null) {
-            throw new SiteServiceException('future_gate_required', 'Trusted build infrastructure requires M6C wiring.');
+            require_once __DIR__ . '/SiteBuildRuntime.php';
+            self::$dependencies = SiteBuildRuntime::fromTrustedCli();
         }
         return self::$dependencies;
     }
     private static function external(callable $call): mixed
     {
-        return SiteServiceSupport::read(static function (object $db) use ($call): mixed {
-            if ($db->inTransaction()) throw new SiteServiceException('conflict', 'External verification cannot run in a transaction.');
-            try { return $call(); }
-            catch (SiteServiceException $e) { throw $e; }
-            catch (Throwable $e) {
-                error_log('Website build dependency failed: ' . get_class($e));
-                throw new SiteServiceException('conflict', 'Build verification is unavailable.');
-            }
-        });
+        $db = SiteServiceSupport::read(static fn (object $db): object => $db);
+        if ($db->inTransaction()) throw new SiteServiceException('conflict', 'External verification cannot run in a transaction.');
+        try { return $call(); }
+        catch (SiteServiceException | SiteArtifactException $e) { throw $e; }
+        catch (Throwable $e) {
+            error_log('Website build dependency failed: ' . get_class($e));
+            throw new SiteServiceException('conflict', 'Build verification is unavailable.');
+        }
     }
     private static function worker(string $capability): array
     {
-        $worker = self::external(static fn (): array => self::dependencies()->workerIdentity($capability));
+        // Authenticate the invocation before even opening the configured database.
+        $dependencies = self::dependencies();
+        $worker = self::external(static fn (): array => $dependencies->workerIdentity($capability));
         SiteBuildContract::keys($worker, ['worker_id','environment'], ['worker_id','environment']);
         SiteBuildContract::key($worker['worker_id']);
         if (!in_array($worker['environment'], ['local','staging','production'], true)) {

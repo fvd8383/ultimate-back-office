@@ -3,9 +3,9 @@
 declare(strict_types=1);
 
 /**
- * Internal M6C boundary, deliberately UNWIRED in normal runtime.
+ * Internal M6C boundary. Only the protected, explicitly invoked CLI is wired.
  * Implementations are trusted application wiring, never request data. There is
- * no public setter, environment bypass, artifact implementation or worker here.
+ * no public setter or environment bypass.
  * Tests inject a deterministic implementation into SiteBuildService's private
  * slot using Reflection, in their isolated process only.
  */
@@ -28,14 +28,19 @@ interface SiteBuildDependencies
      * Locator handles, if needed by M6C, must be resolved privately from exact input. */
     public function prepareInput(array $lockedSource): array;
 
+    /** Construct with service-owned rows and a lease heartbeat, outside SQL. */
+    public function execute(array $job, array $producerAttempt, array $lockedSource, callable $pulse): array;
+
     /**
      * Outside SQL: verify exact producer output or safe absence/quarantine.
      * An opaque receipt lookup hint is NOT proof. This implementation must
      * independently verify storage/journal/bytes and bind evidence to job AND
      * producer attempt, including during recovery. No rendering in this method.
+     * Pulse renews the current active operation, which may differ from the producer.
+     * Call it at bounded progress checkpoints; propagate any callback failure.
      * @return array Verified evidence, validated by SiteBuildContract::evidence.
      */
-    public function verifyOutcome(array $job, array $producerAttempt, array $hint): array;
+    public function verifyOutcome(array $job, array $producerAttempt, array $hint, callable $pulse): array;
 
     /** Reverify a release and return sanitized manifest data, outside SQL. */
     public function inspectManifest(array $release): array;
