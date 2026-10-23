@@ -7,7 +7,15 @@ M6D–M6G — NOT STARTED. Migration 025 — APPLIED TO WORKING STAGING; do not 
 Production — UNAUTHORIZED / NOT DEPLOYED. This task performs local implementation
 and synthetic/filesystem validation only. The 77-case M6 plan is not a passed matrix.
 
-Current handoff, October 23 operator evidence: **DIAGNOSTICS IMPROVED / NATIVE ROOT
+Current handoff: **INSTRUMENTED GIT ENVIRONMENT ISOLATED / NATIVE CAUSE
+NOT YET CONFIRMED**. The latest operator run at `abac019` remains **FAILED: 3 PASS /
+1 FAIL / 16 UNREACHED**, 673/673 assertions. Both instrumented children reached
+READY, then retained claim-phase conflict diagnostics without CLAIM or RESULT.
+See [instrumented Git environment isolation](#instrumented-git-environment-isolation)
+for the observed facts, source difference, local evidence and remaining native gate.
+No server, image/container or native rerun occurs in this desktop task.
+
+Previous handoff, October 23 operator evidence: **DIAGNOSTICS IMPROVED / NATIVE ROOT
 CAUSE STILL UNKNOWN**. At `79e6d63`, three protected cases explicitly passed,
 including independent artifact verification and canonical input/release binding;
 instrumented concurrent-claims failed, with 16 cases unreached. Transport passed.
@@ -2811,3 +2819,252 @@ Narrator action; `moby-detect-rro` directories untouched. Final commit/review st
 and complete commands/results are in the external task SUMMARY.txt. This is an
 operator failure update, not an invented review finding. PR #128 remains open,
 non-draft, unmerged and without auto-merge.
+
+## Instrumented Git environment isolation
+
+This local harness/regression/documentation correction starts at
+`abac019a23b2801ec4d62187806f93330b9e2ff2` on the existing PR #128 branch.
+**INSTRUMENTED GIT ENVIRONMENT ISOLATED / NATIVE CAUSE NOT
+YET CONFIRMED**. The new local results are kept separate from the operator run and
+all earlier source-specific passes and failures.
+
+### Latest operator observation at abac019
+
+The operator reports **one native run**, launcher exit **1**, duration
+**28.662524117 seconds**, **3 PASS / 1 FAIL / 16 UNREACHED** and **673 attempted /
+673 completed assertions**, including setup. Protected startup denials, multipage
+build and replay passed. The multipage/replay evidence retains the source-specific
+canonical input/release verification; it does not turn the native verdict into PASS.
+
+`concurrent-claims` failed with `native_child_before_barrier`. Both instrumented
+build children reached READY and retained `worker_error` with `phase=claim`,
+`class=SiteServiceException`, `code=conflict`. Expected exit was 0; actual exit was
+1, with no observed CLAIM or RESULT. At failure time and cleanup time both were
+stopped, signal 0, with no termination requested. No typed PDO SQLSTATE/driver was
+retained. The phase names an attempted operation, not a committed claim; missing
+SQL diagnostics do not prove that every database operation succeeded or exclude a
+database-related failure. The underlying native cause remains **UNDETERMINED**.
+
+The operator reports PHP **8.4.27** / MySQL **8.4.11**, with all 25 migrations run
+only in the disposable schema. Transport, acknowledgement, cleanup and evidence
+publication passed. These passes and the failed native case retain their separate
+meanings. The desktop task retrieves and independently verifies none of this evidence.
+
+Operator evidence directory:
+`/mnt/ubo_stage_testdata/codex-validation/evidence/m6c-observation-native-20261023T015403Z-6f317a8c9142e0bd`.
+Launcher evidence directory:
+`/mnt/ubo_stage_testdata/codex-validation/evidence/m6c-native-20261023T020049Z-699e906cf93f46f76697d239070838a9`.
+
+| Operator-supplied record | Reported SHA-256 |
+| --- | --- |
+| Native report | `4e5e9eb2010ded1494c5b2e28aaf713f2fff150aa61b2a42b40eb1211e6b200b` |
+| M6C-OBSERVATION-NATIVE-ACCEPTANCE.txt | `684c8ff1491235d0726f1cd5dc83d6f91bb54d6aab7968835903a08c9eda6685` |
+| Operator SUMMARY.txt | `53e943e94802a54ccc9278046168efea4e700d355affe8456197119caef5d0a1` |
+| Operator MANIFEST | `5de8949a5c921d6b550e0dfe70b58bde5af64654189f1b85f0203465cdb13f67` |
+| Launcher MANIFEST | `0f37655b5439f8d4f39e84e61bf3e439328b66d5b8039416cae9441182e00` |
+
+### Confirmed source difference and bounded correction
+
+At the starting head, `M6CNativeDependencies::builderIdentity()` calls the shared
+native process helper for both Git checks. That helper passes a null environment
+to `proc_open`, so the instrumented Git children inherit the parent environment.
+The protected production `SiteBuildRuntime::git()` instead supplies exactly
+`PATH=/usr/bin:/bin`, `HOME=/nonexistent`, `GIT_CONFIG_NOSYSTEM=1`, `LANG=C`.
+Both lanes require the exact expected HEAD and clean worktree. The instrumented
+predicate also rejects any nonempty stderr, including when Git exits 0.
+
+The service calls builder identity through `external()` before reading claim
+candidates. That unchanged wrapper can replace a dependency RuntimeException with
+generic `SiteServiceException/conflict` without preserving its cause. Its database
+access and transaction guard, and earlier worker validation, remain possible
+failure boundaries. The observed claim/conflict record is compatible with a source
+verification failure but does not establish that this was the native origin.
+Neither historical HOME nor Git stderr from those native children has been recovered.
+
+The definitions-only `WebsitePlatformM6CNativeGitSource.php` shares the actual
+caller-used verification path with the regression. The Git environment is
+the protected implementation's four-key replacement, never a merge with inherited
+HOME/XDG/GIT_DIR/GIT_WORK_TREE/GIT_INDEX_FILE/GIT_CONFIG overrides. The process helper
+appends an optional environment argument to its existing constructor/capture
+parameters; ordinary callers retain null/inheritance behavior. The native Git lane
+keeps absolute `/usr/bin/git`, `--no-optional-locks`, `core.fsmonitor=false`, exact
+`safe.directory`, explicit `-C`, exact HEAD, clean `--porcelain --untracked-files=all`,
+zero exit and empty stderr. Output/time/process-count and cleanup bounds are retained.
+
+The before-correction Windows driver uses the extracted unchanged predicate and
+actual shared process path, with fixture-owned repositories/configuration and
+temporary process environment restored in `finally`. It passes **12 assertions /
+nine scenarios**, exit 0, in **4.7163092 seconds** externally measured
+(4.3374983 seconds inside the driver). Those assertions confirm the defects; they
+do not mark every source-verification attempt successful:
+
+| Controlled Windows case | Actual original behavior |
+| --- | --- |
+| Ordinary controlled environment, clean exact repository | Accepted. |
+| Malformed fixture-owned HOME, XDG or explicit global Git configuration | Source verification rejected each contaminated case. |
+| Genuine untracked file, ordinary control | Rejected. |
+| Inherited `GIT_CONFIG_COUNT` configuring fixture `core.excludesFile` | Falsely accepted the same repository after hiding its untracked file. |
+| Tracked modification in the intended target, ordinary control | Rejected. |
+| Inherited `GIT_DIR`, `GIT_WORK_TREE` and `GIT_INDEX_FILE` pointing to a clean foreign fixture repository with the same HEAD | Falsely accepted verification of the dirty target by observing the foreign repository. |
+| Actual public `claimBuild()` with fake PDO and the malformed-HOME source dependency | Threw `SiteServiceException/conflict`, with null previous exception and zero query statements observed. |
+
+The final case executes the real production wrapper with fake PDO; it neither
+opens a real database nor establishes what happened in the native run. Raw local
+before evidence and measured results are retained in `before-reproduction.log` and
+`before-run.json` under external `m6c-git-environment`. No real user Git configuration
+or credentials were edited. These Windows defects demonstrate unsafe environment
+inheritance independently of the unconfirmed native permission-warning hypothesis.
+
+The corrected source regression passes **113 assertions / 49 scenarios**, exit 0,
+in **18.0079252 seconds**. Actual installed Windows Git accepts the clean exact
+fixture under the explicit profile, ignores the owned inherited HOME/XDG/global/
+count-based configuration contaminants and cannot be redirected by foreign
+repository/worktree/index settings. Wrong expected SHA, tracked modifications,
+genuine untracked files and an actual nonzero Git exit remain rejected. Parent
+environment keys/values are restored exactly and only owned fixtures are cleaned.
+
+The actual Windows Git profile is exactly `PATH=C:/Git/cmd`, HOME at the owned empty
+fixture home, `GIT_CONFIG_NOSYSTEM=1`, `LANG=C`; no SystemRoot/TEMP additions were
+needed in this run. This is a Windows test profile, not the Linux native contract.
+The helper's exact Linux four-key default and unchanged Git arguments are separately
+forwarded through two real synthetic PHP children. Ordinary process calls with
+the default null environment still inherit, while an explicit replacement excludes
+parent overrides. No process-global environment mutation implements the harness fix.
+
+Real synthetic children model exit-0/nonempty-stderr results separately at HEAD and
+status; both remain rejected. These model warning behavior and are not a Windows
+or Linux permission-failure reproduction. Existing 10-second and 65,536-byte
+subprocess bounds reject timeout and overflow, with owned cleanup preserved.
+
+The separately supplied Linux/Git 2.47.3 mechanism probe is **not this desktop
+task's result and not a reproduction of the native run**. It used a root-owned
+synthetic repository and UID/GID 2000 with capabilities dropped; inaccessible HOME
+produced attributes/ignore permission warnings on stderr despite status exit 0
+and empty stdout. An explicit clean environment removed those warnings. That probe
+did not run this service or establish the droplet's historical environment/error.
+Windows configuration-contamination results and any modeled permission behavior
+must remain distinct from that supplied Linux evidence.
+
+### Safe source observation before generic wrapping
+
+The bounded test-only helper reuses the strict worker-error protocol with fixed
+`source_head` / `source_status` phases and typed source facts: observed exit,
+`stderr_nonempty` and expected-output match. Diagnostics retain the first source
+observation separately as `source_error`, preserving an outer `worker_error` such
+as claim/conflict. Coordinator request preparation defaults to coordinator mode;
+the instrumented worker supplies its actual validated mode. A source observation
+is emitted before rethrowing the original dependency exception where possible;
+diagnostic failure must remain secondary.
+
+Unobserved source facts remain null. The source object has exactly `exit`,
+`stderr_nonempty` and `matched`; the latter two accept only booleans or null. The
+existing 768-byte strict record limit, canonical encoding, fixed enums and
+2 KiB individual / 16 KiB aggregate diagnostic limits remain. Unknown or malformed
+records are bounded metadata. No raw Git stderr, paths, environment, command lines,
+configuration, arbitrary exception text, SQL or secret/control-character payload
+belongs in the record.
+The production wrapper and public error semantics remain untouched; a useful
+separate dependency observation does not convert conflict to success.
+
+The fake-PDO public claim regression now deliberately supplies the wrong expected
+SHA through the real shared verifier. `claimBuild()` still throws generic conflict
+with null previous cause and zero query statements. Its emitted dependency record
+survives as `source_error/source_head`; the existing worker-error producer encodes
+the caught actual service exception for the synthetic protocol check, and the
+parser retains it separately as outer claim/conflict `worker_error`. Both records
+survive changes of stream/order. This proves the local wrapper/diagnostic boundary,
+not execution of the guarded native worker on Windows.
+
+The 49 source scenarios also cover coordinator/unknown modes, typed null facts for
+a modeled pre-start failure, malformed neighboring schemas, controls, noncanonical
+wire forms, secret/path/configuration canaries and throwing/false/short-write sinks.
+Failed diagnostic emission leaves the original dependency exception primary.
+The fresh observation suite passes its concurrent synthetic child protocols, including
+normal winner/loser behavior and failed losers; neither retries nor serialized
+claimers are introduced. These remain local process tests, not native race proof.
+
+### Fresh local validation, exact inventory and remaining gate
+
+Fresh sequential local commands use
+`php -n -d zend.exception_ignore_args=1 tests/WebsitePlatform<Suite>Test.php`.
+Actual commands and measured results are retained in external
+`m6c-git-environment/regression-runs.json` with per-suite stdout/stderr.
+
+| Suite | Assertions / scenarios | Seconds | Exit |
+| --- | ---: | ---: | ---: |
+| M6CNativeGitSource | 113 / 49 | 18.0079252 | 0 |
+| M6CNativeObservation | 273 / 103; 45 real synthetic children | 9.5465505 | 0 |
+| M6CNativeDiagnostics | 95 / 41 | 2.8116687 | 0 |
+| M6CNativeSetup | 751 / 62 | 0.7956275 | 0 |
+| M6CNativeInput | 28 | 0.5926373 | 0 |
+| M6CStoredInput | 95 | 0.9999495 | 0 |
+| M6CArtifact | 45 | 1.2929787 | 0 |
+| M6CIntegration | 54 | 3.2549900 | 0 |
+| M6BScope | 42 | 14.2324545 | 0 |
+| M6CScope | 53 | 8.7685557 | 0 |
+| M6CNativeLauncher | 7,382 / 104 fake-command scenarios | 676.7201238 | 0 |
+
+All **11 sequential suites pass 8,931 assertions**, each exit 0 on its first run.
+The synthetic launcher uses fake commands; it executes no native/container/MySQL
+acceptance. Its evidence export is retained under
+`m6c-git-environment/launcher/ubo-m6c-native-test-f7ee2bf29eb7f0f0`.
+The separate before-correction defect probe also exited 0; its assertions document
+the original defects and are not added to this regression total.
+
+PHP lint (`php -n -l FILE`) passes **268 files**, exit 0, in **65.7676048 seconds**.
+Git Bash `bash -n -- FILE` passes **five syntax checks**, exit 0, in **0.9484133
+seconds**: the launcher, its fixture and three unchanged guide blocks. No guide
+command is executed. Tools observed: PHP **8.4.24 CLI ZTS VC++ 2022 x64**, Git
+**2.56.0.windows.2**, PowerShell **7.6.5**, Node **v24.22.0**, Git Bash **5.3.15(2)**.
+An initial restricted-context Bash version probe failed with `0xC0000022`; it ran
+no application test. The authorized normal-context version probe exited 0 in
+0.1520588 seconds, with the first attempt retained separately in
+`versions-sandbox-attempt.json`. No application suite failed or needed a recheck.
+
+Exact correction inventory: **ten files, seven modified and three added**.
+
+| Change | File | Purpose |
+| --- | --- | --- |
+| Added | `tests/support/WebsitePlatformM6CNativeGitSource.php` | Shared actual Git verification, exact replacement environment and safe pre-wrapper observation. |
+| Added | `tests/support/WebsitePlatformM6CGitFixture.php` | Disposable repositories/configuration, reversible process environment and owned cleanup for local reproduction. |
+| Added | `tests/WebsitePlatformM6CNativeGitSourceTest.php` | Actual Git contamination/isolation, strict predicate, wrapper, diagnostic and bounds regressions. |
+| Modified | `tests/support/WebsitePlatformM6CNativeProcess.php` | Append optional environment forwarding; preserve null inheritance for ordinary callers. |
+| Modified | `tests/support/WebsitePlatformM6CNativeFixture.php` | Use shared verifier and default coordinator observation mode. |
+| Modified | `tests/support/WebsitePlatformM6CNativeWorker.php` | Pass the actual validated instrumented mode to the adapter. |
+| Modified | `tests/support/WebsitePlatformM6CNativeWorkerError.php` | Fixed source phases and typed bounded source facts in the strict protocol. |
+| Modified | `tests/support/WebsitePlatformM6CNativeDiagnostics.php` | Retain the first source error separately from the outer worker error. |
+| Modified | `docs/sprint-8.8-m6c-local-implementation.md` | Latest evidence, confirmed difference, local correction and remaining uncertainty. |
+| Modified | `docs/sprint-8.8-m6c-native-validation.md` | Current operator result and source-specific later runtime handoff. |
+
+Raw integrity comparison against abac019 verifies **451 of 458 starting tracked
+files unchanged**, with only the seven declared tracked edits and three additions.
+All **237 production-path files** and **25 migrations** are byte-identical, including
+the canonical validator correction, protected CLI/runtime and claim/lease behavior;
+migration pins remain unchanged. All 20 native requirements, canonical native
+input/release binding, report transport/acknowledgement, launcher isolation/limits/
+deadlines/finalization and the image recipe remain intact. The three Bash guide
+blocks are unchanged. Ordinary discovery contains **75 tests** under the unchanged
+discovery rule. Documentation checks cover **58 links / 26 local anchors / eight
+balanced fence markers**; external URLs are checked for syntax, not fetched.
+Final working/staged/committed check evidence and observed commit/review state will
+be retained with the external `SUMMARY.txt`.
+
+The current operator-reported runtime image belongs to **abac019**. Later runtime
+work needs new reviewed-source provenance, then a focused source-identity check
+under the actual UID/runtime environment, followed by separately authorized native
+acceptance. No image is built, pulled or relabeled here. Unchanged transport smoke
+and backups are not automatically repeated. The native cause remains unconfirmed;
+this correction makes no claim that concurrency is fixed or native acceptance passed.
+
+Last operator-reported deployed application remains
+`f466fc1cdbfb53325a1db11445736bdc5ea7c6f4`. Migration 025 remains applied to working
+staging with canonical SHA-256
+`dab585dc29aac11153f92703c65d3883aeea73a1b2283157cfa9d2f2ece85cb0`.
+Backup/download remains operator-reported COMPLETE, both copies and receipt retained;
+restore NOT EXECUTED. All `moby-detect-rro` directories remain untouched. This task
+performs zero server, real SQL/migration, image/container, deployment, installation,
+host configuration/privilege, backup/restore/prune, provider or Narrator operations.
+M6D–M6G remain untouched. PR #128 stays open, non-draft and unmerged without auto-merge.
+The operator-failure update, exact-new-head review request and observed review state
+will be recorded in the PR and external `SUMMARY.txt`, without an invented review
+finding, conversation resolution or unobserved clean-review claim.

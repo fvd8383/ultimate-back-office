@@ -80,14 +80,15 @@ final class M6CNativeDiagnostics
     }
     public static function summary(array $result):array
     {
-        $out=['worker_error'=>null];
+        $out=['worker_error'=>null,'source_error'=>null];
         foreach(['pid','exit','signal'] as $key)$out[$key]=isset($result[$key])&&is_int($result[$key])&&$result[$key]>=0?$result[$key]:null;
         foreach(['signaled','termination_requested','running'] as $key)$out[$key]=is_bool($result[$key]??null)?$result[$key]:null;
         foreach(['stdout','stderr'] as $key){
             $raw=(string)($result[$key]??'');$prefix=substr($raw,0,65536);
             $bytes=max(strlen($raw),(int)($result['stream_bytes'][$key]??0));$known=[];
             foreach(explode("\n",$prefix) as $line){
-                if($out['worker_error']===null)$out['worker_error']=M6CNativeWorkerError::parse($line);
+                $error=M6CNativeWorkerError::parse($line);
+                if($error!==null){$field=isset($error['source'])?'source_error':'worker_error';if($out[$field]===null)$out[$field]=$error;}
                 $line=rtrim($line,"\r"); // Existing production text permits CRLF; strict worker records do not.
                 if(count($known)<2&&preg_match('/^Build-only (?:outcome: (?:succeeded|failed|retry_wait|reconciliation_required|no_work_claimed)|invocation stopped: (?:builder_unavailable|artifact_invalid|database_failure|conflict|unauthorized|invalid_request|future_gate_required|source_not_eligible|requester_not_authorized))\.$/D',$line))$known[]=$line;
             }

@@ -1,18 +1,127 @@
 # M6C native build-only validation
 
 HARNESS IMPLEMENTED LOCALLY / REVIEW REQUIRED.
-LATEST OPERATOR NATIVE RUN AT 79e6d63 — 3 PASS / 1 FAIL / 16 UNREACHED.
-DIAGNOSTICS IMPROVED / NATIVE ROOT CAUSE STILL UNKNOWN. NO NATIVE RERUN IN THIS TASK.
+LATEST OPERATOR NATIVE RUN AT abac019 — FAILED: 3 PASS / 1 FAIL / 16 UNREACHED.
+INSTRUMENTED GIT ENVIRONMENT ISOLATED / NATIVE CAUSE NOT YET CONFIRMED.
+NO NATIVE RERUN IN THIS TASK.
 
 This is the operating procedure for the executable harness on PR #128, branch
 `codex/sprint-8.8-m6c-artifact-builder`. The authoring baseline is
 `96715eb35ac1ae2eb69c3a39a14ec009048128ad`. The correction from `8118138` to `9a35b59`
 changed production artifact input-hash verification. Its native assertion was
-corrected at `79e6d63`. This follow-up changes test-worker diagnostics, observed
-protocol reads and child context retention; production, canonical verification,
-transport publication/acknowledgement, all 25 migrations and pins remain unchanged.
+corrected at `79e6d63`. The previous follow-up improved test-worker diagnostics,
+observed protocol reads and child context retention. This correction isolates
+instrumented Git environments and retains a safe source-verification observation
+before generic wrapping; production, canonical verification, transport publication/
+acknowledgement, all 25 migrations and pins remain unchanged.
 The [implementation record](sprint-8.8-m6c-local-implementation.md) retains earlier
 results separately. This guide does not authorize image preparation or a native run.
+
+## Instrumented Git environment correction after abac019
+
+The operator reports **one native run** at
+`abac019a23b2801ec4d62187806f93330b9e2ff2`: launcher exit **1**, duration
+**28.662524117 seconds**, **3 PASS / 1 FAIL / 16 UNREACHED**, and **673 attempted /
+673 completed assertions**, including setup. Protected startup denials, multipage
+build and replay passed. `concurrent-claims` failed with `native_child_before_barrier`.
+Both instrumented build children reached READY and retained `worker_error` with
+`phase=claim`, `class=SiteServiceException`, `code=conflict`. Expected exit was 0;
+both actually exited 1 without observed CLAIM or RESULT. Failure-time and cleanup-time
+states were stopped, signal 0, with no termination requested.
+
+No typed PDO SQLSTATE/driver was retained. The attempted claim phase proves no
+committed claim, and absent SQL diagnostics neither prove that all database
+operations succeeded nor exclude a database-related failure. The native cause
+remains **UNDETERMINED**. Reported PHP **8.4.27** / MySQL **8.4.11** and all 25
+migrations belong to the disposable schema run. Transport, acknowledgement, cleanup
+and evidence publication passed; the native result remains **FAILED**.
+
+Operator evidence directory:
+`/mnt/ubo_stage_testdata/codex-validation/evidence/m6c-observation-native-20261023T015403Z-6f317a8c9142e0bd`.
+Launcher evidence directory:
+`/mnt/ubo_stage_testdata/codex-validation/evidence/m6c-native-20261023T020049Z-699e906cf93f46f76697d239070838a9`.
+
+| Operator-supplied record | Reported SHA-256 |
+| --- | --- |
+| Native report | `4e5e9eb2010ded1494c5b2e28aaf713f2fff150aa61b2a42b40eb1211e6b200b` |
+| M6C-OBSERVATION-NATIVE-ACCEPTANCE.txt | `684c8ff1491235d0726f1cd5dc83d6f91bb54d6aab7968835903a08c9eda6685` |
+| Operator SUMMARY.txt | `53e943e94802a54ccc9278046168efea4e700d355affe8456197119caef5d0a1` |
+| Operator MANIFEST | `5de8949a5c921d6b550e0dfe70b58bde5af64654189f1b85f0203465cdb13f67` |
+| Launcher MANIFEST | `0f37655b5439f8d4f39e84e61bf3e439328b66d5b8039416cae9441182e00` |
+
+These are operator-supplied records, not files retrieved or independently verified
+by this desktop task. Earlier native results and local validations below retain
+their own source SHAs; they are not evidence that this failed native case passed.
+
+Source inspection confirms that the starting instrumented Git helper inherits the
+parent environment while protected production Git uses an explicit four-key
+environment. The correction uses that same replacement: `PATH=/usr/bin:/bin`,
+`HOME=/nonexistent`, `GIT_CONFIG_NOSYSTEM=1`, `LANG=C`. It does not merge HOME, XDG
+or inherited Git configuration/repository/index overrides. Ordinary non-Git process
+callers continue to inherit through the optional environment argument's null default.
+
+The native lane retains absolute `/usr/bin/git`, `--no-optional-locks`,
+`core.fsmonitor=false`, exact-repository `safe.directory`, explicit `-C`, exact HEAD,
+clean `--porcelain --untracked-files=all`, zero exit and empty stderr. Permission
+warnings are not discarded. The production `external()` wrapper can replace a
+source dependency exception with generic conflict before candidate reads; it is
+unchanged. Separate bounded `source_head`/`source_status` observations retain only
+fixed mode/check and typed exit/stderr-nonempty/output-match facts. The first
+`source_error` is retained alongside the outer `worker_error`; coordinator request
+preparation is not labeled as an instrumented build child. Raw Git stderr, paths,
+environment/configuration, command lines and arbitrary exception text are excluded.
+
+The actual Windows before-driver confirms the shared inherited path accepts a clean
+exact repository, but fixture-owned HOME/XDG/global configuration can make it fail.
+Inherited `core.excludesFile` can hide a genuine untracked file; inherited repository/
+worktree/index overrides can redirect verification to a clean foreign repository
+with the same HEAD and falsely accept a dirty intended target. The actual public
+claim path with fake PDO converts a reproduced source dependency error to conflict,
+with no retained previous exception and zero query statements observed. The driver
+passes 12 assertions across nine scenarios confirming those defects; it runs no
+real database or protected native worker and changes no user Git configuration.
+
+The corrected local source suite passes **113 assertions / 49 scenarios**, exit 0.
+Actual Windows Git with an explicit four-entry Windows profile ignores those
+inherited contaminants and accepts only the clean exact target. Wrong SHA, tracked
+modification, genuine untracked content and nonzero exit remain rejected. Synthetic
+exit-0/stderr cases at HEAD and status also remain rejected; they model warning
+behavior and are not native permission evidence. The exact Linux default profile
+and argument vector are separately forwarded through two real synthetic children.
+Ordinary non-Git inheritance, timeout/output limits and owned cleanup remain intact.
+
+The actual public claim call with fake PDO still throws generic conflict without a
+previous cause and before any query statement; its separate source record survives
+the wrapper. The existing worker-error producer/parser also retains the caught
+outer conflict in the synthetic protocol check. No protected native worker is run
+on Windows. Mode/schema/privacy/sink-failure controls pass, and the unchanged
+concurrent synthetic observation protocols pass without serializing claimers.
+
+All **11 sequential local suites pass 8,931 assertions**, each exit 0 on its first
+run. This includes **7,382 assertions / 104 fake-command launcher scenarios** in
+**676.7201238 seconds**; no native/container/MySQL acceptance is executed.
+**268 PHP files** pass lint and **five Bash syntax checks** pass. Integrity preserves
+all 237 production-path files, all 25 migrations/pins, all 20 native requirements
+and the three operating-command blocks. The implementation record retains exact
+commands, timings, changed-file inventory and platform limits.
+
+Neither actual HOME nor Git stderr from the failed native children was independently
+recovered. The separately supplied Linux/Git 2.47.3 probe demonstrated an inaccessible
+synthetic HOME producing attributes/ignore stderr warnings with status exit 0 and
+empty stdout under UID/GID 2000; an explicit clean environment removed the warnings.
+It is mechanism evidence supplied to this task, not this desktop's execution, a
+service test or proof of the droplet's historical error. Windows contamination
+tests and modeled permission behavior remain distinct. See
+[the complete source comparison and local record](sprint-8.8-m6c-local-implementation.md#instrumented-git-environment-isolation).
+
+All 20 native requirements remain. The current operator-reported runtime image
+belongs to **abac019**. Later authorized work requires new reviewed-source provenance,
+then focused source-identity verification under the actual UID/runtime environment,
+followed by separately authorized native acceptance. No image is built, pulled or
+relabeled here; no concurrency fix or native acceptance is claimed. Do not
+automatically repeat unchanged transport smoke or backups. Backup/download remains
+operator-reported COMPLETE with both copies and receipt retained; restore remains
+NOT EXECUTED. Leave all `moby-detect-rro` directories alone.
 
 ## Instrumented worker failure at 79e6d63
 
@@ -79,8 +188,9 @@ private roots and existing fake PDO. Neither establishes the native root cause.
 See [the implementation record](sprint-8.8-m6c-local-implementation.md#instrumented-worker-observation)
 for exact source analysis, before/after evidence and fresh validation.
 
-All 20 native requirements remain. The cached image is source-labeled **79e6d63**;
-later authorized preparation must satisfy the **new reviewed SHA's** provenance.
+At that historical handoff all 20 native requirements remained; its cached image
+was source-labeled **79e6d63**.
+Later authorized preparation had to satisfy the **new reviewed SHA's** provenance.
 No image was built, pulled or relabeled here. No automatic repeat of unchanged
 transport smoke, backup or broad historical suites is prescribed. Migration 025
 remains applied with SHA-256 `dab585dc29aac11153f92703c65d3883aeea73a1b2283157cfa9d2f2ece85cb0`.
@@ -578,10 +688,11 @@ The operator separately reports Linux launcher PASS (**3981 assertions / 86
 scenarios**) and image preparation/check-only PASS at **740431f**, followed by the
 failed native invocation above. These are historical reports, not rerun here.
 That historical runtime image was source-labeled for 740431f; the operator's latest
-prepared runtime is source-labeled for **8118138**. After this correction is
+reported runtime now belongs to **abac019**. After this correction is
 committed, separately authorized preparation must satisfy runtime-image provenance
-for the **new exact reviewed SHA**, followed by separately authorized check-only
-and isolated native execution. Do not relax the source check, rewrite old labels
+for the **new exact reviewed SHA**, then verify source identity under the actual
+UID/runtime environment before separately authorized native acceptance. Do not
+relax the source check, rewrite old labels
 as evidence, invent a digest or claim a new image already exists. Verified pinned
 base/MySQL images may be reusable. No pulls or builds occur in this desktop task.
 The recipe below describes initial provisioning; an existing verified client or
@@ -741,12 +852,14 @@ that report or independently verify its checksum, and did not rerun those suites
 Earlier `d4fb3d6` eight-suite/682-assertion Linux results and its separate CLI failure
 remain historical evidence; later blocked review-gate tasks ran no tests.
 
-Fresh desktop results and retained failures are recorded in the implementation
+Historical desktop results and retained failures are recorded in the implementation
 record's [teardown correction section](sprint-8.8-m6c-local-implementation.md#native-teardown-review-corrections)
 and [storage correction section](sprint-8.8-m6c-local-implementation.md#native-storage-setup-and-report-correction),
-with the current results in [child diagnostics and transport](sprint-8.8-m6c-local-implementation.md#native-child-diagnostics-and-tmpfs-transport).
+and [child diagnostics and transport](sprint-8.8-m6c-local-implementation.md#native-child-diagnostics-and-tmpfs-transport).
+The current correction is recorded in
+[instrumented Git environment isolation](sprint-8.8-m6c-local-implementation.md#instrumented-git-environment-isolation).
 This desktop correction executes no recipe, native namespace, container, MySQL or
-protected worker. Both operator-reported native failures remain separate from these
+protected worker. Operator-reported native failures remain separate from these
 local results. A later authorized rerun may expose further blockers; stop and
 record them without weakening the factory or applying working-staging SQL.
 

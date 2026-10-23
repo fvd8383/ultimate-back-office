@@ -50,7 +50,7 @@ try{
     if($server['uuid']!==$context['server_uuid']||$server['hostname']!=='m6c-db-'.$context['token']||$server['db']!==$env['DB_NAME'])throw new RuntimeException('worker_server_binding');
     $phase='arguments';$jobId=filter_var($argv[2]??null,FILTER_VALIDATE_INT);$operator=filter_var($argv[3]??null,FILTER_VALIDATE_INT);
     if(!$jobId||!$operator)throw new RuntimeException('instrumented_identity');
-    $phase='dependencies';$adapter=new M6CNativeDependencies($config,$operator);
+    $phase='dependencies';$adapter=new M6CNativeDependencies($config,$operator,$mode);
     $phase='wiring';$adapter->wire();
     $connection=null;
     if(in_array($mode,['audit','validation'],true)){

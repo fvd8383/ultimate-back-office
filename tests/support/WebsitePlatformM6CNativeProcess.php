@@ -20,7 +20,7 @@ final class M6CNativeProcess
     public ?string $lastBarrier=null;
     public array $diagnosticContext=[];
     public ?array $failureObservation=null;
-    public function __construct(public readonly array $command,private int $seconds=60,private int $limit=65536)
+    public function __construct(public readonly array $command,private int $seconds=60,private int $limit=65536,?array $environment=null)
     {
         $active=0;foreach(self::$live as $p)if($p->running())$active++;
         if($active>=2)throw new RuntimeException('native_child_count');
@@ -29,7 +29,7 @@ final class M6CNativeProcess
         if(!mkdir($this->captureDirectory,0700))throw new RuntimeException('native_capture_start');
         foreach(['stdout','stderr'] as $stream){file_put_contents($this->captureDirectory.'/'.$stream,'');chmod($this->captureDirectory.'/'.$stream,0600);}
         $this->process=proc_open($command,[0=>['pipe','r'],1=>['file',$this->captureDirectory.'/stdout','ab'],
-            2=>['file',$this->captureDirectory.'/stderr','ab']],$this->pipes,null,null,['bypass_shell'=>true]);
+            2=>['file',$this->captureDirectory.'/stderr','ab']],$this->pipes,null,$environment,['bypass_shell'=>true]);
         if(!is_resource($this->process))throw new RuntimeException('native_child_start');
         $s=proc_get_status($this->process);$this->pid=$s['pid'];$this->started=hrtime(true);self::$live[]=$this;
     }
@@ -109,8 +109,8 @@ final class M6CNativeProcess
         $this->stdout=substr($this->stdout,0,$this->limit);$this->stderr=substr($this->stderr,0,$this->limit);
         return $this->close();
     }
-    public static function capture(array $command,int $seconds=60,int $limit=65536): array
-    { $p=new self($command,$seconds,$limit);$p->closeInput();try{return $p->finish();}finally{if($p->running())$p->stop();} }
+    public static function capture(array $command,int $seconds=60,int $limit=65536,?array $environment=null): array
+    { $p=new self($command,$seconds,$limit,$environment);$p->closeInput();try{return $p->finish();}finally{if($p->running())$p->stop();} }
     public static function cleanup(): array
     {
         $out=[];$before=[];

@@ -3,7 +3,7 @@ declare(strict_types=1);
 require_once dirname(__DIR__,2).'/private/classes/SiteBuildRuntime.php';
 require_once dirname(__DIR__,2).'/private/classes/SiteBuildService.php';
 require_once dirname(__DIR__,2).'/private/classes/SiteCompositionEditor.php';
-require_once __DIR__.'/WebsitePlatformM6CNativeProcess.php';
+require_once __DIR__.'/WebsitePlatformM6CNativeGitSource.php';
 
 /** Instrumented lane/request setup ONLY. Real PDO, builder, assets, validator and store. */
 final class M6CNativeDependencies implements SiteBuildDependencies
@@ -14,7 +14,7 @@ final class M6CNativeDependencies implements SiteBuildDependencies
     public ?Closure $beforeBuild=null;
     public ?Closure $afterBuild=null;
     public ?Closure $verification=null;
-    public function __construct(public array $config,private int $operator=1)
+    public function __construct(public array $config,private int $operator=1,private string $sourceMode='coordinator')
     {
         $guard=Closure::fromCallable([SiteBuildRuntime::class,'guard']);
         $this->store=new LocalSiteArtifactStore($config['work_root'],$config['artifact_root'],$guard);
@@ -29,11 +29,7 @@ final class M6CNativeDependencies implements SiteBuildDependencies
     public function operatorId(): int { return $this->operator; }
     public function builderIdentity(): array
     {
-        SiteBuildRuntime::guard();$repo=dirname(__DIR__,2);
-        foreach([['rev-parse','HEAD'],$status=['status','--porcelain','--untracked-files=all']] as $args){
-            $r=M6CNativeProcess::capture(['/usr/bin/git','--no-optional-locks','-c','core.fsmonitor=false','-c','safe.directory='.$repo,'-C',$repo,...$args],10);
-            if($r['exit']!==0||$r['stderr']!==''||trim($r['stdout'])!==($args===$status?'':$this->config['builder_code_sha']))throw new RuntimeException('instrumented_source_identity');
-        }
+        SiteBuildRuntime::guard();M6CNativeGitSource::verify(dirname(__DIR__,2),$this->config['builder_code_sha'],mode:$this->sourceMode);
         return SiteBuildRuntime::identity($this->config['builder_code_sha']);
     }
     public function prepareInput(array $source): array { return $this->builder->prepareInput($source); }
