@@ -17,7 +17,81 @@ four finite evidence packages. Their supplemental authoring is **PARTIALLY IMPLE
 LOCALLY / REVIEW REQUIRED**; native execution is **NOT PERFORMED** and formal acceptance
 remains pending. The deployed application remains operator-reported `f466fc1…`.
 
+## Supplemental protocol exit-normalization correction, October 28, 2026
+
+The [P2 finding](https://github.com/fvd8383/ultimate-back-office/pull/128#discussion_r4407103223)
+on `4512ae54f4716aaa9d15a65b667e25cf4f5d5b4a` identified a test expectation mismatch:
+`stop(9)` returns raw process state, while `M6CSupplementChannel::record()` uses
+`M6CNativeDiagnostics::summary()`. The reviewer reported Linux raw exit `-1` /
+signal `9`, recorded exit `null`, and suite exit 255. That Linux reproduction is
+reviewer-reported; this correction was verified on Windows only.
+
+Before editing the assertion, a controlled **synthetic** result traversed the actual
+recording/summary path: raw exit remained `-1`, recorded exit was `null`, signal
+remained `9`, running was `false`, and termination requested was `true`. The old
+raw-versus-recorded comparison was false. This separately retained proof exited
+**1 as expected**, in **0.701 s**, with 424 stdout / 0 stderr bytes and clean owned
+child cleanup. It is not an observed Windows or Linux SIGKILL result.
+
+The real-child test now compares exit with the diagnostic summary and checks the
+actual signal independently. Six literal recording cases separately constrain
+negative, missing/null, zero and seven exits; known/unknown signals; typed true,
+false and null flags; and preservation of the raw input. The real child, observed
+READY boundary, termination request, stopped state and owned-child cleanup remain.
+Nearby assertions already use known literal exits 0/7; no other instance of this
+mismatch was found. Shared process, diagnostic and production behavior is unchanged.
+
+Fresh sequential Windows / PHP **8.4.24** results (private runner Node **24.22.1**):
+
+| Suite | Actual exit | Completion marker counts | Seconds | Stdout / stderr bytes |
+| --- | ---: | --- | ---: | ---: |
+| Supplement protocol | 0 | 236 assertions | 7.928 | 423 / 0 |
+| Native diagnostics/transport | 0 | 95 assertions / 41 scenarios | 3.244 | 149 / 0 |
+| Native observation | 0 | 273 assertions / 103 scenarios / 45 real synthetic children | 10.538 | 147 / 0 |
+
+Exact PHP commands, in that order:
+
+```powershell
+php -n -d 'auto_append_file=C:/Users/fvd83/.ssh/m6c-exit-normalization-20261028/actual-observation.php' tests/WebsitePlatformM6CSupplementProtocolTest.php
+php -n tests/WebsitePlatformM6CNativeDiagnosticsTest.php
+php -n tests/WebsitePlatformM6CNativeObservationTest.php
+```
+
+The private append file only reports the completed protocol suite's actual raw and
+recorded fields and remaining owned cleanup entries. Actual Windows termination
+returned **exit 255, signal 0, signaled false, termination requested true, running
+false**; recorded values matched. No POSIX signal value was fabricated. All suites
+completed within the private 60-second bound, with bounded output and empty owned
+temporary roots; protocol cleanup had zero pending owned children. Deliberate
+no-INI profiles and negative diagnostic expectations remain intact; individual Git
+verification still requires empty stderr. No large launcher suite was rerun.
+
+Only this protocol test and the two existing implementation/validation records
+changed. Changed-file PHP lint, document links/fences and working/staged/committed
+diff checks accompany the private evidence. All other 472 tracked files retain
+their baseline bytes, modes and blobs, including shared helpers, production,
+contracts, launchers, all 25 migrations and integrity pins. Migration 025 remains
+applied to working staging, unchanged at SHA-256
+`dab585dc29aac11153f92703c65d3883aeea73a1b2283157cfa9d2f2ece85cb0`.
+Commands, outputs, durations, checks and `SUMMARY.txt` are retained outside Git in
+`C:\Users\fvd83\.ssh\m6c-exit-normalization-20261028`; before-proof and successful
+rechecks are separate. Historical results below were not rerun by this correction.
+
+**CORE 20-CASE NATIVE GATE — HISTORICAL PASS at `2ab14c7`.
+SUPPLEMENTAL COVERAGE — PARTIALLY IMPLEMENTED LOCALLY.
+SUPPLEMENTAL NATIVE EXECUTION — NOT PERFORMED. FORMAL M6C ACCEPTANCE — PENDING.**
+No Linux execution environment was available to this Windows-only task; the corrected
+actual Linux child path remains for later authorized Linux verification. Faithful
+flush/fsync and producer-journal-publication failure injection remain unimplemented.
+The exact core 20/supplemental 17 inventories, lanes, strict validation and runtime
+limits remain unchanged. Browser allocation remains an owner decision; backups,
+receipts and historical failures remain untouched. No native run or production
+correction occurred.
+
 ## Supplemental local validation, October 28, 2026
+
+The following authoring results are historical at `4512ae5`; the focused correction
+and fresh results are recorded above.
 
 The separate `m6c-native-supplement-v1` profile implements 17 fixed instrumented cases
 from the assessment, beginning at `fa617fd7eeda92d8febdce66c46f973a5ae23a7e`.

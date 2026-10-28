@@ -11,6 +11,19 @@ documentation head was not natively executed. The supplemental authoring below r
 local synthetic regressions only; it does not execute the native gate.
 The latest runtime image identity and requirement limits are in that record.
 
+## Supplemental protocol expectation correction, October 28, 2026
+
+The [P2 exit-normalization correction and focused local results](sprint-8.8-m6c-local-implementation.md#supplemental-protocol-exit-normalization-correction-october-28-2026)
+separate raw process exit from the normalized diagnostic report. A synthetic
+`-1 -> null` / signal `9` proof precedes the fix; six literal recording regressions
+constrain the contract independently. Fresh Windows `php -n` protocol, diagnostics
+and observation suites pass with 236, 95 and 273 assertions respectively. The actual
+Windows terminated child retained exit 255 / signal 0; the Linux reproduction is
+reviewer-reported and actual Linux verification remains outstanding. Shared helpers,
+production, exact 20/17 inventories and runtime requirements are unchanged.
+No supplemental native execution occurred; faithful flush/fsync and producer-journal
+publication failure injection remain unimplemented. Formal acceptance stays pending.
+
 ## Supplemental authoring, October 28, 2026
 
 **PARTIALLY IMPLEMENTED LOCALLY / REVIEW REQUIRED. SUPPLEMENTAL NATIVE EXECUTION —

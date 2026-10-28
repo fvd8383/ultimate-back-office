@@ -78,6 +78,26 @@ try{
     $report=['children'=>[]];$p=new M6CNativeProcess([PHP_BINARY,'-n',__DIR__.'/support/WebsitePlatformM6CSupplementProbe.php','normal'],5);
     M6CSupplementChannel::read($p,'READY',$report,$case);$actual=$p->stop(9);M6CSupplementChannel::record($p,$report,$case,$actual,false);
     sp($actual['termination_requested']&&!$actual['running'],'owned process stopped after observed boundary');
-    sp($report['children'][0]['signal']===$actual['signal']&&$report['children'][0]['exit']===$actual['exit'],'platform actual signal/exit retained without assuming POSIX on Windows');
+    $expected=M6CNativeDiagnostics::summary($actual);
+    sp($report['children'][0]['exit']===$expected['exit'],'platform exit follows diagnostic normalization');
+    sp($report['children'][0]['signal']===$actual['signal'],'platform observed signal retained independently');
+
+    // Synthetic contract inputs, not observations of the terminated child above.
+    // Literal expectations independently constrain the summary used by record().
+    foreach([
+        ['negative',['exit'=>-1,'signal'=>9,'signaled'=>true,'running'=>false,'termination_requested'=>true],null,9,[true,false,true]],
+        ['missing',[],null,null,[null,null,null]],
+        ['null',['exit'=>null,'signal'=>null,'signaled'=>null,'running'=>null,'termination_requested'=>null],null,null,[null,null,null]],
+        ['zero',['exit'=>0,'signal'=>0,'signaled'=>false,'running'=>false,'termination_requested'=>false],0,0,[false,false,false]],
+        ['seven',['exit'=>7,'signal'=>null,'signaled'=>false,'running'=>false,'termination_requested'=>false],7,null,[false,false,false]],
+        ['live',['running'=>true,'termination_requested'=>false],null,null,[null,true,false]],
+    ] as [$label,$syntheticRaw,$expectedExit,$expectedSignal,$expectedFlags]){
+        $rawBefore=$syntheticRaw;$syntheticReport=['children'=>[]];
+        M6CSupplementChannel::record($p,$syntheticReport,$case,$syntheticRaw,false);$entry=$syntheticReport['children'][0];
+        sp($syntheticRaw===$rawBefore,'synthetic raw capture unchanged: '.$label);
+        sp($entry['exit']===$expectedExit,'literal normalized exit: '.$label);
+        sp($entry['signal']===$expectedSignal,'literal signal independent of exit: '.$label);
+        sp([$entry['signaled'],$entry['running'],$entry['termination_requested']]===$expectedFlags,'literal typed flags: '.$label);
+    }
 }finally{$clean=M6CNativeProcess::cleanup();foreach($clean as $entry)sp(!$entry['running'],'owned children reaped');}
 echo "M6C supplement protocol: $assertions assertions passed; synthetic packets and bounded local processes only; NO native SQL.\n";
