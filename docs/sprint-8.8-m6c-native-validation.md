@@ -1,9 +1,18 @@
 # M6C native build-only validation
 
-HARNESS IMPLEMENTED LOCALLY / REVIEW REQUIRED.
-LATEST OPERATOR NATIVE RUN AT abac019 — FAILED: 3 PASS / 1 FAIL / 16 UNREACHED.
-INSTRUMENTED GIT ENVIRONMENT ISOLATED / NATIVE CAUSE NOT YET CONFIRMED.
-NO NATIVE RERUN IN THIS TASK.
+M6C — IMPLEMENTED / SCOPED ISOLATED NATIVE GATE PASS / ACCEPTANCE REVIEW PENDING.
+M6C formal closure — PENDING.
+
+The [current acceptance/evidence record](sprint-8.8-m6c-native-acceptance.md) binds
+the successful native run to `2ab14c7d8212d1170aafe6d8dcdf3b178dd7d5bf`: 20 PASS /
+0 FAIL / 0 UNREACHED, 1,315 completed assertions (805 case + 510 setup/identity),
+launcher exit 0. Original evidence was retrieved and locally hash-verified. The new
+documentation head is not natively executed. No runtime test is run by this update.
+The latest runtime image identity and requirement limits are in that record.
+
+Earlier correction/run sections below retain their source-specific historical facts.
+Their then-current failed/not-executed/image-preparation handoffs are superseded
+only as current status; historical abac019 cause remains UNDETERMINED.
 
 This is the operating procedure for the executable harness on PR #128, branch
 `codex/sprint-8.8-m6c-artifact-builder`. The authoring baseline is
@@ -114,8 +123,8 @@ service test or proof of the droplet's historical error. Windows contamination
 tests and modeled permission behavior remain distinct. See
 [the complete source comparison and local record](sprint-8.8-m6c-local-implementation.md#instrumented-git-environment-isolation).
 
-All 20 native requirements remain. The current operator-reported runtime image
-belongs to **abac019**. Later authorized work requires new reviewed-source provenance,
+Historical handoff at this correction: all 20 native requirements remained. The
+then-current operator-reported runtime image belonged to **abac019**. Later work required new reviewed-source provenance,
 then focused source-identity verification under the actual UID/runtime environment,
 followed by separately authorized native acceptance. No image is built, pulled or
 relabeled here; no concurrency fix or native acceptance is claimed. Do not
@@ -657,7 +666,10 @@ actual Docker teardown, native Linux namespace, MySQL or protected-worker result
 
 ## Authored native acceptance cases
 
-All rows below are executable assertions, **not executed native results**.
+All rows below describe the executable contract. Their source-specific execution
+results now appear in the [acceptance record](sprint-8.8-m6c-native-acceptance.md#completed-native-result):
+all 20 passed at `2ab14c7…`. The mapping below remains scoped; it is not full
+completion of every listed M6 plan identifier.
 
 | Cases | Lane and scope | M6 plan mapping |
 | --- | --- | --- |

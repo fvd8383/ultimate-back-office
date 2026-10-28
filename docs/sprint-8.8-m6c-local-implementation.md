@@ -1,19 +1,28 @@
 # Sprint 8.8 M6C — Local artifact implementation
 
-October 17, 2026. M6C — IMPLEMENTED LOCALLY / REVIEW REQUIRED.
+Current status, October 27, 2026: M6C — IMPLEMENTED / SCOPED ISOLATED NATIVE GATE PASS /
+ACCEPTANCE REVIEW PENDING. M6C formal closure — PENDING. M6 overall — IN PROGRESS.
 M6B — COMPLETE / STAGING PASS / FORMALLY CLOSED by
 [PR #127 acceptance](https://github.com/fvd8383/ultimate-back-office/pull/127#issuecomment-6241852763).
 M6D–M6G — NOT STARTED. Migration 025 — APPLIED TO WORKING STAGING; do not reapply.
-Production — UNAUTHORIZED / NOT DEPLOYED. This task performs local implementation
-and synthetic/filesystem validation only. The 77-case M6 plan is not a passed matrix.
+Production — UNAUTHORIZED / NOT DEPLOYED. The original implementation began
+October 17 with local/synthetic/filesystem validation. The later native result is
+recorded separately below; the 77-case M6 plan is not a passed matrix.
 
-Current handoff: **INSTRUMENTED GIT ENVIRONMENT ISOLATED / NATIVE CAUSE
-NOT YET CONFIRMED**. The latest operator run at `abac019` remains **FAILED: 3 PASS /
-1 FAIL / 16 UNREACHED**, 673/673 assertions. Both instrumented children reached
-READY, then retained claim-phase conflict diagnostics without CLAIM or RESULT.
-See [instrumented Git environment isolation](#instrumented-git-environment-isolation)
-for the observed facts, source difference, local evidence and remaining native gate.
-No server, image/container or native rerun occurs in this desktop task.
+Current handoff: the [scoped native acceptance record](sprint-8.8-m6c-native-acceptance.md)
+records PASS at `2ab14c7d8212d1170aafe6d8dcdf3b178dd7d5bf`, 20 cases and
+1,315/1,315 assertions (805 case + 510 setup/identity), with original evidence
+retrieved and locally hash-verified. Acceptance review must assess the B01–B26
+mapping and remaining evidence limits. This documentation update performs no runtime
+operations. The deployed application remains operator-reported `f466fc1…`.
+
+Previous handoff at `2ab14c7`: **INSTRUMENTED GIT ENVIRONMENT ISOLATED / NATIVE CAUSE
+NOT YET CONFIRMED**. Historical `abac019` remains FAILED (3 PASS / 1 FAIL /
+16 UNREACHED, 673/673 assertions); its exact cause remains UNDETERMINED.
+[Instrumented Git environment isolation](#instrumented-git-environment-isolation)
+retains the source difference and local evidence. All earlier sections below retain
+their dated source/run scope; outstanding native statements there describe historical
+handoffs, not the current status.
 
 Previous handoff, October 23 operator evidence: **DIAGNOSTICS IMPROVED / NATIVE ROOT
 CAUSE STILL UNKNOWN**. At `79e6d63`, three protected cases explicitly passed,
@@ -3049,8 +3058,8 @@ balanced fence markers**; external URLs are checked for syntax, not fetched.
 Final working/staged/committed check evidence and observed commit/review state will
 be retained with the external `SUMMARY.txt`.
 
-The current operator-reported runtime image belongs to **abac019**. Later runtime
-work needs new reviewed-source provenance, then a focused source-identity check
+At this historical correction, the operator-reported runtime image belonged to
+**abac019**. Subsequent runtime work needed new reviewed-source provenance, then a focused source-identity check
 under the actual UID/runtime environment, followed by separately authorized native
 acceptance. No image is built, pulled or relabeled here. Unchanged transport smoke
 and backups are not automatically repeated. The native cause remains unconfirmed;
