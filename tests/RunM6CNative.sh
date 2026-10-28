@@ -316,7 +316,8 @@ m6n_transport() {
 }
 m6n_capture() {
     local attempt=$1 capture_deadline=$((SECONDS+15)) ceiling identity=FAIL reader=UNREACHED consumer=UNREACHED verification=UNREACHED result=FAIL
-    local -a codes
+    local -a codes transport_profile=()
+    [[ ${profile_version:-m6c-native-v1} != m6c-native-supplement-v1 ]] || transport_profile=("$profile_version")
     if [[ -n ${cleanup_deadline:-} ]];then ceiling=$((cleanup_deadline-8));else ceiling=$((started+1200));fi
     (( capture_deadline<=ceiling )) || capture_deadline=$ceiling
     if [[ ${runtime_id:-} =~ ^[a-f0-9]{64}$ ]] &&
@@ -325,13 +326,13 @@ m6n_capture() {
         # No TTY, archive, shell or application bootstrap. The consumer bounds the pipe
         # before any host write; PIPESTATUS retains both producer and consumer results.
         (ulimit -f 4; m6n_docker exec "$runtime_id" /usr/local/bin/php -n -d memory_limit=128M \
-            /opt/ubo/tests/support/WebsitePlatformM6CNativeTransport.php read "$sha" "$token") \
+            /opt/ubo/tests/support/WebsitePlatformM6CNativeTransport.php read "$sha" "$token" "${transport_profile[@]}") \
             2> "$evidence/capture-$attempt-reader.txt" |
             m6n_transport receive "$evidence" "$attempt" 2> "$evidence/capture-$attempt-consumer.txt"
         codes=("${PIPESTATUS[@]}");reader=${codes[0]};consumer=${codes[1]}
         if [[ $reader == 0 && $consumer == 0 ]]; then
             verification=0
-            m6n_transport verify "$evidence" "$attempt" "$sha" "$token" > "$evidence/capture-$attempt.json" \
+            m6n_transport verify "$evidence" "$attempt" "$sha" "$token" "${transport_profile[@]}" > "$evidence/capture-$attempt.json" \
                 2> "$evidence/capture-$attempt-verification.txt" || verification=$?
             [[ $verification != 0 ]] || result=PASS
         fi
@@ -348,7 +349,13 @@ m6n_collect_result() {
     printf 'native-report-capture=%s\n' "$capture" >> "$evidence/report.txt"
     [[ $code == 0 ]] || exit "$code"
     [[ $capture == PASS ]] || m6n_fail missing_native_evidence
-    m6n_guard evidence "$sha" "$token" < "$evidence/native.json" >/dev/null || m6n_fail invalid_native_evidence
+    if [[ ${profile_version:-m6c-native-v1} == m6c-native-supplement-v1 ]]; then
+        local seconds=$((started+1200-SECONDS))
+        ((seconds>0)) || m6n_fail overall_deadline 124
+        timeout --kill-after=1s "${seconds}s" "$php" -n -d memory_limit=128M "$repo/tests/support/WebsitePlatformM6CSupplementContract.php" evidence "$sha" "$token" < "$evidence/native.json" >/dev/null || m6n_fail invalid_supplemental_evidence
+    else
+        m6n_guard evidence "$sha" "$token" < "$evidence/native.json" >/dev/null || m6n_fail invalid_native_evidence
+    fi
 }
 m6n_run() {
     # Hold the verified filesystem open. All host output/cleanup uses this FD path,
@@ -363,6 +370,7 @@ m6n_run() {
     evidence="$storage/evidence/m6c-native-$(date -u +%Y%m%dT%H%M%SZ)-$token";mkdir "$evidence"
     evidence_path="$base/evidence/${evidence##*/}"
     printf 'M6C native v1; source=%s; deadline=1200s plus bounded teardown\nMySQL=1CPU/1536MiB/128PIDs runtime=1CPU/1024MiB/48PIDs additional-swap=0\nRuntime controller+at most 2 PHP children, each128MiB; checkout/artifact/run/tmp tmpfs all charged to runtime memory.\nHost controller allowance=256MiB; staging reserve=1536MiB; root floor=1GiB volume floor=4GiB; 6GiB monitored aggregate disk budget, not a quota.\n' "$sha" > "$evidence/report.txt"
+    printf 'Selected acceptance profile=%s\n' "$profile_version" >> "$evidence/report.txt"
     (ulimit -v 262144; m6n_export_source "$disk/input/source.pack") || m6n_fail source_pack
     [[ $(stat -c %s "$disk/input/source.pack") -le 67108864 ]] || m6n_fail source_pack_budget
     MYSQL_ROOT_PASSWORD=$("$php" -n -r 'echo bin2hex(random_bytes(32));');export MYSQL_ROOT_PASSWORD
@@ -381,8 +389,8 @@ m6n_run() {
     [[ $uuid =~ ^[a-f0-9-]{36}$ ]] || m6n_fail database_server_identity
     db_ip=$("$php" -n -r '$x=json_decode(file_get_contents($argv[1]),true,32,JSON_THROW_ON_ERROR);echo $x["ip"];' "$evidence/db-identity.json")
     bundle_hash=$(sha256sum "$disk/input/source.pack");bundle_hash=${bundle_hash%% *}
-    "$php" -n -r 'echo json_encode(["version"=>"m6c-native-v1","sha"=>$argv[1],"token"=>$argv[2],"db_id"=>$argv[3],"runtime_id"=>$argv[4],"network_id"=>$argv[5],"db_ip"=>$argv[6],"server_uuid"=>$argv[7],"bundle_hash"=>$argv[8],"worker_uid"=>2000],JSON_THROW_ON_ERROR);' \
-        "$sha" "$token" "$db_id" "$runtime_id" "$network_id" "$db_ip" "$uuid" "$bundle_hash" > "$disk/input/identity.json"
+    "$php" -n -r 'echo json_encode(["version"=>"m6c-native-v1","sha"=>$argv[1],"token"=>$argv[2],"db_id"=>$argv[3],"runtime_id"=>$argv[4],"network_id"=>$argv[5],"db_ip"=>$argv[6],"server_uuid"=>$argv[7],"bundle_hash"=>$argv[8],"worker_uid"=>2000,"profile"=>$argv[9]],JSON_THROW_ON_ERROR);' \
+        "$sha" "$token" "$db_id" "$runtime_id" "$network_id" "$db_ip" "$uuid" "$bundle_hash" "$profile_version" > "$disk/input/identity.json"
     chmod 0444 "$disk/input/identity.json" "$disk/input/source.pack"
     m6n_volume && m6n_inspect && m6n_checkpoint || m6n_fail before_sql_isolation
     # Namespace-local shallow checkout of real commit identity; no history/config copy.
@@ -392,7 +400,7 @@ m6n_run() {
     (ulimit -f 1024; timeout --kill-after=3s "${remaining}s" env -i PATH=/usr/bin:/bin HOME=/nonexistent LC_ALL=C \
         docker --config "$client" --host unix:///run/user/1000/docker.sock exec --user 0:0 "$runtime_id" \
         /usr/local/bin/php -d memory_limit=128M -d display_errors=stderr -d zend.exception_ignore_args=1 \
-        /opt/ubo/tests/WebsitePlatformM6CNative.php --container-run "$sha" "$token") > "$evidence/child.stdout.txt" 2> "$evidence/child.stderr.txt" & supervisor=$!
+        /opt/ubo/tests/WebsitePlatformM6CNative.php --container-run "$sha" "$token" "$profile_version") > "$evidence/child.stdout.txt" 2> "$evidence/child.stderr.txt" & supervisor=$!
     while kill -0 "$supervisor" 2>/dev/null; do
         m6n_checkpoint
         m6n_volume && m6n_capacity || m6n_fail runtime_resource_or_mount_loss
@@ -409,15 +417,19 @@ m6n_run() {
 }
 m6n_main() {
     if [[ $# == 1 && $1 == --help ]]; then
-        printf '%s\n' 'Usage: bash tests/RunM6CNative.sh --check-only|--run --expected-sha SHA --mysql-digest sha256:... --runtime-image sha256:... --php-base-digest sha256:... --php /absolute/php' \
+        printf '%s\n' 'Usage: bash tests/RunM6CNative.sh --check-only|--run [--profile core|supplement-v1] --expected-sha SHA --mysql-digest sha256:... --runtime-image sha256:... --php-base-digest sha256:... --php /absolute/php' \
             'Fixed target: ubo-stage-app / codex-validation UID1000, rootless local socket, verified test volume.' \
             'Check-only is read-only. Images and empty /run/user/1000/ubo-m6c-client/config.json must already exist.' \
             'Run creates disposable native resources only after explicit authorization. No image pulls/builds or daemon lifecycle commands.';return
     fi
-    mode='';sha='';mysql_digest='';runtime_image='';php_base='';php=''
+    mode='';sha='';mysql_digest='';runtime_image='';php_base='';php='';profile=core;profile_set=0;profile_version=m6c-native-v1
     while (($#)); do
         case $1 in
             --check-only|--run) [[ -z $mode ]] || m6n_fail one_mode;mode=$1;shift;;
+            --profile)
+                [[ $# -ge 2 && $profile_set == 0 ]] || m6n_fail one_profile
+                case $2 in core)profile_version=m6c-native-v1;;supplement-v1)profile_version=m6c-native-supplement-v1;;*)m6n_fail unknown_profile;;esac
+                profile=$2;profile_set=1;shift 2;;
             --expected-sha|--mysql-digest|--runtime-image|--php-base-digest|--php)
                 [[ $# -ge 2 ]] || m6n_fail argument_value
                 case $1 in --expected-sha)sha=$2;;--mysql-digest)mysql_digest=$2;;--runtime-image)runtime_image=$2;;--php-base-digest)php_base=$2;;--php)php=$2;;esac;shift 2;;

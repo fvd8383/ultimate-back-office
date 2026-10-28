@@ -2,12 +2,13 @@
 declare(strict_types=1);
 // Explicit destructive/native entry; intentionally NOT named *Test.php.
 if(PHP_SAPI==='cli'&&array_slice($argv,1)===['--help']){
-    echo "Use bash tests/RunM6CNative.sh --help. This internal coordinator only accepts --container-run SHA TOKEN in its disposable container.\n";exit(0);
+    echo "Use bash tests/RunM6CNative.sh --help. This internal coordinator only accepts --container-run SHA TOKEN [PROFILE] in its disposable container.\n";exit(0);
 }
 require_once __DIR__.'/support/WebsitePlatformM6CNativeContract.php';
 require_once __DIR__.'/support/WebsitePlatformM6CNativeProcess.php';
 require_once __DIR__.'/support/WebsitePlatformM6CNativeReport.php';
-$report=M6CNativeReport::initial($argv[2]??'',$argv[3]??'');
+$profile=$argv[4]??M6CNativeContract::VERSION;
+$report=M6CNativeReport::initial($argv[2]??'',$argv[3]??''); // Failure-only envelope until explicit profile validation below.
 $current=null;$reportLocation=null;$admin=null;$config=null;$context=null;
 function m6nCheck(bool $ok,string $why): void
 {global $report;$report['assertions']++;if(!$ok)throw new RuntimeException($why);$report['completed_assertions']++;}
@@ -182,7 +183,8 @@ function m6nSetup(array $identity): array
 }
 
 try{
-    M6CNativeContract::need(PHP_SAPI==='cli'&&count($argv)===4&&$argv[1]==='--container-run'
+    $report=M6CNativeReport::initial($argv[2]??'',$argv[3]??'',$profile);
+    M6CNativeContract::need(PHP_SAPI==='cli'&&in_array(count($argv),[4,5],true)&&$argv[1]==='--container-run'
         &&M6CNativeContract::hex($argv[2],40)&&M6CNativeContract::hex($argv[3],32),'explicit_container_arguments');
     M6CNativeContract::need(PHP_OS_FAMILY==='Linux'&&function_exists('posix_geteuid')&&posix_geteuid()===0
         &&realpath(dirname(__DIR__))==='/opt/ubo'&&gethostname()==='m6c-runtime-'.$argv[3],'namespace_setup_identity');
@@ -191,6 +193,7 @@ try{
     $identity=json_decode(file_get_contents('/input/identity.json'),true,32,JSON_THROW_ON_ERROR);
     M6CNativeContract::need(($identity['version']??'')===M6CNativeContract::VERSION&&($identity['sha']??'')===$argv[2]
         &&($identity['token']??'')===$argv[3]&&($identity['worker_uid']??0)===2000&&M6CNativeContract::privateIp($identity['db_ip']??''),'run_binding');
+    M6CNativeContract::need(($identity['profile']??M6CNativeContract::VERSION)===$profile,'profile_binding');
     foreach(['db_id','runtime_id','network_id'] as $key)M6CNativeContract::need(M6CNativeContract::hex($identity[$key]??'',64),'run_resource_id');
     M6CNativeContract::need(preg_match('/^[a-f0-9-]{36}$/D',$identity['server_uuid']??'')===1,'server_uuid');
     $reportLocation=M6CNativeReport::location();
@@ -211,7 +214,11 @@ try{
     // The application connection uses the restricted worker account, even for request setup.
     $worker=Database::connection();$worker->exec("SET time_zone='+00:00'");$worker->exec('SET SESSION innodb_lock_wait_timeout=5');
     m6nCheck($worker->query('SELECT @@server_uuid')->fetchColumn()===$identity['server_uuid'],'application_connection_same_disposable_server');
-    $report['stage']='native_cases';$first=m6nFixture($admin,$config);
+    $report['stage']='native_cases';
+    if($profile===M6CSupplementContract::VERSION){
+        require __DIR__.'/support/WebsitePlatformM6CSupplementCases.php';
+    }else{
+    $first=m6nFixture($admin,$config);
     m6nCase('protected-startup-denials','protected',function()use($first,$config):void{
         $before=[m6nTree($config['work_root']),m6nTree($config['artifact_root'])];$file='/etc/ubo-site-build-worker.json';$original=file_get_contents($file);
         foreach(['uid','config-mode','checkout-owner','source-sha'] as $fault){
@@ -246,7 +253,11 @@ try{
     });
     // Remaining cases are defined below, after the protected startup/build path.
     require __DIR__.'/support/WebsitePlatformM6CNativeCases.php';
-    M6CNativeProcess::cleanup();$report['status']='PASS';M6CNativeContract::evidence($report,$identity['sha'],$identity['token']);$report['stage']='completed';
+    }
+    M6CNativeProcess::cleanup();$report['status']='PASS';
+    if($profile===M6CSupplementContract::VERSION)M6CSupplementContract::evidence($report,$identity['sha'],$identity['token']);
+    else M6CNativeContract::evidence($report,$identity['sha'],$identity['token']);
+    $report['stage']='completed';
 }catch(Throwable $e){
     M6CNativeReport::failure($report,$e,$current);
 }finally{

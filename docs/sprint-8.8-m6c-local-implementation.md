@@ -1,6 +1,6 @@
 # Sprint 8.8 M6C — Local artifact implementation
 
-Current status, October 27, 2026: M6C — IMPLEMENTED / SCOPED ISOLATED NATIVE GATE PASS /
+Current status, October 28, 2026: M6C — IMPLEMENTED / SCOPED ISOLATED NATIVE GATE PASS /
 ACCEPTANCE REVIEW PENDING. M6C formal closure — PENDING. M6 overall — IN PROGRESS.
 M6B — COMPLETE / STAGING PASS / FORMALLY CLOSED by
 [PR #127 acceptance](https://github.com/fvd8383/ultimate-back-office/pull/127#issuecomment-6241852763).
@@ -12,9 +12,87 @@ recorded separately below; the 77-case M6 plan is not a passed matrix.
 Current handoff: the [scoped native acceptance record](sprint-8.8-m6c-native-acceptance.md)
 records PASS at `2ab14c7d8212d1170aafe6d8dcdf3b178dd7d5bf`, 20 cases and
 1,315/1,315 assertions (805 case + 510 setup/identity), with original evidence
-retrieved and locally hash-verified. Acceptance review must assess the B01–B26
-mapping and remaining evidence limits. This documentation update performs no runtime
-operations. The deployed application remains operator-reported `f466fc1…`.
+retrieved and locally hash-verified. The completed acceptance assessment identifies
+four finite evidence packages. Their supplemental authoring is **PARTIALLY IMPLEMENTED
+LOCALLY / REVIEW REQUIRED**; native execution is **NOT PERFORMED** and formal acceptance
+remains pending. The deployed application remains operator-reported `f466fc1…`.
+
+## Supplemental local validation, October 28, 2026
+
+The separate `m6c-native-supplement-v1` profile implements 17 fixed instrumented cases
+from the assessment, beginning at `fa617fd7eeda92d8febdce66c46f973a5ae23a7e`.
+The [native guide](sprint-8.8-m6c-native-validation.md#supplemental-authoring-october-28-2026)
+contains the complete A/B/C/D inventory and mechanisms. Production code, migrations,
+integrity pins, core case definitions and the 77-case plan remain unchanged. New
+source requires its own exact-head review and source-matching runtime preparation.
+
+The local tests use actual artifact/service code, private files, fake PDO/clocks,
+pure packet parsing and bounded synthetic children. They establish implementation
+and controller behavior, **not** real MySQL transactions, native lock order,
+SIGKILL/kernel permissions/ENOSPC or power-loss durability. The service test's fake
+PDO acknowledgement loss is modeled post-commit behavior; the authored native relay
+instead drops the actual server response before PDO can receive it. Native proof
+is still AUTHORED / NOT EXECUTED. Missing C mechanisms are real flush/fsync failure
+and producer-journal publication failure. Actual low-space and unavailable-probe
+refusal are authored through scoped faults in fresh disposable directories.
+
+The local positive PDF is a valid inert document with computed object/xref offsets,
+not renamed text. It passes the existing `pricing_list` link selection, real renderer,
+validator, content-addressed store and result path, with earlier customer/current
+internal approval on a non-material revision. Narrow negative neighbors reject
+unknown rights, wrong business ownership, changed digest and ambiguous approval.
+
+Local results are recorded below after sequential execution; raw commands, exits,
+versions, timings, original failures and rechecks remain in the private authoring
+evidence directory and `SUMMARY.txt`, outside Git. Intentional negative-test
+diagnostics do not turn a successful suite into failure and do not relax the
+individual Git verifier's strict empty-stderr rule.
+
+The selected completed runs all exited **0** on Windows (PHP **8.4.24**, Node
+**24.22.1**, Git **2.56.0.windows.2**, GNU Bash **5.3.15(2)**). Each PHP suite uses
+`php -n tests/<filename>`; a private runner supplies a newly created TMP/TEMP root,
+captures the actual exit/signal before logging, and retains stdout/stderr separately.
+
+| Suite filename | Assertions | Relevant scope |
+| --- | ---: | --- |
+| `WebsitePlatformM6CSupplementProtocolTest.php` | 211 | Fixed inventory, packet faults, startup/timeout/early exit, every supported barrier, actual local exit/signal and cleanup evidence, privacy and unknown outcome |
+| `WebsitePlatformM6CSupplementSelectionTest.php` | 41 | Explicit selection, guarded entries, exact report transport and actual launcher capture/acceptance with fake admission/reader/limit leaves |
+| `WebsitePlatformM6CSupplementServiceTest.php` | 103 | Real service/artifacts with fake PDO/clocks; third execution, recovery/budget/operator, supported PDF and narrow negatives |
+| `WebsitePlatformM6CArtifactTest.php` | 45 | Unchanged artifact regression |
+| `WebsitePlatformM6CIntegrationTest.php` | 54 | Fake SQL plus real files |
+| `WebsitePlatformM6CRecoveryTest.php` | 135 | Real files, modeled SQL/clocks/interruption |
+| `WebsitePlatformM6CNativeSetupTest.php` | 751 | 62 setup/report scenarios; modeled Linux permissions and actual local publication |
+| `WebsitePlatformM6CNativeObservationTest.php` | 273 | 103 scenarios / 45 real synthetic children |
+| `WebsitePlatformM6CNativeDiagnosticsTest.php` | 95 | 41 diagnostics/transport scenarios |
+| `WebsitePlatformM6CNativeGitSourceTest.php` | 113 | 49 scenarios using installed Git and synthetic subprocesses |
+| `WebsitePlatformM6CNativeLauncherTest.php` | 7,385 | 104 fake-command scenarios, including publication and repeated interruption precedence; 884.474 seconds |
+| `WebsitePlatformM6CScopeTest.php` | 53 | Protected M6C scope |
+| `WebsitePlatformM6BScopeTest.php` | 42 | Protected M6B scope |
+
+The successful service, integration and Git-source suites intentionally emitted
+51, 102 and 50 stderr bytes respectively. Individual verifier stderr is still strict.
+The launcher regression uses a **private Windows-only Bash environment double** for
+unsupported `ulimit -f 4`; fake Docker/systemd/OS admission was already part of that
+suite. Repository Linux limits are unchanged. This run supplies modeled local
+controller evidence, not Linux resource-limit or kernel proof.
+
+Original failures remain retained: default sandbox TEMP journal rename failures
+(also reproduced by the unchanged artifact suite); a new fixture snapshot assertion;
+MSYS/Git sandbox startup denials; new stage-cleanup bookkeeping; an invalid-profile
+exception outside coordinator handling; unsupported Windows `ulimit`; and a private
+300-second runner timeout before the full launcher suite completed. The corrections
+use new private TEMP roots, test-only fixes, authorized same-user sandbox exceptions,
+the explicit Windows limit double and a longer private runner bound. No native
+deadline or host ACL/configuration changed. Two initially overlapping scope sessions
+were rechecked sequentially. An initial diff check that forced `autocrlf=false`
+misread existing CRLF working files; the repository's ordinary diff check passed.
+
+Final verification includes 16 PHP lints, two Bash syntax checks, 41 local document
+links, balanced fences and diff checks. Baseline preservation covers 462 tracked
+files: 454 outside the eight edited existing paths remain byte-identical, including
+267 protected production/other files with identical modes/blobs at both `fa617fd`
+and `2ab14c7`. All 25 migrations and integrity pins, core contract/case files and
+inline core case bodies are unchanged. No production defect was demonstrated.
 
 Previous handoff at `2ab14c7`: **INSTRUMENTED GIT ENVIRONMENT ISOLATED / NATIVE CAUSE
 NOT YET CONFIRMED**. Historical `abac019` remains FAILED (3 PASS / 1 FAIL /

@@ -86,7 +86,7 @@ function m6nComposition(string $hash,int $asset): array
     return ['expected_snapshot_hash'=>$hash,'pages'=>$pages,'theme'=>$theme];
 }
 /** Direct synthetic identity/approval seeding is NOT UI/approval-workflow coverage. */
-function m6nFixture(PDO $db,array $config): array
+function m6nFixture(PDO $db,array $config,?callable $supplement=null): array
 {
     $key=bin2hex(random_bytes(8));$ids=[];
     foreach(['requester','operator','owner'] as $type)$ids[$type]=m6nInsert($db,'users',[
@@ -117,6 +117,7 @@ function m6nFixture(PDO $db,array $config): array
     $db->prepare("UPDATE sites SET lifecycle_status='approved' WHERE id=?")->execute([$site]);
     foreach(['customer','internal'] as $type)m6nInsert($db,'site_approvals',['site_id'=>$site,'revision_id'=>$revision,'approval_type'=>$type,
         'actor_type'=>$type==='customer'?'customer':'internal_admin','state'=>'approved','requested_at'=>'2026-09-19 00:00:00','decided_at'=>'2026-09-19 00:00:00','metadata_json'=>'{}']);
+    if($supplement!==null)$supplement($db,$config,$ids+['site_id'=>$site,'revision_id'=>$revision,'asset_path'=>$path,'asset_id'=>$asset]);
     $hash=$db->query('SELECT snapshot_hash FROM site_revisions WHERE id='.$revision)->fetchColumn();
     $adapter=new M6CNativeDependencies($config,$ids['operator']);$adapter->wire();
     $request=SiteBuildService::requestBuild($ids['requester'],['site_id'=>$site,'revision_id'=>$revision,'expected_snapshot_hash'=>$hash,'build_profile'=>SiteBuildContract::PROFILE]);

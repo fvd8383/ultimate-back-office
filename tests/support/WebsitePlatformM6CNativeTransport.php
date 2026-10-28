@@ -14,14 +14,16 @@ final class M6CNativeTransport
             throw new RuntimeException('transport_host_uid');
         return (int)$m[1];
     }
-    public static function envelope(string $bytes,string $sha,string $token):array
+    public static function envelope(string $bytes,string $sha,string $token,string $profile=M6CNativeContract::VERSION):array
     {
         if($bytes===''||strlen($bytes)>self::LIMIT)throw new RuntimeException('transport_size');
+        if($profile===M6CSupplementContract::VERSION)return M6CSupplementContract::decode($bytes,$sha,$token);
+        if($profile!==M6CNativeContract::VERSION)throw new RuntimeException('transport_profile');
         $report=json_decode($bytes,true,32,JSON_THROW_ON_ERROR);
         if(!is_array($report))throw new RuntimeException('transport_json');
         M6CNativeContract::envelope($report,$sha,$token);return $report;
     }
-    public static function read(string $sha,string $token,?callable $io=null):string
+    public static function read(string $sha,string $token,?callable $io=null,string $profile=M6CNativeContract::VERSION):string
     {
         $io??=static fn($op,...$args)=>$op(...$args);
         $location=M6CNativeReport::location($io);$path='/run/m6c/report.json';
@@ -37,7 +39,7 @@ final class M6CNativeTransport
                 if($opened[$key]!==$s[$key])throw new RuntimeException('transport_file_changed');
             $bytes=m6nStep('transport_read',fn()=>$io('stream_get_contents',$stream,self::LIMIT+1));
             if(strlen($bytes)!==$s['size'])throw new RuntimeException('transport_partial_or_grown');
-            self::envelope($bytes,$sha,$token);
+            self::envelope($bytes,$sha,$token,$profile);
         }finally{m6nStep('transport_close',fn()=>$io('fclose',$stream));}
         return $bytes;
     }
@@ -61,7 +63,7 @@ final class M6CNativeTransport
             m6nStep('transport_pending_mode',fn()=>chmod($path,0600));
         }finally{m6nStep('transport_pending_close',fn()=>fclose($stream));}
     }
-    public static function verify(string $directory,string $attempt,string $sha,string $token):array
+    public static function verify(string $directory,string $attempt,string $sha,string $token,string $profile=M6CNativeContract::VERSION):array
     {
         $pending=self::host($directory,$attempt);$final=$directory.'/native.json';
         if(is_link($pending)||!is_file($pending)||file_exists($final)||is_link($final))throw new RuntimeException('transport_pending_contract');
@@ -70,7 +72,7 @@ final class M6CNativeTransport
             (PHP_OS_FAMILY==='Linux'&&($s['uid']!==self::hostUid()||($s['mode']&07777)!==0600)))throw new RuntimeException('transport_pending_contract');
         $bytes=m6nStep('transport_pending_read',fn()=>file_get_contents($pending,false,null,0,self::LIMIT+1));
         if(strlen($bytes)!==$s['size'])throw new RuntimeException('transport_pending_changed');
-        $report=self::envelope($bytes,$sha,$token);$digest=hash('sha256',$bytes);$ack='ABSENT';
+        $report=self::envelope($bytes,$sha,$token,$profile);$digest=hash('sha256',$bytes);$ack='ABSENT';
         $log=$directory.'/child.stderr.txt';
         if(is_file($log)&&!is_link($log)){
             $text=m6nStep('transport_ack_read',fn()=>file_get_contents($log,false,null,0,self::LIMIT+1));
@@ -90,11 +92,11 @@ if(realpath($_SERVER['SCRIPT_FILENAME']??'')===__FILE__){
     set_error_handler(static function():never{throw new RuntimeException('transport_io');});
     try{
         $mode=$argv[1]??'';
-        if($mode==='read'&&count($argv)===4){
-            $bytes=M6CNativeTransport::read($argv[2],$argv[3]);
+        if($mode==='read'&&in_array(count($argv),[4,5],true)){
+            $bytes=M6CNativeTransport::read($argv[2],$argv[3],null,$argv[4]??M6CNativeContract::VERSION);
             if(fwrite(STDOUT,$bytes)!==strlen($bytes)||!fflush(STDOUT))throw new RuntimeException('transport_stdout');
         }elseif($mode==='receive'&&count($argv)===4)M6CNativeTransport::receive(STDIN,$argv[2],$argv[3]);
-        elseif($mode==='verify'&&count($argv)===6)echo json_encode(M6CNativeTransport::verify($argv[2],$argv[3],$argv[4],$argv[5]),JSON_THROW_ON_ERROR)."\n";
+        elseif($mode==='verify'&&in_array(count($argv),[6,7],true))echo json_encode(M6CNativeTransport::verify($argv[2],$argv[3],$argv[4],$argv[5],$argv[6]??M6CNativeContract::VERSION),JSON_THROW_ON_ERROR)."\n";
         else throw new RuntimeException('transport_arguments');
     }catch(Throwable $e){
         $code=preg_match('/^(?:transport|report)_[a-z_]+$/D',$e->getMessage())?$e->getMessage():'transport_invalid_envelope';

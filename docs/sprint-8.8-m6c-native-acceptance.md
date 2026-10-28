@@ -4,13 +4,45 @@ Recorded October 27, 2026 (America/New_York); original run evidence is dated
 October 28 in UTC. **M6C — IMPLEMENTED / SCOPED ISOLATED NATIVE GATE PASS /
 ACCEPTANCE REVIEW PENDING. M6C formal closure — PENDING.**
 The PASS is supported by directly retrieved, locally hash-verified original
-evidence. This documentation task executed no runtime test.
+evidence. That documentation task executed no runtime test. The October 28
+supplement below adds local test authoring, without a new native execution.
 
 M6 overall — **IN PROGRESS**. M6B — **COMPLETE / STAGING PASS / FORMALLY CLOSED**.
 M6D–M6G — **NOT STARTED**. Production — **UNAUTHORIZED / NOT DEPLOYED**.
 The operator-reported deployed application remains
 `f466fc1cdbfb53325a1db11445736bdc5ea7c6f4`; M6C is not deployed there.
 Migration 025 is **APPLIED TO WORKING STAGING** and must not be reapplied.
+
+## Supplemental acceptance status, October 28, 2026
+
+**M6C CORE 20-CASE NATIVE GATE — HISTORICAL PASS at `2ab14c7`.**
+**SUPPLEMENTAL COVERAGE — PARTIALLY IMPLEMENTED LOCALLY / REVIEW REQUIRED.**
+**SUPPLEMENTAL NATIVE EXECUTION — NOT PERFORMED. FORMAL M6C ACCEPTANCE — STILL PENDING.**
+
+The [completed assessment](https://github.com/fvd8383/ultimate-back-office/pull/128#issuecomment-6458480460)
+reported 13/13 conversations resolved and identified four finite evidence tasks.
+The new test authoring on the same branch starts at `fa617fd7eeda92d8febdce66c46f973a5ae23a7e`:
+A post-seal authority/execution-three recovery; B real completion transport loss;
+C candidate/seal interruption and build-store filesystem faults; D approved PDF
+through the supported document component with non-material eligibility.
+The [operating guide](sprint-8.8-m6c-native-validation.md#supplemental-authoring-october-28-2026)
+defines all 17 fixed instrumented cases, mechanisms, profile selection and later
+preparation requirements. The [local implementation record](sprint-8.8-m6c-local-implementation.md#supplemental-local-validation-october-28-2026)
+separates actual private-file/process regressions from modeled DB/kernel behavior.
+
+None of G1–G4 is resolved by authoring. Real flush/fsync failure and producer-journal
+publication failure remain missing C
+mechanisms. All new native cases require exact-source review and later authorized
+native execution. No new image identity is asserted. The original 20-case inventory,
+acceptance rules, 1,315 assertions (805 case + 510 setup/identity), launcher exit 0,
+verified transport, cleanup/publication PASS and earlier FAILED/BLOCKED histories
+retain their original source/run attribution and are not rerun or relabeled here.
+
+The 77-case plan is unchanged. Browser timing at M6E/M6G is recommended, not approved
+or executed. Backup/download remains operator-reported COMPLETE; restore remains
+NOT EXECUTED. No new download, backup, host preservation check or cleanup occurs.
+M6B closure and M6D–M6G status are unchanged; no implementation merge or formal
+acceptance is authorized by this supplement.
 
 ## Source, scope and provenance
 

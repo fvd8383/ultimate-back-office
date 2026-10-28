@@ -7,8 +7,94 @@ The [current acceptance/evidence record](sprint-8.8-m6c-native-acceptance.md) bi
 the successful native run to `2ab14c7d8212d1170aafe6d8dcdf3b178dd7d5bf`: 20 PASS /
 0 FAIL / 0 UNREACHED, 1,315 completed assertions (805 case + 510 setup/identity),
 launcher exit 0. Original evidence was retrieved and locally hash-verified. The new
-documentation head is not natively executed. No runtime test is run by this update.
+documentation head was not natively executed. The supplemental authoring below runs
+local synthetic regressions only; it does not execute the native gate.
 The latest runtime image identity and requirement limits are in that record.
+
+## Supplemental authoring, October 28, 2026
+
+**PARTIALLY IMPLEMENTED LOCALLY / REVIEW REQUIRED. SUPPLEMENTAL NATIVE EXECUTION —
+NOT PERFORMED. FORMAL M6C ACCEPTANCE — STILL PENDING.** This bounded supplement
+implements the four packages from the [completed assessment](https://github.com/fvd8383/ultimate-back-office/pull/128#issuecomment-6458480460).
+Authoring starts at `fa617fd7eeda92d8febdce66c46f973a5ae23a7e`. It is a different
+source from the historical native PASS, and cannot reuse that run's source/image claim.
+Package A addresses B23/B24 and the build portions of C07/C11/C12; B addresses
+B25/C09; C addresses the remaining B08/B12/B15 store boundaries; D supplies the
+promised positive approved-PDF/non-material path. The 77-case plan is not rewritten.
+
+`RunM6CNative.sh --profile supplement-v1` selects `m6c-native-supplement-v1`.
+Omitting the option, or selecting `--profile core`, retains `m6c-native-v1` and its
+exact 20 cases, lanes and gate. Environment variables cannot select the supplement.
+The selection is bound into the coordinator invocation, root-owned attestation,
+report, transport reader and final acceptance validator. Help and check-only retain
+their existing side-effect boundaries. The supplemental helper entry points reject
+ordinary invocation before application bootstrap, a database connection or a socket.
+
+The fixed inventory below has **17 instrumented cases**. All are authored native
+cases, **NOT EXECUTED**. Every required name must occur exactly once in the writer's
+specified JSON serialization, in inventory order, with PASS, instrumented lane,
+positive completed assertions and an observed boundary. Missing/extra/duplicate,
+FAIL/UNREACHED, wrong source/run/profile/lane and partial PASS cannot satisfy this
+gate. Core and supplemental reports cannot satisfy one another. A transported report
+is still subject to acceptance validation; successful transport alone is insufficient.
+
+| Package | Exact cases | Native mechanism and required observation |
+| --- | --- | --- |
+| A: post-seal acceptance | `acceptance-revocation-first`; `acceptance-success-first` | Independent completion/revocation connections, barriers and an observed MySQL lock wait establish both serial orders. Revocation first denies new release/validation/success; success first remains immutable history after revocation and replay. |
+| A: execution three | `third-execution-adoption`; `third-revoked-recovery-restart`; `third-deleted-inspection` | Two actual service executions create partial files and settle injected transient failures. Execution three seals real bytes and is killed at the observed SEALED barrier. Fresh recovery changes counts from (3,3,0) to (4,3,1), preserves the original producer and exact bytes, and renders nothing. Revoked/deleted requesters retain inspection but cannot adopt. A killed recovery is reclaimed with fresh ownership; stale renewal/result calls are rejected. |
+| A: budget/operator | `automatic-budget-operator` | Two automatic recovery claims are interrupted during observed inspection of deliberately ambiguous proof. The existing budget blocks automatic work; unauthorized operator work is refused, and one authorized, scoped operator request key plus its duplicate establishes idempotence without resetting counters. |
+| B: completion transport | `completion-not-committed`; `completion-ack-dropped`; `authoritative-outcome-unavailable` | A one-connection loopback relay inside the verified runtime suppresses COMMIT before forwarding, or forwards COMMIT but suppresses its successful server OK before PDO receives it. A fresh independent connection records committed state **before** replay/recovery. A separate armed connection loss prevents authoritative lookup; the observer remains unknown without effects, then recognizes history after connectivity returns. |
+| C: observed process stops | `candidate-process-kill`; `proof-process-kill` | Real candidate bytes before manifest completion, or actual seal proof before rename, are observed through existing progress callbacks before SIGKILL. Fresh service recovery inspects without rendering, preserves original evidence and creates no partial success. Candidate output is quarantined/safely failed; ambiguous pre-rename seal state stays blocked. |
+| C: real filesystem failures | `artifact-write-permission`; `artifact-space-exhaustion`; `artifact-rename-permission`; `foreign-target-collision` | Only new disposable artifact directories receive temporary permission faults. Actual store operations must emit EACCES/ENOSPC observations. Pressure fills only the existing 256-MiB run tmpfs, also testing low-space admission; its owned file is removed and free space checked before the next case. A foreign empty target is created before the store collision check and must remain empty. Write failures safely retry; rename/collision uncertainty remains reconciliation-required. |
+| C: admission | `filesystem-admission` | Existing distinct `/tmp` and artifact tmpfs devices exercise cross-device refusal. A run-owned FIFO exercises nonregular inventory rejection. No mount, device creation or added capability. |
+| D: supported document path | `nonmaterial-approved-pdf` | A valid inert one-page fixture PDF uses `pricing_list` / `link`, approved rights/site/business metadata, an effective earlier customer approval and exact current internal approval on a non-material revision. Actual selection, rendering, validation, store and completion verify exact PDF bytes, content-addressed path, MIME/size/hash inventory and public anchor reference. |
+
+The two initial transient failures, lease expiry and backoff adjustments are
+instrumented controls. Attempts/counters/results are created through the service;
+no execution count is set to three, budget reset or successful attempt inserted.
+Controlled lease/backoff timestamps are reported as such, not elapsed-time evidence.
+Direct fixture identity/approval seeding is not approval-workflow/UI coverage.
+
+The COMMIT relay parses the [MySQL COM_QUERY command](https://dev.mysql.com/doc/dev/mysql-server/latest/page_protocol_com_query.html)
+and [capability flags](https://dev.mysql.com/doc/dev/mysql-server/latest/group__group__cs__capabilities__flags.html).
+It accepts bounded, unencrypted/uncompressed packets and targets only the identified
+worker connection at the completion transaction. TLS, compression and query-attribute
+capabilities fail closed; it never silently downgrades or substitutes a simulation.
+It has one listener on runtime loopback, one attested private backend, bounded queues
+and a 90-second lifetime. It neither exposes a host port nor changes server state
+globally. Reports retain target job/attempt/connection, fault facts, typed worker error,
+fresh observer identity and a digest of authoritative state before replay. Raw packets,
+SQL, credentials and lease tokens are not logged. Private lease handoffs remain in
+the run-owned tmpfs and are removed with that runtime.
+
+The space case also creates a new nested private store, acquires its writer lock
+using the actual service-created producer, then removes search permission from only
+that new parent at the existing pre-probe guard. With adequate free space established
+first, actual EACCES and `storage_unavailable` establish an unavailable
+`disk_free_space` probe. The parent mode is restored and the new fixture reconciled
+before the case completes; a typed SPACE observation records both low/unknown checks.
+
+Residual C mechanisms are **UNIMPLEMENTED**: a real failed `fflush`/`fsync` and failure
+between the checked producer-journal write and its publishing rename.
+The current seams do not expose those boundaries
+faithfully; a synthetic throw or an early collision would not prove them. They require
+separately reviewed, bounded test-only interception or an appropriate isolated
+filesystem facility. No production seam, broad capability or host mount is introduced.
+FIFO coverage does not claim character/block-device creation; ENOSPC covers the
+write/space failure class without a separate quota matrix. SIGKILL is not power-loss
+durability proof. Previously credited hardlink/symlink evidence remains credited.
+
+Later work requires exact-new-head review, separately authorized source-matching
+runtime preparation, capability/preflight verification and an explicitly authorized
+supplemental native run. The cached earlier image is not relabeled or accepted for
+new source. Existing resources, 1,200-second deadline, at-most-two-child supervision,
+no-new-privileges/capability restrictions, private networking, evidence publication,
+ownership-scoped cleanup and primary-failure/interruption precedence remain in force.
+No native gap is closed by this authoring. Browser allocation to M6E served-policy
+and M6G integrated validation remains a recommendation requiring owner decision.
+
+Local regression results and their modeled boundaries are recorded in the
+[implementation record](sprint-8.8-m6c-local-implementation.md#supplemental-local-validation-october-28-2026).
 
 Earlier correction/run sections below retain their source-specific historical facts.
 Their then-current failed/not-executed/image-preparation handoffs are superseded
