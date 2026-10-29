@@ -1,6 +1,6 @@
 # Sprint 8.8 M6C — Local artifact implementation
 
-Current status, October 28, 2026: M6C — IMPLEMENTED / SCOPED ISOLATED NATIVE GATE PASS /
+Current status, October 29, 2026: M6C — IMPLEMENTED / SCOPED ISOLATED NATIVE GATE PASS /
 ACCEPTANCE REVIEW PENDING. M6C formal closure — PENDING. M6 overall — IN PROGRESS.
 M6B — COMPLETE / STAGING PASS / FORMALLY CLOSED by
 [PR #127 acceptance](https://github.com/fvd8383/ultimate-back-office/pull/127#issuecomment-6241852763).
@@ -13,9 +13,125 @@ Current handoff: the [scoped native acceptance record](sprint-8.8-m6c-native-acc
 records PASS at `2ab14c7d8212d1170aafe6d8dcdf3b178dd7d5bf`, 20 cases and
 1,315/1,315 assertions (805 case + 510 setup/identity), with original evidence
 retrieved and locally hash-verified. The completed acceptance assessment identifies
-four finite evidence packages. Their supplemental authoring is **PARTIALLY IMPLEMENTED
-LOCALLY / REVIEW REQUIRED**; native execution is **NOT PERFORMED** and formal acceptance
-remains pending. The deployed application remains operator-reported `f466fc1…`.
+four finite evidence packages. The operator now reports **journal3 PASS at `ccbc708`**
+(593 assertions, including 54 case assertions) and **supplement17 FAILED at `ccbc708`**
+(six PASS / one FAIL / ten UNREACHED). The correction below has local packet evidence
+only; formal acceptance remains pending. The deployed application remains
+operator-reported `f466fc1…`. Older dated sections retain their own source-scoped
+results and limitations; they do not override this current handoff.
+
+## Supplemental exact COMMIT correction, October 29, 2026
+
+Clean starting branch `codex/sprint-8.8-m6c-artifact-builder`, head
+`ccbc708b62891c70071c6ea6e42dcfaf5a3976d7`; no unexpected work was overwritten.
+The prior [exact-head automated review](https://github.com/fvd8383/ultimate-back-office/pull/128#issuecomment-6485415512)
+reported no major issues. This is an operator-failure correction, not a review
+finding. The [native record](sprint-8.8-m6c-native-validation.md#supplemental-native-failure-and-exact-commit-correction-october-29-2026)
+preserves the supplied run, six passing case counts, failure and distinct hashes.
+No server evidence was retrieved or independently hash-verified by this task.
+
+The original relay parser compared only `$payload === "\x03COMMIT"` (Git blob
+`eb6cd2a31f0257ca6775fe97cf837fc5d1a5d292`). Existing packet fixtures constructed
+only that bare form. The coordinator waits for the worker's completion `COMMIT`
+barrier, verifies the connection identity, arms the one relay, observes `ARMED`,
+then resumes the worker. The wrapper sets completion after the release insertion
+and invokes its hook immediately before the real inner `PDO::commit()`; no manual
+SQL substitutes for that call. A parser exception precedes the proxy's `FAULT`
+emission; the proxy's `finally` closes any remaining client/server/listener resources.
+
+Official PHP **php-8.4.27** source confirms the compatibility defect:
+[PDO mysql_handle_commit](https://github.com/php/php-src/blob/php-8.4.27/ext/pdo_mysql/mysql_driver.c)
+calls `mysql_commit`;
+[the mysqlnd compatibility macro](https://github.com/php/php-src/blob/php-8.4.27/ext/mysqlnd/mysqlnd_libmysql_compat.h)
+passes no options and a null name to
+[mysqlnd_commit](https://github.com/php/php-src/blob/php-8.4.27/ext/mysqlnd/mysqlnd.h),
+which dispatches to
+[tx_commit_or_rollback](https://github.com/php/php-src/blob/php-8.4.27/ext/mysqlnd/mysqlnd_connection.c#L1650-L1677).
+Its `COMMIT%s %s` formatting leaves exactly one trailing ASCII space when both
+substitutions are empty. The COM_QUERY byte `0x03` is separate from the SQL text.
+This source-supported mismatch does **not** recover the historical native packet
+or establish its transaction outcome.
+
+Before editing, the private probe required the actual unchanged relay class and
+constructed handshake, command and response packets. Both modes (`before-commit`,
+`drop-ack`), both command forms and whole/one-byte delivery produced eight scenarios.
+Windows **PHP 8.4.24 CLI ZTS**, no INI: four bare-form scenarios passed; all four
+single-space scenarios raised exactly `RuntimeException('wire_expected_commit')`,
+numeric code 0, with no returned target bytes or successful fault. The probe
+completed with **expected exit 1**, 0.3749214 seconds, 991 stdout / 0 stderr bytes.
+The separately supplied Linux PHP 8.4.24 NTS eight-scenario probe of the same blob
+is mechanism evidence only, not this desktop execution or a native capture.
+
+The correction is an explicit two-form equality: only `"\x03COMMIT"` or
+`"\x03COMMIT "`. Framing, sequence-zero targeting, capability rejection and bounds
+are unchanged. No trim, prefix/case/comment matching, fallback, packet rewriting
+or SQL logging was introduced. Drop-ack forwards the original packet/header bytes,
+retains no fault before a complete validated matching server OK, then suppresses
+that OK. Before-commit suppresses the target and records both flags false.
+The OK fixtures demonstrate parser behavior only, not a MySQL commit.
+
+Fresh sequential commands used Node **24.22.1** as an outside-Git runner, with a
+60-second / 65,536-byte per-stream bound and owned temporary directories:
+
+```powershell
+php -n C:/Users/fvd83/.ssh/m6c-commit-wire-20261029/reproduce.php 'C:/Users/fvd83/My Drive/Development/ultimate-back-office/tests/support/WebsitePlatformM6CSupplementWire.php'
+php -n tests/WebsitePlatformM6CSupplementWireTest.php
+php -n -d 'auto_append_file=C:/Users/fvd83/.ssh/m6c-commit-wire-20261029/actual-observation.php' tests/WebsitePlatformM6CSupplementProtocolTest.php
+```
+
+| Fresh after-fix validation | Completion | Exit | Seconds | Stdout / stderr bytes |
+| --- | --- | ---: | ---: | ---: |
+| Same private probe | Eight accepted / zero recognizer failures | 0 | 0.3818712 | 915 / 0 |
+| New actual-parser wire regression | 4,591 assertions / 562 scenarios | 0 | 0.2945765 | 109 / 0 |
+| Existing protocol/channel regression | 236 assertions | 0 | 7.0340364 | 352 / 0 |
+
+The [wire regression](../tests/WebsitePlatformM6CSupplementWireTest.php) independently
+pins literal headers and covers whole packets, every two-part split and one-byte
+fragments, unarmed pass-through, no premature fault, exact forwarding and suppressed
+OK. Ninety-three negative payload neighbors run in both commit modes with whole
+and byte delivery; rejection requires the exact exception class/message/code.
+They include other/empty/incomplete SQL, modifiers, comments, semicolons,
+multi-statements, case changes, extra spaces, all ASCII control bytes, another
+command byte and embedded COMMIT text. Capability, malformed/oversized/truncated
+frame, response error/shape/sequence/transaction-state, duplicate-arm/second-command,
+completed-fault reuse and separate drop-query checks remain explicit.
+
+The existing protocol suite was rerun because it imports the changed parser and
+also exercises the relay error channel and strict non-PASS evidence contracts.
+It is byte-unchanged, including the earlier killed-child normalization correction.
+The private append observer reports the actual Windows child: exit **255**, signal
+**0**, signaled **false**, termination requested **true**, running **false**;
+recorded values match, pending owned cleanup **0**. Synthetic negative/missing exits
+still normalize to null independently of signals. Every local run left its owned
+temporary directory empty. Selection, standalone diagnostics, journal/core and the
+large launcher suites were not rerun: their code and dependency paths did not change.
+
+Both changed PHP files pass `php -n -l`, exit 0 with empty stderr. Documentation
+checks pass **78 local links / 50 anchors / 49 external URL syntax checks / seven
+balanced fence pairs**. The working integrity comparison preserves all **485 other
+preexisting files** by raw bytes, Git blobs and modes, including **267 paths outside
+tests/docs** and all **25 migrations**. Working diff checks pass; staged/committed
+checks and final source identity are retained in the private evidence. Git's
+LF-to-CRLF notices describe checkout conversion, not PHP diagnostics or test failures.
+
+Exact change inventory: the test-only wire recognizer, one new packet test, and
+these three existing implementation/native-validation/acceptance records. Production,
+inner PDO commit, completion/recovery/authorization semantics, core20/supplement17/
+journal3 inventories and acceptance meaning, journal extension/admission/receipt
+writer/build recipe, launcher isolation/deadlines/limits/transport, all 25 migrations
+and integrity pins remain unchanged. Migration 025 stays applied to working staging,
+with canonical SHA-256 `dab585dc29aac11153f92703c65d3883aeea73a1b2283157cfa9d2f2ece85cb0`.
+Commands, complete outputs, checks and `SUMMARY.txt` are outside Git at
+`C:\Users\fvd83\.ssh\m6c-commit-wire-20261029`.
+
+No new native run or production correction occurred. The six native passes belong
+to `ccbc708`, not this correction. The current image belongs to `ccbc708`; a later
+separately authorized task must establish reviewed-new-source provenance, verify
+the affected wire/protocol paths and perform the still-needed supplemental native
+run. Do not relabel the old image or edit receipts, or automatically repeat core20,
+journal3, backup, transport smoke or every earlier preparation test. Formal
+acceptance remains pending; browser allocation stays an owner decision;
+backups/receipts untouched; restore **NOT EXECUTED**.
 
 ## Journal receipt boolean correction, October 28, 2026
 

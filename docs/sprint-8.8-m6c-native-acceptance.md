@@ -4,14 +4,43 @@ Recorded October 27, 2026 (America/New_York); original run evidence is dated
 October 28 in UTC. **M6C — IMPLEMENTED / SCOPED ISOLATED NATIVE GATE PASS /
 ACCEPTANCE REVIEW PENDING. M6C formal closure — PENDING.**
 The PASS is supported by directly retrieved, locally hash-verified original
-evidence. That documentation task executed no runtime test. The October 28
-supplement below adds local test authoring, without a new native execution.
+evidence. That documentation task executed no runtime test. The October 29 update
+below records later operator-supplied results separately from that historical core
+PASS and from the new local-only correction. Older dated authoring sections retain
+their source-scoped status and are superseded only by this current update.
 
 M6 overall — **IN PROGRESS**. M6B — **COMPLETE / STAGING PASS / FORMALLY CLOSED**.
 M6D–M6G — **NOT STARTED**. Production — **UNAUTHORIZED / NOT DEPLOYED**.
 The operator-reported deployed application remains
 `f466fc1cdbfb53325a1db11445736bdc5ea7c6f4`; M6C is not deployed there.
 Migration 025 is **APPLIED TO WORKING STAGING** and must not be reapplied.
+
+## Current supplemental evidence status, October 29, 2026
+
+Core20 remains historical PASS at `2ab14c7d8212d1170aafe6d8dcdf3b178dd7d5bf`.
+The operator reports **journal3 PASS at `ccbc708`**, 593 assertions including
+54 case assertions, and **supplement17 FAILED at `ccbc708`**: six PASS / one FAIL /
+ten UNREACHED, launcher exit 1, 984 attempted/completed assertions. The six passing
+cases account for 419; the remaining 565 combine setup/identity and partial
+failed-case assertions without a published split. These six passes do not belong
+to the new correction head. See the [native failure record](sprint-8.8-m6c-native-validation.md#supplemental-native-failure-and-exact-commit-correction-october-29-2026)
+for exact cases, process observations and separately assigned evidence hashes.
+
+`completion-not-committed` failed after relay `ARMED` with `wire_expected_commit`;
+no successful fault or fresh authoritative outcome was retained. The historical
+packet and transaction outcome remain **UNESTABLISHED**. The source-confirmed
+mysqlnd default trailing-space mismatch is now corrected by an exact two-form,
+byte-preserving test-only recognizer, with [local before/after packet results](sprint-8.8-m6c-local-implementation.md#supplemental-exact-commit-correction-october-29-2026).
+No new native run, production recovery fix or completed broader acceptance package
+is claimed. This task did not retrieve server evidence or independently verify
+operator hashes. Earlier preparation failures remain at their own SHAs.
+
+The current image belongs to `ccbc708`; later authorized preparation must establish
+reviewed-new-source provenance before supplemental native retry. Old receipts/image
+identities remain untouched. Unaffected core20/journal3, backup and transport smoke
+are not automatically repeated. Formal acceptance stays **PENDING**, browser
+allocation stays an owner decision, backups/receipts remain untouched and restore
+is **NOT EXECUTED**. No approval, merge, deployment or formal closure is authorized.
 
 ## Producer-journal authoring status, October 28, 2026
 

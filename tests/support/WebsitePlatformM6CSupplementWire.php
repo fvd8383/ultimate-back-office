@@ -30,7 +30,8 @@ final class M6CSupplementWire
                 if(($flags&(0x0820|(1<<26)|(1<<27)))!==0)throw new RuntimeException('wire_unsupported_capabilities');
                 $this->handshake=true;
             }elseif($side==='client'&&$this->armed&&ord($packet[3])===0){
-                $commit=$payload==="\x03COMMIT";
+                // mysqlnd's default PDO commit has one trailing ASCII space; keep the original packet.
+                $commit=$payload==="\x03COMMIT"||$payload==="\x03COMMIT ";
                 if($this->mode!=='drop-query'&&!$commit)throw new RuntimeException('wire_expected_commit');
                 if($this->mode==='drop-query'||$commit){
                     if($this->waiting)throw new RuntimeException('wire_second_command');

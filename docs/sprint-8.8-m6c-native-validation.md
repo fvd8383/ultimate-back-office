@@ -6,10 +6,106 @@ M6C formal closure — PENDING.
 The [current acceptance/evidence record](sprint-8.8-m6c-native-acceptance.md) binds
 the successful native run to `2ab14c7d8212d1170aafe6d8dcdf3b178dd7d5bf`: 20 PASS /
 0 FAIL / 0 UNREACHED, 1,315 completed assertions (805 case + 510 setup/identity),
-launcher exit 0. Original evidence was retrieved and locally hash-verified. The new
-documentation head was not natively executed. The supplemental authoring below runs
-local synthetic regressions only; it does not execute the native gate.
+launcher exit 0. Original core evidence was retrieved and locally hash-verified.
+The October 29 operator-supplied supplemental failure and journal PASS below have
+not been independently retrieved or verified by this desktop task. Its new wire
+correction has local synthetic results only, with no new native execution.
 The historical core runtime image identity and requirement limits are in that record.
+
+## Supplemental native failure and exact COMMIT correction, October 29, 2026
+
+**CORE20 — HISTORICAL PASS at `2ab14c7`.
+JOURNAL3 — OPERATOR-REPORTED PASS at `ccbc708`, 593 assertions including 54 case assertions.
+SUPPLEMENT17 — OPERATOR-REPORTED FAILED at `ccbc708`.
+EXACT COMMIT RECOGNITION — CORRECTED AND LOCALLY TESTED; NEW NATIVE RUN NOT PERFORMED.
+FORMAL ACCEPTANCE — PENDING.**
+
+This current status supersedes the unexecuted-stage status in the older dated
+preparation/authoring records below, whose failures and limits remain at their own
+SHAs. The operator reports **one** supplement-v1 run at
+`ccbc708b62891c70071c6ea6e42dcfaf5a3976d7`: actual launcher exit **1**, duration
+**43.028145436 seconds**, **6 PASS / 1 FAIL / 10 UNREACHED**, **984 attempted /
+984 completed assertions**. Six passing cases account for **419** assertions;
+the remaining **565** combine setup/identity and partial failed-case assertions,
+whose separate counts were not published.
+
+| Operator-reported PASS at ccbc708 | Case assertions |
+| --- | ---: |
+| acceptance-revocation-first | 41 |
+| acceptance-success-first | 79 |
+| third-execution-adoption | 102 |
+| third-revoked-recovery-restart | 66 |
+| third-deleted-inspection | 60 |
+| automatic-budget-operator | 71 |
+
+`completion-not-committed` failed at
+`native_cases / completion-not-committed / native_child_before_barrier`; the
+remaining ten cases were UNREACHED. Relay PID **170** reached `ARMED`, then exited
+**1 / signal 0**, retaining `wire_expected_commit`. Worker PID **171** reached
+`COMMIT`, retained **PDOException / HY000 / driver 2006**, and exited **0 / signal 0**;
+its `RESULT` was not consumed. Both processes were already stopped at failure and
+cleanup observation; neither was killed by cleanup. No `FAULT`, successful
+injection, COMMIT-forwarding observation, acknowledgement suppression or fresh
+authoritative outcome was retained. The historical packet and transaction outcome
+remain **UNESTABLISHED**.
+
+Native report transport, acknowledgement, cleanup and evidence publication
+succeeded; the strict supplemental validator rejected the incomplete FAIL report.
+Reported runtime: **PHP 8.4.27 / MySQL 8.4.11**, one fresh disposable schema and
+25 canonical migrations; **37 workers, one relay, seven deliberate worker
+terminations**. There are **39 child records for 38 distinct processes**, because
+the relay appears in both failure and cleanup records. These are supplied facts,
+not operations or measurements performed by this desktop correction.
+
+Operator evidence directory:
+`/mnt/ubo_stage_testdata/codex-validation/evidence/m6c-supplement-native-operator-20261029T220216Z-8321e4400a53`
+
+| Operator artifact / distinct hash role | Supplied SHA-256, not locally verified |
+| --- | --- |
+| Operator report | `f3493087195d0f2faa6d50825a17e073eda08b758cabc722e5a35d419897544a` |
+| Operator `SUMMARY.txt` | `e2393050e9d262136e57bd30c29b93166c497dde81bd0f6f9ec36a8a5fec2335` |
+| Operator `SHA256SUMS` file | `84cc99009931b168e7d3bb89a6006ae1e7482a1d5e0412e83b19e96e91951d13` |
+
+Launcher evidence directory:
+`/mnt/ubo_stage_testdata/codex-validation/evidence/m6c-native-20261029T220320Z-b8a1f3ccb1f387e48f7d8c0f8fa05c07`
+
+| Launcher artifact / distinct hash role | Supplied SHA-256, not locally verified |
+| --- | --- |
+| `native.json` | `43b683983797943eb4c6b6215b3eda65db5720cf23d5a3b52673856faba59e0e` |
+| Launcher `SHA256SUMS` file | `cd9bde6a845d36fb95f64aaa9290e761df085d16df09c563b4aa4917d9216908` |
+| Launcher `PUBLICATION` | `be1b4211dc5192436fa9aea9022ab0e415cbe5698a9ec404960bbabc0cf78ce9` |
+
+The [local correction and upstream trace](sprint-8.8-m6c-local-implementation.md#supplemental-exact-commit-correction-october-29-2026)
+establish a source-supported compatibility defect independently of the missing
+historical packet: pinned PDO/mysqlnd emits default SQL with one trailing ASCII
+space, while the relay accepted only bare `"\x03COMMIT"`. Arming remains at the
+specific completion connection's pre-commit barrier; the wrapper invokes the real
+inner `PDO::commit()`. The parser now recognizes exactly bare or single-space
+COM_QUERY COMMIT, preserves original forwarded bytes/header, and retains capability,
+frame, one-fault and server-OK checks. No broader SQL normalization is supported.
+
+Actual local Windows PHP **8.4.24 ZTS** before-fix probe: four bare scenarios
+accepted, four single-space scenarios rejected with exact `wire_expected_commit`,
+no successful rejected fault, expected exit **1**. The same after-fix probe accepts
+all eight, exit **0**. New packet regression: **4,591 assertions / 562 scenarios**;
+existing protocol/channel: **236 assertions**; both exit **0**, empty stderr and
+owned cleanup complete. Whole/all two-part splits/byte fragmentation, exact
+forwarding, strict negatives and unknown outcomes are covered. Constructed OK
+packets are fixtures, not database evidence. The separately supplied Linux
+eight-scenario mechanism probe remains distinct from this task's Windows results.
+
+The current image belongs to `ccbc708`. Later separately authorized preparation
+must establish reviewed-new-source provenance before supplemental native retry;
+old image/receipts must not be relabeled/edited. Affected wire/protocol verification
+and the still-needed supplement17 native run remain; no automatic repeat of
+unaffected core20, journal3, backup, transport smoke or all preparation tests is
+prescribed. Production/transaction code, contracts/inventories, journal helper and
+recipe, launcher limits/transport, migrations/pins are unchanged. No server access,
+real SQL/migration, socket/relay, image/container/service, installation, deployment,
+backup/restore/prune, approval, merge or closure occurred. GitHub/source inspection
+and authorized Git publication are separate from these zero runtime operations.
+Browser allocation remains an owner decision, backups/receipts untouched and
+restore **NOT EXECUTED**.
 
 ## Journal helper preparation and receipt correction, October 28, 2026
 
