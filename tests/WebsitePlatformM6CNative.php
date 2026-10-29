@@ -215,7 +215,9 @@ try{
     $worker=Database::connection();$worker->exec("SET time_zone='+00:00'");$worker->exec('SET SESSION innodb_lock_wait_timeout=5');
     m6nCheck($worker->query('SELECT @@server_uuid')->fetchColumn()===$identity['server_uuid'],'application_connection_same_disposable_server');
     $report['stage']='native_cases';
-    if($profile===M6CSupplementContract::VERSION){
+    if($profile===M6CJournalContract::VERSION){
+        require __DIR__.'/support/WebsitePlatformM6CJournalCases.php';
+    }elseif($profile===M6CSupplementContract::VERSION){
         require __DIR__.'/support/WebsitePlatformM6CSupplementCases.php';
     }else{
     $first=m6nFixture($admin,$config);
@@ -256,6 +258,7 @@ try{
     }
     M6CNativeProcess::cleanup();$report['status']='PASS';
     if($profile===M6CSupplementContract::VERSION)M6CSupplementContract::evidence($report,$identity['sha'],$identity['token']);
+    elseif($profile===M6CJournalContract::VERSION)M6CJournalContract::evidence($report,$identity['sha'],$identity['token']);
     else M6CNativeContract::evidence($report,$identity['sha'],$identity['token']);
     $report['stage']='completed';
 }catch(Throwable $e){

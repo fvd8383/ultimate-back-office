@@ -4,6 +4,7 @@ require_once __DIR__.'/WebsitePlatformM6CNativeContract.php';
 require_once __DIR__.'/WebsitePlatformM6CNativeSetup.php';
 require_once __DIR__.'/WebsitePlatformM6CNativeDiagnostics.php';
 require_once __DIR__.'/WebsitePlatformM6CSupplementContract.php';
+require_once __DIR__.'/WebsitePlatformM6CJournalContract.php';
 
 /** Coordinator diagnostics only; no application bootstrap, CLI or report-path argument. */
 final class M6CNativeReport
@@ -11,6 +12,7 @@ final class M6CNativeReport
     public static function initial(string $sha,string $token,string $profile=M6CNativeContract::VERSION): array
     {
         if($profile===M6CSupplementContract::VERSION)return M6CSupplementContract::initial($sha,$token);
+        if($profile===M6CJournalContract::VERSION)return M6CJournalContract::initial($sha,$token);
         if($profile!==M6CNativeContract::VERSION)throw new RuntimeException('native_profile');
         return ['version'=>M6CNativeContract::VERSION,'native'=>true,'sha'=>$sha,'token'=>$token,
             'status'=>'FAIL','stage'=>'attestation','assertions'=>0,'completed_assertions'=>0,

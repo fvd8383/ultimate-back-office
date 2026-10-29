@@ -18,6 +18,7 @@ final class M6CNativeTransport
     {
         if($bytes===''||strlen($bytes)>self::LIMIT)throw new RuntimeException('transport_size');
         if($profile===M6CSupplementContract::VERSION)return M6CSupplementContract::decode($bytes,$sha,$token);
+        if($profile===M6CJournalContract::VERSION)return M6CJournalContract::decode($bytes,$sha,$token);
         if($profile!==M6CNativeContract::VERSION)throw new RuntimeException('transport_profile');
         $report=json_decode($bytes,true,32,JSON_THROW_ON_ERROR);
         if(!is_array($report))throw new RuntimeException('transport_json');

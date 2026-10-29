@@ -25,7 +25,7 @@ elif [[ $scenario == collect || $scenario == capture ]]; then
         m6n_guard() { [[ $1 == capture-owner ]]; }
         m6n_docker() {
             if [[ $1 == inspect ]]; then printf '[]'; return; fi
-            [[ $# == 11 && $1 == exec && $2 == "$runtime_id" && $8 == read && $9 == "$sha" && ${10} == "$token" && ${11} == m6c-native-supplement-v1 ]] || return 94
+            [[ $# == 11 && $1 == exec && $2 == "$runtime_id" && $8 == read && $9 == "$sha" && ${10} == "$token" && ${11} == "$profile_version" ]] || return 94
             cat "$evidence/source.json"
         }
     fi

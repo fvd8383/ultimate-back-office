@@ -13,6 +13,33 @@ The operator-reported deployed application remains
 `f466fc1cdbfb53325a1db11445736bdc5ea7c6f4`; M6C is not deployed there.
 Migration 025 is **APPLIED TO WORKING STAGING** and must not be reapplied.
 
+## Producer-journal authoring status, October 28, 2026
+
+**CORE NATIVE GATE — HISTORICAL PASS at `2ab14c7`.
+STORAGE FAULT COVERAGE — AUTHORED / PARTIAL.
+NATIVE HELPER BUILD/LOAD — NOT VERIFIED.
+SUPPLEMENTAL NATIVE EXECUTION — NOT PERFORMED.
+FORMAL M6C ACCEPTANCE — PENDING.**
+
+The correction starting at `5ff2b601a3ae07a47094bd4815d6f4cfc90db1ea` authors three
+additional fixed instrumented outcomes under the separate `m6c-native-journal-v1`
+profile. The [native guide](sprint-8.8-m6c-native-validation.md#producer-journal-fault-profile-october-28-2026)
+defines checked producer-journal flush, fsync and pending-to-final publication
+boundaries, the child-local PHP API-return interceptor and required controls.
+The [local results](sprint-8.8-m6c-local-implementation.md#producer-journal-local-authoring-october-28-2026)
+distinguish synthetic operation observations and real private-file/fake-PDO recovery
+from the still-unexecuted Linux helper and real-MySQL cases.
+
+The test runtime recipe now authors a fixed extension build and source/binary
+receipt. It was not built or loaded here; no binary hash or new image is claimed.
+Exact core20 and existing supplement17 profiles remain unchanged and do not satisfy
+the separate three-case journal gate. The killed-child normalization correction is
+preserved; its actual Linux execution also remains outstanding. None of the four
+broader packages is complete through this authoring. API-return injection would
+not establish kernel EIO, spontaneous disk failure or power-loss durability.
+Production, migrations/pins, historical evidence, browser-owner decision and backup/
+restore status remain unchanged; no native run, approval, merge or closure occurs.
+
 ## Supplemental acceptance status, October 28, 2026
 
 **M6C CORE 20-CASE NATIVE GATE — HISTORICAL PASS at `2ab14c7`.**
@@ -30,9 +57,10 @@ defines all 17 fixed instrumented cases, mechanisms, profile selection and later
 preparation requirements. The [local implementation record](sprint-8.8-m6c-local-implementation.md#supplemental-local-validation-october-28-2026)
 separates actual private-file/process regressions from modeled DB/kernel behavior.
 
-None of G1–G4 is resolved by authoring. Real flush/fsync failure and producer-journal
-publication failure remain missing C
-mechanisms. All new native cases require exact-source review and later authorized
+None of G1–G4 is resolved by authoring. At the 17-case source, flush/fsync failure and
+producer-journal publication failure remained missing C mechanisms. The later
+separate journal profile authors bounded API-return injection, with actual Linux
+build/load/interception and native outcomes still unverified. All new native cases require exact-source review and later authorized
 native execution. No new image identity is asserted. The original 20-case inventory,
 acceptance rules, 1,315 assertions (805 case + 510 setup/identity), launcher exit 0,
 verified transport, cleanup/publication PASS and earlier FAILED/BLOCKED histories

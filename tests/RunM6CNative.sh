@@ -317,7 +317,7 @@ m6n_transport() {
 m6n_capture() {
     local attempt=$1 capture_deadline=$((SECONDS+15)) ceiling identity=FAIL reader=UNREACHED consumer=UNREACHED verification=UNREACHED result=FAIL
     local -a codes transport_profile=()
-    [[ ${profile_version:-m6c-native-v1} != m6c-native-supplement-v1 ]] || transport_profile=("$profile_version")
+    [[ ${profile_version:-m6c-native-v1} == m6c-native-v1 ]] || transport_profile=("$profile_version")
     if [[ -n ${cleanup_deadline:-} ]];then ceiling=$((cleanup_deadline-8));else ceiling=$((started+1200));fi
     (( capture_deadline<=ceiling )) || capture_deadline=$ceiling
     if [[ ${runtime_id:-} =~ ^[a-f0-9]{64}$ ]] &&
@@ -349,10 +349,16 @@ m6n_collect_result() {
     printf 'native-report-capture=%s\n' "$capture" >> "$evidence/report.txt"
     [[ $code == 0 ]] || exit "$code"
     [[ $capture == PASS ]] || m6n_fail missing_native_evidence
-    if [[ ${profile_version:-m6c-native-v1} == m6c-native-supplement-v1 ]]; then
+    if [[ ${profile_version:-m6c-native-v1} != m6c-native-v1 ]]; then
+        local contract
+        case $profile_version in
+            m6c-native-supplement-v1) contract=WebsitePlatformM6CSupplementContract.php;;
+            m6c-native-journal-v1) contract=WebsitePlatformM6CJournalContract.php;;
+            *) m6n_fail unknown_profile;;
+        esac
         local seconds=$((started+1200-SECONDS))
         ((seconds>0)) || m6n_fail overall_deadline 124
-        timeout --kill-after=1s "${seconds}s" "$php" -n -d memory_limit=128M "$repo/tests/support/WebsitePlatformM6CSupplementContract.php" evidence "$sha" "$token" < "$evidence/native.json" >/dev/null || m6n_fail invalid_supplemental_evidence
+        timeout --kill-after=1s "${seconds}s" "$php" -n -d memory_limit=128M "$repo/tests/support/$contract" evidence "$sha" "$token" < "$evidence/native.json" >/dev/null || m6n_fail invalid_supplemental_evidence
     else
         m6n_guard evidence "$sha" "$token" < "$evidence/native.json" >/dev/null || m6n_fail invalid_native_evidence
     fi
@@ -417,7 +423,7 @@ m6n_run() {
 }
 m6n_main() {
     if [[ $# == 1 && $1 == --help ]]; then
-        printf '%s\n' 'Usage: bash tests/RunM6CNative.sh --check-only|--run [--profile core|supplement-v1] --expected-sha SHA --mysql-digest sha256:... --runtime-image sha256:... --php-base-digest sha256:... --php /absolute/php' \
+        printf '%s\n' 'Usage: bash tests/RunM6CNative.sh --check-only|--run [--profile core|supplement-v1|journal-v1] --expected-sha SHA --mysql-digest sha256:... --runtime-image sha256:... --php-base-digest sha256:... --php /absolute/php' \
             'Fixed target: ubo-stage-app / codex-validation UID1000, rootless local socket, verified test volume.' \
             'Check-only is read-only. Images and empty /run/user/1000/ubo-m6c-client/config.json must already exist.' \
             'Run creates disposable native resources only after explicit authorization. No image pulls/builds or daemon lifecycle commands.';return
@@ -428,7 +434,7 @@ m6n_main() {
             --check-only|--run) [[ -z $mode ]] || m6n_fail one_mode;mode=$1;shift;;
             --profile)
                 [[ $# -ge 2 && $profile_set == 0 ]] || m6n_fail one_profile
-                case $2 in core)profile_version=m6c-native-v1;;supplement-v1)profile_version=m6c-native-supplement-v1;;*)m6n_fail unknown_profile;;esac
+                case $2 in core)profile_version=m6c-native-v1;;supplement-v1)profile_version=m6c-native-supplement-v1;;journal-v1)profile_version=m6c-native-journal-v1;;*)m6n_fail unknown_profile;;esac
                 profile=$2;profile_set=1;shift 2;;
             --expected-sha|--mysql-digest|--runtime-image|--php-base-digest|--php)
                 [[ $# -ge 2 ]] || m6n_fail argument_value

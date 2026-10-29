@@ -17,6 +17,102 @@ four finite evidence packages. Their supplemental authoring is **PARTIALLY IMPLE
 LOCALLY / REVIEW REQUIRED**; native execution is **NOT PERFORMED** and formal acceptance
 remains pending. The deployed application remains operator-reported `f466fc1…`.
 
+## Producer-journal local authoring, October 28, 2026
+
+Starting head: `5ff2b601a3ae07a47094bd4815d6f4cfc90db1ea`; its completed automated
+review reported no findings. This narrowly adds test-only authoring for producer
+journal flush, fsync and pending-to-final publication failure. Production code is
+unchanged. The [native guide's boundary table and mechanism](sprint-8.8-m6c-native-validation.md#producer-journal-fault-profile-october-28-2026)
+defines precisely what the source-authored extension must prove on Linux.
+
+`journal-v1` selects the separate fixed `m6c-native-journal-v1` profile with three
+instrumented cases: `producer-journal-flush-failure`,
+`producer-journal-fsync-failure`, and `producer-journal-publication-failure`.
+Core20 and supplement17 retain their exact inventories and meanings; their report
+formats cannot satisfy this additional profile. The reviewed killed-child test,
+unknown-exit normalization, shared process behavior, strict individual Git stderr
+rule and privacy/error precedence remain intact.
+
+The child-local PHP extension targets actual production PHP handlers and forces a
+single false return before the requested operation. It does not claim a failed
+syscall, spontaneous disk error or durability proof. A fixed shared PHP policy
+records call order and accepted stages; literal local traces test flush short circuit,
+separate fsync failure and publication prerequisites. Real private-file/fake-PDO
+tests establish that a complete-looking pending journal stays unknown, forces
+service-driven reconciliation, and remains blocked after distinct recovery without
+rerender, counter reset, releases or validations. Their pending-file setup is
+explicitly modeled; it is **not** local execution of the Linux fault helper.
+
+The source-authored native cases require successful same-helper no-fault controls,
+off-target pass-through, exactly one matched injection, actual caller error,
+retained pending bytes and fresh uninstrumented recovery. Capability/identity,
+unreached/duplicate/wrong-phase/lost evidence and incomplete control outcomes fail
+closed. A finally-close failure cannot erase the original injected-operation error
+and cannot count as accepted close. The native extension's filesystem identity and
+ABI checks still require Linux compilation and execution; synthetic policy tests
+are not substituted for those checks.
+
+Fresh sequential local validation uses Windows PHP **8.4.24** with `php -n`, Node
+**24.22.1**, fresh private TMP/TEMP roots and separately captured real exits/output.
+The initial journal selection attempt exited 255 because sandboxed MSYS startup
+was denied (`NtCreateDirectoryObject`, `0xC0000022`). The same bounded test passed
+with the authorized same-user sandbox exception; no host ACL/configuration changed.
+Earlier successful intermediate checks and final rechecks are retained separately.
+
+| Fresh suite | Assertions / additional counts | Actual exit | Seconds |
+| --- | --- | ---: | ---: |
+| Journal policy/state | 130; synthetic API traces, real files and fake PDO | 0 | 1.012 |
+| Journal process | 33; actual bounded children, synthetic packets | 0 | 2.909 |
+| Journal selection/transport | 39; fake admission, actual private transport | 0 | 8.247 |
+| Existing supplemental selection | 41 | 0 | 9.719 |
+| Existing supplemental protocol | 236 | 0 | 6.482 |
+| Shared native setup/report | 751 / 62 scenarios | 0 | 0.813 |
+| Shared diagnostics/transport | 95 / 41 scenarios | 0 | 3.265 |
+| Shared observation | 273 / 103 scenarios / 45 synthetic children | 0 | 9.394 |
+| M6C scope | 53 | 0 | 8.949 |
+| Shared launcher | 7,388 / 104 fake-command scenarios | 0 | 693.068 |
+
+The affected shared launcher regression was rerun because profile dispatch changed.
+Its private Windows-only Bash file-limit double models unsupported `ulimit -f 4`; it
+does not change repository Linux limits or establish kernel resource-limit proof.
+All selected suite completion markers and negative diagnostic expectations must
+pass, outputs remain bounded, and owned temporary roots are checked after exit.
+Zero stderr in these selected runs does not impose a new general empty-stderr rule.
+The final policy recheck includes preexisting control-directory collision rejection
+and preservation of the unrelated marker; cleanup takes ownership only after new
+private-directory creation. The journal process and selection suites were rerun
+after that change. PHP lint passed for all 13 changed/new PHP files; Bash syntax
+passed for three changed/new shell files, with an additional POSIX-sh syntax check
+for the build recipe. Documentation checks verified 68 local links, 42 anchors and
+five balanced fence pairs. Integrity checks cover 466 unchanged preexisting files,
+including 267 paths outside tests/docs, and unchanged inline core case bodies.
+
+Only test helpers, test selection/report wiring, the test image recipe and these
+three existing records change. The recipe adds a fixed PHP extension build/load
+prerequisite; it is not an unchanged runtime recipe. No installed compiler/phpize
+was available here, so C compilation and native helper loading are **NOT VERIFIED**.
+No binary hash, image identity or successful Linux capability probe is invented.
+Changed-file lint, shell syntax, documentation links/fences and working/staged/
+committed diff/integrity results accompany the outside-Git evidence at
+`C:\Users\fvd83\.ssh\m6c-journal-faults-20261028\SUMMARY.txt`.
+
+All production/protected application paths, all 25 migrations and integrity pins
+remain byte-identical to the starting head. Migration 025 remains applied to
+working staging, SHA-256
+`dab585dc29aac11153f92703c65d3883aeea73a1b2283157cfa9d2f2ece85cb0`, without operational
+verification or reapplication. Existing supplemental case bodies, core acceptance,
+resource limits and prior evidence are preserved. Browser allocation remains an
+owner decision; backups/receipts are untouched and restore remains NOT EXECUTED.
+
+**CORE NATIVE GATE — HISTORICAL PASS at `2ab14c7`.
+STORAGE FAULT COVERAGE — AUTHORED / PARTIAL (Linux API interception, helper ABI/load
+and native recovery disposition remain unverified).
+NATIVE HELPER BUILD/LOAD — NOT VERIFIED.
+SUPPLEMENTAL NATIVE EXECUTION — NOT PERFORMED.
+FORMAL M6C ACCEPTANCE — PENDING.** No broader acceptance package is closed through
+this authoring. No server, real SQL/migration, image/container/service, installation,
+deployment, backup/restore/prune, provider/Narrator, approval or merge action occurs.
+
 ## Supplemental protocol exit-normalization correction, October 28, 2026
 
 The [P2 finding](https://github.com/fvd8383/ultimate-back-office/pull/128#discussion_r4407103223)
@@ -81,8 +177,9 @@ rechecks are separate. Historical results below were not rerun by this correctio
 SUPPLEMENTAL COVERAGE — PARTIALLY IMPLEMENTED LOCALLY.
 SUPPLEMENTAL NATIVE EXECUTION — NOT PERFORMED. FORMAL M6C ACCEPTANCE — PENDING.**
 No Linux execution environment was available to this Windows-only task; the corrected
-actual Linux child path remains for later authorized Linux verification. Faithful
-flush/fsync and producer-journal-publication failure injection remain unimplemented.
+actual Linux child path remains for later authorized Linux verification. At that
+normalization-correction head, flush/fsync and producer-journal-publication failure
+injection remained unimplemented; the later journal-profile authoring is recorded above.
 The exact core 20/supplemental 17 inventories, lanes, strict validation and runtime
 limits remain unchanged. Browser allocation remains an owner decision; backups,
 receipts and historical failures remain untouched. No native run or production

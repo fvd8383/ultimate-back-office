@@ -11,6 +11,117 @@ documentation head was not natively executed. The supplemental authoring below r
 local synthetic regressions only; it does not execute the native gate.
 The latest runtime image identity and requirement limits are in that record.
 
+## Producer-journal fault profile, October 28, 2026
+
+**CORE NATIVE GATE — HISTORICAL PASS at `2ab14c7`.
+STORAGE FAULT COVERAGE — AUTHORED / PARTIAL.
+NATIVE HELPER BUILD/LOAD — NOT VERIFIED.
+SUPPLEMENTAL NATIVE EXECUTION — NOT PERFORMED.
+FORMAL M6C ACCEPTANCE — PENDING.**
+
+This authoring starts at `5ff2b601a3ae07a47094bd4815d6f4cfc90db1ea`, whose completed
+automated review reported no findings. It addresses only the three producer-journal
+boundaries left out of the 17-case supplement. It neither completes the four broader
+acceptance packages nor establishes a new native PASS. Linux execution of the
+previous killed-child normalization correction also remains outstanding.
+
+The unchanged [file primitive](../private/classes/SiteArtifactFiles.php) and
+[store](../private/classes/LocalSiteArtifactStore.php) perform:
+producer `.json.pending` exclusive creation/write → checked `fflush` → checked
+`fsync` → `fclose` in `finally` → mode 0600 → pending-to-final `.json` rename →
+candidate-directory creation. On failure the writer lock is released. A pending
+journal, even complete-looking, or a missing final journal remains `unknown` during
+`verifyRelease()`; neither proves safe absence. Service settlement therefore requires
+reconciliation, and a fresh recovery inspection remains blocked without rendering.
+
+| Fixed case / targeted operation | Prerequisites already accepted | Exact target role | Immediate caller error | Retained state / permitted recovery |
+| --- | --- | --- | --- | --- |
+| `producer-journal-flush-failure` / PHP `fflush` | Exclusive open and complete bounded write | This run/job/producer's pending journal stream | `storage_unavailable` | Pending retained; fsync not reached; finally close observed; no chmod/publication/candidate. Inspection unknown; recovery blocked. |
+| `producer-journal-fsync-failure` / PHP `fsync` | Open, complete write and successful checked flush | Same bound pending stream | `storage_unavailable` | Pending retained; fsync not accepted; close observed; no chmod/publication/candidate. Inspection unknown; recovery blocked. |
+| `producer-journal-publication-failure` / PHP `rename` | Checked write/flush/fsync, close and mode 0600 | Exact pending journal → final producer journal | `outcome_unknown` | Rename handler not executed, pending retained unchanged, no final journal/candidate. Inspection unknown; recovery blocked. |
+
+These are **injected PHP API false returns** at the actual production call, not
+spontaneous disk errors, kernel EIO, failed syscalls or power-loss durability proof.
+A later close may flush buffered bytes; its accepted result is recorded, without
+turning an unaccepted pending journal into published evidence. Producer-journal
+publication here is distinct from candidate sealing, native-report publication,
+host evidence capture and public website publication.
+
+The [test-only extension source](../tests/native/m6c/journal/m6c_journal.c) wraps the
+registered PHP internal handlers in one explicitly selected worker. This choice
+follows PHP's actual [stream-based file functions](https://github.com/php/php-src/blob/PHP-8.4/ext/standard/file.c),
+not an assumption that PHP `fflush` calls libc `fflush`. The bridge calls the
+[shared bounded policy](../tests/support/WebsitePlatformM6CJournalFault.php) before
+and after matched operations. Only a requested failure returns false without
+calling the original handler. Unrelated operations use their original handlers.
+No production source rewrite, filesystem-wrapper replacement, public switch,
+global preload or php.ini edit is used.
+
+Arming requires Linux PHP 8.4 NTS CLI, fixed attested worker/policy source paths,
+UID/GID 2000, run hostname, verified run/job/producer authorization, protected
+ancestors and private owned roots. The extension derives its only pending/final
+paths internally. It binds the opened PHP resource and stream stat identity to the
+pending file's device/inode, regular type, link count, owner and private mode, and
+rechecks ancestors and identity at subsequent calls. Symlinks, replacement targets,
+descriptor/resource reuse and wrong callers cannot redirect a fault. Exactly one
+injection is permitted. The fixed callback carries enums, booleans and bounded
+counts; reports use a target digest and opaque producer identity, never raw paths,
+contents, environment or arbitrary exception text. PHP ABI/caller/path safeguards
+are source-authored here; their actual Linux execution is **not yet verified**.
+
+The additional **`--profile journal-v1` / `m6c-native-journal-v1`** inventory contains
+exactly the three ordered instrumented cases above. Core `m6c-native-v1` retains its
+exact unrelated 20 cases; `m6c-native-supplement-v1` retains its exact 17 cases and
+meanings. This is **20 core + 17 supplemental + 3 separate journal cases**, not a
+silently enlarged old supplement. CLI selection, launcher attestation, coordinator,
+report identity, transport and strict acceptance all bind the new profile. Old
+reports cannot satisfy it, and journal reports cannot satisfy either old profile.
+Help/check-only/discovery does not load the extension or execute application work.
+
+Each case first requires a distinct service-created successful control job using
+the same extension/load path. Every armed worker also performs an off-target
+write/flush/fsync/close/chmod/rename, checks its contents and removes only its owned
+control files. The control checks rejected bad and duplicate arming. Actual call
+counts, prerequisites, injected counts, caller errors, pending digests, service DB
+effects and distinct recovery ownership are mandatory. The fresh recovery worker
+loads no extension and must block without rendering; counters must be (2,1,1),
+with zero releases, validations and success events for the fault job. Only a due
+timestamp is controlled, never terminal job state or counters.
+
+Missing helper/load, unsupported ABI/frameless handler, missed or duplicate calls,
+wrong target/phase, lost evidence, incomplete controls, failed cleanup, extra or
+missing cases and wrong lanes are non-PASS. A secondary close failure is retained
+without replacing the caller's pending error, but cannot count as accepted close.
+Other diagnostic/cleanup failures retain the original typed caller error and
+prevent successful child completion. The coordinator, database, Git verifier,
+report writer, core workers and protected CLI receive no extension load argument.
+
+Later, separately authorized preparation must use the exact reviewed source as the
+Docker build context and the existing operator-pinned PHP base. The
+[test Dockerfile](../tests/native/m6c/Dockerfile) now copies and runs the minimal
+[build recipe](../tests/native/m6c/journal/build.sh), requiring already available
+`phpize`, matching PHP headers/`php-config`, `cc`, `make` and configure prerequisites.
+The recipe installs only `/usr/local/lib/ubo-m6c/m6c_journal.so` plus a root-owned
+0444 receipt binding source SHA, PHP version, C-source hash and computed binary hash.
+There is no global extension configuration. Worker load uses that fixed path with
+CLI opcache/JIT disabled. Runtime admission verifies the receipt against attested
+source and actual binary bytes before any selected worker load.
+
+No compiler or `phpize` was found on this Windows session's PATH or checked common
+compiler locations. No C compilation, helper startup/load, image build or native
+call interception was performed. **No binary hash or new image identity is claimed.**
+Future build/startup is only a prerequisite: the positive/off-target controls and
+all three actual production failure paths must then succeed within the existing
+runtime contract. Resource limits, private networking, at-most-two-child supervision,
+no-new-privileges/capability removal, deadline, owned cleanup and report hash/ack
+checks remain unchanged. No expanded privilege or filesystem facility is proposed.
+
+Fresh Windows results and original failures are in the
+[implementation record](sprint-8.8-m6c-local-implementation.md#producer-journal-local-authoring-october-28-2026).
+Native API failure handling and real-MySQL recovery outcomes remain unverified.
+Browser allocation, backup receipts, prior failed/blocked histories and migration
+025's applied status/pin remain untouched; no operational verification was performed.
+
 ## Supplemental protocol expectation correction, October 28, 2026
 
 The [P2 exit-normalization correction and focused local results](sprint-8.8-m6c-local-implementation.md#supplemental-protocol-exit-normalization-correction-october-28-2026)
@@ -21,8 +132,10 @@ and observation suites pass with 236, 95 and 273 assertions respectively. The ac
 Windows terminated child retained exit 255 / signal 0; the Linux reproduction is
 reviewer-reported and actual Linux verification remains outstanding. Shared helpers,
 production, exact 20/17 inventories and runtime requirements are unchanged.
-No supplemental native execution occurred; faithful flush/fsync and producer-journal
-publication failure injection remain unimplemented. Formal acceptance stays pending.
+No supplemental native execution occurred. At that normalization-correction head,
+flush/fsync and producer-journal publication failure injection remained unimplemented;
+the later journal-profile authoring above does not establish native execution.
+Formal acceptance stays pending.
 
 ## Supplemental authoring, October 28, 2026
 
@@ -87,12 +200,14 @@ first, actual EACCES and `storage_unavailable` establish an unavailable
 `disk_free_space` probe. The parent mode is restored and the new fixture reconciled
 before the case completes; a typed SPACE observation records both low/unknown checks.
 
-Residual C mechanisms are **UNIMPLEMENTED**: a real failed `fflush`/`fsync` and failure
+At the 17-case authoring head, residual C mechanisms were **UNIMPLEMENTED**: a real failed `fflush`/`fsync` and failure
 between the checked producer-journal write and its publishing rename.
 The current seams do not expose those boundaries
 faithfully; a synthetic throw or an early collision would not prove them. They require
 separately reviewed, bounded test-only interception or an appropriate isolated
-filesystem facility. No production seam, broad capability or host mount is introduced.
+filesystem facility. The later [separate journal profile](#producer-journal-fault-profile-october-28-2026)
+authors API-return interception, with native build/load/execution still unverified.
+No production seam, broad capability or host mount is introduced.
 FIFO coverage does not claim character/block-device creation; ENOSPC covers the
 write/space failure class without a separate quota matrix. SIGKILL is not power-loss
 durability proof. Previously credited hardlink/symlink evidence remains credited.
