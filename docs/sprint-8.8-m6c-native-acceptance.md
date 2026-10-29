@@ -17,7 +17,8 @@ Migration 025 is **APPLIED TO WORKING STAGING** and must not be reapplied.
 
 **CORE NATIVE GATE — HISTORICAL PASS at `2ab14c7`.
 STORAGE FAULT COVERAGE — AUTHORED / PARTIAL.
-NATIVE HELPER BUILD/LOAD — NOT VERIFIED.
+HELPER COMPILATION/RECIPE STARTUP-LOAD — OPERATOR-REPORTED PASS at `4d49e5f`.
+RECEIPT ADMISSION — FAILED at `4d49e5f`; BOOLEAN CORRECTION LOCALLY TESTED.
 SUPPLEMENTAL NATIVE EXECUTION — NOT PERFORMED.
 FORMAL M6C ACCEPTANCE — PENDING.**
 
@@ -28,13 +29,24 @@ defines checked producer-journal flush, fsync and pending-to-final publication
 boundaries, the child-local PHP API-return interceptor and required controls.
 The [local results](sprint-8.8-m6c-local-implementation.md#producer-journal-local-authoring-october-28-2026)
 distinguish synthetic operation observations and real private-file/fake-PDO recovery
-from the still-unexecuted Linux helper and real-MySQL cases.
+from the still-unexecuted Linux API interception and real-MySQL cases.
 
-The test runtime recipe now authors a fixed extension build and source/binary
-receipt. It was not built or loaded here; no binary hash or new image is claimed.
+The original desktop authoring did not build/load the helper. The later
+[operator preparation and receipt failure](sprint-8.8-m6c-native-validation.md#journal-helper-preparation-and-receipt-correction-october-28-2026)
+reports compilation/linking and recipe startup-load PASS, then receipt admission
+exit 255 at `4d49e5f`; eight retained warnings were not assessed by this desktop task.
+The supplied image/binary/report hashes were not retrieved or verified here.
+The [boolean correction](sprint-8.8-m6c-local-implementation.md#journal-receipt-boolean-correction-october-28-2026)
+has fresh local receipt/type/serialization and policy tests, including intended ZTS
+rejection on Windows PHP 8.4.24. It changes no native acceptance rule or evidence
+attribution. Separate runtime startup-load verification, six runtime suites, both
+profile admissions, arming, status calls, actual interception and native recovery
+remain unexecuted. New-source preparation requires later exact-source image/receipt
+provenance; the old failed receipt/image must not be edited or relabeled.
 Exact core20 and existing supplement17 profiles remain unchanged and do not satisfy
 the separate three-case journal gate. The killed-child normalization correction is
-preserved; its actual Linux execution also remains outstanding. None of the four
+preserved; the operator reports the host Linux protocol suite passed once at
+`4d49e5f`, while runtime suites remain unexecuted. None of the four
 broader packages is complete through this authoring. API-return injection would
 not establish kernel EIO, spontaneous disk failure or power-loss durability.
 Production, migrations/pins, historical evidence, browser-owner decision and backup/
@@ -59,8 +71,9 @@ separates actual private-file/process regressions from modeled DB/kernel behavio
 
 None of G1–G4 is resolved by authoring. At the 17-case source, flush/fsync failure and
 producer-journal publication failure remained missing C mechanisms. The later
-separate journal profile authors bounded API-return injection, with actual Linux
-build/load/interception and native outcomes still unverified. All new native cases require exact-source review and later authorized
+separate journal profile authors bounded API-return injection. Compilation and recipe
+startup-load are now operator-reported PASS at `4d49e5f`; receipt admission failed,
+and runtime interception/native outcomes remain unverified. All new native cases require exact-source review and later authorized
 native execution. No new image identity is asserted. The original 20-case inventory,
 acceptance rules, 1,315 assertions (805 case + 510 setup/identity), launcher exit 0,
 verified transport, cleanup/publication PASS and earlier FAILED/BLOCKED histories

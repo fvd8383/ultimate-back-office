@@ -17,7 +17,131 @@ four finite evidence packages. Their supplemental authoring is **PARTIALLY IMPLE
 LOCALLY / REVIEW REQUIRED**; native execution is **NOT PERFORMED** and formal acceptance
 remains pending. The deployed application remains operator-reported `f466fc1…`.
 
+## Journal receipt boolean correction, October 28, 2026
+
+Starting head: `4d49e5f35b943a5352dac6d7eb5d6af79328c3e1`, on the existing
+`codex/sprint-8.8-m6c-artifact-builder` branch with a clean worktree. Its completed
+[automated review](https://github.com/fvd8383/ultimate-back-office/pull/128#issuecomment-6484486988)
+reported no major issues. This is an operator-failure correction, not an automated
+review finding. The [preparation record](sprint-8.8-m6c-native-validation.md#journal-helper-preparation-and-receipt-correction-october-28-2026)
+preserves operator-reported compilation/linking and recipe startup-load **PASS**,
+followed by receipt admission **FAILED**, exit 255, at that exact source. Eight
+nonfatal compiler warnings were retained by the operator and were not assessed here.
+
+The source-confirmed mismatch has two layers. The build writer serializes actual
+`PHP_ZTS`, and `verify()` forwards that constant unchanged. The original `receipt()`
+required `int $zts`, checked integer zero, and expected `'zts' => 0`; its fixture
+used integer zero on both sides. The official PHP 8.4 migration reference,
+[Type Change of Constants](https://www.php.net/manual/en/migration84.incompatible.php#migration84.incompatible.core.constants),
+confirms that `PHP_ZTS` changed from integer to boolean. JSON `false` is not JSON `0`.
+
+Before repository edits, an outside-Git strict caller invoked the actual committed
+`receipt()` using explicitly synthetic identities and literal JSON, never `verify()`:
+
+| Before-fix case | Actual outcome |
+| --- | --- |
+| Boolean `false` runtime argument | `TypeError`: argument #4 must be int, false given |
+| Decoded JSON `false`, accepted integer-zero argument | `RuntimeException('journal_helper_receipt')`: strict schema mismatch |
+| Original integer-zero fixture and argument | Accepted, despite not representing PHP 8.4 writer output |
+
+The first probe exited 255 because its diagnostic check expected the words `bool
+given`; PHP printed `false given`. That original output is retained. Correcting only
+the private probe's expected diagnostic confirmed all three cases before the fix:
+exit 0, 0.307323 seconds, 508 stdout / 0 stderr bytes. The private probe's successful
+completion records the expected pre-fix failures; it is not receipt admission PASS.
+
+The minimal validator correction is `bool $zts`, `$zts === false` for NTS and
+strict expected receipt `'zts' => false`. No conversion, union/mixed type, loose
+equality, default or exception suppression is used. The writer, real-constant
+forwarding, exact version/source/PHP/hash/field/order requirements and all fixed
+filesystem admission checks remain unchanged. The existing policy fixture now
+uses boolean false and requires the intended rejection reason, so a TypeError
+cannot hide as a successful negative receipt test.
+
+The independent [receipt regression](../tests/WebsitePlatformM6CJournalReceiptTest.php)
+calls the real predicate with literal JSON and synthetic hashes. It covers boolean
+NTS and JSON round trips; independently mismatched source/binary identities;
+self-consistent ZTS rejection; true, numeric, string, null, missing, array/object
+and malformed ZTS values; wrong/malformed versions, SHA and hashes; missing/extra
+fields, field order, and private/control data. Semantic negatives require
+`RuntimeException('journal_helper_receipt')`; strict argument-type negatives require
+the expected `TypeError`. No predicate is copied and no extracted source is evaluated.
+
+Actual local runtime: **Windows PHP 8.4.24 ZTS**, `get_debug_type(PHP_ZTS) = 'bool'`,
+`PHP_ZTS = true`, no loaded INI. The writer-shaped JSON uses actual `PHP_VERSION`
+and `PHP_ZTS` unchanged, preserving `"php":"8.4.24","zts":true`; the actual
+strict call reaches intentional `journal_helper_receipt` rejection, not TypeError.
+This proves local ZTS rejection, not Linux NTS or filesystem admission. Synthetic
+PHP 8.4 NTS cases pass. The portable test explicitly handles an older integer
+constant as outside the helper's PHP-8.4-only contract; no PHP 8.3 execution or
+host upgrade is claimed. Host controller PHP may remain 8.3.
+
+Fresh sequential commands, using Node **24.22.1** only as the private bounded runner:
+
+```powershell
+php -n tests/WebsitePlatformM6CJournalReceiptTest.php
+php -n tests/WebsitePlatformM6CJournalTest.php
+php -n -l tests/support/WebsitePlatformM6CJournalAdmission.php
+php -n -l tests/WebsitePlatformM6CJournalTest.php
+php -n -l tests/WebsitePlatformM6CJournalReceiptTest.php
+```
+
+| Fresh validation | Assertions | Exit | Seconds | Stdout / stderr bytes |
+| --- | ---: | ---: | ---: | ---: |
+| Receipt/type/serialization | 84 | 0 | 0.384108 | 547 / 0 |
+| Journal policy/state | 130 | 0 | 1.099755 | 133 / 0 |
+| Admission lint | — | 0 | 0.289538 | 82 / 0 |
+| Policy test lint | — | 0 | 0.282034 | 69 / 0 |
+| Receipt test lint | — | 0 | 0.274180 | 76 / 0 |
+
+Each command has a 60-second bound, 1 MiB capture bound, actual exit and expected
+completion marker, plus an empty owned TMP/TEMP root after completion. Negative
+cases enforce their intended exception/diagnostic contract; empty whole-suite stderr
+is not a new requirement. Raw commands, original failures, outputs, versions,
+durations and working/staged/committed checks are outside Git at
+`C:\Users\fvd83\.ssh\m6c-journal-receipt-20261028\SUMMARY.txt`.
+
+Bounded receipt audit and disposition:
+
+| Relevant match | Disposition |
+| --- | --- |
+| `tests/native/m6c/journal/build.sh` writer | Actual constants; unchanged |
+| `tests/support/WebsitePlatformM6CJournalAdmission.php` | Only parameter, NTS comparison and expected ZTS representation corrected; `verify()` unchanged |
+| `tests/WebsitePlatformM6CJournalTest.php` | Original integer fixture corrected; explicit receipt rejection reason |
+| `tests/WebsitePlatformM6CJournalReceiptTest.php` | Independent literal and actual-runtime writer regressions |
+| `tests/support/WebsitePlatformM6CJournalCases.php` | Native caller of `verify()` unchanged and unexecuted |
+| `tests/support/WebsitePlatformM6CJournalWorker.php` | Existing runtime ZTS guard has no integer receipt assumption; unchanged |
+
+Journal process and selection tests use channel/contract/synthetic/transport and
+guarded discovery paths, not `M6CJournalAdmission`; their dependencies did not change,
+so they were not rerun. Shared launcher, supplemental protocol/selection and transport
+smoke likewise were not rerun. Reuse their unaffected historical evidence with its
+actual source attribution; do not relabel earlier counts as fresh checks.
+
+The six-file correction is limited to three test files and these three existing
+records. All other 483 preexisting tracked files, including production, C source,
+recipe, Dockerfile, shared process/diagnostics, core20/supplement17/journal3 inventories,
+all 25 migrations and integrity pins, retain their bytes/modes/blobs. Changed-file
+PHP lint, local document links/anchors/fences and diff/integrity checks accompany the
+private evidence. Migration 025 remains applied to working staging, unchanged at
+`dab585dc29aac11153f92703c65d3883aeea73a1b2283157cfa9d2f2ece85cb0`.
+
+The separate runtime startup-load verification, all six runtime suites and both
+profile admissions remain **UNEXECUTED**. Arming, status calls, actual interception,
+MySQL and native recovery/acceptance remain unexecuted. A later separately authorized
+preparation must establish exact-new-source image/receipt provenance, test the
+corrected receipt and complete those missing stages. The old image and failed receipt
+remain historical `4d49e5f` artifacts; no editing, relabeling or workaround is proposed.
+Core native PASS stays at `2ab14c7`; formal acceptance remains pending. Backups and
+receipts are untouched, restore NOT EXECUTED, and browser allocation remains an owner
+decision. This task performs zero server, SQL/migration, helper-load/compiler,
+image/container/service, installation, deployment, backup/restore/prune or merge work.
+
 ## Producer-journal local authoring, October 28, 2026
+
+Historical Windows authoring at `4d49e5f`, before the later operator preparation.
+Build/load-unverified statements below describe that authoring task; the current
+reported compilation PASS and receipt failure are recorded above.
 
 Starting head: `5ff2b601a3ae07a47094bd4815d6f4cfc90db1ea`; its completed automated
 review reported no findings. This narrowly adds test-only authoring for producer

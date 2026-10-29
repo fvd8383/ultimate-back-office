@@ -9,9 +9,75 @@ the successful native run to `2ab14c7d8212d1170aafe6d8dcdf3b178dd7d5bf`: 20 PASS
 launcher exit 0. Original evidence was retrieved and locally hash-verified. The new
 documentation head was not natively executed. The supplemental authoring below runs
 local synthetic regressions only; it does not execute the native gate.
-The latest runtime image identity and requirement limits are in that record.
+The historical core runtime image identity and requirement limits are in that record.
+
+## Journal helper preparation and receipt correction, October 28, 2026
+
+At source **`4d49e5f35b943a5352dac6d7eb5d6af79328c3e1`**, the operator reports
+**C COMPILATION/LINKING AND RECIPE STARTUP-LOAD — PASS; RECEIPT ADMISSION — FAILED**.
+These are operator-supplied facts: this desktop correction did not retrieve the
+evidence, verify its hashes, load the binary or inspect the eight retained nonfatal
+compiler warnings. This preserves completed work without upgrading blocked stages.
+
+| Operator-reported stage at `4d49e5f` | Result |
+| --- | --- |
+| Host Linux supplemental protocol | PASS once, 236 assertions |
+| Host Linux journal selection | PASS once, 39 assertions |
+| Host Linux supplemental selection | PASS once, 41 assertions |
+| Host Linux launcher | PASS once, 7,388 assertions / 104 scenarios |
+| Image build | PASS once, 47.391 seconds |
+| C compilation/linking and recipe startup-load check | PASS; eight nonfatal warnings retained, not assessed here |
+| Ordinary configured runtime PHP | Did not automatically load the extension |
+| UID/GID-2000 access/capability/limit checks | PASS |
+| `M6CJournalAdmission::verify()` | FAILED, exit 255: actual boolean `PHP_ZTS=false` passed to `int $zts`; original receipt contains JSON `"zts":false` |
+| Separate runtime startup-load check, six runtime suites, both profile admissions | UNEXECUTED |
+| Arming, status call, interception, MySQL and native acceptance/recovery | UNEXECUTED |
+| Cleanup | Completed; Docker returned inactive/disabled |
+
+Operator evidence directory:
+`/mnt/ubo_stage_testdata/codex-validation/evidence/m6c-journal-helper-preparation-20261029T010440Z-ab309fe5eb2c`
+
+| Historical artifact / distinct hash role | Operator-supplied value, not locally verified |
+| --- | --- |
+| Prepared image | `sha256:27e64ee203d197dc74bdda23bbe72cd75aa019e601bad4877aa3f74e5cf870be` |
+| Compiled binary SHA-256 | `53185e5de467b44fde43f0c1cef3c413b60aa0c772aef694ab8f51c5d7671fec` |
+| `M6C-JOURNAL-HELPER-PREPARATION.txt` SHA-256 | `47b56aa664905a687b9d667b6e490b5994b6b1b3d3141d78b5e6c447454d0329` |
+| `SHA256SUMS` file SHA-256 | `9ef20ace2a1a6eb79f903603b7d8b8c4afee9cba3e0bfc8303fe59d445fa5414` |
+
+The [local correction record](sprint-8.8-m6c-local-implementation.md#journal-receipt-boolean-correction-october-28-2026)
+details both reproduced mismatches, the original integer fixture's false confidence,
+bounded audit and fresh validation. PHP 8.4's
+[constant type change](https://www.php.net/manual/en/migration84.incompatible.php#migration84.incompatible.core.constants)
+requires a boolean reader contract: `bool $zts`, NTS strictly false and expected
+JSON boolean false. The writer and `verify()` continue using actual constants without
+conversion. Integer-zero receipts now fail strict validation. Version/source/PHP,
+source/binary hashes, exact fields/order and fixed path/ancestor/ownership/mode/
+link-count/size checks are preserved; pure receipt tests never invoke `verify()`.
+
+Windows PHP **8.4.24 ZTS** has actual boolean `PHP_ZTS=true`. Literal synthetic NTS
+fixtures pass, and actual writer-shaped JSON retains true and reaches intentional
+`RuntimeException('journal_helper_receipt')`, not TypeError. Fresh receipt **84** and
+journal policy/state **130** assertions, three PHP lints and document/diff/integrity
+checks establish a local test-only correction, not Linux NTS admission or load proof.
+The host controller may stay PHP 8.3; the helper still requires PHP 8.4 NTS.
+
+The old image/binary/failed receipt remain valid historical artifacts for `4d49e5f`,
+not admitted artifacts or provenance for a new commit. Later authorized preparation
+requires exact-reviewed-source image/receipt provenance, the corrected receipt test,
+and completion of the separate startup-load check, all six runtime suites and both
+profile admissions that never ran. No installed receipt edit, image relabeling,
+runtime workaround or new image/binary hash is claimed. Unaffected historical host
+test evidence can be reused with explicit SHA attribution; do not automatically
+repeat all four host suites or transport smoke. This task authorizes no later runtime
+operation. Core native PASS remains historical at `2ab14c7`; formal M6C acceptance
+remains pending. Browser allocation remains an owner decision, backups/receipts are
+untouched and restore is NOT EXECUTED.
 
 ## Producer-journal fault profile, October 28, 2026
+
+Historical authoring at `4d49e5f`, before the operator preparation reported above.
+The build/load and Linux-test limitations in this section describe that earlier
+desktop task; current reported build results and unexecuted stages are separate above.
 
 **CORE NATIVE GATE — HISTORICAL PASS at `2ab14c7`.
 STORAGE FAULT COVERAGE — AUTHORED / PARTIAL.

@@ -53,9 +53,13 @@ try{
     $secondary=$p->evidence(['run'=>$token,'job'=>$job,'producer'=>1,'matched'=>4,'injected'=>1,'off_target'=>7]);
     jf($secondary['accepted']['fclose']===0,'secondary close observed without masking pending caller failure');
     jfDeny(fn()=>M6CJournalContract::observation($secondary,'flush',$token),'secondary close failure is non-PASS');
-    $receipt=['version'=>1,'source_sha'=>$sha,'php'=>'8.4.27','zts'=>0,'source_hash'=>$sourceHash,'binary_hash'=>$binaryHash];
-    M6CJournalAdmission::receipt($receipt,$sha,'8.4.27',0,$sourceHash,$binaryHash);jf(true,'synthetic helper receipt matches exact build identity');
-    foreach(array_keys($receipt) as $field){$bad=$receipt;$bad[$field]="SECRET\nCANARY";jfDeny(fn()=>M6CJournalAdmission::receipt($bad,$sha,'8.4.27',0,$sourceHash,$binaryHash),'helper receipt '.$field);}
+    $receipt=['version'=>1,'source_sha'=>$sha,'php'=>'8.4.27','zts'=>false,'source_hash'=>$sourceHash,'binary_hash'=>$binaryHash];
+    M6CJournalAdmission::receipt($receipt,$sha,'8.4.27',false,$sourceHash,$binaryHash);jf(true,'synthetic helper receipt matches exact build identity');
+    foreach(array_keys($receipt) as $field){
+        $bad=$receipt;$bad[$field]="SECRET\nCANARY";
+        try{M6CJournalAdmission::receipt($bad,$sha,'8.4.27',false,$sourceHash,$binaryHash);throw new LogicException('Missing helper receipt rejection: '.$field);}
+        catch(RuntimeException $e){jf($e->getMessage()==='journal_helper_receipt','helper receipt '.$field);}
+    }
     $primary=new RuntimeException('original_failure');
     try{M6CJournalFault::primary(fn()=>throw $primary,fn()=>throw new RuntimeException('secondary_cleanup'));throw new RuntimeException('missing primary');}
     catch(Throwable $e){jf($e===$primary,'same original failure survives secondary cleanup');}

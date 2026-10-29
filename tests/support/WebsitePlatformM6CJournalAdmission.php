@@ -19,11 +19,11 @@ final class M6CJournalAdmission
         if(!is_array($r))throw new RuntimeException('journal_helper_receipt');
         self::receipt($r,$sha,PHP_VERSION,PHP_ZTS,hash_file('sha256',__DIR__.'/../native/m6c/journal/m6c_journal.c'),hash_file('sha256',self::LIBRARY));
     }
-    public static function receipt(array $r,string $sha,string $php,int $zts,string $sourceHash,string $binaryHash):void
+    public static function receipt(array $r,string $sha,string $php,bool $zts,string $sourceHash,string $binaryHash):void
     {
         foreach([$sourceHash,$binaryHash] as $hash)if(!preg_match('/^[a-f0-9]{64}$/D',$hash))throw new RuntimeException('journal_helper_receipt');
-        if(!preg_match('/^[a-f0-9]{40}$/D',$sha)||!preg_match('/^8\.4\.[0-9]+$/D',$php)||$zts!==0
-            ||$r!==['version'=>1,'source_sha'=>$sha,'php'=>$php,'zts'=>0,'source_hash'=>$sourceHash,'binary_hash'=>$binaryHash])
+        if(!preg_match('/^[a-f0-9]{40}$/D',$sha)||!preg_match('/^8\.4\.[0-9]+$/D',$php)||$zts!==false
+            ||$r!==['version'=>1,'source_sha'=>$sha,'php'=>$php,'zts'=>false,'source_hash'=>$sourceHash,'binary_hash'=>$binaryHash])
             throw new RuntimeException('journal_helper_receipt');
     }
 }
