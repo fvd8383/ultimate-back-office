@@ -1,8 +1,12 @@
 # M6C scoped isolated native acceptance evidence
 
-Current assessment: October 31, 2026 (America/New_York).
-**M6C — IMPLEMENTED / CORE, JOURNAL AND SUPPLEMENTAL NATIVE GATES PASS /
-ACCEPTANCE REVIEW PENDING. Formal M6C closure — PENDING.**
+Current owner-acceptance/closeout status: October 31, 2026 (America/New_York).
+**M6C — MERGED / SCOPED EVIDENCE ACCEPTED / CLOSEOUT REVIEW PENDING.**
+Frank accepted the scoped evidence and documented limitations and manually merged
+PR #128; see the [owner receipt](https://github.com/fvd8383/ultimate-back-office/pull/128#issuecomment-6549296854).
+Formal closure awaits explicit owner acceptance and merge of the
+[closeout proposal](sprint-8.8-m6c-closeout.md); its [conditional status rule](sprint-8.8-m6c-closeout.md#formal-closeout-proposal-and-effective-status)
+then governs. The evidence assessment below is carried forward, not reopened.
 
 | Distinct native profile | Tested source SHA | Native result | Completed assertion accounting | Launcher |
 | --- | --- | --- | --- | --- |
@@ -13,8 +17,10 @@ ACCEPTANCE REVIEW PENDING. Formal M6C closure — PENDING.**
 Attempted and completed totals agree for each profile. The supplemental 540 include
 setup/identity **and the final shared assertion**, not setup alone. These are three
 source-specific runs and three runtime images, never one run or an all-77-case PASS.
-The starting documentation-task head is `910c134`; its later documentation-only
-child is **not natively executed**. No native execution occurred in this task.
+The consolidation started at `910c134`. Its documentation-only child `fc3eeeb` and
+implementation merge `0bd0ce3` were **not natively executed**. No native execution,
+evidence download or private-original rehash occurs in this closeout task.
+The retrieval/checking observations below belong to the completed consolidation.
 
 **Directly checked originals:** the 37 existing core files (128,693 bytes) were reused
 and rehashed without download: 17/70 operator payloads, 17/17 launcher payloads,
@@ -49,7 +55,8 @@ The finite assessment is updated against the original missing observations,
 using [plan section 24](sprint-8.8-m6-implementation-plan.md#24-implementation-test-matrix)
 and the inspected unchanged assertions. **All four previously blocking evidence tasks
 are SATISFIED FOR SCOPED M6C REVIEW.** No missing technical observation within those
-four scoped tasks remains. This is an evidence recommendation, not owner acceptance.
+four scoped tasks remains. Frank has now accepted these G1–G4 dispositions and
+their documented limitations for scoped M6C; formal closeout is a separate decision.
 
 | Gap / original requirement and missing observation | New original evidence and disposition |
 | --- | --- |
@@ -63,16 +70,15 @@ evidence: G1/G2 now provide it. Existing deployment/helper portions stay with th
 planned milestones. Previously credited M6B/local requirements are not reopened, and
 no fresh same-SHA core/journal run is required merely for uniformity.
 
-**OWNER SCOPE DECISION REQUIRED — B14/B16 browser allocation.** The previous
-recommendation remains M6E served-policy/header checks and M6G integrated browser
-navigation/CSP/inert-control validation. The owner must explicitly accept that
-allocation before formal M6C closure, or retain a separately authorized private static
-browser fixture as a M6C prerequisite. This record neither approves the allocation nor
-executes/authorizes browser work; M6F internal-controls testing is not a substitute.
+**OWNER SCOPE DECISION APPROVED — B14/B16 browser allocation.** Frank approved
+M6E served-policy/header checks and M6G integrated browser navigation/CSP/inert-control
+validation, as recorded in the [closeout allocation](sprint-8.8-m6c-closeout.md#approved-b14b16-allocation).
+These remain mandatory, unexecuted future gates; allocation authorizes no browser
+execution. M6F internal-controls testing is not a substitute.
 
-Remaining actions are exact documentation-head review, owner acceptance of the
-scoped evidence and limits, that browser allocation, and separate merge/formal-closeout
-authorization. M6 overall stays **IN PROGRESS**; M6B stays **COMPLETE / STAGING PASS /
+PR #128 is merged and scoped evidence acceptance is effective. The only remaining
+closeout decision is explicit owner acceptance and merge of the separate closeout PR.
+M6 overall stays **IN PROGRESS**; M6B stays **COMPLETE / STAGING PASS /
 FORMALLY CLOSED**; M6D–M6G stay **NOT STARTED**; production stays **UNAUTHORIZED /
 NOT DEPLOYED**. Last operator-reported deployed application remains
 `f466fc1cdbfb53325a1db11445736bdc5ea7c6f4`, not the M6C tested/documentation source.
@@ -553,9 +559,9 @@ artifact receipts; it is not new M6C artifact-byte evidence.
 | B11 exact replay/conflicting output | L artifact/integration/recovery preserve immutable seal and reject replacement; P replay and I concurrent completion replay prove no duplicate effects. U native conflicting second output for the same release key. |
 | B12 tamper/missing/extra/MIME/digest | L security/admission/stored-input cover inventory, byte and metadata negatives; I asset loss/corruption and evidence tampering block success/repair. U full native malformed inventory/MIME matrix; stage/restore portions belong to later milestones. S cases 10–16 and J supply the specifically missing build-store boundaries (G3, satisfied); stage/restore remains later scope. |
 | B13 private canaries and allowed public fields | L artifact/security projection/canary tests; P multipage scans all eight artifact files for canaries/private upload locators and preserves approved public facts. Native worker diagnostics record bounded fields; local diagnostic suites cover privacy schema. U universal leakage proof. |
-| B14 multipage/nav/HTML/CSP/broken references | L artifact/security validate distinct documents, navigation, bad refs/scripts/PHP/.htaccess/CSP; P multipage verifies three distinct pages, full nav and CSP. U browser execution and native injection of every malformed HTML/reference. |
+| B14 multipage/nav/HTML/CSP/broken references | L artifact/security validate distinct documents, navigation, bad refs/scripts/PHP/.htaccess/CSP; P multipage verifies three distinct pages, full nav and CSP. U browser execution and native injection of every malformed HTML/reference. Browser portions have [approved M6E/M6G allocation](sprint-8.8-m6c-closeout.md#approved-b14b16-allocation); mandatory and unexecuted. |
 | B15 rights/ownership/path/SVG/bounds | L security/admission/bounds deny rights/business/MIME/path/SVG/budget faults; P startup denies UID/config ownership/mode/source violations; P build verifies approved image bytes; I asset faults preserve exact journal and quarantine. Core20 alone did not supply the remaining Linux store negatives or positive PDF. S cases 12–16 establish actual permission/space/rename, preserved foreign target, cross-device/FIFO and low/unknown-space refusals; case 17 supplies positive approved PDF. J adds injected journal API returns (G3/G4, satisfied). Earlier Linux link evidence stays credited. |
-| B16 inert form/server-owned profile | L artifact/security and M6B contract reject active forms/caller-selected production profile; P build asserts disabled required email and no form. U browser behavior/production profile operation; production stays denied. |
+| B16 inert form/server-owned profile | L artifact/security and M6B contract reject active forms/caller-selected production profile; P build asserts disabled required email and no form. U browser behavior/production profile operation; production stays denied. Browser portions have [approved M6E/M6G allocation](sprint-8.8-m6c-closeout.md#approved-b14b16-allocation); mandatory and unexecuted. |
 | B17 source mismatch/dirty runtime and revoked requester before claim | L Git-source/CLI and M6B authorization reject source contamination, dirty/wrong SHA and revoked requester with no allocation. P startup verifies wrong SHA and ownership/config/UID denials, no attempt/artifact. U protected dirty-runtime and full preclaim revocation variants in this run. |
 | B18 permitted role changes and trusted worker | L authorization checks Admin↔Super Admin, untrusted worker denial and source policy; P build establishes one valid protected identity/claim. U native role-transition/environment mismatch combinations here. |
 | B19 inactive/deleted/NULL requester | L authorization checks each denial and zero allocation; inherited M6B native FK/revocation coverage remains separate. I requester-after-claim is only inactivity after allocation. U full variants with M6C artifacts. |
@@ -582,8 +588,9 @@ portions of C/U, internal controls and integrated closeout remain later M6 scope
 
 The core20 inventory remains a bounded historical PASS. The current four-gap
 assessment above credits the additional journal/supplement originals and inherited
-M6B/local evidence at their stated layers; G1–G4 are now satisfied for scoped review.
-B14/B16 browser allocation still requires an owner decision. Deployment, served
+M6B/local evidence at their stated layers; Frank accepted G1–G4 and these limitations.
+B14/B16 browser allocation is approved for M6E/M6G; those checks remain mandatory
+and unexecuted. Deployment, served
 policy, physical durability and the full 77-case M6 matrix are not established by
 these three build-only runs. No criteria are waived or new tests authorized.
 
@@ -657,6 +664,10 @@ and declared profiles. **Not all non-documentation files are identical across th
 three native SHAs**; the added/corrected harness infrastructure is explicitly retained.
 
 ## Documentation-only preservation and review handoff
+
+**Historical pre-merge consolidation snapshot — current owner decisions and manual
+merge are recorded above and in the [closeout proposal](sprint-8.8-m6c-closeout.md).
+The original task instructions/results below are retained, not current pending actions.**
 
 This October 31 task starts at `910c1345221dcf78cf0e50f998449e2b9a50ec62` on
 `codex/sprint-8.8-m6c-artifact-builder`, with a clean worktree. The actual baseline

@@ -1,7 +1,7 @@
 # 24/7SP Website Generation Architecture
 
 Current M6: **IN PROGRESS**. **M6A — ARCHITECTURE REVIEWED / MERGED** (PR #125).
-**M6B — COMPLETE / STAGING PASS / FORMALLY CLOSED**. **M6C — IMPLEMENTED LOCALLY / REVIEW REQUIRED**;
+**M6B — COMPLETE / STAGING PASS / FORMALLY CLOSED**. **M6C — MERGED / SCOPED EVIDENCE ACCEPTED / CLOSEOUT REVIEW PENDING**;
 **M6D–M6G — NOT STARTED**. **PR #126 — MERGED** at
 `f466fc1cdbfb53325a1db11445736bdc5ea7c6f4`, the operator-reported deployed baseline.
 **Migration 025 — APPLIED TO WORKING STAGING**, once on October 17, 2026.
@@ -14,7 +14,20 @@ pre-deployment provenance: 1824 native assertions, 53/53 executions, all twelve
 replay conditions and cleanup/publication PASS; no native rerun in this task.
 **Production — UNAUTHORIZED / NOT DEPLOYED**; production migration unperformed.
 M5 remains **COMPLETE FOR SPRINT PROGRESSION**; M5C remains
-**ACCEPTED / NARRATOR FOLLOW-UP DEFERRED**. The [M6C local implementation](sprint-8.8-m6c-local-implementation.md) records the completed artifact slice, local checks and remaining native gate. Runtime operations remain separately gated.
+**ACCEPTED / NARRATOR FOLLOW-UP DEFERRED**. The [M6C acceptance record](sprint-8.8-m6c-native-acceptance.md) preserves the separate
+core20, journal3 and supplement17 native PASS results and their source-specific limits.
+**G1–G4 — ACCEPTED FOR SCOPED M6C.** Frank accepted the evidence and documented
+limitations and manually merged PR #128 at `0bd0ce3` on October 31, 2026;
+the [owner-acceptance/manual-merge receipt](https://github.com/fvd8383/ultimate-back-office/pull/128#issuecomment-6549296854) records those decisions.
+**B14/B16 allocation — APPROVED:** M6E served-policy/header checks; M6G integrated
+browser navigation/CSP/inert-control validation. These remain mandatory, unexecuted
+future gates; their allocation authorizes no browser work.
+The statuses here apply while the [formal closeout proposal](sprint-8.8-m6c-closeout.md)
+is open. Only explicit owner acceptance and merge make formal closure effective;
+the [closeout status rule](sprint-8.8-m6c-closeout.md#formal-closeout-proposal-and-effective-status) then governs, with M6D NEXT / NOT STARTED.
+This documentation task performs no runtime work. The last operator-reported deployed
+application remains `f466fc1…`; both backup copies/receipts are retained and restore
+remains NOT EXECUTED.
 
 ## Current M5 closeout — 2026-09-17
 
@@ -28,7 +41,7 @@ M5 remains **COMPLETE FOR SPRINT PROGRESSION**; M5C remains
 | M5C | ACCEPTED / NARRATOR FOLLOW-UP DEFERRED |
 | M5 | COMPLETE FOR SPRINT PROGRESSION |
 | M6B | COMPLETE / STAGING PASS / FORMALLY CLOSED |
-| M6C | IMPLEMENTED LOCALLY / REVIEW REQUIRED |
+| M6C | MERGED / SCOPED EVIDENCE ACCEPTED / CLOSEOUT REVIEW PENDING |
 | M6D–M6G | NOT STARTED |
 | M6 | IN PROGRESS |
 | Production | UNAUTHORIZED / NOT DEPLOYED |
@@ -59,7 +72,8 @@ completed cases; deferred checks are validation items, not established defects.
 
 Migrations 023/024 are unchanged. M6B is implemented/deployed, with 025 applied to
 working staging by the operator on October 17. Limited smoke passed; formal closeout
-was accepted in PR #127. M6C adds local artifact implementation and tests; no host
+was accepted in PR #127. M6C artifact implementation is merged in PR #128 and its
+scoped evidence is accepted; formal closeout remains proposed. No host
 configuration, provider, domain, deployed runtime or production state changes occur.
 Sprint 8.8 remains **IN PROGRESS**.
 This current decision supersedes earlier closure prerequisites; dated snapshots and
@@ -184,7 +198,7 @@ deployed/validated SHA is `d33589da5eebbf8e2ae0dc203837d6667abd1f71`; see
 `docs/sprint-8.8-m4-closeout.md`. M5 is **COMPLETE FOR SPRINT PROGRESSION**;
 M5A/M5B are **COMPLETE / STAGING PASS / FORMALLY CLOSED**; M5C is
 **ACCEPTED / NARRATOR FOLLOW-UP DEFERRED**. M6 is **IN PROGRESS**; M6B staging deployment/025 application are operator-complete,
-with limited authenticated smoke PASS and formal closeout accepted in PR #127. M6C is **IMPLEMENTED LOCALLY / REVIEW REQUIRED**.
+with limited authenticated smoke PASS and formal closeout accepted in PR #127. M6C is **MERGED / SCOPED EVIDENCE ACCEPTED / CLOSEOUT REVIEW PENDING**.
 
 Milestone 7 locked the executable Sprint 8.8 sequence in `docs/sprint-8.8.md` and the
 initial planned website migration as `023_website_platform_foundation.sql`. The preceding
