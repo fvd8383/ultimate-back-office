@@ -1,8 +1,8 @@
 # Codex Handoff
 
 Current M6: **IN PROGRESS**. **M6A — ARCHITECTURE REVIEWED / MERGED** (PR #125).
-**M6B — COMPLETE / STAGING PASS / FORMALLY CLOSED**. **M6C — MERGED / SCOPED EVIDENCE ACCEPTED / CLOSEOUT REVIEW PENDING**;
-**M6D–M6G — NOT STARTED**. **PR #126 — MERGED** at
+**M6B — COMPLETE / STAGING PASS / FORMALLY CLOSED**. **M6C — COMPLETE / ISOLATED NATIVE GATES PASS / FORMALLY CLOSED**;
+**M6D — PARTIALLY IMPLEMENTED / REVIEW REQUIRED**; **M6E–M6G — NOT STARTED**. **PR #126 — MERGED** at
 `f466fc1cdbfb53325a1db11445736bdc5ea7c6f4`, the operator-reported deployed baseline.
 **Migration 025 — APPLIED TO WORKING STAGING**, once on October 17, 2026.
 The [M6B closeout](sprint-8.8-m6b-closeout.md) separates the earlier native PASS,
@@ -26,10 +26,12 @@ the [owner-acceptance/manual-merge receipt](https://github.com/fvd8383/ultimate-
 **B14/B16 allocation — APPROVED:** M6E served-policy/header checks; M6G integrated
 browser navigation/CSP/inert-control validation. These remain mandatory, unexecuted
 future gates; their allocation authorizes no browser work.
-The statuses here apply while the [formal closeout proposal](sprint-8.8-m6c-closeout.md)
-is open. Only explicit owner acceptance and merge make formal closure effective;
-the [closeout status rule](sprint-8.8-m6c-closeout.md#formal-closeout-proposal-and-effective-status) then governs, with M6D NEXT / NOT STARTED.
-This documentation task performs no runtime work. The last operator-reported deployed
+PR #129 merged at `1134c65c5f6cdfea804d634fad73e2d8a354d065`; the
+[final owner receipt](https://github.com/fvd8383/ultimate-back-office/pull/129#issuecomment-6549478529)
+makes M6C formal closure effective. M6D service/CLI/local regressions and a distinct
+DB-only harness are authored; [remaining native coverage](sprint-8.8-m6d-native-validation.md)
+keeps M6D partial. See the [local implementation record](sprint-8.8-m6d-local-implementation.md).
+No native SQL, host preparation, deployment or browser work was executed. The last operator-reported deployed
 application remains `f466fc1…`; both backup copies/receipts are retained and restore
 remains NOT EXECUTED.
 
@@ -46,8 +48,9 @@ remains NOT EXECUTED.
 | M5 | COMPLETE FOR SPRINT PROGRESSION |
 | M6A | ARCHITECTURE REVIEWED / MERGED |
 | M6B | COMPLETE / STAGING PASS / FORMALLY CLOSED |
-| M6C | MERGED / SCOPED EVIDENCE ACCEPTED / CLOSEOUT REVIEW PENDING; formal closure pending |
-| M6D–M6G | NOT STARTED |
+| M6C | COMPLETE / ISOLATED NATIVE GATES PASS / FORMALLY CLOSED |
+| M6D | PARTIALLY IMPLEMENTED / REVIEW REQUIRED; native harness NOT EXECUTED |
+| M6E–M6G | NOT STARTED |
 | M6 | IN PROGRESS |
 | Production | UNAUTHORIZED / NOT DEPLOYED |
 

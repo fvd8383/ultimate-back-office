@@ -598,6 +598,36 @@ final class SiteRevisionManager
         return $revision;
     }
 
+    /** @internal Only the service's transaction-bound verified result can publish. */
+    public static function applyVerifiedPublication(object $db, SiteDeploymentService $verified): void
+    {
+        $e=$verified->verifiedResult($db); $op=$e['operation']; $site=$e['site'];
+        if ($e['target']['environment'] !== 'production') throw new SiteServiceException('conflict','Production evidence is required.');
+        $revision=self::lockRevision($db,(int)$op['source_revision_id']);
+        self::assertLockedRevisionSite($revision,(int)$site['id']);
+        $old=$site['current_published_revision_id'];
+        if ($old !== null && (int)$old !== (int)$revision['id']) {
+            $prior=self::lockRevision($db,(int)$old);
+            self::assertLockedRevisionSite($prior,(int)$site['id']);
+            if ($prior['lifecycle_status'] !== 'published') throw new SiteServiceException('conflict','Publication history is inconsistent.');
+            $s=$db->prepare('/* site-m6d:supersede-publication */ UPDATE site_revisions SET lifecycle_status = :state, updated_at = :now
+                WHERE id = :revision_id AND site_id = :site_id AND lifecycle_status = :prior_state');
+            $s->execute(['state'=>'superseded','now'=>$e['now'],'revision_id'=>(int)$old,'site_id'=>(int)$site['id'],'prior_state'=>'published']);
+            if ($s->rowCount() !== 1) throw new SiteServiceException('stale_write','Prior publication changed.');
+        }
+        if ($revision['lifecycle_status'] !== 'published') {
+            if (!in_array($revision['lifecycle_status'],$op['operation'] === 'restore' ? ['internally_approved','superseded'] : ['internally_approved'],true)) {
+                throw new SiteServiceException('invalid_transition','This revision cannot be published.');
+            }
+            $s=$db->prepare('/* site-m6d:publish-revision */ UPDATE site_revisions SET lifecycle_status = :state,
+                published_at = COALESCE(published_at, :published_at), updated_at = :now
+                WHERE id = :revision_id AND site_id = :site_id AND lifecycle_status = :prior_state');
+            $s->execute(['state'=>'published','published_at'=>$e['now'],'now'=>$e['now'],'revision_id'=>(int)$revision['id'],
+                'site_id'=>(int)$site['id'],'prior_state'=>$revision['lifecycle_status']]);
+            if ($s->rowCount() !== 1) throw new SiteServiceException('stale_write','Candidate publication changed.');
+        }
+    }
+
     /**
      * @internal M3 composition writers must call this inside their own write transaction
      * before changing composition so mutability is checked under the same site/revision locks.
@@ -742,6 +772,18 @@ final class SiteRevisionManager
      */
     public static function lockBuildEligibility(object $connection, int $siteId, int $revisionId, string $expectedHash): array
     {
+        return self::lockDeliveryEligibility($connection, $siteId, $revisionId, $expectedHash, false, false);
+    }
+
+    /** @internal Historical restore bypasses only freshness/old approvals, never tenant/rights integrity. */
+    public static function lockDeploymentEligibility(object $connection, array $release, bool $restore): array
+    {
+        return self::lockDeliveryEligibility($connection, (int)$release['site_id'],
+            (int)$release['source_revision_id'], (string)$release['source_snapshot_hash'], $restore, true);
+    }
+
+    private static function lockDeliveryEligibility(object $connection, int $siteId, int $revisionId, string $expectedHash, bool $restore, bool $deployment): array
+    {
         if (!$connection->inTransaction()) {
             throw new SiteServiceException('conflict', 'Build eligibility requires its owning transaction.');
         }
@@ -750,14 +792,17 @@ final class SiteRevisionManager
         if ($site['purpose'] !== '247sp') {
             throw new SiteServiceException('future_gate_required', 'This site purpose requires a future build policy.');
         }
-        // active/published remain gated until the later guarded publication owner exists.
-        if ($site['lifecycle_status'] !== 'approved') {
+        if (!in_array($site['lifecycle_status'], ['approved', 'active'], true)
+            || ($site['lifecycle_status'] === 'active' && $site['current_published_revision_id'] === null)) {
             throw new SiteServiceException('invalid_transition', 'The site is not approved for building.');
         }
         $revision = self::lockRevision($connection, $revisionId);
         self::assertLockedRevisionSite($revision, $siteId);
         if (!hash_equals(SiteServiceSupport::assertSnapshotHash($expectedHash), (string) $revision['snapshot_hash'])
-            || $revision['lifecycle_status'] !== 'internally_approved' || $revision['review_ready_at'] === null
+            || !in_array($revision['lifecycle_status'], $restore ? ['internally_approved','published','superseded']
+                : ($deployment ? ['internally_approved','published'] : ['internally_approved']), true)
+            || (!$restore && $revision['lifecycle_status'] === 'published' && (int)$site['current_published_revision_id'] !== $revisionId)
+            || $revision['review_ready_at'] === null
             || !in_array($revision['materiality'], ['material', 'non_material'], true)) {
             throw new SiteServiceException('invalid_transition', 'The exact approved revision is required.');
         }
@@ -798,9 +843,9 @@ final class SiteRevisionManager
         );
         $registry->execute(); $registry->fetchAll();
         // All mutable inputs are locked before existing owners perform consistent reads.
-        $approvals = SiteApprovalManager::lockedBuildApprovals($connection, $revision);
-        SiteServiceSupport::assertNoNewerMaterialRevision($connection, $revision);
-        foreach ($newer as $row) {
+        $approvals = $restore ? [] : SiteApprovalManager::lockedBuildApprovals($connection, $revision);
+        if (!$restore) SiteServiceSupport::assertNoNewerMaterialRevision($connection, $revision);
+        foreach ($restore ? [] : $newer as $row) {
             if ($row['materiality'] === 'undetermined' || in_array($row['lifecycle_status'], ['internally_approved', 'published'], true)) {
                 throw new SiteServiceException('invalid_transition', 'A newer revision prevents this build.');
             }

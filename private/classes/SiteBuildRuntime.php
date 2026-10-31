@@ -9,12 +9,16 @@ require_once __DIR__ . '/LocalSiteArtifactStore.php';
 final class SiteBuildRuntime implements SiteBuildDependencies
 {
     private function __construct(private array $worker, private array $builder, private SiteArtifactStore $store,
-        private SiteArtifactBuilder $artifactBuilder, private string $repository) {}
+        private SiteArtifactBuilder $artifactBuilder, private string $repository, private array $capabilities = ['execution','recovery']) {}
 
     public static function fromTrustedCli(): self
     {
         $entry = realpath(dirname(__DIR__,2) . '/scripts/site-build-worker.php');
-        if (PHP_SAPI !== 'cli' || realpath($_SERVER['SCRIPT_FILENAME'] ?? '') !== $entry
+        $reconciler = realpath(dirname(__DIR__,2) . '/scripts/reconcile-site-jobs.php');
+        $actual = realpath($_SERVER['SCRIPT_FILENAME'] ?? '');
+        $recoveryOnly = $actual === $reconciler && count($GLOBALS['argv'] ?? []) === 3
+            && ($GLOBALS['argv'][1] ?? null) === '--build' && preg_match('/^[1-9][0-9]{0,9}$/D', $GLOBALS['argv'][2] ?? '') === 1;
+        if (PHP_SAPI !== 'cli' || ($actual !== $entry && !$recoveryOnly)
             || PHP_OS_FAMILY !== 'Linux' || !function_exists('posix_geteuid')) {
             throw new SiteServiceException('future_gate_required','A protected build-worker invocation is required.');
         }
@@ -49,7 +53,7 @@ final class SiteBuildRuntime implements SiteBuildDependencies
         $assets = new SiteArtifactAssetResolver($config['legacy_upload_root'],$guard);
         $builder = self::identity($sha);
         return new self(['worker_id'=>SiteBuildContract::key($config['worker_id']),'environment'=>$config['environment']],
-            $builder,$store,new SiteArtifactBuilder($store,$assets),$repo);
+            $builder,$store,new SiteArtifactBuilder($store,$assets),$repo,$recoveryOnly ? ['recovery'] : ['execution','recovery']);
     }
 
     private static function protectedPath(string $path, ?int $owner, bool $directory, bool $private = false): void
@@ -111,7 +115,7 @@ final class SiteBuildRuntime implements SiteBuildDependencies
     }
     public function workerIdentity(string $capability): array
     {
-        if (!in_array($capability,['execution','recovery'],true)) throw new SiteServiceException('unauthorized','Unsupported worker capability.');
+        if (!in_array($capability,$this->capabilities,true)) throw new SiteServiceException('unauthorized','Unsupported worker capability.');
         return $this->worker; // Pre-resolved in memory; safe inside lifecycle locks.
     }
     public function operatorId(): int { throw new SiteServiceException('future_gate_required','Operator identity requires a later authenticated control integration.'); }

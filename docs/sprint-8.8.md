@@ -1,8 +1,8 @@
 # Sprint 8.8 — Website Platform And Component CMS
 
 Current M6: **IN PROGRESS**. **M6A — ARCHITECTURE REVIEWED / MERGED** (PR #125).
-**M6B — COMPLETE / STAGING PASS / FORMALLY CLOSED**. **M6C — MERGED / SCOPED EVIDENCE ACCEPTED / CLOSEOUT REVIEW PENDING**;
-**M6D–M6G — NOT STARTED**. **PR #126 — MERGED** at
+**M6B — COMPLETE / STAGING PASS / FORMALLY CLOSED**. **M6C — COMPLETE / ISOLATED NATIVE GATES PASS / FORMALLY CLOSED**;
+**M6D — PARTIALLY IMPLEMENTED / REVIEW REQUIRED**; **M6E–M6G — NOT STARTED**. **PR #126 — MERGED** at
 `f466fc1cdbfb53325a1db11445736bdc5ea7c6f4`, the operator-reported deployed baseline.
 **Migration 025 — APPLIED TO WORKING STAGING**, once on October 17, 2026.
 The [M6B closeout](sprint-8.8-m6b-closeout.md) separates the earlier native PASS,
@@ -26,10 +26,12 @@ the [owner-acceptance/manual-merge receipt](https://github.com/fvd8383/ultimate-
 **B14/B16 allocation — APPROVED:** M6E served-policy/header checks; M6G integrated
 browser navigation/CSP/inert-control validation. These remain mandatory, unexecuted
 future gates; their allocation authorizes no browser work.
-The statuses here apply while the [formal closeout proposal](sprint-8.8-m6c-closeout.md)
-is open. Only explicit owner acceptance and merge make formal closure effective;
-the [closeout status rule](sprint-8.8-m6c-closeout.md#formal-closeout-proposal-and-effective-status) then governs, with M6D NEXT / NOT STARTED.
-This documentation task performs no runtime work. The last operator-reported deployed
+PR #129 merged at `1134c65c5f6cdfea804d634fad73e2d8a354d065`; the
+[final owner receipt](https://github.com/fvd8383/ultimate-back-office/pull/129#issuecomment-6549478529)
+makes M6C formal closure effective. M6D service/CLI/local regressions and a distinct
+DB-only harness are authored; [remaining native coverage](sprint-8.8-m6d-native-validation.md)
+keeps M6D partial. See the [local implementation record](sprint-8.8-m6d-local-implementation.md).
+No native SQL, host preparation, deployment or browser work was executed. The last operator-reported deployed
 application remains `f466fc1…`; both backup copies/receipts are retained and restore
 remains NOT EXECUTED.
 
@@ -46,8 +48,9 @@ remains NOT EXECUTED.
 | M5 | COMPLETE FOR SPRINT PROGRESSION |
 | M6A | ARCHITECTURE REVIEWED / MERGED |
 | M6B | COMPLETE / STAGING PASS / FORMALLY CLOSED |
-| M6C | MERGED / SCOPED EVIDENCE ACCEPTED / CLOSEOUT REVIEW PENDING; formal closure pending |
-| M6D–M6G | NOT STARTED |
+| M6C | COMPLETE / ISOLATED NATIVE GATES PASS / FORMALLY CLOSED |
+| M6D | PARTIALLY IMPLEMENTED / REVIEW REQUIRED; native harness NOT EXECUTED |
+| M6E–M6G | NOT STARTED |
 | M6 | IN PROGRESS |
 | Production | UNAUTHORIZED / NOT DEPLOYED |
 
@@ -201,11 +204,11 @@ milestones, M1–M8. M1–M4 are complete and formally closed; M5 is complete fo
 sprint progression, and M6–M8 remain required before Sprint 8.8 closes.
 The completed M4 exit gate covers the internal administrative
 workflow, and M5B completed the customer review, feedback, and approval UI. Outstanding
-work begins with review of the [M6C formal closeout proposal](sprint-8.8-m6c-closeout.md).
+work begins with review and completion of the [M6D local slice](sprint-8.8-m6d-local-implementation.md).
 PR #128 is merged; the three source-specific native results, G1–G4 dispositions and
 documented limits are owner-accepted, and B14/B16 future allocation is approved.
-M6B is formally closed; M6C formal closure awaits explicit owner acceptance and merge
-of its closeout PR. M6D–M6G implementation remains,
+M6B and M6C are formally closed. M6D has local implementation and explicit native
+coverage gaps; M6E–M6G implementation remains,
 followed by later public generic sites,
 domain/routing, LeadHub ingestion, legacy runtime cutover, and production authorization
 in later milestones. Historical migrations remain immutable, and the customer
@@ -728,8 +731,9 @@ business/site or cause publication.
 
 Status: **IN PROGRESS**. M6A is **ARCHITECTURE REVIEWED / MERGED**; M6B is
 **COMPLETE / STAGING PASS / FORMALLY CLOSED**. M6C is
-**MERGED / SCOPED EVIDENCE ACCEPTED / CLOSEOUT REVIEW PENDING**;
-M6D–M6G are **NOT STARTED**. The [M6 plan](sprint-8.8-m6-implementation-plan.md)
+**COMPLETE / ISOLATED NATIVE GATES PASS / FORMALLY CLOSED**;
+M6D is **PARTIALLY IMPLEMENTED / REVIEW REQUIRED**; M6E–M6G are **NOT STARTED**.
+The [M6 plan](sprint-8.8-m6-implementation-plan.md)
 remains the reviewed contract. The [M6B closeout](sprint-8.8-m6b-closeout.md) records
 merged PR #126, earlier native persistence PASS, operator-executed staging deployment
 and migration 025, and completed authenticated smoke with explicit evidence limits. Formal
