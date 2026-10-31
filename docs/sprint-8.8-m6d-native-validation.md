@@ -4,7 +4,7 @@
 publisher activation or browser was run while authoring this harness. No runtime
 image ID has been selected or invented. Local synthetic controls do not satisfy this gate.
 
-The distinct profile is `m6d-db-authority-v1`. Its exact 18-case inventory is owned by
+The distinct profile is `m6d-db-authority-v2`. Its exact **28 cases / 142 named subcases** are owned by
 [M6DNativeContract](../tests/support/WebsitePlatformM6DNativeContract.php).
 An M6B, core20, journal3 or supplement17 report cannot satisfy it. The existing M6C
 native profiles and their separate accepted source attribution remain unchanged.
@@ -48,7 +48,7 @@ The preparer installs these fixed paths; no CLI/environment path override exists
 | --- | --- |
 | `/run/ubo-m6d/admission.json` | root, 0644, one regular link; exact fields below |
 | `/run/ubo-m6d/database.json` | UID 2000, 0600; only `password`, 32–128 characters |
-| `/run/ubo-m6d/EXECUTE` | root, 0644; exact `RUN_TOKEN:m6d-db-authority-v1`, created only after execution authorization |
+| `/run/ubo-m6d/EXECUTE` | root, 0644; exact `RUN_TOKEN:m6d-db-authority-v2`, created only after execution authorization |
 | `/run/ubo-m6d/state` | UID 2000, 0700, 128 MiB tmpfs; synthetic external pointer records |
 | `/run/ubo-m6d/reports` | UID 2000, 0700; new exclusive report output |
 
@@ -88,6 +88,26 @@ failed run or combine results from different source/image/token identities.
 
 ## Exact case inventory and evidence layers
 
+### Finite expansion map at the reviewed queue-correction baseline
+
+The expansion starts at `926027c772004a4cd2e223a4b2242c4d21855283` and changes
+test infrastructure only. Its obligations are **AUTHORED / NOT EXECUTED**; the
+historical 490 behavior/control + 58 scope assertions belong to that earlier head.
+
+| Package / requirements | Required executable observations |
+| --- | --- |
+| A: D04–D06, D13, U01/U02 | Requester, grant approver and grant revocation, denial-first/work-first at claim, activation authorization and new-success acceptance; each order has its own independent connection wait and committed-boundary observation. Distinct sites, environments and occupied-target progress retain scoped slot/fence/receipt authority. |
+| B: D19–D26 | Both APIs: failed, cancelled and reconciliation history; discarded request response; controlled duplicate-insert rollback followed by independent winner creation and pending/advanced reread; current access loss. Existing field and A/B/C cases remain mandatory. |
+| C: D02–D04, D09–D12, D17, R01–R06, C01/C04–C06/C08–C13 | Exact grant bindings and phase denial; real-service known-good restore plus current prohibitions; modeled health and compensation with independent DB consequences; third execution, automatic recovery exhaustion and stale-owner protection. |
+| D: S02/S03, U01/U02 | Exact named deployment constraints, scoped uniqueness, valid recovery after execution three, retained operator history/SET NULL and current authority, bounded queue/history index access. Credited M6B clean/upgrade schema evidence is not rerun. |
+
+Subcases are part of the versioned report inventory, not optional narrative. The
+original committed-ack-history remains an exception injected after successful PDO
+commit; discarded request responses are a separate boundary. Neither establishes
+wire-level loss of a deployment-result COMMIT acknowledgement. That precise transport
+obligation remains outside this mechanism; M6C transport evidence is not credited as
+execution of an M6D deployment-result transaction. No new wire protocol is introduced.
+
 | Case | Plan requirements / authored proof |
 | --- | --- |
 | publish-request-history | D19–D22, D24 and D05 queue progress; current access, pending/history, A/B/C stale-intent cancellation and later pointer |
@@ -109,6 +129,41 @@ failed run or combine results from different source/image/token identities.
 | unavailable-result-no-compensation | C09; injected connection unavailability prevents model effects |
 | deleted-recovery-actor | S03, U01/U02; real SET NULL preserves history and denies deleted operator |
 
+The first 18 parent case meanings remain mandatory. Payload-field cases now report
+each original-field mutation individually. The following exact subcase inventory is
+part of v2 acceptance; `service-observations` denotes a retained original case.
+
+| Parent case | Exact required subcases |
+| --- | --- |
+| `publish-request-history` | `service-observations` |
+| `restore-request-history` | `service-observations` |
+| `publish-payload-fields` | `release`, `operation`, `approval`, `binding`, `pointer`, `version`, `reason` |
+| `restore-payload-fields` | `release`, `operation`, `restore-source`, `approval`, `binding`, `pointer`, `version`, `reason` |
+| `scoped-current-access` | `service-observations` |
+| `concurrent-request-identity` | `service-observations` |
+| `concurrent-target-claims` | `service-observations` |
+| `result-audit-rollback` | `service-observations` |
+| `production-grant-boundaries` | `service-observations` |
+| `production-role-lock` | `service-observations` |
+| `staging-production-lifecycle` | `service-observations` |
+| `known-good-restore` | `service-observations` |
+| `stale-lease-fence` | `service-observations` |
+| `third-execution-recovery` | `service-observations` |
+| `recovery-budget-operator` | `service-observations` |
+| `committed-ack-history` | `service-observations` |
+| `unavailable-result-no-compensation` | `service-observations` |
+| `deleted-recovery-actor` | `service-observations` |
+| `authority-boundary-orders` | `requester-claim-denial-first`, `requester-claim-work-first`, `requester-activation-denial-first`, `requester-activation-work-first`, `requester-success-denial-first`, `requester-success-work-first`, `approver-claim-denial-first`, `approver-claim-work-first`, `approver-activation-denial-first`, `approver-activation-work-first`, `approver-success-denial-first`, `approver-success-work-first`, `grant-claim-denial-first`, `grant-claim-work-first`, `grant-activation-denial-first`, `grant-activation-work-first`, `grant-success-denial-first`, `grant-success-work-first` |
+| `independent-targets` | `different-sites`, `same-site-environments`, `occupied-target-progress` |
+| `publish-request-outcomes` | `failed-history`, `cancelled-history`, `reconciliation-history`, `lost-response`, `duplicate-winner-pending`, `duplicate-winner-advanced`, `access-loss` |
+| `restore-request-outcomes` | `failed-history`, `cancelled-history`, `reconciliation-history`, `lost-response`, `duplicate-winner-pending`, `duplicate-winner-advanced`, `access-loss` |
+| `grant-field-bindings` | `site`, `release`, `source`, `artifact`, `target`, `environment`, `operation`, `binding`, `expected-pointer`, `expected-version`, `missing`, `consumed-history` |
+| `grant-phase-denials` | `expiry-claim`, `expiry-activation`, `expiry-success`, `revocation-claim`, `revocation-activation`, `revocation-success`, `approver-claim`, `approver-activation`, `approver-success` |
+| `restore-eligibility` | `never-successful`, `foreign-site`, `wrong-target`, `artifact-identity`, `tenant-prohibited`, `business-prohibited`, `asset-rights`, `target-disabled`, `superseded-approval`, `production-fresh-grant` |
+| `health-compensation` | `candidate-failure`, `active-health-failure`, `third-null-absence`, `compensation-failed`, `compensation-unknown`, `newer-winner`, `activation-audit-grant`, `result-audit-grant`, `third-grant-expired`, `third-grant-revoked`, `health-status`, `health-site`, `health-release`, `health-artifact`, `health-marker`, `health-page`, `health-css`, `health-media`, `health-origin`, `health-tls`, `health-redirect`, `health-cache`, `health-no-store`, `health-timeout` |
+| `deployment-schema` | `target-owner`, `release-owner`, `expected-target`, `restore-target`, `current-target`, `active-target`, `request-unique`, `attempt-parent`, `attempt-original`, `current-attempt`, `execution-four`, `execution-shape`, `recovery-shape`, `counter-shape`, `actor-fk`, `history-restrict`, `health-attempt`, `grant-consumption` |
+| `deployment-history-access` | `operator-deletion`, `queue-index`, `history-index` |
+
 The fixture uses real services/native PDO and the actual schema. Artifact verification,
 publisher observations, health, fences and compensation are explicit test models;
 shared private JSON records represent an independent external pointer. No symlink,
@@ -119,12 +174,76 @@ fixtures, not coverage of customer approval UI, elapsed clocks or operational re
 Local [service suites](sprint-8.8-m6d-local-implementation.md#executed-local-evidence) additionally
 parameterize grant expiry/revocation/role loss at claim/activation/success, failed and
 unknown replay, malformed health, NULL compensation, authority/tenant/rights denials,
-and model failures. Broader real-MySQL permutations remain mandatory review/native
-obligations; this first 18-case harness is not an all-D/R/C/S/U acceptance claim.
-In particular, reverse authorization serialization, all health/compensation fault
-permutations and complete deployment negative CHECK/FK fixtures need expanded native
-coverage before formal M6D acceptance. These are explicit validation infrastructure
-gaps, not results inferred from the sequential local fixture.
+and model failures. The finite A–D expansion above now supplies executable native
+obligations for those documented DB-only gaps. **Authoring does not close native
+acceptance.** Real MySQL behavior and total run duration remain unverified; this is
+not an all-D/R/C/S/U or M6E–M6G acceptance claim.
+
+Exact grant-field cases call the actual grant owner under a site transaction with
+authoritative existing alternative records; they isolate individual tuple fields.
+The source/release alternatives use a second same-site approved synthetic revision
+and service-created release. Artifact-identity corruption is an explicit model fault.
+Separate phase cases exercise full request/claim/activation/result paths. The restore
+rights case seeds an owned asset before building and establishing known-good history,
+then prohibits its rights. It never changes the stored successful deployment outcome.
+
+Both authorization orders use actual row locks: denial-first waits before the exact
+boundary transaction; work-first holds its final audit/commit, observes the mutation
+waiting, then independently observes the committed boundary before releasing further
+work. Claim, activation authorization and success have distinct barriers. Eighteen
+new authority orders, the three retained waits and one distinct-site progress case
+give **22 separately required observations**. Same-site environments may serialize
+on the site lock; the harness does not demand lock-free same-site work.
+
+Duplicate-key testing explicitly injects error 1062 at the losing insert. It observes
+the real PDO rollback before a second service connection creates (and optionally
+advances) the winner, then releases the loser to its authoritative reread. Natural
+service serialization is retained separately. Discarding a service-request return is
+request-response loss only. Neither mechanism is wire-level COMMIT loss.
+
+Schema negatives require the exact SQLSTATE, driver number and named constraint;
+the raw server message and SQL are never published. MySQL documents CHECK violations
+as 3819/HY000 in its [error reference](https://dev.mysql.com/doc/mysql-errors/8.0/en/server-error-reference.html).
+Query cases seed 32 service requests, check index columns and `possible_keys`, and
+execute bounded queue/history reads. They record a plan digest and selected access,
+without requiring costs or a tiny-table scan choice; `possible_keys` is the documented
+[usable-index field](https://dev.mysql.com/doc/refman/8.4/en/explain-output.html).
+The accepted [M6B schema evidence](sprint-8.8-m6b-closeout.md) remains credited for
+clean/upgrade schema and previously covered structural checks; no fresh DDL campaign
+is added. Fixture retirement occurs only after observations and is never counted as
+proof of service cancellation.
+
+### Local harness proof and remaining execution requirements
+
+On Windows/PHP 8.4.24, the new report controls and harness regressions exercise the
+actual v2 contract, protocol/barrier helpers, PDO instrumentation and failure controls.
+Ten affected suites pass: **1,564 behavior/control + 65 scope = 1,629 assertions**.
+NativeControl contributes 1,045 synthetic report/admission checks; NativeHarness
+contributes 92 checks using real bounded local children/private files and modeled PDO.
+Queue/Execution/Request/Authority/Recovery/Artifact/CLI retain 90/63/70/96/60/4/44.
+Expected negative diagnostics are classified per suite, not suppressed or required
+to be empty. Actual commands, exits, durations and separate rechecks are outside Git.
+All 14 changed PHP files pass lint; documentation and source integrity are checked.
+
+No production code changed from `926027c`; the reviewed queue correction remains
+byte-identical. All 25 migrations/pins, M6C artifact/native behavior, all 77 requirement
+definitions and approved browser allocation remain unchanged. No shared M6B/M6C
+dependency changed, so no unrelated historical campaign was repeated. The historical
+M6B scope-perimeter failure remains disclosed and is not counted as PASS.
+
+Every existing resource bound is unchanged, including the 600-second coordinator,
+45-second children, ten-second waits, two-child cap, memory/PID/tmpfs and output sizes.
+The larger inventory has bounded loops and fresh isolated fixtures, but **whether the
+complete run fits 600 seconds is unverified**. A deadline failure remains failure;
+limits must not be raised or cases skipped to obtain PASS. Preparation, exact-source
+review, protected admission and execution still require separate authorization.
+
+The residual mechanism gap is wire-level acknowledgement loss for the M6D deployment
+result transaction (D11/C09). The retained post-commit application exception now uses
+execution three and preserves the limitation. M6C transport evidence is not proof of
+that M6D transaction. Actual HTTP/Apache/helper/filesystem activation and fencing are
+outside the DB-only lane. No new production defect was exposed by the executed local
+controls; native implementation/constraint behavior remains unverified until execution.
 
 ### PR #130 bounded queue-progress obligation — NOT EXECUTED
 
@@ -137,8 +256,8 @@ cancellation audit; the independent publisher-model file must remain unchanged d
 claim/replay. C then completes through the normal service path.
 
 No terminal outcome is planted with SQL. These additions extend existing declared
-case meanings; the profile still requires exactly all 18 cases and all three original
-observed lock waits. `production-role-lock` retains its real wait requirement and now
+case meanings; v2 retains all 18 original cases and all three original
+observed lock waits while adding the exact subcases above. `production-role-lock` retains its real wait requirement and now
 expects cancellation rather than an exception from the entire scan. The local control
 test still rejects incomplete reports. No new native launcher, image, connection or
 execution was introduced. See the [local correction record](sprint-8.8-m6d-local-implementation.md#pr-130-queue-starvation-correction)
@@ -146,13 +265,19 @@ for modeled evidence; these authored native assertions do not constitute native 
 
 ## Failure, cleanup and report rules
 
-The report starts FAIL with every exact case UNREACHED. All cases need positive
-assertion counts; the three concurrency cases also need observed MySQL lock waits.
+The report starts FAIL with every exact case and subcase UNREACHED. Each subcase needs
+positive assertions, each parent total must equal its subcase sum, and each of the 22
+ordering/progress observations must identify distinct connections and completed order.
+No global wait flag can credit another race. Missing, extra, duplicate, wrong-version,
+partial, FAIL or unobserved results cannot satisfy acceptance. Published JSON has one
+canonical pretty encoding; `M6DNativeContract::acceptPublished` verifies that encoding
+(rejecting duplicate keys), the exact source/image/run identity, and complete v2 results.
 Missing/unavailable capabilities, worker errors, unresolved waits and incomplete
 inventory cannot become SKIP/PASS. Diagnostics retain exception class/fixed code and
 PDO SQLSTATE/driver number, never SQL text, connection credentials, tokens or bodies.
 
-Primary failure, capture, child/schema cleanup and publication remain separate. The
+Primary failure with case/subcase context, worker exits, capture, child/schema cleanup
+and publication remain separate. The
 coordinator terminates/reaps its tracked children before schema cleanup; a surviving
 child blocks cleanup. Once the empty baseline and exact ownership are admitted,
 cleanup reconnects/rechecks identity and drops **only** `ubo_m6d_TOKEN`, verifying its

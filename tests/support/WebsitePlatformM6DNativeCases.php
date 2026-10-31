@@ -1,27 +1,26 @@
 <?php
 declare(strict_types=1);
+require_once __DIR__.'/WebsitePlatformM6DNativeProtocol.php';
 
 function m6dNativeCheck(bool $ok,string $code): void
 { $GLOBALS['m6d_native_assertions']=($GLOBALS['m6d_native_assertions'] ?? 0)+1; M6DNativeContract::need($ok,$code); }
-function m6dNativeDeny(callable $call): void
+function m6dNativeDeny(callable $call,string $classification): void
 {
-    try { $call(); } catch(SiteServiceException) { m6dNativeCheck(true,'expected_denial'); return; }
+    try { $call(); } catch(SiteServiceException $e) { m6dNativeCheck($e->classification()===$classification,'exact_denial_'.$classification); return; }
     throw new RuntimeException('missing_denial');
 }
 function m6dNativeRecord(array $f): void
 {
     $path=M6DNativeRuntime::ROOT.'/state/fixture-'.$f['site_id'].'.json';
-    $old=umask(0077); $stream=fopen($path,'xb'); umask($old); M6DNativeContract::need(is_resource($stream),'fixture_record');
-    try { $json=json_encode($f,JSON_THROW_ON_ERROR); M6DNativeContract::need(strlen($json)<=8192 && fwrite($stream,$json)===strlen($json) && fflush($stream),'fixture_record_write'); }
-    finally { fclose($stream); }
+    M6DNativeProtocol::privateRecord($path,$f);
 }
 function m6dNativeChild(array $a,array $f,string $mode,string $kind='publish'): array
 {
     $p=new M6CNativeProcess([PHP_BINARY,'-d','memory_limit=256M','-d','zend.exception_ignore_args=1','-d','display_errors=stderr',
         __DIR__.'/WebsitePlatformM6DNativeWorker.php',$a['source_sha'],$a['image_id'],$a['run_token'],$mode,(string)$f['site_id'],$kind],45,65536,
         ['PATH'=>'/usr/bin:/bin','HOME'=>'/nonexistent','LANG'=>'C','TMPDIR'=>M6DNativeRuntime::ROOT.'/state']);
-    $line=$p->line(); M6DNativeContract::need((bool)preg_match('/^READY ([0-9]+)$/D',$line,$m),'child_ready');
-    return [$p,(int)$m[1]];
+    $p->diagnosticContext=['identity'=>M6DNativeProtocol::identity($a),'pdo_diagnostics'=>str_starts_with($mode,'duplicate') ? 1 : 0];
+    return [$p,M6DNativeProtocol::ready($p)];
 }
 function m6dNativeLockWait(PDO $observer,int $waiting,int $blocking): void
 {
@@ -37,12 +36,11 @@ function m6dNativeLockWait(PDO $observer,int $waiting,int $blocking): void
 }
 function m6dNativeChildResult(M6CNativeProcess $p): mixed
 {
-    $line=$p->line(); $r=$p->finish();
-    m6dNativeCheck($r['exit']===0 && !$r['signaled'] && $r['stderr']==='','native_child_result');
-    if(str_starts_with($line,'DENIED ')) return ['denied'=>substr($line,7)];
-    M6DNativeContract::need(str_starts_with($line,'RESULT '),'child_result_shape');
-    return json_decode(substr($line,7),true,32,JSON_THROW_ON_ERROR);
+    $r=M6DNativeProtocol::result($p,$p->diagnosticContext['identity'],$p->diagnosticContext['pdo_diagnostics']);
+    m6dNativeCheck(true,'native_child_result'); return $r;
 }
+function m6dNativeOrder(string $kind,int $one,int $two): array
+{ return ['kind'=>$kind,'observed'=>true,'first_connection'=>$one,'second_connection'=>$two,'first_committed'=>true,'second_completed'=>true]; }
 function m6dNativeProduction(PDO $db,array $f,M6DNativeDependencies $d): array
 {
     $db->prepare("UPDATE site_deployment_targets SET environment='production' WHERE id=? AND site_id=?")->execute([$f['target_id'],$f['site_id']]);
@@ -53,7 +51,7 @@ function m6dNativeProduction(PDO $db,array $f,M6DNativeDependencies $d): array
         'release_id'=>$f['release_id'],'operation'=>'publish','expected_current_deployment_id'=>null,'expected_pointer_version'=>0,
         'binding_version'=>1,'restored_from_deployment_id'=>null,'ttl_seconds'=>300,'supersedes_approval_id'=>null,'correlation_id'=>'native-grant']);
 }
-function m6dNativeCase(string $name,M6DNativeConnection $db,PDO $observer,array $a,array $f,M6DNativeDependencies $d): array
+function m6dNativeCase(string $name,M6DNativeConnection $db,PDO $observer,array $a,array $f,M6DNativeDependencies $d,?string $subcase=null): array
 {
     $check=static fn(string $sql,array $p=[])=>SiteBuildStore::one($observer,$sql,$p);
     if(in_array($name,['publish-request-history','restore-request-history','publish-payload-fields','restore-payload-fields'],true)) {
@@ -62,12 +60,28 @@ function m6dNativeCase(string $name,M6DNativeConnection $db,PDO $observer,array 
         $request=static fn(array $in,int $actor)=>$restore ? SiteDeploymentService::requestRestore($actor,$in) : SiteDeploymentService::requestDeployment($actor,$in);
         $op=$request($v,$f['requester']); $again=$request($v,$f['operator']);
         m6dNativeCheck($again['replayed'] && $again['deployment_id']===$op['deployment_id'],'both_request_identity');
+        if($subcase!==null) {
+            $before=m6dNativeSnapshot($observer,$f);
+            if($subcase==='operation') {
+                m6dNativeDeny(fn()=>$restore ? SiteDeploymentService::requestDeployment($f['operator'],array_replace($v,['restored_from_deployment_id'=>null]))
+                    : SiteDeploymentService::requestRestore($f['operator'],array_replace($v,['restored_from_deployment_id'=>PHP_INT_MAX])),'conflict');
+            } else {
+                [$key,$value]=match($subcase) {
+                    'release'=>['release_id',PHP_INT_MAX],'restore-source'=>['restored_from_deployment_id',PHP_INT_MAX],
+                    'approval'=>['deployment_approval_id',PHP_INT_MAX],'binding'=>['binding_version',99],
+                    'pointer'=>['expected_current_deployment_id',$source===null ? PHP_INT_MAX : null],
+                    'version'=>['expected_pointer_version',999],'reason'=>['reason_code','repair_verified_release'],
+                };
+                m6dNativeDeny(fn()=>$request(array_replace($v,[$key=>$value]),$f['operator']),'conflict');
+            }
+            m6dNativeCheck(m6dNativeSnapshot($observer,$f)===$before,'individual_original_field_conflict_zero_effects'); return [];
+        }
         foreach(['release_id'=>PHP_INT_MAX,'expected_current_deployment_id'=>$source===null ? PHP_INT_MAX : null,'expected_pointer_version'=>999,
             'deployment_approval_id'=>PHP_INT_MAX,'binding_version'=>99,'reason_code'=>'repair_verified_release'] as $field=>$value) {
-            m6dNativeDeny(fn()=>$request(array_replace($v,[$field=>$value]),$f['operator']));
+            m6dNativeDeny(fn()=>$request(array_replace($v,[$field=>$value]),$f['operator']),'conflict');
         }
-        if($restore) m6dNativeDeny(fn()=>$request(array_replace($v,['restored_from_deployment_id'=>PHP_INT_MAX]),$f['operator']));
-        else m6dNativeDeny(fn()=>SiteDeploymentService::requestRestore($f['operator'],array_replace($v,['restored_from_deployment_id'=>PHP_INT_MAX])));
+        if($restore) m6dNativeDeny(fn()=>$request(array_replace($v,['restored_from_deployment_id'=>PHP_INT_MAX]),$f['operator']),'conflict');
+        else m6dNativeDeny(fn()=>SiteDeploymentService::requestRestore($f['operator'],array_replace($v,['restored_from_deployment_id'=>PHP_INT_MAX])),'conflict');
         $queueCase=in_array($name,['publish-request-history','restore-request-history'],true);
         if($queueCase) {
             $intentB=array_replace($v,['request_key'=>SiteServiceSupport::uuidV4()]); $b=$request($intentB,$f['requester']);
@@ -116,7 +130,7 @@ function m6dNativeCase(string $name,M6DNativeConnection $db,PDO $observer,array 
         $r1=m6dNativeChildResult($one); $r2=m6dNativeChildResult($two);
         m6dNativeCheck($claim ? (($r1['claimed'] ?? false) && $r2===null) : ($r1['deployment_id']===$r2['deployment_id'] && $r2['replayed']),'serialized_service_outcomes');
         m6dNativeCheck((int)$check('SELECT COUNT(*) AS n FROM site_deployments WHERE site_id=?',[$f['site_id']])['n']===1,'one_scoped_intent');
-        return ['lock_wait_observed'=>true,'connections'=>[$oneId,$twoId]];
+        return ['ordering'=>m6dNativeOrder('lock-serialized',$oneId,$twoId)];
     }
     if($name==='production-role-lock') {
         $g=m6dNativeProduction($db,$f,$d); $f['requester']=$f['operator']; $f['environment']='production';
@@ -130,14 +144,14 @@ function m6dNativeCase(string $name,M6DNativeConnection $db,PDO $observer,array 
         m6dNativeCheck($cancelled['status']==='cancelled' && $cancelled['failure_code']==='requester_not_authorized'
             && (int)$cancelled['attempt_count']===0,'revoked_requester_durable_disposition');
         m6dNativeCheck((int)$check('SELECT COUNT(*) AS n FROM site_deployment_attempts WHERE site_id=?',[$f['site_id']])['n']===0,'no_claim_after_revocation');
-        return ['lock_wait_observed'=>true];
+        return ['ordering'=>m6dNativeOrder('lock-serialized',(int)$observer->query('SELECT CONNECTION_ID()')->fetchColumn(),$pid)];
     }
     if($name==='scoped-current-access') {
         $v=m6dNativeInput($db,$f); $op=SiteDeploymentService::requestDeployment($f['requester'],$v);
-        m6dNativeDeny(fn()=>SiteDeploymentService::requestDeployment($f['owner'],$v));
-        m6dNativeDeny(fn()=>SiteDeploymentService::requestDeployment($f['requester'],array_replace($v,['target_id'=>PHP_INT_MAX])));
+        m6dNativeDeny(fn()=>SiteDeploymentService::requestDeployment($f['owner'],$v),'unauthorized');
+        m6dNativeDeny(fn()=>SiteDeploymentService::requestDeployment($f['requester'],array_replace($v,['target_id'=>PHP_INT_MAX])),'not_found');
         $observer->prepare("UPDATE users SET status='inactive' WHERE id=?")->execute([$f['requester']]);
-        m6dNativeDeny(fn()=>SiteDeploymentService::requestDeployment($f['requester'],$v));
+        m6dNativeDeny(fn()=>SiteDeploymentService::requestDeployment($f['requester'],$v),'unauthorized');
         m6dNativeCheck(SiteDeploymentService::deploymentForActor($f['operator'],$op['deployment_id'])['deployment_id']===$op['deployment_id'],'current_other_actor_history'); return [];
     }
     if(in_array($name,['production-grant-boundaries','staging-production-lifecycle'],true)) {
@@ -150,7 +164,7 @@ function m6dNativeCase(string $name,M6DNativeConnection $db,PDO $observer,array 
         }
         $g=m6dNativeProduction($db,$f,$d); $d->fixture=$f;
         $v=m6dNativeInput($db,$f,['deployment_approval_id'=>$g['deployment_approval_id']]);
-        $d->production=false; m6dNativeDeny(fn()=>SiteDeploymentService::requestDeployment($f['operator'],$v)); $d->production=true;
+        $d->production=false; m6dNativeDeny(fn()=>SiteDeploymentService::requestDeployment($f['operator'],$v),'future_gate_required'); $d->production=true;
         $op=SiteDeploymentService::requestDeployment($f['operator'],$v); $l=SiteDeploymentService::claimDeployment([])['lease'];
         $r=SiteDeploymentService::executeDeployment($l); $done=SiteDeploymentService::completeDeploymentSuccess($l,$r);
         m6dNativeCheck($done['operation_status']==='succeeded','simulated_production_success');
@@ -169,7 +183,7 @@ function m6dNativeCase(string $name,M6DNativeConnection $db,PDO $observer,array 
     }
     $op=SiteDeploymentService::requestDeployment($f['requester'],m6dNativeInput($db,$f)); $op['site_id']=$f['site_id'];
     $l=SiteDeploymentService::claimDeployment([])['lease'];
-    if($name==='third-execution-recovery') {
+    if(in_array($name,['third-execution-recovery','recovery-budget-operator','committed-ack-history','unavailable-result-no-compensation'],true)) {
         for($i=1;$i<3;$i++) {
             SiteDeploymentService::completeDeploymentFailure($l,['code'=>'storage_unavailable']);
             $observer->prepare('UPDATE site_deployments SET next_attempt_at=DATE_SUB(UTC_TIMESTAMP(6),INTERVAL 1 SECOND) WHERE id=? AND site_id=?')->execute([$op['deployment_id'],$f['site_id']]);
@@ -178,25 +192,25 @@ function m6dNativeCase(string $name,M6DNativeConnection $db,PDO $observer,array 
     }
     $r=SiteDeploymentService::executeDeployment($l);
     if($name==='committed-ack-history') {
-        $db->loseSuccessAck=true; m6dNativeDeny(fn()=>SiteDeploymentService::completeDeploymentSuccess($l,$r));
+        $db->loseSuccessAck=true; m6dNativeDeny(fn()=>SiteDeploymentService::completeDeploymentSuccess($l,$r),'database_failure');
         m6dNativeCheck($check('SELECT status FROM site_deployments WHERE id=?',[$op['deployment_id']])['status']==='succeeded','independent_committed_result');
         m6dNativePublish($db,$f); $repeat=SiteDeploymentService::completeDeploymentSuccess($l,$r);
         m6dNativeCheck(!$repeat['is_current'] && $repeat['operation_status']==='succeeded','lost_ack_old_success'); return [];
     }
     if($name==='result-audit-rollback') {
-        $db->faultEvent='site_deployment_succeeded'; m6dNativeDeny(fn()=>SiteDeploymentService::completeDeploymentSuccess($l,$r)); $db->faultEvent=null;
+        $db->faultEvent='site_deployment_succeeded'; m6dNativeDeny(fn()=>SiteDeploymentService::completeDeploymentSuccess($l,$r),'database_failure'); $db->faultEvent=null;
         m6dNativeCheck($check('SELECT current_deployment_id FROM site_deployment_targets WHERE id=?',[$f['target_id']])['current_deployment_id']===null,'real_mysql_audit_rollback');
     }
     m6dNativeExpire($observer,$l); $claim=m6dNativeRecover($observer,$op);
     m6dNativeCheck($claim['claimed'],'independent_recovery_claim');
-    m6dNativeDeny(fn()=>SiteDeploymentService::renewDeploymentLease($l));
+    m6dNativeDeny(fn()=>SiteDeploymentService::renewDeploymentLease($l),'conflict');
     if($name==='third-execution-recovery') {
         $counts=$check('SELECT attempt_count,execution_count,recovery_count FROM site_deployments WHERE id=?',[$op['deployment_id']]);
         m6dNativeCheck(array_map('intval',array_values($counts))===[4,3,1],'execution_three_recovery_four');
     }
     if($name==='unavailable-result-no-compensation') {
         $path=M6DNativeRuntime::ROOT.'/state/publisher-'.$f['site_id'].'.json'; $before=hash_file('sha256',$path); $db->unavailable=true;
-        m6dNativeDeny(fn()=>SiteDeploymentService::reconcileDeployment($claim['lease'])); $db->unavailable=false;
+        m6dNativeDeny(fn()=>SiteDeploymentService::reconcileDeployment($claim['lease']),'database_failure'); $db->unavailable=false;
         m6dNativeCheck(hash_file('sha256',$path)===$before,'unknown_database_no_external_effect'); return [];
     }
     if(in_array($name,['recovery-budget-operator','deleted-recovery-actor'],true)) {
@@ -210,7 +224,7 @@ function m6dNativeCase(string $name,M6DNativeConnection $db,PDO $observer,array 
             $observer->prepare('DELETE FROM users WHERE id=?')->execute([$f['operator']]);
             $attempt=$check('SELECT recovery_authorized_by_user_id,recovery_trigger,operator_request_key FROM site_deployment_attempts WHERE id=?',[$claim['lease']['attempt_id']]);
             m6dNativeCheck($attempt['recovery_authorized_by_user_id']===null && $attempt['recovery_trigger']==='operator' && $attempt['operator_request_key']===$request['request_key'],'nullable_historical_actor_fk');
-            m6dNativeDeny(fn()=>SiteDeploymentService::claimDeploymentRecovery($op['deployment_id'],[],$request));
+            m6dNativeDeny(fn()=>SiteDeploymentService::claimDeploymentRecovery($op['deployment_id'],[],$request),'unauthorized');
         }
     }
     $done=SiteDeploymentService::completeDeploymentRecovery($claim['lease'],SiteDeploymentService::reconcileDeployment($claim['lease']));

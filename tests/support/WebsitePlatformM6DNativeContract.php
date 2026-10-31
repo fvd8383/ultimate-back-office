@@ -4,14 +4,60 @@ declare(strict_types=1);
 /** Definitions only. Distinct from every M6B/M6C report; no runtime bootstrap. */
 final class M6DNativeContract
 {
-    public const PROFILE='m6d-db-authority-v1';
+    public const PROFILE='m6d-db-authority-v2';
     public const CASES=[
         'publish-request-history','restore-request-history','publish-payload-fields','restore-payload-fields',
         'scoped-current-access','concurrent-request-identity','concurrent-target-claims','result-audit-rollback',
         'production-grant-boundaries','production-role-lock','staging-production-lifecycle','known-good-restore',
         'stale-lease-fence','third-execution-recovery','recovery-budget-operator','committed-ack-history',
         'unavailable-result-no-compensation','deleted-recovery-actor',
+        'authority-boundary-orders','independent-targets','publish-request-outcomes','restore-request-outcomes',
+        'grant-field-bindings','grant-phase-denials','restore-eligibility','health-compensation',
+        'deployment-schema','deployment-history-access',
     ];
+    /** Ordered, finite acceptance inventory. v1 parent PASS cannot satisfy v2. */
+    public static function subcases(string $case): array
+    {
+        self::need(in_array($case,self::CASES,true),'unknown_case');
+        return match($case) {
+            'publish-payload-fields'=>['release','operation','approval','binding','pointer','version','reason'],
+            'restore-payload-fields'=>['release','operation','restore-source','approval','binding','pointer','version','reason'],
+            'authority-boundary-orders'=>[
+                'requester-claim-denial-first','requester-claim-work-first',
+                'requester-activation-denial-first','requester-activation-work-first',
+                'requester-success-denial-first','requester-success-work-first',
+                'approver-claim-denial-first','approver-claim-work-first',
+                'approver-activation-denial-first','approver-activation-work-first',
+                'approver-success-denial-first','approver-success-work-first',
+                'grant-claim-denial-first','grant-claim-work-first','grant-activation-denial-first','grant-activation-work-first',
+                'grant-success-denial-first','grant-success-work-first'],
+            'independent-targets'=>['different-sites','same-site-environments','occupied-target-progress'],
+            'publish-request-outcomes','restore-request-outcomes'=>['failed-history','cancelled-history','reconciliation-history',
+                'lost-response','duplicate-winner-pending','duplicate-winner-advanced','access-loss'],
+            'grant-field-bindings'=>['site','release','source','artifact','target','environment','operation','binding',
+                'expected-pointer','expected-version','missing','consumed-history'],
+            'grant-phase-denials'=>['expiry-claim','expiry-activation','expiry-success','revocation-claim','revocation-activation',
+                'revocation-success','approver-claim','approver-activation','approver-success'],
+            'restore-eligibility'=>['never-successful','foreign-site','wrong-target','artifact-identity','tenant-prohibited','business-prohibited','asset-rights','target-disabled',
+                'superseded-approval','production-fresh-grant'],
+            'health-compensation'=>['candidate-failure','active-health-failure','third-null-absence','compensation-failed',
+                'compensation-unknown','newer-winner','activation-audit-grant','result-audit-grant','third-grant-expired','third-grant-revoked',
+                'health-status','health-site','health-release','health-artifact','health-marker','health-page','health-css',
+                'health-media','health-origin','health-tls','health-redirect','health-cache','health-no-store','health-timeout'],
+            'deployment-schema'=>['target-owner','release-owner','expected-target','restore-target','current-target','active-target',
+                'request-unique','attempt-parent','attempt-original','current-attempt','execution-four','execution-shape',
+                'recovery-shape','counter-shape','actor-fk','history-restrict','health-attempt','grant-consumption'],
+            'deployment-history-access'=>['operator-deletion','queue-index','history-index'],
+            default=>['service-observations'],
+        };
+    }
+    public static function ordering(string $case,string $subcase): ?string
+    {
+        if($case==='authority-boundary-orders') return str_ends_with($subcase,'denial-first') ? 'denial-before-boundary' : 'boundary-before-denial';
+        if(in_array($case,['concurrent-request-identity','concurrent-target-claims','production-role-lock'],true)) return 'lock-serialized';
+        if($case==='independent-targets' && $subcase==='different-sites') return 'independent-progress';
+        return null;
+    }
     public static function need(bool $value,string $code): void { if(!$value) throw new RuntimeException($code); }
     public static function binding(array $a,string $sha,string $image,string $token): void
     {
@@ -29,28 +75,58 @@ final class M6DNativeContract
     }
     public static function initial(string $sha,string $image,string $token): array
     {
+        $cases=[]; foreach(self::CASES as $case) $cases[$case]=['status'=>'UNREACHED',
+            'subcases'=>array_fill_keys(self::subcases($case),['status'=>'UNREACHED'])];
         return ['profile'=>self::PROFILE,'source_sha'=>$sha,'image_id'=>$image,'run_token'=>$token,'status'=>'FAIL',
-            'native'=>true,'cases'=>array_fill_keys(self::CASES,['status'=>'UNREACHED']),
+            'native'=>true,'cases'=>$cases,
             'primary_failure'=>null,'capture'=>'NOT_ATTEMPTED','cleanup'=>'NOT_ATTEMPTED','publication'=>'NOT_ATTEMPTED',
             'limitations'=>['Publisher and artifact verification are explicit DB-only models.',
                 'Commit acknowledgement fault is injected after a real PDO commit; not a transport-loss test.',
                 'Lease expiry uses scoped SQL metadata faults; not elapsed-clock proof.',
                 'No helper, Apache, network health, symlink activation or browser evidence.']];
     }
-    public static function complete(array $r): bool
+    public static function complete(array $r,?array $identity=null): bool
     {
-        if(($r['profile'] ?? null)!==self::PROFILE || array_keys($r['cases'] ?? [])!==self::CASES || $r['primary_failure']!==null
-            || $r['cleanup']!=='PASS' || $r['capture']!=='PASS') return false;
-        foreach($r['cases'] as $c) if(($c['status'] ?? null)!=='PASS' || ($c['assertions'] ?? 0)<1) return false;
-        foreach(['concurrent-request-identity','concurrent-target-claims','production-role-lock'] as $key) {
-            if(($r['cases'][$key]['lock_wait_observed'] ?? false)!==true) return false;
+        if(($r['profile'] ?? null)!==self::PROFILE || array_keys($r['cases'] ?? [])!==self::CASES || !array_key_exists('primary_failure',$r) || $r['primary_failure']!==null
+            || ($r['cleanup'] ?? null)!=='PASS' || ($r['capture'] ?? null)!=='PASS' || ($r['native'] ?? null)!==true) return false;
+        foreach(['source_sha'=>'/^[a-f0-9]{40}$/D','image_id'=>'/^sha256:[a-f0-9]{64}$/D','run_token'=>'/^[a-f0-9]{32}$/D'] as $key=>$pattern) {
+            if(!is_string($r[$key] ?? null) || !preg_match($pattern,$r[$key]) || ($identity!==null && $r[$key]!==($identity[$key] ?? null))) return false;
+        }
+        foreach($r['cases'] as $key=>$c) {
+            if(($c['status'] ?? null)!=='PASS' || !is_int($c['assertions'] ?? null) || $c['assertions']<1
+                || array_keys($c['subcases'] ?? [])!==self::subcases($key)) return false;
+            $total=0;
+            foreach($c['subcases'] as $sub=>$s) {
+                if(($s['status'] ?? null)!=='PASS' || !is_int($s['assertions'] ?? null) || $s['assertions']<1) return false;
+                $total+=$s['assertions']; $order=self::ordering($key,$sub);
+                if($order!==null && !self::ordered($s['ordering'] ?? [],$order)) return false;
+            }
+            if($total!==$c['assertions']) return false;
         }
         return true;
     }
+    public static function ordered(array $r,string $order): bool
+    {
+        return array_keys($r)===['kind','observed','first_connection','second_connection','first_committed','second_completed']
+            && $r['kind']===$order && $r['observed']===true && is_int($r['first_connection']) && $r['first_connection']>0
+            && is_int($r['second_connection']) && $r['second_connection']>0 && $r['first_connection']!==$r['second_connection']
+            && $r['first_committed']===true && $r['second_completed']===true;
+    }
+    /** Published bytes have one canonical pretty-JSON encoding, so duplicate keys cannot disappear during parsing. */
+    public static function acceptPublished(string $json,array $identity): array
+    {
+        self::need(strlen($json)<=1048576,'report_bound');
+        try { $r=json_decode($json,true,32,JSON_THROW_ON_ERROR); } catch(JsonException) { throw new RuntimeException('report_json'); }
+        self::need(is_array($r) && json_encode($r,JSON_PRETTY_PRINT|JSON_THROW_ON_ERROR)===$json,'report_canonical_encoding');
+        self::need(($r['status'] ?? null)==='PASS' && ($r['publication'] ?? null)==='PASS' && self::complete($r,$identity),'report_not_accepted');
+        return $r;
+    }
     public static function safeFailure(Throwable $e): array
     {
-        $r=['class'=>get_class($e),'code'=>preg_match('/^[a-z0-9_]{1,80}$/D',$e->getMessage()) ? $e->getMessage() : 'native_failure'];
-        if($e instanceof PDOException) $r+=['sqlstate'=>$e->errorInfo[0] ?? null,'driver'=>$e->errorInfo[1] ?? null];
+        $class=get_class($e); $r=['class'=>preg_match('/^[A-Za-z][A-Za-z0-9_\\\\]{0,100}$/D',$class) ? $class : 'Throwable',
+            'code'=>preg_match('/^[a-z0-9_]{1,80}$/D',$e->getMessage()) ? $e->getMessage() : 'native_failure'];
+        if($e instanceof PDOException) $r+=['sqlstate'=>preg_match('/^[A-Z0-9]{5}$/D',(string)($e->errorInfo[0] ?? '')) ? $e->errorInfo[0] : null,
+            'driver'=>is_int($e->errorInfo[1] ?? null) ? $e->errorInfo[1] : null];
         return $r;
     }
 }

@@ -3,6 +3,7 @@ declare(strict_types=1);
 require_once __DIR__.'/WebsitePlatformM6DNativeRuntime.php';
 require_once __DIR__.'/WebsitePlatformM6DFixture.php';
 require_once __DIR__.'/WebsitePlatformM6BMySqlSupport.php';
+require_once __DIR__.'/WebsitePlatformM6DNativeProtocol.php';
 
 /** Actual MySQL connection; instrumentation changes only explicit fault/barrier behavior. */
 final class M6DNativeConnection extends PDO
@@ -13,6 +14,10 @@ final class M6DNativeConnection extends PDO
     public bool $success=false;
     public bool $hold=false;
     public bool $unavailable=false;
+    public bool $duplicateOnce=false;
+    public bool $duplicateRaised=false;
+    public bool $pauseAfterCommit=false;
+    public $afterRollback=null;
     public function __construct(public PDO $pdo) {}
     public function prepare(string $query,array $options=[]): PDOStatement|false
     { if($this->unavailable) throw new PDOException('native_connection_unavailable'); return new M6DNativeStatement($this,$this->pdo->prepare($query,$options),$query); }
@@ -20,12 +25,23 @@ final class M6DNativeConnection extends PDO
     public function exec(string $statement): int|false { return $this->pdo->exec($statement); }
     public function beginTransaction(): bool { if($this->unavailable) throw new PDOException('native_connection_unavailable'); return $this->pdo->beginTransaction(); }
     public function inTransaction(): bool { return $this->pdo->inTransaction(); }
-    public function rollBack(): bool { $this->success=false; $this->hold=false; return $this->pdo->rollBack(); }
+    public function rollBack(): bool
+    {
+        $this->success=false; $this->hold=false; $r=$this->pdo->rollBack();
+        if($this->duplicateRaised) {
+            $this->duplicateRaised=false;
+            M6DNativeContract::need(!$this->pdo->inTransaction(),'duplicate_rollback_first');
+            if($this->afterRollback!==null) ($this->afterRollback)();
+        }
+        return $r;
+    }
     public function lastInsertId(?string $name=null): string|false { return $this->pdo->lastInsertId($name); }
     public function commit(): bool
     {
-        if($this->hold) { echo "LOCKED\n"; flush(); M6DNativeContract::need(trim((string)fgets(STDIN))==='RELEASE','barrier_release'); $this->hold=false; }
+        $held=$this->hold;
+        if($held) { M6DNativeProtocol::barrier('LOCKED'); $this->hold=false; $this->holdEvent=null; }
         $r=$this->pdo->commit();
+        if($held && $this->pauseAfterCommit) M6DNativeProtocol::barrier('COMMITTED');
         if($this->loseSuccessAck && $this->success) { $this->success=false; $this->loseSuccessAck=false; throw new PDOException('injected_post_commit_ack'); }
         $this->success=false; return $r;
     }
@@ -35,6 +51,11 @@ final class M6DNativeStatement extends PDOStatement
     public function __construct(private M6DNativeConnection $owner,private PDOStatement $inner,private string $sql) {}
     public function execute(?array $params=null): bool
     {
+        if($this->owner->duplicateOnce && str_starts_with($this->sql,'INSERT INTO site_deployments ')) {
+            $this->owner->duplicateOnce=false; $this->owner->duplicateRaised=true;
+            // Controlled duplicate-key branch, not a natural race through the site lock.
+            $e=new PDOException('injected_request_duplicate'); $e->errorInfo=['23000',1062,'injected_request_duplicate']; throw $e;
+        }
         if(str_starts_with($this->sql,'INSERT INTO site_events')) {
             $event=$params['event_type'] ?? null;
             if($event===$this->owner->faultEvent) throw new PDOException('injected_audit_failure');
@@ -54,6 +75,7 @@ final class M6DNativeDependencies implements SiteDeploymentDependencies
     public bool $production=false;
     public string $environment='staging';
     public bool $ready=true;
+    public ?array $artifactOverride=null;
     public function __construct(public PDO $db,public array $fixture) { $this->model=new M6DNativePublisher($this); }
     public function workerIdentity(string $capability): array
     {
@@ -74,8 +96,8 @@ final class M6DNativeDependencies implements SiteDeploymentDependencies
         // Explicit artifact model: immutable DB identity, never a claim of actual release-byte validation.
         $row=SiteDeploymentStore::row($this->db,'site_releases',(int)$release['site_id'],(int)$release['id']);
         M6DNativeContract::need($row===$release,'native_release_identity');
-        return ['release_id'=>(int)$release['id'],'release_key'=>$release['release_key'],'artifact_hash'=>$release['artifact_hash'],
-            'manifest_hash'=>$release['manifest_hash'],'result'=>'pass'];
+        return array_replace(['release_id'=>(int)$release['id'],'release_key'=>$release['release_key'],'artifact_hash'=>$release['artifact_hash'],
+            'manifest_hash'=>$release['manifest_hash'],'result'=>'pass'],$this->artifactOverride ?? []);
     }
     public function now(): string { return SiteBuildStore::now($this->db); }
     public function waitForNextProbe(): void { SiteDeploymentService::guardExternal(); usleep(1000000); }
@@ -96,6 +118,7 @@ final class M6DNativePublisher implements SitePublisher
     public array $healthOverrides=[];
     public bool $unknown=false;
     public bool $compensationFails=false;
+    public $afterCall=null;
     public function __construct(private M6DNativeDependencies $runtime) {}
     private function invoke(string $method,array $arguments): array
     {
@@ -112,8 +135,9 @@ final class M6DNativePublisher implements SitePublisher
             $result=$model->$method(...$arguments);
             $out=json_encode(['pointers'=>$model->pointers,'fences'=>$model->fences,'calls'=>$model->calls],JSON_THROW_ON_ERROR);
             M6DNativeContract::need(strlen($out)<=65536 && ftruncate($f,0) && rewind($f) && fwrite($f,$out)===strlen($out) && fflush($f),'publisher_write');
-            return $result;
         } finally { flock($f,LOCK_UN); fclose($f); }
+        if($this->afterCall!==null) ($this->afterCall)($method,$arguments,$result);
+        return $result;
     }
     public function stageRelease(array $release,array $target,array $context): array { return $this->invoke(__FUNCTION__,func_get_args()); }
     public function activateRelease(array $staged,array $expectedCurrent,array $context): array { return $this->invoke(__FUNCTION__,func_get_args()); }
@@ -122,15 +146,27 @@ final class M6DNativePublisher implements SitePublisher
     public function restoreRelease(array $stagedKnownGood,array $expectedCurrent,array $context): array { return $this->invoke(__FUNCTION__,func_get_args()); }
     public function reconcileExternalState(array $intent,array $target,array $context): array { return $this->invoke(__FUNCTION__,func_get_args()); }
 }
-function m6dNativeFixture(PDO $db): array
+function m6dNativeFixture(PDO $db,bool $withAsset=false): array
 {
-    $f=m6mysqlFixture($db); $request=m6mysqlRequest($f); $claim=SiteBuildService::claimBuild([]);
+    $f=m6mysqlFixture($db);
+    if($withAsset) {
+        // Approved synthetic source metadata is seeded BEFORE the real build/release and known-good deployment.
+        $f['asset_id']=m6mysqlInsert($db,'site_assets',['site_id'=>$f['site_id'],'business_id'=>$f['business_id'],
+            'asset_key'=>SiteServiceSupport::uuidV4(),'asset_type'=>'image','storage_key'=>'synthetic/native-asset',
+            'checksum_sha256'=>str_repeat('c',64),'mime_type'=>'image/png','byte_size'=>10,'source'=>'native_fixture',
+            'rights_classification'=>'customer_owned','rights_metadata_json'=>'{}','lifecycle_status'=>'ready']);
+        m6mysqlInsert($db,'site_revision_assets',['site_id'=>$f['site_id'],'revision_id'=>$f['revision_id'],'asset_id'=>$f['asset_id'],'usage_key'=>'native_reference']);
+        $f['hash']=SiteRevisionSnapshotHasher::hashStoredRevision($db,$f['revision_id']);
+        $db->prepare('UPDATE site_revisions SET snapshot_hash=? WHERE id=? AND site_id=?')->execute([$f['hash'],$f['revision_id'],$f['site_id']]);
+    }
+    $request=m6mysqlRequest($f); $claim=SiteBuildService::claimBuild([]);
     $runtime=(new ReflectionProperty(SiteBuildService::class,'dependencies'))->getValue();
     $job=m6mysqlJob($db,$request['id']);
     SiteBuildService::completeBuildSuccess($claim['lease'],$runtime->receipt($job,$claim['lease']['attempt_id'],'sealed'));
     $release=SiteBuildStore::one($db,'SELECT id FROM site_releases WHERE build_job_id = :id',['id'=>$job['id']]);
     $target=m6mysqlInsert($db,'site_deployment_targets',['site_id'=>$f['site_id'],'environment'=>'staging','publisher_key'=>'m6d-native-model',
         'binding_key'=>'m6d-'.$f['site_id'],'binding_version'=>1,'enabled'=>1,'updated_at'=>SiteBuildStore::now($db)]);
+    $GLOBALS['m6d_native_sites'][]=$f['site_id'];
     return $f+['release_id'=>(int)$release['id'],'target_id'=>$target];
 }
 function m6dNativeInput(PDO $db,array $f,array $override=[]): array

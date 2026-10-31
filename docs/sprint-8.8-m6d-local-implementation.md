@@ -9,7 +9,72 @@ M6B remains formally closed, M6 remains IN PROGRESS, and M6E–M6G remain NOT ST
 This task implements service boundaries locally. Native SQL, activation and deployment
 are not authorized and are not executed.
 
+## DB-only native coverage expansion
+
+Expansion baseline: `926027c772004a4cd2e223a4b2242c4d21855283`, whose exact-head
+review completed without findings. This slice changes test infrastructure and these
+two handoff records only. **NATIVE COVERAGE — AUTHORED / NOT EXECUTED.** M6D acceptance
+remains pending; source authoring is not native acceptance or production enablement.
+
+The distinct `m6d-db-authority-v2` gate requires **28 cases, 142 named subcases and
+22 independent ordering/progress observations**. The original 18 cases, publish and
+restore A/B/C progression, same-target ownership and stale-owner coverage are retained.
+Payload mutations now have individual report outcomes. A v1 or partial report cannot
+satisfy v2. See the [finite coverage map and exact inventory](sprint-8.8-m6d-native-validation.md#exact-case-inventory-and-evidence-layers).
+
+- A: actual requester, approver membership and grant revocation mutations in both
+  orders at claim, activation authorization and success; per-order barriers and
+  independent MySQL wait observations; distinct site/environment authority and busy
+  target progress. Same-site root locking remains legitimate serialization.
+- B: both APIs' failed/cancelled/reconciliation history, lost request response,
+  controlled duplicate-key rollback followed by independent pending/advanced winner
+  reread, exact fields and current-access loss; no requester transfer or replay effects.
+- C: exact grant owner bindings and full phase gates; service-created known-good
+  restore with current business/rights/target prohibitions; explicit health/compensation
+  models, NULL absence, third-execution grant loss, recovery budgets, stale owners and
+  separate activation-versus-result audit rollback/consumption consequences.
+- D: named-constraint negative DML, valid recovery after execution three, real operator
+  SET NULL history/authority obligations and bounded queue/history index access.
+  Accepted M6B clean/upgrade schema evidence remains credited; no DDL campaign is added.
+
+Executed sequentially on Windows/PHP 8.4.24: Queue 90, Execution 63, Request 70,
+Authority 96, Recovery 60, Artifact 4, CLI 44, NativeControl 1,045, NativeHarness 92,
+Scope 65; all ten suites exited 0. Total: **1,564 behavior/control + 65 scope = 1,629**.
+The new harness controls use the actual framing, barriers, duplicate injection,
+rollback and constraint-diagnostic helpers with fake PDO, private files and real bounded
+synthetic children. They test early exit, wrong release, partial/malformed results,
+timeout, overflow, privacy, exact denial and original failure retention across cleanup
+and publication errors. Windows `--admit` rejection is exercised before any database
+connection; there is no native fallback. No new production defect was exposed locally.
+
+All 14 changed PHP files pass lint. Document links/anchors/fences and working/staged/
+committed checks are recorded outside Git. The expansion manifest contains 521 baseline
+tracked files: 512 remain byte-identical, nine are intentionally modified, seven added.
+Every production/application/script file, all 25 migrations/pins, M6C artifact/native
+sources, all 77 requirements and browser allocation are preserved from `926027c`.
+No shared dependency changed; unrelated M6B/M6C suites were not rerun. The historical
+M6B scope-perimeter failure remains disclosed and is not counted as PASS.
+
+Modified (nine): `tests/WebsitePlatformM6DNative.php`,
+`tests/WebsitePlatformM6DNativeControlTest.php`, the native Cases/Contract/Control/
+Fixture/Worker support files, and both M6D implementation/native-validation records.
+Added (seven): `tests/WebsitePlatformM6DNativeHarnessTest.php` and native AuthorityCases,
+DecisionCases, Expansion, Protocol, SchemaCases and SyntheticChild support files.
+Actual commands, exits, durations, diagnostics and successive checks are retained
+separately in the outside-Git handoff; historical counts below are not new results.
+
+Real MySQL execution/constraints/locks and the full 600-second duration remain
+unverified. Existing child, memory/PID/tmpfs/output bounds are unchanged. The precise
+remaining fault-mechanism gap is wire-level acknowledgement loss for the M6D result
+transaction (D11/C09): the retained test injects an exception after a successful PDO
+commit at execution three, and request-response loss discards a service return.
+Neither proves transport loss, and M6C transport results are not reused as M6D proof.
+Grant-field tuple isolation and synthetic artifact/health/publisher state are explicitly
+labeled; no actual byte validation, HTTP, Apache or host activation is claimed.
+
 ## PR #130 queue-starvation correction
+
+Historical correction evidence at `926027c`; the v2 expansion is recorded above.
 
 Starting head: `36afc20d8fec0599cc108b07593f8bede19d83cd`. The
 [P2 finding](https://github.com/fvd8383/ultimate-back-office/pull/130#discussion_r4433555129)
@@ -70,8 +135,8 @@ The native publish/restore request-history cases now author the same A/B/C progr
 with independent PDO observations of committed B disposition, one audit, unchanged A,
 only C's new attempt/fence and no publisher-model mutation. The production-role-lock
 case now expects durable unauthorized-requester cancellation and no attempt. The exact
-18-case inventory/report rules are unchanged. These additions are **AUTHORED / NOT
-EXECUTED**, and the broader native gaps below remain unchanged.
+18-case inventory/report rules were unchanged in that correction. Those additions
+remain **AUTHORED / NOT EXECUTED** and are retained by the v2 expansion above.
 
 This correction changes only eight files: this record, the native-validation record,
 `SiteDeploymentService.php`, `WebsitePlatformM6DQueueTest.php` (new), the existing M6D
@@ -218,7 +283,7 @@ Evidence layers are deliberately distinct:
 - Modeled behavior: sequential PDO rollback/identity decisions, clock, independent
   publisher pointer/fence/health, simulated production and fault injection. These do
   not establish MySQL constraints, locking, concurrent effects, HTTP or Apache behavior.
-- Authored only: the 18-case DB-only profile and its independent MySQL/process barriers.
+- Authored only at the original implementation head: the 18-case DB-only profile and its independent MySQL/process barriers.
   See [native validation](sprint-8.8-m6d-native-validation.md). It was **NOT EXECUTED**.
 - Platform limitations: protected Linux UID/mount/cgroup/pcntl runtime, native MySQL,
   actual helper/filesystem activation, Apache/network and browser gates were not run.
@@ -241,15 +306,10 @@ checks the newly authorized perimeter and immutable M6C/migration sources.
 
 ## Remaining work and handoff
 
-The service slice is locally implemented, but native validation infrastructure is
-incomplete. Before formal M6D acceptance, expand executable DB-only cases for both
-authorization serialization orders at claim/activation/result; distinct site/environment
-concurrency; the full independent grant-field/expiry/revocation and restore/health/
-compensation matrix; explicit duplicate-insert/lost-request-response and failed-request
-replay; and complete deployment negative CHECK/FK/retained-history/query-plan fixtures.
-The first 18-case profile must not be represented as all D/R/C/S/U acceptance.
-
-Review this exact local source and the harness, complete those gaps, then separately
+The service slice is locally implemented and the finite A–D native obligations now
+have executable v2 cases/subcases. They remain **AUTHORED / NOT EXECUTED**, not closed
+acceptance gaps. Review the exact source, the artifact/publisher model boundary and
+the residual deployment-result transport fault mechanism described above, then separately
 authorize isolated preparation/admission and exact-source native execution. Missing
 native capability is failure/blockage, never a mock fallback or skip-to-PASS. Actual
 helper/Apache/network evidence remains M6E; controls and browser evidence remain M6F/M6G.
@@ -276,7 +336,7 @@ private/classes/SiteManager.php
 private/classes/SiteRevisionManager.php
 ```
 
-Added (30, including the subsequent queue regression):
+Added (37, including the queue regression and seven native expansion files):
 
 ```text
 docs/sprint-8.8-m6d-local-implementation.md
@@ -297,6 +357,7 @@ tests/WebsitePlatformM6DCliTest.php
 tests/WebsitePlatformM6DExecutionTest.php
 tests/WebsitePlatformM6DNative.php
 tests/WebsitePlatformM6DNativeControlTest.php
+tests/WebsitePlatformM6DNativeHarnessTest.php
 tests/WebsitePlatformM6DQueueTest.php
 tests/WebsitePlatformM6DRecoveryTest.php
 tests/WebsitePlatformM6DRequestTest.php
@@ -304,9 +365,15 @@ tests/WebsitePlatformM6DScopeTest.php
 tests/support/WebsitePlatformM6DCliChild.php
 tests/support/WebsitePlatformM6DFixture.php
 tests/support/WebsitePlatformM6DNativeCases.php
+tests/support/WebsitePlatformM6DNativeAuthorityCases.php
 tests/support/WebsitePlatformM6DNativeContract.php
 tests/support/WebsitePlatformM6DNativeControl.php
+tests/support/WebsitePlatformM6DNativeDecisionCases.php
+tests/support/WebsitePlatformM6DNativeExpansion.php
 tests/support/WebsitePlatformM6DNativeFixture.php
+tests/support/WebsitePlatformM6DNativeProtocol.php
 tests/support/WebsitePlatformM6DNativeRuntime.php
+tests/support/WebsitePlatformM6DNativeSchemaCases.php
+tests/support/WebsitePlatformM6DNativeSyntheticChild.php
 tests/support/WebsitePlatformM6DNativeWorker.php
 ```

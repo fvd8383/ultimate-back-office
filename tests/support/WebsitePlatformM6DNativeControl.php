@@ -20,9 +20,9 @@ final class M6DNativeControl
             else $report['cleanup']='NOT_OWNED';
         } catch(Throwable $e) { $report['cleanup']='FAIL'; $report['cleanup_failure']=M6DNativeContract::safeFailure($e); }
     }
-    public static function publish(array &$report,callable $publisher): void
+    public static function publish(array &$report,callable $publisher,?array $identity=null): void
     {
-        $report['status']=M6DNativeContract::complete($report) ? 'PASS' : 'FAIL';
+        $report['status']=M6DNativeContract::complete($report,$identity) ? 'PASS' : 'FAIL';
         try { $publisher($report); }
         catch(Throwable $e) { $report['publication']='FAIL'; $report['status']='FAIL'; $report['publication_failure']=M6DNativeContract::safeFailure($e); }
     }

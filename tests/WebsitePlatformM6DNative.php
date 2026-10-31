@@ -14,7 +14,7 @@ if(array_slice($argv,1)===['--help']) {
 if(count($argv)!==5 || !in_array($argv[1],['--admit','--run'],true)) { fwrite(STDERR,"Invalid native arguments. Use --help.\n"); exit(2); }
 require_once __DIR__.'/support/WebsitePlatformM6DNativeRuntime.php';
 require_once __DIR__.'/support/WebsitePlatformM6DNativeControl.php';
-$report=M6DNativeContract::initial($argv[2],$argv[3],$argv[4]); $a=null; $db=null; $raw=null; $observer=null; $owned=false; $case=null;
+$report=M6DNativeContract::initial($argv[2],$argv[3],$argv[4]); $a=null; $db=null; $raw=null; $observer=null; $owned=false; $case=null; $sub=null;
 try {
     $a=M6DNativeRuntime::admit($argv[2],$argv[3],$argv[4]);
     if($argv[1]==='--admit') { echo "M6D prerequisites PASS; no database connected and no cases executed.\n"; exit(0); }
@@ -25,7 +25,7 @@ try {
         && trim(file_get_contents($authorization))===$a['run_token'].':'.M6DNativeContract::PROFILE,'separate_execution_authorization');
     pcntl_async_signals(true); pcntl_signal(SIGALRM,static fn()=>throw new RuntimeException('native_deadline')); pcntl_alarm(600);
     require_once __DIR__.'/support/WebsitePlatformM6DNativeFixture.php';
-    require_once __DIR__.'/support/WebsitePlatformM6DNativeCases.php';
+    require_once __DIR__.'/support/WebsitePlatformM6DNativeExpansion.php';
     $raw=M6DNativeRuntime::connect($a); $observer=M6DNativeRuntime::connect($a);
     foreach(['sites','users','businesses','site_deployments','site_build_jobs'] as $table) {
         M6DNativeContract::need((int)$raw->query('SELECT COUNT(*) FROM '.$table)->fetchColumn()===0,'disposable_empty_baseline');
@@ -37,24 +37,35 @@ try {
     M6DNativeContract::need(array_diff($expected,array_column($schema,'TABLE_NAME'))===[],'migration_025_required');
     $owned=true; $db=new M6DNativeConnection($raw);
     foreach(M6DNativeContract::CASES as $case) {
-        $start=hrtime(true); $count=$GLOBALS['m6d_native_assertions'] ?? 0;
-        $report['cases'][$case]=['status'=>'RUNNING'];
-        $f=m6dNativeFixture($db); $d=new M6DNativeDependencies($db,$f); $d->wire();
-        $evidence=m6dNativeCase($case,$db,$observer,$a,$f,$d);
-        $report['cases'][$case]=['status'=>'PASS','assertions'=>($GLOBALS['m6d_native_assertions'] ?? 0)-$count,
-            'seconds'=>(hrtime(true)-$start)/1e9,'site_id'=>$f['site_id']]+$evidence;
-        // Retire only this case's still-queued synthetic intent; no daemon/global job cleanup.
-        $observer->prepare("UPDATE site_deployments SET status='cancelled' WHERE site_id=? AND status IN ('requested','retry_wait')")->execute([$f['site_id']]);
+        $report['cases'][$case]['status']='RUNNING'; $report['cases'][$case]['assertions']=0;
+        foreach(M6DNativeContract::subcases($case) as $sub) {
+            $start=hrtime(true); $count=$GLOBALS['m6d_native_assertions'] ?? 0; $GLOBALS['m6d_native_sites']=[];
+            $report['cases'][$case]['subcases'][$sub]=['status'=>'RUNNING'];
+            $f=m6dNativeFixture($db,$case==='restore-eligibility' && $sub==='asset-rights'); $d=new M6DNativeDependencies($db,$f); $d->wire();
+            $evidence=m6dNativeExpandedCase($case,$sub,$db,$observer,$a,$f,$d);
+            $assertions=($GLOBALS['m6d_native_assertions'] ?? 0)-$count;
+            $report['cases'][$case]['subcases'][$sub]=['status'=>'PASS','assertions'=>$assertions,
+                'seconds'=>(hrtime(true)-$start)/1e9,'site_id'=>$f['site_id']]+$evidence;
+            $report['cases'][$case]['assertions']+=$assertions;
+            // Post-observation fixture retirement, never credited as a tested disposition.
+            foreach($GLOBALS['m6d_native_sites'] as $siteId)
+                $observer->prepare("UPDATE site_deployments SET status='cancelled' WHERE site_id=? AND status IN ('requested','retry_wait')")->execute([$siteId]);
+            echo 'PASS '.$case.'/'.$sub."\n";
+        }
+        $report['cases'][$case]['status']='PASS';
         echo 'PASS '.$case."\n";
     }
     $report['capture']='PASS';
 } catch(Throwable $error) {
     M6CNativeProcess::observeFailure(); $report['primary_failure']=M6DNativeContract::safeFailure($error);
     if($case!==null) $report['cases'][$case]['status']='FAIL';
+    if($case!==null && $sub!==null) $report['cases'][$case]['subcases'][$sub]['status']='FAIL';
+    $report['failure_context']=['case'=>$case,'subcase'=>$sub];
     $report['capture']='PASS';
     fwrite(STDERR,'M6D native FAIL: '.$report['primary_failure']['code']."\n");
 } finally {
     if(function_exists('pcntl_alarm')) pcntl_alarm(0);
+    $report['worker_results']=$GLOBALS['m6d_native_child_results'] ?? [];
     M6DNativeControl::cleanup($report,$owned,static fn()=>M6CNativeProcess::cleanup(),static function() use($raw,$observer,$a): void {
             if($raw->inTransaction()) $raw->rollBack(); if($observer->inTransaction()) $observer->rollBack();
             // Exact disposable schema identity is re-observed before the only destructive cleanup.
@@ -65,9 +76,9 @@ try {
             M6DNativeContract::need((int)$q->fetchColumn()===0,'owned_schema_cleanup');
             // State/report tmpfs teardown belongs to the separately authorized namespace owner.
     });
-    $report['status']=M6DNativeContract::complete($report) ? 'PASS' : 'FAIL';
+    $report['status']=M6DNativeContract::complete($report,$a) ? 'PASS' : 'FAIL';
     if($a!==null && $argv[1]==='--run') {
-        M6DNativeControl::publish($report,static function(array &$r): void { M6DNativeRuntime::publish($r); });
+        M6DNativeControl::publish($report,static function(array &$r): void { M6DNativeRuntime::publish($r); },$a);
         if($report['publication']==='FAIL') fwrite(STDERR,'M6D publication FAIL: '.$report['publication_failure']['code']."\n");
     }
 }
