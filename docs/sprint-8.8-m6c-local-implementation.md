@@ -1,7 +1,9 @@
 # Sprint 8.8 M6C — Local artifact implementation
 
-M6C — IMPLEMENTED / CORE, JOURNAL AND SUPPLEMENTAL NATIVE GATES PASS /
-ACCEPTANCE REVIEW PENDING. M6C formal closure — PENDING.
+M6C — MERGED / SCOPED EVIDENCE ACCEPTED / CLOSEOUT REVIEW PENDING.
+Formal closure awaits explicit owner acceptance and merge of the
+[closeout proposal](sprint-8.8-m6c-closeout.md); its [conditional status rule](sprint-8.8-m6c-closeout.md#formal-closeout-proposal-and-effective-status)
+then governs. M6D remains NOT STARTED.
 
 The [current acceptance record](sprint-8.8-m6c-native-acceptance.md) reconciles three
 distinct results: core20 at `2ab14c7d8212d1170aafe6d8dcdf3b178dd7d5bf`,
@@ -10,16 +12,19 @@ distinct results: core20 at `2ab14c7d8212d1170aafe6d8dcdf3b178dd7d5bf`,
 and supplement17 at `910c1345221dcf78cf0e50f998449e2b9a50ec62`,
 1,316 = 776 case + 540 outside-case (setup/identity plus final shared assertion).
 Each profile passed with launcher exit 0. They are not one run, one image or an
-all-77-case result; the later documentation head is not natively executed.
+all-77-case result; neither the merged documentation head nor its merge commit was
+natively executed. This closeout performs no native rerun.
 
-The October 31 documentation task reused/rehashed 37 core originals and retrieved/
+The earlier October 31 consolidation task reused/rehashed 37 core originals and retrieved/
 hash-verified 79 journal/supplement originals from the four authorized directories.
 Recorded strict-validator PASS and operational observations remain attributed to the
-original runs; this task performed only data/document/Git checks, no runtime work.
-[G1–G4 are satisfied for scoped M6C review](sprint-8.8-m6c-native-acceptance.md#four-gap-dispositions-and-remaining-decisions).
-Remaining decisions: documentation-head review, owner evidence acceptance, B14/B16
-browser allocation (recommended M6E served policy / M6G integrated browser, still
-unapproved), and separate merge/formal-closeout authorization.
+original runs; that consolidation performed data/document/Git checks, not runtime work.
+[G1–G4 and documented limits are accepted for scoped M6C](sprint-8.8-m6c-native-acceptance.md#four-gap-dispositions-and-remaining-decisions).
+Frank manually merged PR #128 at `0bd0ce3` on October 31; the
+[owner receipt](https://github.com/fvd8383/ultimate-back-office/pull/128#issuecomment-6549296854) records the approved evidence and browser allocation.
+B14/B16: M6E served-policy/header checks; M6G integrated browser navigation/CSP/inert
+controls. These remain mandatory, unexecuted future gates, without execution authority.
+Only the separate formal closeout acceptance/merge remains pending.
 
 The supplemental image is recorded at `910c134`; journal retains its separate
 `ccbc708` image. The historical failed `ccbc708` supplemental run remains FAILED
@@ -32,7 +37,8 @@ M6 overall IN PROGRESS; M6B COMPLETE / STAGING PASS / FORMALLY CLOSED;
 M6D–M6G NOT STARTED; production UNAUTHORIZED / NOT DEPLOYED. Last operator-reported
 deployed application remains `f466fc1cdbfb53325a1db11445736bdc5ea7c6f4`.
 Migration 025 is APPLIED TO WORKING STAGING; do not reapply. Both backup copies and
-receipts remain retained; restore NOT EXECUTED. No merge, deployment or closure here.
+receipts remain retained; restore NOT EXECUTED. The implementation merge establishes
+no deployment. This documentation task performs no runtime action or formal closure.
 
 ## Supplemental exact COMMIT correction, October 29, 2026
 
