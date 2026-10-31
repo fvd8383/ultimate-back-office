@@ -1,21 +1,32 @@
 # First Customer Checklist
 
 Current M6: **IN PROGRESS**. **M6A — ARCHITECTURE REVIEWED / MERGED** (PR #125).
-Proposed **M6B — COMPLETE / STAGING PASS / CLOSEOUT REVIEW PENDING**. **M6C — NEXT / NOT STARTED**;
+**M6B — COMPLETE / STAGING PASS / FORMALLY CLOSED**. **M6C — IMPLEMENTED / CORE, JOURNAL AND SUPPLEMENTAL NATIVE GATES PASS / ACCEPTANCE REVIEW PENDING**;
 **M6D–M6G — NOT STARTED**. **PR #126 — MERGED** at
 `f466fc1cdbfb53325a1db11445736bdc5ea7c6f4`, the operator-reported deployed baseline.
 **Migration 025 — APPLIED TO WORKING STAGING**, once on October 17, 2026.
 The [M6B closeout](sprint-8.8-m6b-closeout.md) separates the earlier native PASS,
 operator-executed deployment/migration, retrieved evidence, and completed authenticated
-smoke. Formal closeout acceptance remains pending; unavailable raw operational reports
+smoke. [PR #127 acceptance](https://github.com/fvd8383/ultimate-back-office/pull/127#issuecomment-6241852763) establishes formal M6B closure; unavailable raw operational reports
 are disclosed as a review limitation. The
 [native evidence record](sprint-8.8-m6b-native-validation.md) preserves its dated
 pre-deployment provenance: 1824 native assertions, 53/53 executions, all twelve
 replay conditions and cleanup/publication PASS; no native rerun in this task.
 **Production — UNAUTHORIZED / NOT DEPLOYED**; production migration unperformed.
 M5 remains **COMPLETE FOR SPRINT PROGRESSION**; M5C remains
-**ACCEPTED / NARRATOR FOLLOW-UP DEFERRED**. Subsequent implementation and runtime
-operations require a separate task; this closeout does not authorize them.
+**ACCEPTED / NARRATOR FOLLOW-UP DEFERRED**. The [M6C acceptance record](sprint-8.8-m6c-native-acceptance.md) now reconciles
+three native PASS results: core20 at `2ab14c7` (1,315 = 805 case + 510 setup/identity),
+journal3 at `ccbc708` (593 = 54 case + 539 outside-case), and supplement17 at
+`910c134` (1,316 = 776 case + 540 outside-case, including the final shared assertion).
+Originals were retrieved/reused and hash-verified; these are separate runs/images,
+not execution of the later documentation head or all 77 planned cases.
+**G1–G4 — SATISFIED FOR SCOPED M6C REVIEW. M6C formal closure — PENDING.**
+Remaining decisions are documentation-head review, owner evidence acceptance,
+B14/B16 browser allocation (M6E served policy / M6G integrated browser recommended,
+not owner-approved), and separate merge/formal-closeout authorization. This
+documentation task performs no runtime work. The last operator-reported deployed
+application remains `f466fc1…`; both backup copies/receipts are retained and restore
+remains NOT EXECUTED.
 
 ## Purpose
 
@@ -204,7 +215,9 @@ New module development is paused until 247SP is launch-ready. EMD, SSP, TUHWD, a
 
 The current Website Platform milestone is **M6 IN PROGRESS**: M6A reviewed/merged,
 M6B implemented and deployed with 025 applied to working staging, limited authenticated smoke PASS
-and formal closeout review pending, M6C next/not started, and M6D–M6G not started; build/deployment/restore is
+and formal closeout accepted in PR #127. M6C has core, journal and supplemental native
+PASS results; G1–G4 are satisfied for scoped review. Owner evidence acceptance, browser
+allocation and formal closure remain pending. M6D–M6G are not started; build/deployment/restore is
 followed by the M7/M8 scope in [Sprint 8.8](sprint-8.8.md). M5 progression does not
 complete the launch requirements below.
 

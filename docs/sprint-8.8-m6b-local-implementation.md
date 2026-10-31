@@ -1,5 +1,7 @@
 # Sprint 8.8 M6B — Local persistence and jobs implementation
 
+Current follow-up (October 17, 2026): [PR #127 acceptance](https://github.com/fvd8383/ultimate-back-office/pull/127#issuecomment-6241852763) establishes **M6B — COMPLETE / STAGING PASS / FORMALLY CLOSED**. **M6C — IMPLEMENTED LOCALLY / REVIEW REQUIRED** in the authorized local implementation task; M6D–M6G NOT STARTED. Migration 025 remains APPLIED TO WORKING STAGING; Production UNAUTHORIZED / NOT DEPLOYED. The original dated record below is retained as historical evidence, including pre-acceptance wording and original failures. No M6B native rerun or operational-evidence retrieval is implied.
+
 Implementation began 2026-09-19; current closeout reconciliation: **2026-10-17**.
 Current M6: **IN PROGRESS**. **M6A — ARCHITECTURE REVIEWED / MERGED** (PR #125).
 Proposed **M6B — COMPLETE / STAGING PASS / CLOSEOUT REVIEW PENDING**. **M6C — NEXT / NOT STARTED**;
