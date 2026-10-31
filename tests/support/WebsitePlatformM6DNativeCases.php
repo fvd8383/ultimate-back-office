@@ -68,8 +68,40 @@ function m6dNativeCase(string $name,M6DNativeConnection $db,PDO $observer,array 
         }
         if($restore) m6dNativeDeny(fn()=>$request(array_replace($v,['restored_from_deployment_id'=>PHP_INT_MAX]),$f['operator']));
         else m6dNativeDeny(fn()=>SiteDeploymentService::requestRestore($f['operator'],array_replace($v,['restored_from_deployment_id'=>PHP_INT_MAX])));
+        $queueCase=in_array($name,['publish-request-history','restore-request-history'],true);
+        if($queueCase) {
+            $intentB=array_replace($v,['request_key'=>SiteServiceSupport::uuidV4()]); $b=$request($intentB,$f['requester']);
+            $beforeB=$check('SELECT * FROM site_deployments WHERE id=? AND site_id=?',[$b['deployment_id'],$f['site_id']]);
+        }
         $l=SiteDeploymentService::claimDeployment([])['lease']; $r=SiteDeploymentService::executeDeployment($l); SiteDeploymentService::completeDeploymentSuccess($l,$r);
-        $later=m6dNativePublish($db,$f); $d->ready=false;
+        if($queueCase) {
+            // A/B/C use the actual services; this independent PDO observes committed outcomes, never seeds them.
+            $savedA=$check('SELECT * FROM site_deployments WHERE id=? AND site_id=?',[$op['deployment_id'],$f['site_id']]);
+            $target=$check('SELECT * FROM site_deployment_targets WHERE id=? AND site_id=?',[$f['target_id'],$f['site_id']]);
+            $intentC=array_replace($v,['request_key'=>SiteServiceSupport::uuidV4(),'expected_current_deployment_id'=>$op['deployment_id'],
+                'expected_pointer_version'=>(int)$target['pointer_version']]);
+            $c=$request($intentC,$f['operator']);
+            $publisherPath=M6DNativeRuntime::ROOT.'/state/publisher-'.$f['site_id'].'.json'; $publisherHash=hash_file('sha256',$publisherPath);
+            $claim=SiteDeploymentService::claimDeployment([]);
+            m6dNativeCheck(($claim['lease']['deployment_id'] ?? null)===$c['deployment_id'],'queue_c_claimed_after_stale_b');
+            $afterB=$check('SELECT * FROM site_deployments WHERE id=? AND site_id=?',[$b['deployment_id'],$f['site_id']]);
+            m6dNativeCheck($afterB['status']==='cancelled' && $afterB['failure_code']==='expected_pointer_changed'
+                && $afterB['current_attempt_id']===null && (int)$afterB['attempt_count']===0,'queue_b_terminal_zero_attempts');
+            foreach(['status','failure_category','failure_code','safe_summary','completed_at','updated_at'] as $key) { unset($beforeB[$key],$afterB[$key]); }
+            m6dNativeCheck($beforeB===$afterB,'queue_b_immutable_intent_and_counters');
+            $afterTarget=$check('SELECT * FROM site_deployment_targets WHERE id=? AND site_id=?',[$f['target_id'],$f['site_id']]);
+            m6dNativeCheck((int)$afterTarget['current_deployment_id']===$op['deployment_id']
+                && $afterTarget['pointer_version']===$target['pointer_version']
+                && (int)$afterTarget['fence_epoch']===(int)$target['fence_epoch']+1
+                && $savedA===$check('SELECT * FROM site_deployments WHERE id=? AND site_id=?',[$op['deployment_id'],$f['site_id']]),'queue_a_history_and_only_c_fence');
+            m6dNativeCheck(SiteDeploymentService::claimDeployment([])===null,'queue_repeat_no_duplicate_claim');
+            $events=$check("SELECT COUNT(*) AS n FROM site_events WHERE site_id=? AND event_type='site_deployment_cancelled'
+                AND CAST(JSON_UNQUOTE(JSON_EXTRACT(metadata_json,'$.deployment_id')) AS UNSIGNED)=?",[$f['site_id'],$b['deployment_id']]);
+            m6dNativeCheck((int)$events['n']===1 && $request($intentB,$f['operator'])['operation_status']==='cancelled','queue_one_audit_and_historical_replay');
+            m6dNativeCheck(hash_file('sha256',$publisherPath)===$publisherHash,'queue_no_publisher_model_effect');
+            $r=SiteDeploymentService::executeDeployment($claim['lease']); $later=SiteDeploymentService::completeDeploymentSuccess($claim['lease'],$r);
+        } else $later=m6dNativePublish($db,$f);
+        $d->ready=false;
         $again=$request($v,$f['operator']); m6dNativeCheck(!$again['is_current'] && $again['target']['current_deployment_id']===$later['deployment_id'],'historical_current_pointer');
         return [];
     }
@@ -93,7 +125,10 @@ function m6dNativeCase(string $name,M6DNativeConnection $db,PDO $observer,array 
         $observer->beginTransaction(); $observer->prepare("UPDATE users SET status='inactive' WHERE id=?")->execute([$f['operator']]);
         [$p,$pid]=m6dNativeChild($a,$f,'claim'); $p->send('START');
         m6dNativeLockWait($db->pdo,$pid,(int)$observer->query('SELECT CONNECTION_ID()')->fetchColumn()); $observer->commit();
-        m6dNativeCheck((m6dNativeChildResult($p)['denied'] ?? null)==='unauthorized','revocation_serialized_before_claim');
+        m6dNativeCheck(m6dNativeChildResult($p)===null,'revocation_serialized_before_claim');
+        $cancelled=$check('SELECT status,failure_code,attempt_count FROM site_deployments WHERE site_id=?',[$f['site_id']]);
+        m6dNativeCheck($cancelled['status']==='cancelled' && $cancelled['failure_code']==='requester_not_authorized'
+            && (int)$cancelled['attempt_count']===0,'revoked_requester_durable_disposition');
         m6dNativeCheck((int)$check('SELECT COUNT(*) AS n FROM site_deployment_attempts WHERE site_id=?',[$f['site_id']])['n']===0,'no_claim_after_revocation');
         return ['lock_wait_observed'=>true];
     }

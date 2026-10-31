@@ -90,8 +90,8 @@ failed run or combine results from different source/image/token identities.
 
 | Case | Plan requirements / authored proof |
 | --- | --- |
-| publish-request-history | D19–D22, D24; current access, pending/history and later pointer |
-| restore-request-history | Same request-history contract for restore |
+| publish-request-history | D19–D22, D24 and D05 queue progress; current access, pending/history, A/B/C stale-intent cancellation and later pointer |
+| restore-request-history | Same request-history and A/B/C queue-progress contract for restore |
 | publish-payload-fields | D23; independent original field conflicts, operation difference |
 | restore-payload-fields | D23; restore source and other original fields independently |
 | scoped-current-access | D24, U01/U02; customer/foreign target and revoked actor denial |
@@ -99,7 +99,7 @@ failed run or combine results from different source/image/token identities.
 | concurrent-target-claims | D05, S02; observed competing claim wait and one owner |
 | result-audit-rollback | D12; real MySQL rollback with injected audit failure and recovery |
 | production-grant-boundaries | D02–D04, D22; simulated production grant/consumption/revoked history |
-| production-role-lock | D04, U01; observed approver/requester revocation-before-claim wait |
+| production-role-lock | D04, U01; observed approver/requester revocation-before-claim wait, durable cancelled intent and zero attempts |
 | staging-production-lifecycle | D15; staging/global isolation and simulated production owner commit |
 | known-good-restore | R01/R03; new operation over immutable historical release/old approvals |
 | stale-lease-fence | D13, C04/C06; replacement authority rejects old renewal |
@@ -125,6 +125,24 @@ In particular, reverse authorization serialization, all health/compensation faul
 permutations and complete deployment negative CHECK/FK fixtures need expanded native
 coverage before formal M6D acceptance. These are explicit validation infrastructure
 gaps, not results inferred from the sequential local fixture.
+
+### PR #130 bounded queue-progress obligation — NOT EXECUTED
+
+The existing publish/restore request-history cases now create A/B against one pointer
+through the service, complete A, request C against the advanced pointer, then claim C.
+The independent observer connection must see B cancelled for `expected_pointer_changed`,
+zero B attempts, immutable B intent/counters, unchanged A success/pointer/version and
+only C's new fence. Repeated scanning plus authorized B replay must leave exactly one
+cancellation audit; the independent publisher-model file must remain unchanged during
+claim/replay. C then completes through the normal service path.
+
+No terminal outcome is planted with SQL. These additions extend existing declared
+case meanings; the profile still requires exactly all 18 cases and all three original
+observed lock waits. `production-role-lock` retains its real wait requirement and now
+expects cancellation rather than an exception from the entire scan. The local control
+test still rejects incomplete reports. No new native launcher, image, connection or
+execution was introduced. See the [local correction record](sprint-8.8-m6d-local-implementation.md#pr-130-queue-starvation-correction)
+for modeled evidence; these authored native assertions do not constitute native PASS.
 
 ## Failure, cleanup and report rules
 

@@ -98,16 +98,46 @@ final class SiteDeploymentService
     }
     /** @internal Approval owner invokes the same release/restore gates without requiring the grant being created. */
     public static function lockGrantSubject(object $db, array $request): array { return self::subject($db,$request,false); }
-    private static function subject(object $db, array $op, bool $grant): array
+    private static function subject(object $db, array $op, bool $grant, bool $queued = false): array
     {
         $release=SiteDeploymentStore::row($db,'site_releases',(int)$op['site_id'],(int)$op['release_id']);
-        $source=SiteRevisionManager::lockDeploymentEligibility($db,$release,$op['operation'] === 'restore');
+        if ($queued) {
+            // A changed immutable identity is corruption, not ordinary lifecycle ineligibility.
+            $revision=SiteRevisionManager::lockRevision($db,(int)$release['source_revision_id']);
+            if ((int)$revision['site_id'] !== (int)$op['site_id'] || $revision['snapshot_hash'] !== $release['source_snapshot_hash']) {
+                throw new SiteServiceException('conflict','Queued release source identity differs.');
+            }
+        }
+        try { $source=SiteRevisionManager::lockDeploymentEligibility($db,$release,$op['operation'] === 'restore'); }
+        catch (SiteServiceException $error) {
+            // Only this owner's lifecycle/approval denial is candidate-local. Integrity/configuration errors escape.
+            if (!$queued || $error->classification() !== 'invalid_transition') throw $error;
+            return ['queue_denial'=>'source_not_eligible'];
+        }
         // Resolve grant/approval and its current actor before the target/operation write locks.
         $probe=SiteDeploymentStore::row($db,'site_deployment_targets',(int)$op['site_id'],(int)$op['target_id']);
         $v=$op+['source_revision_id'=>(int)$release['source_revision_id']];
         self::dependencies()->assertReady($probe,$release);
         if ($probe['environment'] === 'production') {
-            if ($grant) SiteApprovalManager::lockProductionGrant($db,$v,$release,$probe,SiteBuildStore::now($db));
+            if ($grant) {
+                if ($queued) {
+                    $record=SiteBuildStore::one($db,'SELECT * FROM site_deployment_approvals WHERE id = :id AND site_id = :site_id FOR UPDATE',
+                        ['id'=>$op['deployment_approval_id'],'site_id'=>(int)$op['site_id']]);
+                    if ($record === null || $record['artifact_hash'] !== $release['artifact_hash']) throw new SiteServiceException('conflict','Queued grant identity is inconsistent.');
+                    foreach (['site_id','release_id','source_revision_id','target_id','operation','expected_current_deployment_id','expected_pointer_version','binding_version'] as $key) {
+                        if ($record[$key] != $v[$key]) throw new SiteServiceException('conflict','Queued grant intent is inconsistent.');
+                    }
+                    if ($record['consumed_by_deployment_id'] !== null && (int)$record['consumed_by_deployment_id'] !== (int)$op['id']) {
+                        return ['queue_denial'=>'grant_not_valid']; // This exact one-use grant already belongs to another intent.
+                    }
+                }
+                try { SiteApprovalManager::lockProductionGrant($db,$v,$release,$probe,SiteBuildStore::now($db)); }
+                catch (SiteServiceException $error) {
+                    // Exact immutable intent was checked above; only current grant/approver denial is local.
+                    if (!$queued || $error->classification() !== 'unauthorized') throw $error;
+                    return ['queue_denial'=>'grant_not_valid'];
+                }
+            }
         } elseif ($op['deployment_approval_id'] !== null) throw new SiteServiceException('invalid_request','Staging cannot consume a production grant.');
         if ($op['operation'] === 'restore') {
             $old=SiteDeploymentStore::row($db,'site_deployments',(int)$op['site_id'],(int)$op['restored_from_deployment_id']);
@@ -121,6 +151,12 @@ final class SiteDeploymentService
             if (count($checks)<2) throw new SiteServiceException('conflict','Known-good health evidence is missing.');
         }
         $target=SiteManager::lockDeploymentTarget($db,(int)$op['site_id'],(int)$op['target_id']);
+        if ($queued) {
+            if ((int)$target['binding_version'] !== (int)$op['binding_version']) return ['queue_denial'=>'binding_changed'];
+            if ($target['current_deployment_id'] != $op['expected_current_deployment_id']
+                || (int)$target['pointer_version'] !== (int)$op['expected_pointer_version']) return ['queue_denial'=>'expected_pointer_changed'];
+            if ((int)$target['enabled'] !== 1 || $target['reconciliation_status'] !== 'clean') return ['queue_skip'=>true];
+        }
         if ((int)$target['enabled'] !== 1 || (int)$target['binding_version'] !== (int)$op['binding_version']) throw new SiteServiceException('future_gate_required','The exact target binding is not enabled.');
         self::pointer($target,$op);
         if ($target['reconciliation_status'] !== 'clean' && (int)$target['active_deployment_id'] !== (int)($op['id'] ?? 0)) {
@@ -143,23 +179,88 @@ final class SiteDeploymentService
         foreach ($candidates as $candidate) {
             $claim=SiteBuildStore::transaction(static function(object $db) use($candidate,$worker): ?array {
                 SiteManager::lockSite($db,(int)$candidate['site_id']);
+                if (self::worker('execution') !== $worker) throw new SiteServiceException('unauthorized','Worker trust changed.');
                 $identity=SiteDeploymentStore::row($db,'site_deployments',(int)$candidate['site_id'],(int)$candidate['id']);
+                $now=SiteBuildStore::now($db);
+                // The scan is only a hint. Root-serialized current state precedes all new-claim gates.
+                if (!self::queueDue($identity,$now)) return null;
                 $target=SiteDeploymentStore::row($db,'site_deployment_targets',(int)$identity['site_id'],(int)$identity['target_id']);
                 if ($worker['environment'] !== $target['environment']) throw new SiteServiceException('unauthorized','Worker target scope differs.');
-                self::actor($db,(int)($identity['requested_by_user_id'] ?? 0),$target['environment']);
-                $subject=self::subject($db,$identity,true);
+                SiteDeploymentContract::policy($identity);
+                $release=SiteDeploymentStore::row($db,'site_releases',(int)$identity['site_id'],(int)$identity['release_id']);
+                // Runtime failure is systemic, including when this candidate's requester is no longer authorized.
+                self::dependencies()->assertReady($target,$release);
+                $denial=$identity['requested_by_user_id'] === null ? 'requester_not_authorized' : null;
+                if ($denial === null) {
+                    try { self::actor($db,(int)$identity['requested_by_user_id'],$target['environment']); }
+                    catch (SiteServiceException $error) {
+                        if ($error->classification() !== 'unauthorized') throw $error;
+                        $denial='requester_not_authorized';
+                    }
+                }
+                $subject=$denial === null ? self::subject($db,$identity,true,true) : ['queue_denial'=>$denial];
+                // Lifecycle/actor/grant locks above retain their order ahead of target/operation/attempt locks.
+                $target=SiteManager::lockDeploymentTarget($db,(int)$identity['site_id'],(int)$identity['target_id']);
                 $op=SiteDeploymentStore::row($db,'site_deployments',(int)$identity['site_id'],(int)$identity['id'],true);
-                $now=SiteBuildStore::now($db); SiteDeploymentContract::policy($op);
-                if (!in_array($op['status'],['requested','retry_wait'],true) || !in_array($op['recovery_status'],['none','resolved'],true)
-                    || ($op['next_attempt_at'] !== null && $op['next_attempt_at'] > $now) || (int)$op['execution_count'] >= (int)$op['max_execution_attempts']) return null;
+                $now=SiteBuildStore::now($db);
+                if (!self::queueDue($op,$now)) return null;
                 $prior=self::current($db,$op);
-                if ($prior !== null && in_array($prior['status'],['leased','running'],true)) return null;
-                if ($subject['target']['active_deployment_id'] !== null && (int)$subject['target']['active_deployment_id'] !== (int)$op['id']) return null;
-                return self::allocate($db,$op,$subject['target'],$worker,$now,null,null);
+                if (self::worker('execution') !== $worker) throw new SiteServiceException('unauthorized','Worker trust changed.');
+                self::dependencies()->assertReady($target,$release);
+                if ($prior !== null && in_array($prior['status'],['leased','running'],true)
+                    && $prior['lease_expires_at'] > $now && $prior['deadline_at'] > $now) return null;
+                if (!self::safeQueuedIntent($op,$prior) || (int)$target['active_deployment_id'] === (int)$op['id']) {
+                    // Only existing matching ownership can establish recovery; never borrow/free another slot.
+                    if ($prior === null || (int)$target['active_deployment_id'] !== (int)$op['id']
+                        || (int)$target['fence_epoch'] !== (int)$prior['fence_epoch']) throw new SiteServiceException('conflict','Queued effects require authoritative recovery ownership.');
+                    self::requireRecovery($db,$op,$prior,$now,'outcome_unknown',
+                        $prior['attempt_kind'] === 'recovery' && $prior['recovery_trigger'] === 'operator');
+                    return null;
+                }
+                if ($target['active_deployment_id'] !== null || $target['reconciliation_status'] !== 'clean' || isset($subject['queue_skip'])) return null;
+                if (isset($subject['queue_denial'])) {
+                    self::cancelQueuedIntent($db,$op,$subject['queue_denial'],$now);
+                    return null; // Return normally so disposition and event COMMIT before scanning onward.
+                }
+                if ((int)$op['execution_count'] >= (int)$op['max_execution_attempts']) {
+                    SiteDeploymentStore::update($db,'site_deployments',$op,['status'=>'failed','next_attempt_at'=>null,
+                        'failure_code'=>'execution_exhausted','failure_category'=>SiteDeploymentContract::FAILURES['execution_exhausted'],
+                        'safe_summary'=>'No execution budget remains.','completed_at'=>$now,'updated_at'=>$now]);
+                    self::event($db,$op,'site_deployment_failed',SiteServiceSupport::systemActor(),['code'=>'execution_exhausted']);
+                    return null;
+                }
+                return self::allocate($db,$op,$target,$worker,$now,null,null);
             });
             if ($claim !== null) return $claim;
         }
         return null;
+    }
+    private static function queueDue(array $op, string $now): bool
+    {
+        return in_array($op['status'],['requested','retry_wait'],true) && in_array($op['recovery_status'],['none','resolved'],true)
+            && ($op['next_attempt_at'] === null || $op['next_attempt_at'] <= $now);
+    }
+    private static function safeQueuedIntent(array $op, ?array $prior): bool
+    {
+        if ($op['activation_attempted_at'] !== null || $op['activation_fence'] !== null || $op['health_verified_at'] !== null) return false;
+        if ($prior === null) return $op['status'] === 'requested' && (int)$op['attempt_count'] === 0
+            && (int)$op['execution_count'] === 0 && (int)$op['recovery_count'] === 0
+            && $op['staged_at'] === null && $op['external_reference'] === null && $op['previous_deployment_id'] === null;
+        if ($prior['attempt_kind'] !== 'execution' || $prior['status'] !== 'failed' || $prior['receipt_json'] === null) return false;
+        $receipt=SiteBuildContract::decode($prior['receipt_json'],16384);
+        return $op['status'] === 'retry_wait' && ($receipt['receipt_key'] ?? null) === $op['deployment_key']
+            && ($receipt['disposition'] ?? null) === 'safely_failed' && in_array($receipt['code'] ?? null,['storage_unavailable','network_unavailable'],true);
+    }
+    private static function cancelQueuedIntent(object $db, array $op, string $reason, string $now): void
+    {
+        if (!in_array($reason,['requester_not_authorized','source_not_eligible','grant_not_valid','binding_changed','expected_pointer_changed'],true)) {
+            throw new LogicException('Unsupported queued deployment disposition.');
+        }
+        SiteDeploymentStore::update($db,'site_deployments',$op,['status'=>'cancelled','next_attempt_at'=>null,'completed_at'=>$now,'updated_at'=>$now,
+            'failure_code'=>$reason,'failure_category'=>in_array($reason,['requester_not_authorized','grant_not_valid'],true) ? 'authorization' : 'eligibility',
+            'safe_summary'=>'Queued intent no longer has execution authority; no unresolved effects are recorded.']);
+        self::event($db,$op,'site_deployment_cancelled',SiteServiceSupport::systemActor(),
+            ['code'=>$reason,'previous_status'=>$op['status'],'next_status'=>'cancelled']);
     }
     private static function current(object $db, array $op): ?array
     {

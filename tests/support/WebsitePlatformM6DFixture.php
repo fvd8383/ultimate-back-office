@@ -25,6 +25,7 @@ final class M6DDatabase extends PDO
     public array $queries=[];
     public $hook=null;
     public $afterRollback=null;
+    public $afterQueueSelection=null;
     public bool $unavailable=false;
     public ?string $failInsert=null;
     public bool $loseCommit=false;
@@ -126,9 +127,16 @@ final class M6DDatabase extends PDO
             $this->tables[$table][$id]=array_replace($r,$values); return [[],1];
         }
         if (str_contains($n,'FROM site_deployments d INNER JOIN')) {
-            return [array_values(array_filter($this->tables['site_deployments'],fn($r)=>in_array($r['status'],['requested','retry_wait'],true)
+            $rows=array_values(array_filter($this->tables['site_deployments'],fn($r)=>in_array($r['status'],['requested','retry_wait'],true)
                 && ($r['next_attempt_at']===null || $r['next_attempt_at']<=$this->inner->now)
-                && $this->tables['site_deployment_targets'][$r['target_id']]['environment']===$p['environment'])),0];
+                && isset($this->tables['site_deployment_targets'][$r['target_id']])
+                && $this->tables['site_deployment_targets'][$r['target_id']]['site_id']===$r['site_id']
+                && $this->tables['site_deployment_targets'][$r['target_id']]['environment']===$p['environment']));
+            usort($rows,static fn($a,$b)=>$a['id']<=>$b['id']);
+            if (!preg_match('/ORDER BY d.id LIMIT ([0-9]+)$/D',$n,$limit)) throw new LogicException('Unsupported queue query');
+            $rows=array_map(static fn($r)=>['id'=>$r['id'],'site_id'=>$r['site_id']],array_slice($rows,0,(int)$limit[1]));
+            if ($this->afterQueueSelection !== null) { $hook=$this->afterQueueSelection; $this->afterQueueSelection=null; $hook($this); }
+            return [$rows,0];
         }
         if (preg_match('/FROM (site_deployment\w+) WHERE /',$n,$m)) {
             $rows=array_values($this->tables[$m[1]]);

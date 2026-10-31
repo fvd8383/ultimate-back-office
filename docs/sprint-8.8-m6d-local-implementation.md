@@ -9,6 +9,79 @@ M6B remains formally closed, M6 remains IN PROGRESS, and M6E–M6G remain NOT ST
 This task implements service boundaries locally. Native SQL, activation and deployment
 are not authorized and are not executed.
 
+## PR #130 queue-starvation correction
+
+Starting head: `36afc20d8fec0599cc108b07593f8bede19d83cd`. The
+[P2 finding](https://github.com/fvd8383/ultimate-back-office/pull/130#discussion_r4433555129)
+was reproduced twice before editing: A and B shared the old pointer, A succeeded,
+and C requested the new pointer. Each subsequent claim threw `stale_write` on B;
+B stayed requested with zero executions and C stayed unclaimed. This was a bounded
+local PDO/publisher model, not MySQL locking evidence.
+
+The claim scan still selects at most 25 candidates. A fresh site-first transaction
+checks current queue state before new eligibility, then retains actor/lifecycle/grant,
+target, operation and attempt lock ordering. It rechecks worker trust and in-memory
+runtime readiness before disposition. A stale selection cannot cancel a currently
+succeeded, running, not-due or recovery-required operation.
+
+| Current evidence | Claim outcome |
+| --- | --- |
+| Exact pointer/binding obsolete; requester absent/inactive/demoted; current lifecycle/approval or exact grant authority denied | Cancel only after proving no unresolved effects; atomically record `site_deployment_cancelled`, then continue. |
+| Live owner, another target-slot owner, disabled binding, not-due work or target reconciliation | Allocate nothing and preserve state; later candidates within the bounded scan may progress. |
+| Recorded uncertain effects with the matching own slot/fence | Establish reconciliation through the existing recovery owner, retain slot/fence/counters/attempts, and continue without external inspection. Existing recovery state is preserved. |
+| Missing recovery ownership, corrupted source/grant identity, unsupported policy, missing records, runtime/worker failure, SQL or programming failure | Propagate the specific failure and roll back; never relabel it ordinary cancellation. Known rolled-back deadlocks retain the existing bounded retry. |
+
+Only narrow owner-specific denials are classified: requester `unauthorized`, lifecycle
+`invalid_transition` after checking immutable source identity, and production-grant
+`unauthorized` after checking its exact immutable intent. A grant already consumed by
+another operation is also a definite denial, established from the locked row rather
+than a generic exception. Arbitrary `conflict`,
+`not_found`, `future_gate_required`, SQL and unexpected exceptions are not swallowed.
+Safely settled transient retry receipts are checked before cancelling a retried intent;
+an unknown receipt or activation evidence cannot establish safe cancellation.
+Exhausted safe execution work receives a terminal failed disposition instead of
+remaining an ordinary selectable request.
+
+Cancellation preserves original request/payload/requester, counters and prior attempts.
+It allocates no lease/attempt/fence, consumes no grant, changes no current pointer and
+performs no publisher/artifact action. The transaction returns normally to commit its
+status and bounded system audit together. Repeated scans do not duplicate that event;
+authorized exact request replay returns the cancelled history without refreshing intent.
+The A/B/C regression now proves B cancelled once, C claimed, and A's success/current
+pointer untouched. Publish and restore are both covered using service-created history.
+
+Executed sequentially on Windows/PHP 8.4.24: Queue **90**, Execution **63**, Request **70**,
+Authority **96**, Recovery **60**, Artifact **4**, CLI **44**, NativeControl **63**, Scope
+**58** assertions; all nine suites exited 0. This is **490 behavioral/control assertions
+plus 58 source-scope assertions**. Actual commands, exits/signals, durations, stdout/stderr
+and the before-fix reproduction are retained outside Git. Queue's expected negative
+diagnostics are two transactional PDO faults (audit and deadlock), one unavailable-read
+PDO fault and one deliberately injected LogicException. Other suites retain their
+existing diagnostic contracts. No unrelated historical campaign or native run occurred.
+
+All six changed PHP files passed syntax lint, including the authored native cases.
+Documentation links/anchors/fences and working/staged/committed diff/integrity checks
+are recorded outside Git. The correction baseline manifest contains 520 tracked files;
+513 remain byte-identical, seven are intentionally modified, and one queue test is new.
+The unchanged historical M6B scope-test perimeter remains disclosed below and was not
+rerun or counted as PASS in this correction.
+
+The native publish/restore request-history cases now author the same A/B/C progression
+with independent PDO observations of committed B disposition, one audit, unchanged A,
+only C's new attempt/fence and no publisher-model mutation. The production-role-lock
+case now expects durable unauthorized-requester cancellation and no attempt. The exact
+18-case inventory/report rules are unchanged. These additions are **AUTHORED / NOT
+EXECUTED**, and the broader native gaps below remain unchanged.
+
+This correction changes only eight files: this record, the native-validation record,
+`SiteDeploymentService.php`, `WebsitePlatformM6DQueueTest.php` (new), the existing M6D
+Execution/Authority tests, `WebsitePlatformM6DFixture.php` and
+`WebsitePlatformM6DNativeCases.php`. Fixture selection now models the actual owned join,
+ascending IDs, projection and LIMIT 25; a one-shot selection hook models stale snapshots.
+Shared owners/runtime, all 25 migration sources/pins, M6C artifact/native sources and
+all 77 plan definitions remain unchanged from the starting head. M6D remains partial;
+M6C stays formally closed and M6E–M6G stay NOT STARTED.
+
 ## Implementation checklist
 
 | Contract | Owner / executable local proof | Later proof |
@@ -118,7 +191,7 @@ modified migration. The canonical 025 SHA-256 remains
 
 ## Executed local evidence
 
-Installed Windows PHP 8.4.24 ran standalone suites sequentially. The final seven M6D
+The initial implementation at `36afc20` used Windows PHP 8.4.24 and standalone sequential suites. Its seven M6D
 behavior/control suites passed **397 assertions**: request 70, authority 93, execution
 63, recovery 60, artifact 4, CLI 44 and native-control 63. The separate M6D scope suite
 checks protected source trees, changed-file boundaries and all 77 unchanged requirement
@@ -203,7 +276,7 @@ private/classes/SiteManager.php
 private/classes/SiteRevisionManager.php
 ```
 
-Added (29):
+Added (30, including the subsequent queue regression):
 
 ```text
 docs/sprint-8.8-m6d-local-implementation.md
@@ -224,6 +297,7 @@ tests/WebsitePlatformM6DCliTest.php
 tests/WebsitePlatformM6DExecutionTest.php
 tests/WebsitePlatformM6DNative.php
 tests/WebsitePlatformM6DNativeControlTest.php
+tests/WebsitePlatformM6DQueueTest.php
 tests/WebsitePlatformM6DRecoveryTest.php
 tests/WebsitePlatformM6DRequestTest.php
 tests/WebsitePlatformM6DScopeTest.php

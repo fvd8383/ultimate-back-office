@@ -89,7 +89,12 @@ foreach(['expiry','revocation','role'] as $change) foreach(['claim','activation'
         elseif($change==='revocation') SiteApprovalManager::revokeProductionRelease(2,10,$g['deployment_approval_id'],'boundary-revoke');
         else $db->inner->read->users[2]['status']='inactive';
     };
-    if($boundary==='claim') { $invalidate(); m6dDeny(fn()=>SiteDeploymentService::claimDeployment([])); }
+    if($boundary==='claim') {
+        $invalidate();
+        m6dAssert(SiteDeploymentService::claimDeployment([])===null
+            && $db->tables['site_deployments'][$op['deployment_id']]['status']==='cancelled'
+            && $db->tables['site_deployments'][$op['deployment_id']]['execution_count']===0,'D04 denied queued authority is settled without a lease');
+    }
     else {
         $l=$db->claim()['lease'];
         if($boundary==='activation') {
@@ -147,5 +152,21 @@ foreach(['activation','result'] as $fault) {
         ($fault==='activation' ? null : $op['deployment_id']),'Grant consumption atomic with activation authorization; retained across later result rollback');
     m6dAssert(in_array('activate',$db->runtime->publisher->calls,true)===($fault==='result'),'No effect before committed activation authority');
 }
+
+$db=new M6DDatabase(); $grantInput=m6dProduction($db); $g=SiteApprovalManager::approveProductionRelease(2,$grantInput);
+$a=SiteDeploymentService::requestDeployment(2,$db->input(['deployment_approval_id'=>$g['deployment_approval_id']]));
+$b=SiteDeploymentService::requestDeployment(2,$db->input(['deployment_approval_id'=>$g['deployment_approval_id']]));
+$lease=$db->claim()['lease']; SiteDeploymentService::completeDeploymentSuccess($lease,SiteDeploymentService::executeDeployment($lease));
+$aRow=$db->tables['site_deployments'][$a['deployment_id']];
+$nextGrant=SiteApprovalManager::approveProductionRelease(2,array_replace($grantInput,[
+    'expected_current_deployment_id'=>$a['deployment_id'],'expected_pointer_version'=>1,'supersedes_approval_id'=>$g['approval_id']]));
+$c=SiteDeploymentService::requestDeployment(2,$db->input(['deployment_approval_id'=>$nextGrant['deployment_approval_id']]));
+$claim=$db->claim();
+m6dAssert($claim['lease']['deployment_id']===$c['deployment_id'] && $db->tables['site_deployments'][$b['deployment_id']]['status']==='cancelled'
+    && $db->tables['site_deployments'][$b['deployment_id']]['failure_code']==='grant_not_valid','A consumed grant cannot let B starve a newly granted C');
+m6dAssert($db->tables['site_deployments'][$a['deployment_id']]===$aRow && $db->tables['site_deployments'][$b['deployment_id']]['execution_count']===0,
+    'Production queue cancellation preserves committed A and gives B no execution');
+m6dAssert($db->tables['site_deployment_approvals'][$g['deployment_approval_id']]['consumed_by_deployment_id']===$a['deployment_id']
+    && $db->tables['site_deployment_approvals'][$nextGrant['deployment_approval_id']]['consumed_by_deployment_id']===null,'Queue cancellation neither reconsumes nor transfers grants');
 
 echo 'M6D authority: '.$GLOBALS['m6d_assertions']." assertions PASS (simulated service/DB fixtures; production disabled).\n";

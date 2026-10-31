@@ -30,7 +30,9 @@ $db->beginTransaction(); $calls=$db->runtime->publisher->calls;
 m6dDeny(fn()=>SiteDeploymentService::executeDeployment($l),'conflict');
 m6dAssert($db->runtime->publisher->calls===$calls,'D14 actual execute seam rejects transactional external work'); $db->rollBack();
 $r=SiteDeploymentService::executeDeployment($l); SiteDeploymentService::completeDeploymentSuccess($l,$r);
-m6dDeny(fn()=>SiteDeploymentService::claimDeployment([]),'stale_write');
+$c=$db->request(); $next=SiteDeploymentService::claimDeployment([]);
+m6dAssert($next['lease']['deployment_id']===$c['deployment_id'] && $db->tables['site_deployments'][$b['deployment_id']]['status']==='cancelled',
+    'D05 stale B is durably cancelled while C progresses');
 m6dAssert($db->tables['site_deployments'][$b['deployment_id']]['execution_count']===0,'Old pointer request cannot execute');
 m6dAssert($db->inner->read->base->sites[10]['lifecycle_status']==='approved' && $db->inner->read->base->sites[10]['current_published_revision_id']===null,'Staging leaves global publication alone');
 
