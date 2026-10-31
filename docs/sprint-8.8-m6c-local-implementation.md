@@ -1,26 +1,42 @@
 # Sprint 8.8 M6C — Local artifact implementation
 
-Current status, October 29, 2026: M6C — IMPLEMENTED / SCOPED ISOLATED NATIVE GATE PASS /
-ACCEPTANCE REVIEW PENDING. M6C formal closure — PENDING. M6 overall — IN PROGRESS.
-M6B — COMPLETE / STAGING PASS / FORMALLY CLOSED by
-[PR #127 acceptance](https://github.com/fvd8383/ultimate-back-office/pull/127#issuecomment-6241852763).
-M6D–M6G — NOT STARTED. Migration 025 — APPLIED TO WORKING STAGING; do not reapply.
-Production — UNAUTHORIZED / NOT DEPLOYED. The original implementation began
-October 17 with local/synthetic/filesystem validation. The later native result is
-recorded separately below; the 77-case M6 plan is not a passed matrix.
+M6C — IMPLEMENTED / CORE, JOURNAL AND SUPPLEMENTAL NATIVE GATES PASS /
+ACCEPTANCE REVIEW PENDING. M6C formal closure — PENDING.
 
-Current handoff: the [scoped native acceptance record](sprint-8.8-m6c-native-acceptance.md)
-records PASS at `2ab14c7d8212d1170aafe6d8dcdf3b178dd7d5bf`, 20 cases and
-1,315/1,315 assertions (805 case + 510 setup/identity), with original evidence
-retrieved and locally hash-verified. The completed acceptance assessment identifies
-four finite evidence packages. The operator now reports **journal3 PASS at `ccbc708`**
-(593 assertions, including 54 case assertions) and **supplement17 FAILED at `ccbc708`**
-(six PASS / one FAIL / ten UNREACHED). The correction below has local packet evidence
-only; formal acceptance remains pending. The deployed application remains
-operator-reported `f466fc1…`. Older dated sections retain their own source-scoped
-results and limitations; they do not override this current handoff.
+The [current acceptance record](sprint-8.8-m6c-native-acceptance.md) reconciles three
+distinct results: core20 at `2ab14c7d8212d1170aafe6d8dcdf3b178dd7d5bf`,
+1,315 = 805 case + 510 setup/identity assertions; journal3 at
+`ccbc708b62891c70071c6ea6e42dcfaf5a3976d7`, 593 = 54 case + 539 outside-case;
+and supplement17 at `910c1345221dcf78cf0e50f998449e2b9a50ec62`,
+1,316 = 776 case + 540 outside-case (setup/identity plus final shared assertion).
+Each profile passed with launcher exit 0. They are not one run, one image or an
+all-77-case result; the later documentation head is not natively executed.
+
+The October 31 documentation task reused/rehashed 37 core originals and retrieved/
+hash-verified 79 journal/supplement originals from the four authorized directories.
+Recorded strict-validator PASS and operational observations remain attributed to the
+original runs; this task performed only data/document/Git checks, no runtime work.
+[G1–G4 are satisfied for scoped M6C review](sprint-8.8-m6c-native-acceptance.md#four-gap-dispositions-and-remaining-decisions).
+Remaining decisions: documentation-head review, owner evidence acceptance, B14/B16
+browser allocation (recommended M6E served policy / M6G integrated browser, still
+unapproved), and separate merge/formal-closeout authorization.
+
+The supplemental image is recorded at `910c134`; journal retains its separate
+`ccbc708` image. The historical failed `ccbc708` supplemental run remains FAILED
+with packet/transaction outcome UNESTABLISHED. The supplemental report's profile-local
+journal limitation remains intact; separate journal3 supplies that evidence.
+The dated sections below are historical authoring/correction snapshots, not current
+unexecuted/failed status. Their original results and limits remain source-specific.
+
+M6 overall IN PROGRESS; M6B COMPLETE / STAGING PASS / FORMALLY CLOSED;
+M6D–M6G NOT STARTED; production UNAUTHORIZED / NOT DEPLOYED. Last operator-reported
+deployed application remains `f466fc1cdbfb53325a1db11445736bdc5ea7c6f4`.
+Migration 025 is APPLIED TO WORKING STAGING; do not reapply. Both backup copies and
+receipts remain retained; restore NOT EXECUTED. No merge, deployment or closure here.
 
 ## Supplemental exact COMMIT correction, October 29, 2026
+
+**Historical snapshot — superseded for current status by the October 31 handoff above.**
 
 Clean starting branch `codex/sprint-8.8-m6c-artifact-builder`, head
 `ccbc708b62891c70071c6ea6e42dcfaf5a3976d7`; no unexpected work was overwritten.

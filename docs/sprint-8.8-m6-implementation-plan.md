@@ -1,7 +1,7 @@
 # Sprint 8.8 M6 — Build, Deployment, and Restore Implementation Plan
 
 Current M6: **IN PROGRESS**. **M6A — ARCHITECTURE REVIEWED / MERGED** (PR #125).
-**M6B — COMPLETE / STAGING PASS / FORMALLY CLOSED**. **M6C — IMPLEMENTED / SCOPED ISOLATED NATIVE GATE PASS / ACCEPTANCE REVIEW PENDING**;
+**M6B — COMPLETE / STAGING PASS / FORMALLY CLOSED**. **M6C — IMPLEMENTED / CORE, JOURNAL AND SUPPLEMENTAL NATIVE GATES PASS / ACCEPTANCE REVIEW PENDING**;
 **M6D–M6G — NOT STARTED**. **PR #126 — MERGED** at
 `f466fc1cdbfb53325a1db11445736bdc5ea7c6f4`, the operator-reported deployed baseline.
 **Migration 025 — APPLIED TO WORKING STAGING**, once on October 17, 2026.
@@ -14,12 +14,19 @@ pre-deployment provenance: 1824 native assertions, 53/53 executions, all twelve
 replay conditions and cleanup/publication PASS; no native rerun in this task.
 **Production — UNAUTHORIZED / NOT DEPLOYED**; production migration unperformed.
 M5 remains **COMPLETE FOR SPRINT PROGRESSION**; M5C remains
-**ACCEPTED / NARRATOR FOLLOW-UP DEFERRED**. The [M6C acceptance record](sprint-8.8-m6c-native-acceptance.md) records the scoped native PASS at
-`2ab14c7d8212d1170aafe6d8dcdf3b178dd7d5bf`: 20 cases, 1,315 assertions
-(805 case + 510 setup/identity), with original evidence retrieved and hash-verified.
-**M6C formal closure — PENDING**; acceptance review must assess the mapped evidence
-limits. This documentation update runs no tests and does not deploy M6C. The deployed
-application remains `f466fc1…`; later runtime/merge decisions need separate authorization.
+**ACCEPTED / NARRATOR FOLLOW-UP DEFERRED**. The [M6C acceptance record](sprint-8.8-m6c-native-acceptance.md) now reconciles
+three native PASS results: core20 at `2ab14c7` (1,315 = 805 case + 510 setup/identity),
+journal3 at `ccbc708` (593 = 54 case + 539 outside-case), and supplement17 at
+`910c134` (1,316 = 776 case + 540 outside-case, including the final shared assertion).
+Originals were retrieved/reused and hash-verified; these are separate runs/images,
+not execution of the later documentation head or all 77 planned cases.
+**G1–G4 — SATISFIED FOR SCOPED M6C REVIEW. M6C formal closure — PENDING.**
+Remaining decisions are documentation-head review, owner evidence acceptance,
+B14/B16 browser allocation (M6E served policy / M6G integrated browser recommended,
+not owner-approved), and separate merge/formal-closeout authorization. This
+documentation task performs no runtime work. The last operator-reported deployed
+application remains `f466fc1…`; both backup copies/receipts are retained and restore
+remains NOT EXECUTED.
 
 The reviewed architecture and 77-case planned matrix below remain authoritative;
 M6B evidence does not establish complete M6 acceptance.
@@ -33,7 +40,9 @@ M6B evidence does not establish complete M6 acceptance.
 | M6B implementation baseline / merged PR #125 | `5baae28c9af68cca7694a912d7f35c87c50c9dc5` |
 | Current operator-reported deployed baseline / merged PR #126 | `f466fc1cdbfb53325a1db11445736bdc5ea7c6f4` |
 | M6B natively tested source | `bef67310adafa041a45ee204ed0fc99ca13b754f`; only documentation differs from its merged implementation |
-| M6C scoped natively tested source | `2ab14c7d8212d1170aafe6d8dcdf3b178dd7d5bf`; 20-case PASS, acceptance review/formal closure pending; not deployed |
+| M6C core native source | `2ab14c7d8212d1170aafe6d8dcdf3b178dd7d5bf`; core20 PASS |
+| M6C journal native source | `ccbc708b62891c70071c6ea6e42dcfaf5a3976d7`; journal3 PASS |
+| M6C supplemental native source / prior docs-task head | `910c1345221dcf78cf0e50f998449e2b9a50ec62`; supplement17 PASS; later documentation child not natively executed; acceptance/formal closure pending; not deployed |
 | Historical M5 deployed baseline | `70a3051f73874e7268b9c1bba45bf19d41f9432a`; unchanged as M5 evidence |
 | M5A / M5B | COMPLETE / STAGING PASS / FORMALLY CLOSED |
 | M5C | ACCEPTED / NARRATOR FOLLOW-UP DEFERRED |
@@ -1660,7 +1669,8 @@ count remains **77 planned cases**, not executed schema/service PASS results.
 Every row is a separate reviewable PR/gate. M6A and M6B implementation PRs are merged.
 M6B has isolated native PASS and operator-completed working-staging deployment/025
 application; limited authenticated smoke passed and formal closeout was accepted in PR #127.
-M6C is implemented with [scoped isolated native PASS](sprint-8.8-m6c-native-acceptance.md);
+M6C has [core, journal and supplemental native PASS](sprint-8.8-m6c-native-acceptance.md),
+with G1–G4 satisfied for scoped review and browser allocation still an owner decision;
 acceptance review and formal closure remain pending. M6D–M6G are not started. The [closeout](sprint-8.8-m6b-closeout.md) records
 evidence and limitations. The table preserves reviewed scope and future gates, not
 a claim that all 77 planned acceptance cases are complete. M6B formal closure is accepted.
@@ -1678,8 +1688,9 @@ a claim that all 77 planned acceptance cases are complete. M6B formal closure is
 PR #125 merged the reviewed M6A architecture. A subsequent explicit instruction
 authorized M6B implementation and native validation; PR #126 merged and the operator
 completed its working-staging deployment/migration. Limited authenticated smoke passed;
-formal closeout was accepted in PR #127; M6C artifact construction has scoped isolated
-native PASS evidence, with requirement reconciliation and acceptance review pending.
+formal closeout was accepted in PR #127; M6C artifact construction has three
+source-specific native PASS results. G1–G4 reconciliation is complete for scoped
+review; evidence acceptance, browser allocation and formal closure remain pending.
 Its gate remains the approved isolated build-only fixture in the table; no activation
 or working-staging build is added. The 77-case matrix remains broader than this gate.
 Staging-only contract/profile can close

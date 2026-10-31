@@ -1,7 +1,7 @@
 # Sprint 8.8 — Website Platform And Component CMS
 
 Current M6: **IN PROGRESS**. **M6A — ARCHITECTURE REVIEWED / MERGED** (PR #125).
-**M6B — COMPLETE / STAGING PASS / FORMALLY CLOSED**. **M6C — IMPLEMENTED / SCOPED ISOLATED NATIVE GATE PASS / ACCEPTANCE REVIEW PENDING**;
+**M6B — COMPLETE / STAGING PASS / FORMALLY CLOSED**. **M6C — IMPLEMENTED / CORE, JOURNAL AND SUPPLEMENTAL NATIVE GATES PASS / ACCEPTANCE REVIEW PENDING**;
 **M6D–M6G — NOT STARTED**. **PR #126 — MERGED** at
 `f466fc1cdbfb53325a1db11445736bdc5ea7c6f4`, the operator-reported deployed baseline.
 **Migration 025 — APPLIED TO WORKING STAGING**, once on October 17, 2026.
@@ -14,12 +14,19 @@ pre-deployment provenance: 1824 native assertions, 53/53 executions, all twelve
 replay conditions and cleanup/publication PASS; no native rerun in this task.
 **Production — UNAUTHORIZED / NOT DEPLOYED**; production migration unperformed.
 M5 remains **COMPLETE FOR SPRINT PROGRESSION**; M5C remains
-**ACCEPTED / NARRATOR FOLLOW-UP DEFERRED**. The [M6C acceptance record](sprint-8.8-m6c-native-acceptance.md) records the scoped native PASS at
-`2ab14c7d8212d1170aafe6d8dcdf3b178dd7d5bf`: 20 cases, 1,315 assertions
-(805 case + 510 setup/identity), with original evidence retrieved and hash-verified.
-**M6C formal closure — PENDING**; acceptance review must assess the mapped evidence
-limits. This documentation update runs no tests and does not deploy M6C. The deployed
-application remains `f466fc1…`; later runtime/merge decisions need separate authorization.
+**ACCEPTED / NARRATOR FOLLOW-UP DEFERRED**. The [M6C acceptance record](sprint-8.8-m6c-native-acceptance.md) now reconciles
+three native PASS results: core20 at `2ab14c7` (1,315 = 805 case + 510 setup/identity),
+journal3 at `ccbc708` (593 = 54 case + 539 outside-case), and supplement17 at
+`910c134` (1,316 = 776 case + 540 outside-case, including the final shared assertion).
+Originals were retrieved/reused and hash-verified; these are separate runs/images,
+not execution of the later documentation head or all 77 planned cases.
+**G1–G4 — SATISFIED FOR SCOPED M6C REVIEW. M6C formal closure — PENDING.**
+Remaining decisions are documentation-head review, owner evidence acceptance,
+B14/B16 browser allocation (M6E served policy / M6G integrated browser recommended,
+not owner-approved), and separate merge/formal-closeout authorization. This
+documentation task performs no runtime work. The last operator-reported deployed
+application remains `f466fc1…`; both backup copies/receipts are retained and restore
+remains NOT EXECUTED.
 
 ## Current M5 closeout — 2026-09-17
 
@@ -34,7 +41,7 @@ application remains `f466fc1…`; later runtime/merge decisions need separate au
 | M5 | COMPLETE FOR SPRINT PROGRESSION |
 | M6A | ARCHITECTURE REVIEWED / MERGED |
 | M6B | COMPLETE / STAGING PASS / FORMALLY CLOSED |
-| M6C | IMPLEMENTED / SCOPED ISOLATED NATIVE GATE PASS / ACCEPTANCE REVIEW PENDING; formal closure pending |
+| M6C | IMPLEMENTED / CORE, JOURNAL AND SUPPLEMENTAL NATIVE GATES PASS / ACCEPTANCE REVIEW PENDING; formal closure pending |
 | M6D–M6G | NOT STARTED |
 | M6 | IN PROGRESS |
 | Production | UNAUTHORIZED / NOT DEPLOYED |
@@ -189,7 +196,8 @@ milestones, M1–M8. M1–M4 are complete and formally closed; M5 is complete fo
 sprint progression, and M6–M8 remain required before Sprint 8.8 closes.
 The completed M4 exit gate covers the internal administrative
 workflow, and M5B completed the customer review, feedback, and approval UI. Outstanding
-work begins with M6C acceptance review of the [scoped isolated native PASS](sprint-8.8-m6c-native-acceptance.md) and its evidence limits.
+work begins with M6C acceptance review of the [three source-specific native PASS results](sprint-8.8-m6c-native-acceptance.md),
+satisfied G1–G4 dispositions, evidence limits and the pending browser-allocation decision.
 M6B is formally closed; M6C formal closure is pending. M6D–M6G implementation remains,
 followed by later public generic sites,
 domain/routing, LeadHub ingestion, legacy runtime cutover, and production authorization
@@ -713,7 +721,7 @@ business/site or cause publication.
 
 Status: **IN PROGRESS**. M6A is **ARCHITECTURE REVIEWED / MERGED**; M6B is
 **COMPLETE / STAGING PASS / FORMALLY CLOSED**. M6C is
-**IMPLEMENTED / SCOPED ISOLATED NATIVE GATE PASS / ACCEPTANCE REVIEW PENDING**;
+**IMPLEMENTED / CORE, JOURNAL AND SUPPLEMENTAL NATIVE GATES PASS / ACCEPTANCE REVIEW PENDING**;
 M6D–M6G are **NOT STARTED**. The [M6 plan](sprint-8.8-m6-implementation-plan.md)
 remains the reviewed contract. The [M6B closeout](sprint-8.8-m6b-closeout.md) records
 merged PR #126, earlier native persistence PASS, operator-executed staging deployment
