@@ -2,7 +2,7 @@
 
 Current M6: **IN PROGRESS**. **M6A — ARCHITECTURE REVIEWED / MERGED** (PR #125).
 **M6B — COMPLETE / STAGING PASS / FORMALLY CLOSED**. **M6C — COMPLETE / ISOLATED NATIVE GATES PASS / FORMALLY CLOSED**;
-**M6D — PARTIALLY IMPLEMENTED / REVIEW REQUIRED**; **M6E–M6G — NOT STARTED**. **PR #126 — MERGED** at
+**M6D — NATIVE V3 PASS AT 7cdbbeef / SCOPE RECONCILED LOCALLY / FINAL REVIEW AND MERGE PENDING**; **M6E–M6G — NOT STARTED**. **PR #126 — MERGED** at
 `f466fc1cdbfb53325a1db11445736bdc5ea7c6f4`, the operator-reported deployed baseline.
 **Migration 025 — APPLIED TO WORKING STAGING**, once on October 17, 2026.
 The [M6B closeout](sprint-8.8-m6b-closeout.md) separates the earlier native PASS,
@@ -28,10 +28,12 @@ browser navigation/CSP/inert-control validation. These remain mandatory, unexecu
 future gates; their allocation authorizes no browser work.
 PR #129 merged at `1134c65c5f6cdfea804d634fad73e2d8a354d065`; the
 [final owner receipt](https://github.com/fvd8383/ultimate-back-office/pull/129#issuecomment-6549478529)
-makes M6C formal closure effective. M6D service/CLI/local regressions and a distinct
-DB-only harness are authored; [remaining native coverage](sprint-8.8-m6d-native-validation.md)
-keeps M6D partial. See the [local implementation record](sprint-8.8-m6d-local-implementation.md).
-No native SQL, host preparation, deployment or browser work was executed. The last operator-reported deployed
+makes M6C formal closure effective. The [M6D source-specific acceptance record](sprint-8.8-m6d-native-acceptance.md)
+records native v3 PASS at `7cdbbeef`: 29 cases, 146 subcases, 22 ordering observations,
+five transport legs, five authoritative observations and 790 assertions; all cleanup PASS.
+The current scope guard is reconciled locally; the later test/documentation head is
+not itself natively executed. Final review, merge and formal closeout remain pending.
+This local reconciliation performed no native SQL, host preparation, deployment or browser work. The last operator-reported deployed
 application remains `f466fc1…`; both backup copies/receipts are retained and restore
 remains NOT EXECUTED.
 
@@ -69,8 +71,8 @@ authenticated smoke separately; this M6C documentation closeout deploys/migrates
 
 Names and contracts below originated as reviewed M6A proposals. The M6B record
 identifies the implemented persistence slice; M6C artifact implementation is merged in PR #128
-and formally closed. M6D deployment services are locally implemented with explicit native
-coverage gaps; operational publishers and UI controls remain unimplemented. Actual host capabilities require the future gate in section
+and formally closed. M6D deployment services have [source-specific native v3 PASS](sprint-8.8-m6d-native-acceptance.md),
+with scope reconciled locally and final review/merge/formal closeout pending; operational publishers and UI controls remain unimplemented. Actual host capabilities require the future gate in section
 18. No customer DNS, Host-to-site resolution, LeadHub ingestion, domain conversion,
 EMD launch, or legacy runtime cutover is added to M6. Those remain M7/M8.
 
@@ -1687,7 +1689,7 @@ application; limited authenticated smoke passed and formal closeout was accepted
 M6C has [core, journal and supplemental native PASS](sprint-8.8-m6c-native-acceptance.md),
 with G1–G4 and documented limits owner-accepted and B14/B16 future allocation approved.
 The [M6C closeout](sprint-8.8-m6c-closeout.md) is effective under PR #129 and the final owner
-receipt. M6D is PARTIALLY IMPLEMENTED / REVIEW REQUIRED with native coverage gaps;
+receipt. M6D has NATIVE V3 PASS AT 7cdbbeef / SCOPE RECONCILED LOCALLY / FINAL REVIEW AND MERGE PENDING;
 M6E–M6G are NOT STARTED. The [M6B closeout](sprint-8.8-m6b-closeout.md) records
 evidence and limitations. The table preserves reviewed scope and future gates, not
 a claim that all 77 planned acceptance cases are complete. M6B formal closure is accepted.
@@ -1707,8 +1709,8 @@ authorized M6B implementation and native validation; PR #126 merged and the oper
 completed its working-staging deployment/migration. Limited authenticated smoke passed;
 formal closeout was accepted in PR #127. Frank manually merged M6C in PR #128 and
 accepted its three source-specific native results, G1–G4 and documented limitations.
-B14/B16 future allocation is approved; formal M6C closeout alone remains proposed
-until explicit owner acceptance and merge of the closeout PR.
+B14/B16 future allocation remains approved and unexecuted; formal M6C closeout was
+subsequently accepted through merged PR #129 and its final owner receipt.
 Its gate remains the approved isolated build-only fixture in the table; no activation
 or working-staging build is added. The 77-case matrix remains broader than this gate.
 Staging-only contract/profile can close

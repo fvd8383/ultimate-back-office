@@ -1,13 +1,26 @@
 # Sprint 8.8 M6D — Local implementation
 
-Status: **OPEN / NATIVE ACCEPTANCE PENDING**. Baseline: `1134c65c5f6cdfea804d634fad73e2d8a354d065`.
+Status: **NATIVE V3 PASS AT 7cdbbeef / SCOPE RECONCILED LOCALLY / FINAL REVIEW AND MERGE PENDING**. Baseline: `1134c65c5f6cdfea804d634fad73e2d8a354d065`.
 Branch: `codex/sprint-8.8-m6d-deployment-authority`.
 
 M6C is COMPLETE / ISOLATED NATIVE GATES PASS / FORMALLY CLOSED under the
 [final owner receipt](https://github.com/fvd8383/ultimate-back-office/pull/129#issuecomment-6549478529).
 M6B remains formally closed, M6 remains IN PROGRESS, and M6E–M6G remain NOT STARTED.
-The authoring records below are historical. The latest failed native run and the shared
-transaction correction below supersede their pre-run status; they do not establish acceptance.
+
+## Current acceptance — 2026-11-01
+
+The [source-specific acceptance record](sprint-8.8-m6d-native-acceptance.md) verifies the
+complete original native PASS at `7cdbbeef639d670208d7bdd9318bc7097649a043`: 29/146/22/5/5,
+790 native assertions, exit0/no signal in 238.112168099 seconds, strict report acceptance
+and all cleanup layers PASS. The two Linux transaction suites separately passed 773/97
+assertions and five lints. This scope-policy/documentation head is not natively executed;
+all application/native behavior remains equivalent to that fixed tested source.
+The current guard and focused negative controls pass locally; historical scope failure
+remains FAILED at its old policy, not waived. Final review, merge and formal closure are pending.
+
+The correction/authoring sections below are historical snapshots at their named SHAs.
+Their NOT EXECUTED/pending statements describe those checkpoints and are superseded
+for the DB-only v3 gate by this complete run. They supply no partial-run credit.
 
 ## Shared transaction failure correction after 48f6d2b
 
@@ -18,7 +31,7 @@ correction**, not a test-only change, deployment, queue revision or M6C reopenin
 
 ### Retained native observation
 
-The latest original report is in
+The latest original report at that correction checkpoint was in
 `/mnt/ubo_stage_testdata/codex-validation/evidence/m6d-v3-native-20261101T180413Z-60b78675cbfb`.
 Its unchanged bytes match the supplied SHA-256
 `ad715659d862be644cf1700873f731f82d83a444a82af02ad914c9d594f33fb4`.
@@ -253,7 +266,7 @@ retaining the original 28/142 and all **22 ordering/progress observations**. The
 `ack-withheld` and `authoritative-unavailable`: four structured subcase records with
 five relay/worker legs and five fresh direct authoritative observations. Old v2
 admission, EXECUTE markers and reports cannot satisfy the expanded gate. Full
-[mechanism and finite inventory](sprint-8.8-m6d-native-validation.md#deployment-result-transport-addition--authored-not-executed)
+[mechanism and finite inventory](sprint-8.8-m6d-native-validation.md#deployment-result-transport-addition--historical-authoring-at-5f32b1b)
 are documented with the exact preparation prerequisites.
 
 The unchanged definitions-only M6C packet recognizer handles the two exact COMMIT
@@ -486,7 +499,7 @@ M6C stays formally closed and M6E–M6G stay NOT STARTED.
 | C01–C06, C08–C13, D17 | Independent recovery / separate modeled external pointer | MySQL recovery/commit barriers; M6E helper/absence proof |
 | U01–U02, S03 | Current actor and trusted worker checks / scoped history fixtures | Actor deletion, role locks; M6F HTTP controls |
 | D14, CLI admission | Transaction guard / synthetic child processes | Protected Linux invocation; no operational publisher in M6D |
-| DB-only native gate | Distinct M6D inventory, admission/report/cleanup tests | Separately authorized disposable MySQL run, NOT EXECUTED |
+| DB-only native gate | Distinct M6D inventory, admission/report/cleanup tests | Complete v3 PASS at 7cdbbeef; see source-specific acceptance, with external behavior limits |
 
 All 25 migration sources and existing M6C artifact/native source files have a local
 baseline integrity manifest outside Git. Migration 025 is the intended schema;
@@ -633,17 +646,17 @@ checks the newly authorized perimeter and immutable M6C/migration sources.
 
 ## Remaining work and handoff
 
-The service slice is locally implemented and the finite A–D plus transport obligations
-have executable v3 cases/subcases. They remain **AUTHORED / NOT EXECUTED**, not closed
-acceptance gaps. Review the exact source, the artifact/publisher model boundary and
-the authored deployment-result transport mechanism described above, then separately
-authorize isolated preparation/admission and exact-source native execution. Missing
-native capability is failure/blockage, never a mock fallback or skip-to-PASS. Actual
-helper/Apache/network evidence remains M6E; controls and browser evidence remain M6F/M6G.
+The finite A–D plus transport obligations have complete source-specific native v3 PASS
+at `7cdbbeef`, verified offline from original bytes. The current scope policy is reconciled
+locally without changing application/native behavior. Remaining M6D gates are final
+exact-new-head review, merge and formal closeout. No native rerun is needed for this
+equivalent test/documentation change. Actual helper/Apache/HTTP/filesystem evidence
+remains M6E; controls and browser evidence remain M6F/M6G.
 The accepted B14/B16 allocation is unchanged and unexecuted. M6 stays IN PROGRESS.
 
-No server, real SQL/migration, container/image/service, installation, operational
-deployment/provider, backup/restore/prune or merge operation occurred. GitHub source
+During this local scope/evidence reconciliation, no server, SQL/migration, container/image/
+service, installation, operational deployment/provider, backup/restore/prune or merge
+operation occurred. Saved operator observations are not new host verification. GitHub source
 publication/review is the only external write. Last deployed source remains the
 operator-reported `f466fc1cdbfb53325a1db11445736bdc5ea7c6f4`; backups/receipts remain
 retained and restore NOT EXECUTED. Local test-only restore decisions are not a backup

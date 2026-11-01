@@ -1,17 +1,34 @@
 # Sprint 8.8 M6D — DB-only native validation
 
-**OPEN / NATIVE ACCEPTANCE PENDING.** The latest native attempt at `48f6d2b` failed
-service-error classification after all schema probes passed. The shared transaction
-correction has local synthetic/regression validation only. Earlier
-AUTHORED / NOT EXECUTED statements describe their original authoring checkpoints.
-No native/infrastructure operation was run during this desktop correction.
+**NATIVE V3 PASS AT 7cdbbeef / SCOPE RECONCILED LOCALLY / FINAL REVIEW AND MERGE PENDING.**
+The [source-specific acceptance record](sprint-8.8-m6d-native-acceptance.md) verifies the
+complete 2026-11-01 native run, original report hash, actual identities and limitations.
+This later scope-policy/documentation head is not natively executed; application and
+native harness remain identical to the tested source. Historical failed runs stay FAILED.
+Earlier AUTHORED / NOT EXECUTED statements below describe their named authoring
+checkpoints, not current execution status. No native/infrastructure operation occurred
+during this local evidence reconciliation; final review, merge and formal closeout remain pending.
 
 The distinct profile is `m6d-db-authority-v3`. Its exact **29 cases / 146 named subcases** are owned by
 [M6DNativeContract](../tests/support/WebsitePlatformM6DNativeContract.php).
 An M6B, core20, journal3 or supplement17 report cannot satisfy it. The existing M6C
 native profiles and their separate accepted source attribution remain unchanged.
 
-## Latest preserved native result
+## Latest preserved native result — 7cdbbeef
+
+Original report SHA-256:
+`b95d3bb44616b445ba365ab7c037772febb9f443dd8d7b8a546e0dfb11297e63`.
+All 29 cases, 146 subcases, 22 ordering/progress observations, five transport legs and
+five fresh authoritative observations PASS; the 18 schema probes are included subcases.
+790 assertions equal both the case-total and subcase-total sums. Coordinator exit0,
+no signal, 238.112168099 seconds within the unchanged 600-second deadline. Strict
+`acceptPublished`, capture/publication and child/schema/namespace cleanup all PASS.
+Actual faulted service paths now retain `database_failure` with HY000/2006 loss, and
+independent reads establish uncommitted/committed state before recovery/history handling.
+The precise internal transaction-cleanup phase remains unobserved. See the acceptance
+record for the 25 selected originals, offline verification and preserved model boundaries.
+
+## Historical native failure — 48f6d2b
 
 At source `48f6d2b3fd3d30d2669046f63e94aae3616e26d6`: **28 PASS / 1 FAIL cases**,
 **143 PASS / 1 FAIL / 2 UNREACHED subcases**, all **22 ordering observations PASS**,
@@ -121,8 +138,9 @@ and the publisher model. History-restrict keeps the exact reference it tests.
 Only four demonstrated fixture/helper defects were corrected; no production/schema defect
 was established. The [executable local regression](../tests/WebsitePlatformM6DNativeSchemaTest.php)
 checks the actual helpers, not a copied implementation. It also keeps a finite source/DDL
-consistency check for every row above. Exact MySQL rejection of all 18 probes remains
-**UNOBSERVED on the corrected source**; an unrelated constraint is always FAIL.
+consistency check for every row above. At the 48f6d2b authoring checkpoint, exact
+MySQL rejection of all 18 probes was unobserved. All 18 subsequently passed, including
+in the complete 7cdbbeef run; an unrelated constraint is always FAIL.
 
 Mismatch diagnostics now preserve expected versus observed fields through a bounded typed
 exception and the existing primary-failure report path. Parsed identifiers must belong to
@@ -193,7 +211,7 @@ observable independent-connection waits. It must not have operational-schema acc
 The coordinator independently checks database, account, hostname, UUID and MySQL 8.4
 on every connection, including cleanup. Existing migration pins are not changed.
 
-## Commands for later review — NOT RUN
+## Historical command templates — execution now recorded above
 
 Substitute only values verified by the authorized preparer. These are templates, not
 executed evidence or authorization to prepare a droplet/container now.
@@ -212,7 +230,7 @@ failed run or combine results from different source/image/token identities.
 
 ## Exact case inventory and evidence layers
 
-### Finite expansion map at the reviewed queue-correction baseline
+### Finite expansion map at the reviewed queue-correction baseline (historical authoring)
 
 The expansion starts at `926027c772004a4cd2e223a4b2242c4d21855283` and changes
 test infrastructure only. Its obligations are **AUTHORED / NOT EXECUTED**; the
@@ -288,7 +306,7 @@ part of v3 acceptance; `service-observations` denotes a retained original case.
 | `deployment-history-access` | `operator-deletion`, `queue-index`, `history-index` |
 | `result-commit-transport` | `unarmed-success`, `commit-not-delivered`, `ack-withheld`, `authoritative-unavailable` |
 
-### Deployment-result transport addition — authored, not executed
+### Deployment-result transport addition — historical authoring at 5f32b1b
 
 Starting head: `b0cda17699ed862301738d776308c244f0dbe636`; its exact-head review
 completed with no findings. The original **28 / 142 / 22** inventory remains intact.
@@ -371,15 +389,16 @@ At most worker+relay are active. Listener/client/backend resources close on faul
 early exits; exact tracked children must be reaped before schema cleanup. Primary
 failure, child cleanup, schema cleanup, publication and later host capture remain
 separate. Existing 600/45/10/3-second, memory/PID/tmpfs/output/report limits remain.
-The expanded total duration is **UNVERIFIED**, not a demonstrated timeout.
+At transport authoring, the expanded duration was **UNVERIFIED**, not a demonstrated timeout.
+The subsequent complete run at 7cdbbeef took 238.112168099 seconds; limits stayed unchanged.
 
 Locally executed [wire regressions](../tests/WebsitePlatformM6DNativeWireTest.php) use
 the actual parser/queue/boundary/contract helpers with synthetic packets, memory
 streams, fake PDO and bounded synthetic children. They do not open a listener or TCP
 connection. Final results are recorded in the [implementation record](sprint-8.8-m6d-local-implementation.md#deployment-result-transport-authoring).
-Native mysqlnd/MySQL transport behavior, rollback/error classification and execution
-timing remain unexecuted. No further transport mechanism is deliberately deferred;
-that is source coverage, not native acceptance. M6D remains pending validation and acceptance.
+At that authoring checkpoint, native mysqlnd/MySQL transport behavior, error
+classification and timing remained unexecuted. The complete 7cdbbeef run now supplies
+those DB-only observations; the exact internal cleanup call/phase remains unexported.
 
 The fixture uses real services/native PDO and the actual schema. Artifact verification,
 publisher observations, health, fences and compensation are explicit test models;
@@ -393,8 +412,8 @@ parameterize grant expiry/revocation/role loss at claim/activation/success, fail
 unknown replay, malformed health, NULL compensation, authority/tenant/rights denials,
 and model failures. The finite A–D expansion above now supplies executable native
 obligations for those documented DB-only gaps. **Authoring does not close native
-acceptance.** Real MySQL behavior and total run duration remain unverified; this is
-not an all-D/R/C/S/U or M6E–M6G acceptance claim.
+acceptance.** Real MySQL behavior and duration were unverified at authoring; the
+subsequent source-specific PASS is still not an all-D/R/C/S/U or M6E–M6G acceptance claim.
 
 Exact grant-field cases call the actual grant owner under a site transaction with
 authoritative existing alternative records; they isolate individual tuple fields.
@@ -430,7 +449,7 @@ clean/upgrade schema and previously covered structural checks; no fresh DDL camp
 is added. Fixture retirement occurs only after observations and is never counted as
 proof of service cancellation.
 
-### Local harness proof and remaining execution requirements
+### Local harness proof and execution requirements at b0cda (historical)
 
 Historical results at `b0cda176`, before the v3 addition: on Windows/PHP 8.4.24,
 report controls and harness regressions exercised the v2 contract, protocol/barrier
@@ -463,7 +482,7 @@ HTTP/Apache/helper/filesystem activation and fencing remain outside the DB-only 
 No production defect was demonstrated by local controls; native implementation,
 driver and constraint behavior remain unverified until execution.
 
-### PR #130 bounded queue-progress obligation — NOT EXECUTED
+### PR #130 bounded queue-progress obligation — historical authoring at 926027c
 
 The existing publish/restore request-history cases now create A/B against one pointer
 through the service, complete A, request C against the advanced pointer, then claim C.
@@ -501,7 +520,7 @@ coordinator terminates/reaps its tracked children before schema cleanup; a survi
 child blocks cleanup. Once the empty baseline and exact ownership are admitted,
 cleanup reconnects/rechecks identity and drops **only** `ubo_m6d_TOKEN`, verifying its
 absence. A mismatch/non-owned baseline permits no DROP. This destructive action is
-source code for the later explicitly authorized disposable run, not performed here.
+the protocol used by the separately authorized disposable run; this local task only verifies saved evidence.
 State-file/tmpfs/namespace teardown is the external preparer's separately recorded
 responsibility; the coordinator does not prune host files, images or volumes.
 
