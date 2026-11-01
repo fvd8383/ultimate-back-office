@@ -1,0 +1,7 @@
+#!/usr/bin/python3 -I
+"""Fixed systemd socket-activated entry. No command/path/environment arguments."""
+import sys
+sys.path.insert(0, '/usr/local/lib/ubo-site-publisher')
+from ubo_site_publish import main
+if __name__ == '__main__':
+    raise SystemExit(main())

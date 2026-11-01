@@ -1,0 +1,54 @@
+{
+  "NOTE": "DOCUMENTATION ONLY; deliberately rejected by every loader. Do not install this combined example.",
+  "worker.json": {
+    "version": 1,
+    "environment": "staging",
+    "worker_id": "REPLACE_WITH_VERIFIED_WORKER_ID",
+    "worker_uid": null,
+    "publisher_uid": null,
+    "authority_uid": null,
+    "helper_socket": "/run/ubo-site-publisher/publish.sock",
+    "application_config_sha256": null,
+    "artifact_work_root": "REPLACE_WITH_VERIFIED_M6C_WORK_ROOT",
+    "artifact_root": "REPLACE_WITH_VERIFIED_M6C_SEALED_ROOT",
+    "bindings": [{
+      "site_id": null, "site_key": null, "target_id": null,
+      "binding_key": null, "binding_version": null,
+      "candidate": {"host": null, "ip": null, "port": 443},
+      "active": {"host": null, "ip": null, "port": 443},
+      "ca_file": null, "client_certificate": null, "client_key": null
+    }]
+  },
+  "helper.json": {
+    "version": 1, "environment": "staging", "publisher_uid": null,
+    "worker_uid": null, "authority_uid": null, "apache_gid": null,
+    "source_owner": null, "source_root": null,
+    "bindings": [{"site_id": null, "target_id": null, "site_key": null,
+      "binding_key": null, "binding_version": null, "served_root": null, "journal_root": null}]
+  },
+  "authority.json": {
+    "version": 1, "authority_uid": null, "publisher_uid": null,
+    "dsn": null, "credentials_sha256": null, "ca_file": null,
+    "bindings": [{"site_id": null, "target_id": null, "site_key": null, "binding_key": null, "binding_version": null}]
+  },
+  "authority-credentials.json": {"username": null, "password": null},
+  "host-receipt.json": {
+    "version": 1, "profile": "m6e-host-v1", "worker_config_sha256": null,
+    "verified_at": null, "expires_at": null,
+    "gates": {
+      "apache": {"result": "UNEXECUTED", "evidence_sha256": null},
+      "filesystem": {"result": "UNEXECUTED", "evidence_sha256": null},
+      "ownership": {"result": "UNEXECUTED", "evidence_sha256": null},
+      "assets": {"result": "UNEXECUTED", "evidence_sha256": null},
+      "runtime": {"result": "UNEXECUTED", "evidence_sha256": null},
+      "health": {"result": "UNEXECUTED", "evidence_sha256": null},
+      "recovery": {"result": "UNEXECUTED", "evidence_sha256": null},
+      "provisioning": {"result": "UNEXECUTED", "evidence_sha256": null}
+    },
+    "installed_files": {}
+  },
+  "initial-state.json": {
+    "version": 1, "fence": 0, "owner": null, "session": null,
+    "phase": 0, "current": null, "intent": null, "settled": true
+  }
+}

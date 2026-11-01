@@ -3,12 +3,14 @@
 declare(strict_types=1);
 require_once __DIR__ . '/SitePublisher.php';
 require_once __DIR__ . '/SiteServiceSupport.php';
+require_once __DIR__ . '/ApacheDigitalOceanSitePublisher.php';
 
-/** No operational adapter is approved in M6D. Never resolve a class from configuration. */
+/** Hard-coded provider only. Host bindings and dependencies are resolved before SQL work. */
 final class SitePublisherFactory
 {
     public static function forTarget(array $target): SitePublisher
     {
-        throw new SiteServiceException('future_gate_required', 'No approved site publisher is installed.');
+        if(!class_exists(SiteDeploymentRuntime::class,false))SitePublisherHostContract::deny();
+        return SiteDeploymentRuntime::approvedPublisher($target);
     }
 }
