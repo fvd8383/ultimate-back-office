@@ -27,7 +27,7 @@ LockPersonality=yes
 MemoryMax=256M
 TasksMax=4
 UMask=0077
-ReadOnlyPaths=@SEALED_M6C_SOURCE_ROOT@
+InaccessiblePaths=@SEALED_M6C_SOURCE_ROOT@ @VERIFIED_M6C_WORK_ROOT@ @WORKER_APPLICATION_CONFIG@ /etc/ubo-site-publisher/worker.json /etc/ubo-site-publisher/authority-credentials.json
 ReadWritePaths=@EXACT_SERVED_SITE_ROOT@ @EXACT_PRIVATE_JOURNAL_ROOT@
 # Only this publisher UID writes current/releases/assets/journal. Worker has no such access.
 # EOF/death releases flock with unresolved durable state; never automatic compensation.

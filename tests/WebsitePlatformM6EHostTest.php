@@ -7,17 +7,17 @@ $deny=static function(Closure $call,string $why)use($check):void{try{$call();}ca
 $b=['site_id'=>10,'site_key'=>'11111111-1111-4111-8111-111111111111','target_id'=>20,'binding_key'=>'fixture-staging','binding_version'=>1,
     'candidate'=>['host'=>'candidate.example.test','ip'=>'127.0.0.1','port'=>443],'active'=>['host'=>'active.example.test','ip'=>'127.0.0.1','port'=>443],
     'ca_file'=>'/etc/ubo-site-publisher/ca.pem','client_certificate'=>'/etc/ubo-site-publisher/client.pem','client_key'=>'/etc/ubo-site-publisher/key.pem'];
-$c=['version'=>1,'environment'=>'staging','worker_id'=>'fixture-worker','worker_uid'=>1001,'publisher_uid'=>1002,'authority_uid'=>1003,
+$c=['version'=>2,'transfer_version'=>1,'environment'=>'staging','worker_id'=>'fixture-worker','worker_uid'=>1001,'publisher_uid'=>1002,'authority_uid'=>1003,
     'helper_socket'=>'/run/ubo-site-publisher/publish.sock','application_config_sha256'=>str_repeat('d',64),
     'artifact_work_root'=>'/srv/fixture-work','artifact_root'=>'/srv/fixture-artifact','bindings'=>[$b]];
-$r=['version'=>1,'profile'=>'m6e-host-v1','worker_config_sha256'=>str_repeat('a',64),'verified_at'=>100,'expires_at'=>200,'gates'=>[],
+$r=['version'=>2,'profile'=>'m6e-host-v2','worker_config_sha256'=>str_repeat('a',64),'verified_at'=>100,'expires_at'=>200,'gates'=>[],
     'installed_files'=>array_fill_keys(['/usr/local/lib/ubo-site-publisher/ubo_site_publish.py','/usr/local/sbin/ubo-site-publish',
         '/etc/ubo-site-publisher/helper.json','/etc/ubo-site-publisher/apache.conf','/etc/ubo-site-publisher/authority.json',
         '/usr/local/lib/ubo-site-publisher/ubo-site-authority.php'],str_repeat('b',64))];
 foreach(SitePublisherHostContract::GATES as $g)$r['gates'][$g]=['result'=>'pass','evidence_sha256'=>str_repeat('c',64)];
 SitePublisherHostContract::validate($c,$r,str_repeat('a',64),150);$check(true,'Pure valid receipt baseline');
-foreach(['production','identity','flag','path','endpoint','binding'] as $case){$bad=$c;
-    match($case){'production'=>$bad['environment']='production','identity'=>$bad['publisher_uid']=1001,'flag'=>$bad['enabled']=true,
+foreach(['old-version','transfer-version','production','identity','flag','path','endpoint','binding'] as $case){$bad=$c;
+    match($case){'old-version'=>$bad['version']=1,'transfer-version'=>$bad['transfer_version']=2,'production'=>$bad['environment']='production','identity'=>$bad['publisher_uid']=1001,'flag'=>$bad['enabled']=true,
         'path'=>$bad['artifact_root']='/srv/../root','endpoint'=>$bad['bindings'][0]['active']['host']='https://evil.invalid/',
         'binding'=>$bad['bindings'][]=$b};
     $deny(fn()=>SitePublisherHostContract::validate($bad,$r,str_repeat('a',64),150),$case);

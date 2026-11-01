@@ -30,7 +30,9 @@ final class SiteDeploymentRuntime implements SiteDeploymentDependencies
         if(Database::config('APP_ENV')!=='staging')self::deny();
         // Existing M6C verifier/store, with external guard; no new renderer/package format.
         $store=new LocalSiteArtifactStore($c['artifact_work_root'],$c['artifact_root'],Closure::fromCallable([SiteDeploymentService::class,'guardExternal']));
-        self::$store=$store;self::$session=new SitePublisherSession($host);self::$host=$host;self::$recoveryOnly=(bool)$recovery;
+        self::$store=$store;self::$session=new SitePublisherSession($host,$recovery?null:
+            new Ubo\M6E\SitePublisherArtifactExport($store,$c['artifact_root'],$c['worker_uid']));
+        self::$host=$host;self::$recoveryOnly=(bool)$recovery;
     }
     public static function bindLease(array $lease): void
     {if(self::$session===null)self::deny();self::$session->bind($lease);}

@@ -19,7 +19,8 @@ final class M6EWireStream
     {
         if($this->reply===''){
             $request=json_decode(self::$written,true,512,JSON_THROW_ON_ERROR);
-            $this->reply=CanonicalJson::encode(['version'=>1,'sequence'=>$request['sequence'],'result'=>'ok','evidence'=>['fixture'=>true]])."\n";
+            $this->reply=($request['operation']==='stage'?CanonicalJson::encode(['version'=>1,'type'=>'transfer_ready','sequence'=>$request['sequence'],
+                'transfer_version'=>1,'transfer_id'=>str_repeat('a',32),'disposition'=>'retained'])."\n":'').CanonicalJson::encode(['version'=>1,'sequence'=>$request['sequence'],'result'=>'ok','evidence'=>['fixture'=>true]])."\n";
         }
         self::$reads++;$part=substr($this->reply,$this->offset,min(5,$count));$this->offset+=strlen($part);return $part;
     }

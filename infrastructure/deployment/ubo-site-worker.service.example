@@ -23,6 +23,7 @@ TasksMax=4
 UMask=0077
 # M6C verification opens its preexisting writer lock read/write, with no rendering.
 ReadWritePaths=@VERIFIED_M6C_WORK_ROOT@
+InaccessiblePaths=@EXACT_SERVED_SITE_ROOT@ @EXACT_PRIVATE_JOURNAL_ROOT@ /etc/ubo-site-publisher/authority-credentials.json
 # NO write grant to served site roots, private publisher journals or Apache config.
 # Network egress: only approved private HTTPS origins and DB, enforced separately.
 # Reconciler needs a separately reviewed fixed invocation of --deployment ID;

@@ -15,7 +15,184 @@ second parent; native-tested `7cdbbeef639…` is an ancestor of that reviewed he
 Its native PASS belongs only to `7cdbbeef`, never this implementation or the merge.
 Historical failures and pre-merge reports are not rewritten or rerun.
 
-## Focused PR #131 review correction
+## Bounded artifact transfer — current local implementation
+
+Starting source: `659d59d7478df5bc0e42886a796a4e78c910ba23`, clean on the existing
+branch. Its exact-head review completed with no findings; the two earlier review
+threads remain resolved. This task implements the missing bridge in one subsequent
+commit. **ARTIFACT TRANSFER — IMPLEMENTED LOCALLY / NOT YET INSTALLED-VERIFIED**.
+**INSTALLED IDENTITY/HTTP/AUTHORITY ACCEPTANCE — NOT EXECUTED**.
+
+`SitePublisherArtifactExport` is worker-only. Scoped committed reads resolve the
+exact release, site, successful build job and original execution producer (including
+an adopted recovery). The unchanged M6C `verifyRelease` runs before and after export,
+not before every file. The existing service also performs its own verification.
+Only raw `metadata/manifest.json`, raw `metadata/validation.json` and the verified
+public inventory leave the worker. There is no rerender, latest-release lookup,
+archive, full-package base64/JSON, journal/lock/snapshot export or caller path.
+Source paths derive from the verified storage key and fixed protected worker roots.
+Pinned per-file/ancestor dev/inode/owner/mode/link/size/time checks and incremental
+length/digest checks reject replacement, links, foreign ownership, changed bytes,
+missing or extra inventory. Worker directories/files stay 0700/0600; shared M6C
+classes, hashes and transaction behavior are unchanged. Filesystem work and the
+transfer occur outside all SQL transactions.
+
+`SitePublisherSession` retains its seven ordinary version-1 wire operations and
+all six public SitePublisher operations/DTOs. Stage adds a mandatory internal
+`transfer_ready` handshake with `transfer_version=1`, request sequence and a fresh
+128-bit helper-generated transfer ID. The helper authenticates the Unix peer,
+validates the request/binding/lease, independently reads committed authority,
+acquires the existing target lock, persists the fence and requires permitted live
+execution before ready. Recovery never admits transfer. An exact retained release
+returns disposition `retained`; the sender sends no file frames and awaits the
+normal stage receipt. A conflict rejects before ready, without repair. This explicit
+branch also prevents a lost-receipt retry from deadlocking over expected bytes.
+
+Disposition `receive` uses UBT1 frames: four-byte magic, one byte C/D type, four-byte
+unsigned network-order length, then exactly that many bytes. Control JSON carries
+version/transfer ID/request sequence and an exact file index, fixed verified path,
+length and SHA-256. Binary D data never enters JSON command parsing. Manifest is
+first, validation second, then sorted manifest public entries. Each file is checked
+and acknowledged before the next; no pipelining/unbounded queue or resumption.
+The raw manifest hash must equal independent authority before its inventory is
+trusted. An explicit end control binds file count, public bytes, metadata bytes,
+data-frame count and manifest hash. EOF cannot complete a transfer; already queued
+extra frames are rejected. Fragmented/coalesced and partial transport is handled by
+exact reads/writes under an absolute deadline.
+
+| Resource | Fixed bound and accounting |
+| --- | --- |
+| Ordinary request/response | 16,384 / 1,048,576 bytes; not enlarged for packages |
+| Control / binary frame | 4,096 / 65,536 bytes; header length checked before allocation/write |
+| Files | 2,000 total including both metadata files; public count at most 1,998 |
+| Public bytes | 104,857,600 total; HTML 1,048,576/file, marker 1,024, CSS/media/PDF 20,971,520 |
+| Metadata | Manifest 1,048,576 plus validation 16,384; separate from public allowance |
+| Transfer control / framing | At most 16,392,192 control bytes (both directions), 9,664 frames, nine header bytes/frame |
+| Stream allocation | 65,536-byte chunks; manifest up to 1 MiB. Existing M6C/Python verifiers and publication still allocate a bounded individual file up to 20 MiB (read assembly can temporarily double that); never a full package |
+| Helper disk | Receive plus public stage plus asset insertion: at most three public payloads, two manifests and one validation file, with bounded file/directory counts and a 357,711,872-byte free-space admission reserve (allocation units at most 4 KiB). Filesystem metadata/quota/exhaustion remain installed gates; failed writes still deny. Existing retained history is not deleted or credited as free space |
+| Deadline | Stage including export verification, transfer, verification, publication and receipt: at most 30 seconds, further capped by helper lease expiry and the original 300-second session. Ordinary operations remain bounded. No progress reset or timeout extension |
+
+The PHP session renews execution through the existing guarded service mechanism
+before transfer; the renewal commits before external work. The 30-second phase
+needs no periodic extension of the 120-second lease. The helper rechecks authority
+at least at one-second progress intervals, after reception and before publication,
+candidate update and acknowledgement; observer calls have an absolute five-second
+cap and respect the remaining stage budget. Possession never authorizes activation.
+
+Ingress uses a unique exclusive helper-owned 0700 subtree under private served
+`staging`, with 0600 files and pinned no-follow directory descriptors. Bytes remain
+outside asset, candidate and active aliases. Complete received packages pass the
+actual existing `verify_package`, including exact validation bytes, complete
+inventory, public/full hashes and the non-circular marker. Only then can the existing
+corrected stage path publish retained assets/pinned manifests through complete
+private temporaries and atomic no-replace operations. Candidate/current behavior,
+lock lifetime, fence, settlement and unknown-DB-outcome semantics are preserved.
+
+Failure never fabricates a receipt, reconnects, activates or compensates. Cleanup
+verifies the invocation's recorded inode identities and removes only its private
+receive files/directories; secondary failure gets a separate fixed diagnostic and
+cannot replace the first phase/index error. A post-publication error or lost final
+acknowledgement leaves complete installed objects and an unresolved journal; no
+nothing-changed claim or destructive repair. Other private incomplete staging and
+crash leftovers keep their existing semantics. No broad cleanup/prune was added.
+
+The production helper has no source-root configuration, no source Tree/member and
+no direct-source fallback, including startup, inspection, probe, recovery and
+settlement. Existing component source adapters now live only in test subclasses.
+Worker/helper configs and the receipt use version 2 (`m6e-host-v2`); authority config
+also uses version 2. Old incompatible configs fail, while ordinary request version 1
+remains unambiguous through the mandatory stage handshake. Each identity verifies
+its own loaded code/config pins. The helper does not read worker config/application
+credentials or the authority credential file; the worker/authority likewise verify
+their own included files rather than opening another identity's private files.
+Supervision templates deny helper access to original work/sealed roots, worker config
+and credentials, and deny worker access to served/journal roots. No template, receipt,
+account, permissions or service was installed, and no passed receipt was manufactured.
+
+New implementation: `private/classes/SitePublisherArtifactExport.php` and
+`private/classes/SitePublisherTransfer.php`; integration changes are session/runtime,
+host config, helper and identity-specific pin verification. New executable desktop
+regression: `tests/WebsitePlatformM6ETransferTest.py` with the actual PHP transfer
+child. Existing wire/host/helper/filesystem fixtures are updated consistently.
+Exact changed-file inventory and committed hashes are retained in the external SUMMARY.
+
+Local real operations include original M6C builder/validator/store, production
+exporter/session/receiver/publication code, private files, bounded child pipes and
+private loopback protocol tests. Distinct UIDs, Unix permissions/dirfd/renameat2,
+directory/read-only fsync, free-space admission, peer credentials and pointers remain
+explicit Windows models. The original production helper main is exercised with
+modeled host/peer/OS admission to prove inspect/probe/recovery/settlement open only
+served/journal trees. This is not installed admission. Authored separate-identity
+Linux observations are described in the isolated runbook and were syntax-checked
+only. All three broader integration drivers remain INCOMPLETE.
+
+### Focused transfer validation and exact inventory
+
+The final focused run passes 280 PHP behavioral assertions plus the current M6E
+scope guard, and 50 Python tests. Commands, wall times, stdout/stderr, failed runs
+and normalized source hashes are retained outside Git in the task's `SUMMARY.txt`
+and JSON evidence. PHP 8.4.24, Python 3.14.7 and Git 2.56.0.windows.2 were used.
+
+| Program | Observed result | Command wall seconds |
+| --- | --- | ---: |
+| M6E protocol | 19 assertions PASS | 6.004 |
+| M6E host | 33 assertions PASS; default-deny/admission fixtures | 0.409 |
+| M6E authority | 18 assertions PASS; sequential PDO fixtures | 0.304 |
+| M6E health | 43 assertions PASS; synthetic HTTP/TLS | 0.547 |
+| M6D CLI / execution / recovery | 44 / 63 / 60 assertions PASS | 3.489 / 1.026 / 0.626 |
+| Current M6E scope, working files | 146 assertions PASS | 2.830 |
+| Actual PHP/Python transfer | 20 tests PASS | 23.062 |
+| Actual PHP/Python ordinary wire | 5 tests PASS | 7.385 |
+| Immutable publication | 8 tests PASS | 3.584 |
+| Helper | 17 tests PASS | 5.090 |
+
+The initial composite transfer run exceeded its outer runner timeout and reported
+a retained-case fixture-startup deadline error before staging. That failure is kept;
+its cause is not attributed to the host without evidence. The isolated retained case
+then passed, followed by the full transfer suite and a final full run after adding
+receive-directory-open cleanup coverage. Production's 30-second stage bound was
+never extended. Development also exposed obsolete direct-source fixture assumptions,
+Windows stream/dirfd/diagnostic model defects and an owner-test path normalization
+error; those failures and corrections are recorded separately, not credited as PASS.
+No full 68-program campaign, long M6C synthetic launcher, historical closed scope
+check or native/infrastructure gate was run.
+
+This transfer change contains exactly these 22 paths (six new):
+
+```text
+docs/sprint-8.8-m6e-isolated-validation.md
+docs/sprint-8.8-m6e-local-implementation.md
+infrastructure/deployment/site-publisher-host-contract.json.example
+infrastructure/deployment/ubo-site-authority.php
+infrastructure/deployment/ubo-site-publisher@.service.example
+infrastructure/deployment/ubo-site-worker.service.example
+infrastructure/deployment/ubo_site_publish.py
+private/classes/SiteDeploymentRuntime.php
+private/classes/SitePublisherArtifactExport.php [new]
+private/classes/SitePublisherHostContract.php
+private/classes/SitePublisherSession.php
+private/classes/SitePublisherTransfer.php [new]
+tests/WebsitePlatformM6EHelperTest.py
+tests/WebsitePlatformM6EHostTest.php
+tests/WebsitePlatformM6EIsolated.py
+tests/WebsitePlatformM6EScopeTest.php
+tests/WebsitePlatformM6ETransferTest.py [new]
+tests/support/WebsitePlatformM6EFilesystem.py
+tests/support/WebsitePlatformM6EIdentityChild.php [new]
+tests/support/WebsitePlatformM6EIdentityDriver.py [new]
+tests/support/WebsitePlatformM6ETransferChild.php [new]
+tests/support/WebsitePlatformM6EWireChild.php
+```
+
+Changed PHP files are linted and changed Python files AST-parsed without bytecode;
+the authored native entry points are not imported or executed. Documentation links,
+Git inventory and whitespace are checked. Every `Tree` method, including corrected
+atomic publication, is AST-identical to 659d59d; the 13-case isolated inventory is
+unchanged. Shared protected classes, 25 migrations/pins, 77 definitions and closed
+native contracts/reports/policies remain unchanged. Final staged/committed scope and
+exact-head review observations belong to the external evidence receipt.
+
+## Focused PR #131 review correction — historical 659d59d evidence
 
 Starting source: `528b47fefbe2e7bacd4a3b7e8a365de7b4db8aa2`, verified clean on
 the existing branch with the PR still draft. Its completed review had two unresolved
@@ -72,10 +249,10 @@ and private leftovers do not create permanent-name conflicts or authorize prunin
 The actual stage call sites use this primitive. Private incomplete stage writes,
 replaceable state journals and current/candidate replacement retain their separate
 semantics. Target locking, fencing, fresh authority, settlement, limits/timeouts and
-admission are unchanged. The worker-private 0700/0600 source-access blocker is not
-solved by this change. The artifact-transfer bridge and all three incomplete
-integration drivers remain unimplemented; M6E remains PARTIALLY IMPLEMENTED /
-REVIEW REQUIRED. M6C/M6D stay closed and M6F–M6G remain not started.
+admission were unchanged by that correction. At 659d59d the source-access bridge
+was still missing; the current transfer section above supersedes that gap. The
+three broader integration drivers remain incomplete; M6E remains PARTIALLY
+IMPLEMENTED / REVIEW REQUIRED, with M6C/M6D closed and M6F–M6G not started.
 
 The new publication suite executes the real primitive with real private regular-file
 I/O, fault injection and exact replay checks. Dirfd, Unix ownership/modes/timestamps,
@@ -99,8 +276,8 @@ results are recorded below; the initial 68-program campaign remains historical.
 | `ApacheDigitalOceanSitePublisher` | Implements the six unchanged SitePublisher operations and validates existing receipts/observations. No lifecycle, grant, deployment, job, attempt or DB-pointer writes. |
 | `SitePublisherHostContract` | Protected Linux CLI startup, fixed config/receipt locations, root ownership and nonwritable ancestors, versioned staging bindings, distinct UIDs, immutable in-memory resolution, eight evidence-backed host gates, short-lived receipt and installed-file hashes. Unknown platform/config/provider/binding denies before helper/network/artifact work. |
 | `SiteDeploymentRuntime` / factory | Hard-coded `apache-digitalocean-v1` only; startup creates dependencies, `assertReady` performs memory-only checks under locks. Existing M6C `SiteDeploymentArtifacts` and `LocalSiteArtifactStore` perform verification. No fallback, environment override, force switch, public dependency setter or production adapter. |
-| `SitePublisherSession` | Bounded version-1 JSON over a protected local supervisor socket. Lease token stays inside the private channel. Exact sequence/shape/size checking; no commands, paths, credentials or hosts in the protocol. |
-| Python `ubo-site-publish` / `ubo_site_publish.py` | Linux descriptor-relative no-follow source reads and mutations, regular-file/owner/device/nlink checks, exact manifest/inventory/size/digest checks, exclusive staging, content-addressed site assets, sealed release replay, renameat2 no-replace sealing and sibling symlink replacement. |
+| `SitePublisherSession` | Bounded version-1 JSON and mandatory stage-only UBT1 transfer over the same protected local supervisor socket. Lease token stays inside the private channel. Exact sequence/shape/size checking; no commands, paths, credentials or hosts in the protocol. |
+| Python `ubo-site-publish` / `ubo_site_publish.py` | Linux descriptor-relative private receive/retained reads and mutations; no worker source access, regular-file/owner/device/nlink checks, exact manifest/inventory/size/digest checks, exclusive staging, content-addressed site assets, sealed release replay, renameat2 no-replace sealing and sibling symlink replacement. |
 | `SitePublisherAuthority` / `ubo-site-authority.php` | Separate read-only observer of committed operation, original execution, current attempt/lease/token/fence, binding, expected DB pointer and permitted phase. Dedicated protected SELECT-only credential contract; fresh read-only transaction completes before any reply. No real connection executed locally. |
 | `SiteHttpHealthChecker` | Actual curl implementation pins destination and Host/SNI, verifies certificates, uses client TLS credentials, disables proxies/redirect following, and bounds body/header/connect/request/phase work. Tests use synthetic responses because desktop curl/TLS/Apache are not installed/verified. |
 | Apache and systemd examples | Separate active/candidate private TLS vhosts, mTLS plus network access control, static-only handlers, GET/HEAD, exact per-site assets, no-store/security headers, absence 503 and bounded supervisor sessions. Templates only; all unknown host/account/group/certificate values remain placeholders. |
@@ -148,7 +325,7 @@ The helper independently re-reads authority immediately before switching. The co
 M6D activation-authorizing transaction remains the authorization point; no claim of
 continuous SQL locking across filesystem work is made. A revoked lease cannot finalize
 success; a new owner still has to acquire the external lock. Sessions last at most
-300 seconds, with 30-second socket waits and an independent supervisor hard timeout.
+300 seconds, with absolute 30-second operation/transfer bounds and an independent supervisor hard timeout.
 No SQL transaction spans helper, HTTP or artifact I/O.
 
 After result handling, the CLI requests settlement; the helper resolves the committed
@@ -215,14 +392,10 @@ Linux component cases from still-incomplete Apache/provisioning/installed-integr
 drivers. The harness returns INCOMPLETE rather than treating those missing cases as
 PASS. This concrete integration gap is why the current milestone is **PARTIALLY
 IMPLEMENTED**, despite executable local publisher/helper/health/authority components.
-The installed integration also needs an explicit sealed-artifact access bridge:
-M6C creates worker-owned 0700 directories and 0600 files, while this helper runs as a
-distinct unprivileged UID. A read-only bind mount does not grant access, and an
-inherited ACL can be masked by M6C's explicit chmod. This PR does not relax M6C modes,
-add root/DAC privileges, or implement a private artifact-streaming channel. Thus the
-direct source-tree reader cannot consume newly built M6C artifacts under the default
-mode policy; the ownership/runtime host gates must remain unverified until a reviewed
-bridge exists and passes installed integration tests.
+The local bounded bridge now replaces the unusable direct-source reader while
+preserving worker-private M6C 0700/0600 modes and separate unprivileged identities.
+Actual installed ownership/runtime/authority gates remain unverified. Local transfer
+success does not prove those gates or complete Apache/provisioning acceptance.
 No production enablement, installation, operational host preparation, live database,
 SSH, public URL, deployment, migration, provider, container, service, backup, system
 restore, prune, merge or formal closure occurred. Fixture website restore tests are

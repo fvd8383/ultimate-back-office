@@ -8,10 +8,13 @@ try {
     if(PHP_SAPI!=='cli'||PHP_OS_FAMILY!=='Linux'||count($argv)!==1||!extension_loaded('pdo_mysql')||!extension_loaded('sockets'))SitePublisherHostContract::deny();
     $config=SiteBuildContract::decode(SitePublisherHostContract::protectedFile('/etc/ubo-site-publisher/authority.json',16384),16384);
     SiteDeploymentContract::keys($config,['version','authority_uid','publisher_uid','dsn','credentials_sha256','ca_file','bindings']);
-    if($config['version']!==1||posix_geteuid()!==$config['authority_uid']||$config['authority_uid']===$config['publisher_uid'])SitePublisherHostContract::deny();
+    if($config['version']!==2||posix_geteuid()!==$config['authority_uid']||$config['authority_uid']===$config['publisher_uid'])SitePublisherHostContract::deny();
     $receipt=SiteBuildContract::decode(SitePublisherHostContract::protectedFile(SitePublisherHostContract::RECEIPT,65536),65536);
-    if($receipt['profile']!=='m6e-host-v1'||$receipt['expires_at']<=time()||$receipt['verified_at']>time())SitePublisherHostContract::deny();
-    foreach($receipt['installed_files'] as $p=>$h)if(hash('sha256',SitePublisherHostContract::protectedFile($p,2097152))!==$h)SitePublisherHostContract::deny();
+    if($receipt['version']!==2||$receipt['profile']!=='m6e-host-v2'||$receipt['expires_at']<=time()||$receipt['verified_at']>time())SitePublisherHostContract::deny();
+    foreach(array_merge(get_included_files(),['/etc/ubo-site-publisher/authority.json']) as $p) {
+        $h=$receipt['installed_files'][$p]??null;
+        if(!is_string($h)||hash('sha256',SitePublisherHostContract::protectedFile($p,2097152))!==$h)SitePublisherHostContract::deny();
+    }
     if(!isset($receipt['installed_files']['/etc/ubo-site-publisher/authority.json']))SitePublisherHostContract::deny();
     // Socket pathname is protected by root-owned ancestors and 0600 publisher ownership.
     // PHP does not expose a portable struct ucred; do not misinterpret its integer socket option.

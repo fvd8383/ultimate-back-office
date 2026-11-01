@@ -1,6 +1,7 @@
 """Real Python publisher/protocol/manifest code, real M6C child and private files.
 Windows filesystem mutation/locks are explicitly modeled; never Linux acceptance.
 """
+from contextlib import contextmanager
 import base64
 import copy
 import importlib.util
@@ -98,6 +99,16 @@ class Files:
 
 
 class ModelPublisher(p.Publisher):
+    def __init__(self, source, served, journal, authority, binding):
+        super().__init__(served, journal, authority, binding)
+        self.fixture_source = source
+
+    @contextmanager
+    def receive_package(self, a, r, channel, transfer_id):
+        # Explicit single-identity component adapter, never constructed by production main.
+        yield self.fixture_source, a['release']['site_key'] + '/' + a['release']['release_key']
+
+
     def acquire(self):
         self.state = p.decode(self.journal.read('state.json', 65536))
         self.lock = 'MODELED-flock'
@@ -318,7 +329,7 @@ class HelperTests(unittest.TestCase):
         staged = self.stage()
         self.a.update(status='activation_attempted', activation_fence=1, permitted=['activate'])
         r = self.request('activate', dict(staged=staged, expected=self.expected(True), context=self.context('activation')))
-        self.authority.change = lambda a, _: a.value.update(live=False) if a.calls >= 4 else None
+        self.authority.change = lambda a, _: a.value.update(live=False) if self.pub.state['intent'] is not None else None
         with self.assertRaises(p.Denied): self.pub.dispatch(r)
         self.assertIsNone(self.served.link())
         self.assertIsNotNone(self.pub.state['intent'])
@@ -360,12 +371,11 @@ class HelperTests(unittest.TestCase):
                 self.assertEqual(p.main(), 1)
         obj = object.__new__(p.Publisher)
         obj.lock = 1234
-        obj.source, obj.served, obj.journal = mock.Mock(), mock.Mock(), mock.Mock()
-        obj.source.close.side_effect = OSError('SECONDARY-TREE')
+        obj.served, obj.journal = mock.Mock(), mock.Mock()
+        obj.served.close.side_effect = OSError('SECONDARY-TREE')
         with mock.patch.object(p.os, 'close', side_effect=OSError('PRIMARY-CLOSE')):
             with self.assertRaisesRegex(OSError, 'PRIMARY-CLOSE'): obj.close()
         self.assertIsNone(obj.lock)
-        obj.source.close.assert_called_once()
         obj.served.close.assert_called_once()
         obj.journal.close.assert_called_once()
 

@@ -28,11 +28,10 @@ final class SitePublisherHostContract
         if(hash('sha256',self::protectedFile($application,65536))!==$config['application_config_sha256']
             ||(fileperms($application)&0007)!==0)self::deny();
         foreach(['artifact_work_root','artifact_root'] as $key)self::protectedDirectory($config[$key],$config['worker_uid']);
-        foreach($receipt['installed_files'] as $path=>$digest) {
-            if(!is_string($path)||!is_string($digest)||hash('sha256',self::protectedFile($path,2097152))!==$digest)self::deny();
-        }
+        // Every process pins its own loaded files; do not read another identity's secrets/config.
         foreach(get_included_files() as $path) {
-            if(!isset($receipt['installed_files'][$path]))self::deny();
+            $digest=$receipt['installed_files'][$path]??null;
+            if(!is_string($digest)||hash('sha256',self::protectedFile($path,2097152))!==$digest)self::deny();
         }
         foreach($config['bindings'] as $b) {
             self::protectedFile($b['ca_file'],1048576);
@@ -46,9 +45,9 @@ final class SitePublisherHostContract
     /** Pure schema/receipt admission; calling it does not produce an admitted runtime. */
     public static function validate(array $c,array $r,string $digest,int $now): void
     {
-        SiteDeploymentContract::keys($c,['version','environment','worker_id','worker_uid','publisher_uid','authority_uid',
+        SiteDeploymentContract::keys($c,['version','transfer_version','environment','worker_id','worker_uid','publisher_uid','authority_uid',
             'helper_socket','application_config_sha256','artifact_work_root','artifact_root','bindings']);
-        if($c['version']!==1||$c['environment']!=='staging'||$c['helper_socket']!=='/run/ubo-site-publisher/publish.sock')self::deny();
+        if($c['version']!==2||$c['transfer_version']!==1||$c['environment']!=='staging'||$c['helper_socket']!=='/run/ubo-site-publisher/publish.sock')self::deny();
         SiteBuildContract::key($c['worker_id']);
         SiteBuildContract::hash($c['application_config_sha256']);
         foreach(['worker_uid','publisher_uid','authority_uid'] as $k)SiteBuildContract::id($c[$k]);
@@ -69,7 +68,7 @@ final class SitePublisherHostContract
             foreach(['ca_file','client_certificate','client_key'] as $k)self::absolute($b[$k]);
         }
         SiteDeploymentContract::keys($r,['version','profile','worker_config_sha256','verified_at','expires_at','gates','installed_files']);
-        if($r['version']!==1||$r['profile']!=='m6e-host-v1'||$r['worker_config_sha256']!==$digest
+        if($r['version']!==2||$r['profile']!=='m6e-host-v2'||$r['worker_config_sha256']!==$digest
             ||!is_int($r['verified_at'])||!is_int($r['expires_at'])||$r['verified_at']>$now||$r['expires_at']<=$now
             ||$r['expires_at']-$r['verified_at']>86400)self::deny();
         SiteDeploymentContract::keys($r['gates'],self::GATES);

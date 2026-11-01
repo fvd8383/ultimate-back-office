@@ -112,12 +112,10 @@ emit overall PASS. Implement their controlled drivers before requesting M6E acce
    compensate blindly or stage a candidate with recovery. No SQL transaction may
    span external work. Any native SQL fixture needs its own explicit authorization
    and source-bound evidence; prior M6D evidence does not prove this new observer.
-   Resolve the concrete source access gap first: existing M6C directories/files are
-   0700/0600 under the worker UID; the distinct unprivileged publisher cannot read
-   them. Read-only mounts and default ACLs do not override those explicit modes.
-   A reviewed bounded artifact-transfer bridge is still needed without weakening
-   M6C modes or granting the helper generic DAC/root access. The current harness uses
-   one fixture UID and therefore cannot prove this installed ownership boundary.
+   The artifact bridge is implemented locally, preserving worker 0700/0600 modes;
+   the production helper no longer reads the worker source. The new transfer-only
+   identity observations below do not complete this driver or prove live SQL,
+   installed systemd restrictions, Apache/TLS or result-settlement behavior.
 
 Additional Linux acceptance obligations: replacement-race stress against every opened
 directory/file and named inode, full source/served ownership/mode/device inspection,
@@ -166,3 +164,75 @@ reader. Routine site operations do not invoke `ubo-stage-deploy`, `ubo-stage-mig
 Keep production denied throughout M6E. Installed capability, isolated acceptance,
 working-staging operation and production approval are distinct later gates. Stop
 this PR at local implementation and exact-head review handoff.
+
+## Authored transfer-only identity observations
+
+**AUTHORED / NOT EXECUTED.** The existing
+`worker_helper_authority_integration` case can now call
+[WebsitePlatformM6EIdentityDriver.py](../tests/support/WebsitePlatformM6EIdentityDriver.py).
+It records nested transfer observations and still returns INCOMPLETE for remaining
+installed integration requirements. Missing separate-identity admission is an
+explicit INCOMPLETE result. Neither this module, its agents nor the isolated harness
+(including inventory mode) was executed during the desktop task.
+
+The driver requires a separately approved disposable Linux fixture with five distinct
+non-root UIDs: coordinator, worker, helper, authority and Apache reader. It does not
+create accounts, switch UID, grant permissions, install/start services or connect to
+SQL. A separately approved launcher must start each role's pinned agent with its own
+prebound listening Unix socket FD as stdin and `--serve`; the listener must have been
+created by that role so SO_PEERCRED identifies it. Socket paths are fixed at
+`/run/ubo-m6e-identity/<role>/probe.sock`, with role-owned nonwritable ancestors and
+no other-user socket permissions. Any necessary dedicated socket access group is
+limited to fixture connection access, never artifact access. No wildcard/path RPC.
+
+A root-owned `/run/ubo-m6e-identity/admission.json` (at most 65,536 bytes) has exact
+keys `profile`, `source_sha`, `expires_at`, `coordinator_uid`, `identities`,
+`fixture_root`, `bindings`, `probes`, `installed_files`. Profile is
+`m6e-transfer-identities-v1`; expiry is at most 600 seconds away. `identities` maps
+worker/helper/authority/Apache to distinct actual UIDs. Root is a unique
+`/srv/ubo-m6e-identity/<token>`; the `valid` and `interrupted` cases have separate
+precreated served/journal roots, empty release/asset/staging directories, target locks
+and pristine initial state. Every binding has the ordinary site/target/site-key/
+binding-key/version plus fixed served/journal roots. Source SHA must equal the
+coordinator's verified checkout; installed_files pins the driver, PHP identity child
+and actual helper module. All role code/ancestors must satisfy protected-file checks.
+
+Worker and authority have separate root-owned, role-readable 0640 snapshots at
+`/run/ubo-m6e-identity/worker.json` and `authority.json`. Each uses
+`profile=m6e-identity-rows-v1`, its actual uid, expiry and `cases` keyed by valid/
+interrupted. Each case contains independent `build_tables`, `deployment_tables`,
+`sites`, `now`, `binding`; worker additionally has the exact execution `lease`, and
+its top-level snapshot has `artifact_work_root`/`artifact_root`. These are real M6C
+fixture rows and already built original 0700/0600 files, prepared separately before
+running the driver. No record supplied here is a passed gate or operator boolean.
+The worker ID remains the controlled PDO fixture's `m6d-fixture`. The authority
+snapshot must be independently protected and consistent with the original producer,
+committed release hashes, lease-token hash and fresh stage permission; the helper
+obtains it only from the distinct authority process, never the transfer sender.
+
+[WebsitePlatformM6EIdentityChild.php](../tests/support/WebsitePlatformM6EIdentityChild.php)
+runs actual scoped exporter reads and session serialization under the worker UID.
+The helper agent runs actual peer admission, descriptor-relative Tree, flock, fence,
+receiver, package verifier and atomic staging. The authority agent runs actual PHP
+`SitePublisherAuthority::observe` in a completed controlled PDO transaction, under
+its separate UID. This is deliberately a PDO fixture, not native SQL or installed
+SELECT-only credential acceptance. The private worker-to-helper channel transports
+actual original artifact bytes. A bounded relay cuts the interrupted case after
+three bytes of the first data frame; it cannot fabricate an end record or receipt.
+
+`probes` fixes source/served/journal/public probe paths under the fixture root. Source
+must be the valid release's exact original metadata/manifest.json, enforced by the
+worker child. Actual open/fstat results must show source 0600 under 0700, EACCES to
+helper/authority/Apache, EACCES for worker writes to helper served/journal probes,
+helper write access to those dedicated probes, and Apache read access only to the
+approved public probe (journal denied). Write probes open without truncate and do
+not modify bytes. SO_PEERCRED verifies all role connections. A coordinator UID
+attempting stage is rejected with no inventory change. Valid transfer must produce
+a candidate but no current pointer; interrupted transfer must produce neither and
+leave no published files. Normal EOF cleanup is tested; no SIGKILL/finally or
+power-loss claim is made. Receipts, observed file inventories and permission errno/
+mode/UID evidence are recorded; private rows, tokens and bytes are not reports.
+
+Further installed authority revocation/concurrency, systemd hardening, real HTTP/TLS,
+provisioning/config failure, crash durability and outcome-settlement observations
+remain required. The fixed overall 13-case inventory is unchanged.

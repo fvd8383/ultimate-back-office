@@ -50,6 +50,8 @@ class FilesystemModel:
         if path.is_symlink():
             raise OSError('model_nofollow')
         if flags & self.O_DIRECTORY:
+            if self.fault == 'receive_open' and path.name.startswith('transfer-'):
+                self.fail('receive_open')
             return self.directory(path)
         fd = os.open(path, (flags & ~(self.O_DIRECTORY | self.O_NOFOLLOW)) | getattr(os, 'O_BINARY', 0), mode)
         self.files[fd] = path
@@ -97,6 +99,9 @@ class FilesystemModel:
         self.meta[str(path)] = [mode, 1001, 1002]
 
     def write(self, fd, data):
+        if fd == 2:
+            self.events.append(('diagnostic', bytes(data).decode('ascii')))
+            return len(data)
         self.events.append(('write', str(self.files[fd].relative_to(self.root))))
         if self.fault == 'partial':
             if os.lseek(fd, 0, os.SEEK_CUR) == 0:
@@ -117,7 +122,9 @@ class FilesystemModel:
     def fchown(self, fd, uid, gid):
         if self.fault == 'chown':
             self.fail('chown')
-        record = self.meta[str(self.files[fd])]
+        path = self.files.get(fd, self.dirs.get(fd))
+        self.meta.setdefault(str(path), [0o700 if path.is_dir() else 0o600, 1001, 1002])
+        record = self.meta[str(path)]
         if uid != -1:
             record[1] = uid
         if gid != -1:
@@ -153,8 +160,29 @@ class FilesystemModel:
             raise FileExistsError('modeled_noreplace_race')
         # Windows rename refuses a destination; the Linux atomic primitive remains modeled.
         source.rename(destination)
-        self.meta[str(destination)] = self.meta.pop(str(source))
+        for path in list(self.meta):
+            if path == str(source) or path.startswith(str(source) + os.sep):
+                self.meta[str(destination) + path[len(str(source)):]] = self.meta.pop(path)
         self.events.append(('published', str(destination.relative_to(self.root))))
+
+    def listdir(self, fd):
+        return os.listdir(self.dirs[fd])
+
+    def replace(self, source, destination, *, src_dir_fd=None, dst_dir_fd=None):
+        before, after = self.path(source, src_dir_fd), self.path(destination, dst_dir_fd)
+        os.replace(before, after)
+        self.meta[str(after)] = self.meta.pop(str(before))
+
+    def rmdir(self, name, *, dir_fd=None):
+        path = self.path(name, dir_fd)
+        if self.cleanup_fault:
+            self.fail('cleanup')
+        path.rmdir()
+        self.meta.pop(str(path), None)
+
+    def fstatvfs(self, fd):
+        # Explicit free-space admission model; no installed filesystem/quota claim.
+        return SimpleNamespace(f_bavail=1000000, f_frsize=4096)
 
     def tree(self, module, path):
         tree = module.Tree.__new__(module.Tree)

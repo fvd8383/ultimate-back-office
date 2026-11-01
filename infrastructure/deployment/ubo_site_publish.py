@@ -16,10 +16,18 @@ import stat
 import struct
 import sys
 import time
+from contextlib import contextmanager
 
 MAX_REQUEST = 16384
 MAX_RESPONSE = 1048576
 MAX_PACKAGE = 104857600
+# SiteArtifactFiles contract; interoperability tests pin these numeric limits.
+MAX_FILES, MAX_MANIFEST, MAX_VALIDATION, MAX_ASSET, MAX_HTML = 2000, 1048576, 16384, 20971520, 1048576
+TRANSFER_CHUNK, TRANSFER_CONTROL = 65536, 4096
+TRANSFER_CONTROLS = (MAX_FILES * 2 + 2) * TRANSFER_CONTROL
+TRANSFER_FRAMES = MAX_FILES * 4 + MAX_PACKAGE // TRANSFER_CHUNK + 64
+# Receive + public staging + retained assets; metadata copies and bounded directory entries.
+TRANSFER_DISK = 3 * MAX_PACKAGE + 2 * MAX_MANIFEST + MAX_VALIDATION + (MAX_FILES * 5 + 16) * 4096
 UUID = re.compile(r'^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$')
 HASH = re.compile(r'^[0-9a-f]{64}$')
 KEY = re.compile(r'^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,190}$')
@@ -82,7 +90,7 @@ def relative(path):
 def request(data):
     r = decode(data, MAX_REQUEST)
     keys(r, 'version sequence operation target lease payload')
-    require(r['version'] == 1 and r['operation'] in ('stage', 'activate', 'restore', 'inspect', 'probe', 'compensate', 'settle'))
+    require(type(r['version']) is int and r['version'] == 1 and r['operation'] in ('stage', 'activate', 'restore', 'inspect', 'probe', 'compensate', 'settle'))
     positive(r['sequence'])
     t, lease = r['target'], r['lease']
     keys(t, 'site_id target_id environment publisher_key binding_key binding_version')
@@ -105,6 +113,9 @@ def request(data):
         keys(c, 'site_id target_id deployment_id deployment_key attempt_id attempt_kind producer_attempt_id worker_id environment '
                 'lease_token lease_expires_at deadline_at fence_epoch binding_version release_key artifact_hash operation phase '
                 'phase_timeout_seconds connect_timeout_seconds request_timeout_seconds correlation_id')
+        for k in ('site_id', 'target_id', 'deployment_id', 'attempt_id', 'producer_attempt_id', 'fence_epoch', 'binding_version',
+                  'phase_timeout_seconds', 'connect_timeout_seconds', 'request_timeout_seconds'):
+            positive(c[k])
         for k in ('site_id', 'target_id', 'deployment_id', 'attempt_id', 'attempt_kind', 'worker_id', 'environment', 'fence_epoch'):
             require(c[k] == lease[k])
         require(c['lease_token'] == lease['token'] and c['binding_version'] == t['binding_version']
@@ -459,7 +470,317 @@ class Tree:
         os.fsync(self.fd)
 
 
-def verify_package(tree, path, release, public_only=False, manifest=None):
+class TransferFailure(Denied):
+    def __init__(self, phase, index, kind='validation'):
+        # All callers supply fixed vocabulary and a bounded ordinal, never paths/payloads.
+        self.phase, self.index, self.kind = phase, index, kind
+        super().__init__('transfer_unresolved')
+
+
+class Channel:
+    """Exact stream reads; binary frames never pass through the JSON line reader."""
+    def __init__(self, stream, deadline):
+        self.stream, self.deadline = stream, deadline
+        self.check = lambda: None
+
+    def pulse(self):
+        self.check()
+        left = self.deadline - time.monotonic()
+        require(left > 0)
+        self.stream.settimeout(left)
+
+    def read(self, count):
+        require(type(count) is int and 0 < count <= TRANSFER_CHUNK)
+        data = bytearray()
+        while len(data) < count:
+            self.pulse()
+            part = self.stream.recv(count - len(data))
+            require(part)
+            data.extend(part)
+        self.pulse()
+        return bytes(data)
+
+    def write(self, data):
+        view = memoryview(data)
+        while view:
+            self.pulse()
+            n = self.stream.send(view[:TRANSFER_CHUNK])
+            require(n > 0)
+            view = view[n:]
+        self.pulse()
+
+    def line(self, maximum=MAX_REQUEST):
+        data = bytearray()
+        while len(data) < maximum:
+            part = self.read(1)
+            data.extend(part)
+            if part == b'\n':
+                return bytes(data)
+        require(False)
+
+    def reply(self, value):
+        data = canonical(value) + b'\n'
+        require(len(data) <= MAX_RESPONSE)
+        self.write(data)
+
+    def no_pending(self):
+        # At the completion boundary the sender must be waiting for the stage receipt.
+        # Reject already queued extra frames/commands; do not wait for EOF or future input.
+        self.stream.settimeout(0)
+        try:
+            require(not self.stream.recv(1, socket.MSG_PEEK))
+        except (BlockingIOError, TimeoutError):
+            pass
+        finally:
+            self.pulse()
+
+
+class TransferFrames:
+    def __init__(self, channel, transfer_id, sequence):
+        self.channel, self.id, self.sequence = channel, transfer_id, sequence
+        self.controls = self.frames = self.data_frames = self.data_bytes = 0
+
+    def count(self, kind, length):
+        self.frames += 1
+        require(self.frames <= TRANSFER_FRAMES and type(length) is int and length > 0)
+        if kind == b'C':
+            self.controls += length
+            require(length <= TRANSFER_CONTROL and self.controls <= TRANSFER_CONTROLS)
+        else:
+            require(kind == b'D' and length <= TRANSFER_CHUNK)
+            self.data_frames += 1
+            self.data_bytes += length
+            require(self.data_bytes <= MAX_PACKAGE + MAX_MANIFEST + MAX_VALIDATION)
+
+    def read(self, kind, exact=None):
+        magic, actual, length = struct.unpack('!4scI', self.channel.read(9))
+        require(magic == b'UBT1' and actual == kind)
+        self.count(kind, length)  # Before allocation or disk writes.
+        require(exact is None or length == exact)
+        return self.channel.read(length)
+
+    def control(self, fields):
+        value = decode(self.read(b'C'), TRANSFER_CONTROL)
+        keys(value, 'version transfer_id sequence ' + fields)
+        require(type(value['version']) is int and value['version'] == 1 and type(value['sequence']) is int
+                and value['sequence'] == self.sequence and value['transfer_id'] == self.id)
+        return value
+
+    def ack(self, index):
+        data = canonical(dict(version=1, transfer_id=self.id, sequence=self.sequence, type='file_ok', index=index))
+        self.count(b'C', len(data))
+        self.channel.write(struct.pack('!4scI', b'UBT1', b'C', len(data)) + data)
+
+
+def transfer_entries(raw, release):
+    """Admit lengths/inventory only after the independently committed raw manifest hash."""
+    require(digest(raw) == release['manifest_hash'])
+    m = decode(raw, MAX_MANIFEST)
+    require(m['contract_version'] == 'ubo-static-site-v1' and type(m['schema_version']) is int and m['schema_version'] == 1
+            and m['site_key'] == release['site_key'] and m['release_key'] == release['release_key']
+            and m['build_profile'] == release['build_profile'] == 'static-review-v1' and m['artifact_hash'] == release['artifact_hash'])
+    entries = m['files']
+    require(isinstance(entries, list) and 3 <= len(entries) <= MAX_FILES - 2)
+    total, names = 0, []
+    for e in entries:
+        keys(e, 'relative_path sha256 byte_size mime_type')
+        path, size, mime = e['relative_path'], e['byte_size'], e['mime_type']
+        relative(path)
+        require(len(path) <= 500 and len(path.split('/')) <= 21 and '..' not in path)
+        machine(e['sha256'], HASH)
+        if mime == 'text/html':
+            require(path == 'public/index.html' or re.fullmatch(r'public/(?:[a-z0-9]+(?:-[a-z0-9]+)*/)+index.html', path))
+            maximum = MAX_HTML
+        elif mime == 'application/json':
+            require(path == 'public/_release.json')
+            maximum = 1024
+        else:
+            extensions = {'text/css': 'css', 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp', 'application/pdf': 'pdf'}
+            require(mime in extensions and path == 'public/assets/' + e['sha256'] + '.' + extensions[mime])
+            maximum = MAX_ASSET
+        require(type(size) is int and 0 < size <= maximum)
+        total += size
+        require(total <= MAX_PACKAGE)
+        names.append(path)
+    require(names == sorted(set(names)) and len({n.lower() for n in names}) == len(names)
+            and 'public/index.html' in names and 'public/_release.json' in names)
+    require(type(m['file_count']) is int and m['file_count'] == len(entries)
+            and type(m['byte_size']) is int and m['byte_size'] == total
+            and digest(canonical(entries)) == release['artifact_hash']
+            and digest(canonical([e for e in entries if e['relative_path'] != 'public/_release.json'])) == m['public_payload_hash'])
+    machine(m['validation_hash'], HASH)
+    return m
+
+
+class Ingress:
+    """Only an invocation-owned private subtree; cleanup proves each created inode."""
+    def __init__(self, served, transfer_id):
+        self.parent = served.directory('staging')
+        self.name = 'transfer-' + transfer_id
+        self.tree = None
+        self.root_identity = None
+        fd = None
+        self.files, self.dirs = {}, {}
+        self.phase, self.index = 'admission', -1
+        try:
+            s = os.fstat(self.parent)
+            require(s.st_uid == served.owner and stat.S_IMODE(s.st_mode) == 0o700)
+            space = os.fstatvfs(self.parent)
+            require(0 < space.f_frsize <= 4096 and space.f_bavail * space.f_frsize >= TRANSFER_DISK)
+            os.mkdir(self.name, 0o700, dir_fd=self.parent)
+            self.root_identity = os.stat(self.name, dir_fd=self.parent, follow_symlinks=False)
+            fd = os.open(self.name, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC, dir_fd=self.parent)
+            tree = Tree.__new__(Tree)
+            tree.fd, tree.owner, tree.device, tree.writable, tree.group = fd, served.owner, served.device, True, None
+            self.tree = tree
+            fd = None
+            require(self.owned(os.fstat(tree.fd), self.root_identity, True))
+        except BaseException:
+            try:
+                if self.tree is not None:
+                    self.cleanup()
+                else:
+                    try:
+                        if self.root_identity is not None:
+                            now = os.stat(self.name, dir_fd=self.parent, follow_symlinks=False)
+                            require(stat.S_ISDIR(now.st_mode) and now.st_uid == served.owner and now.st_dev == served.device
+                                    and now.st_ino == self.root_identity.st_ino and stat.S_IMODE(now.st_mode) == 0o700)
+                            os.rmdir(self.name, dir_fd=self.parent)
+                            os.fsync(self.parent)
+                    finally:
+                        if fd is not None:
+                            os.close(fd)
+                        os.close(self.parent)
+            except BaseException:
+                try:
+                    os.write(2, b'transfer_cleanup_unresolved\n')
+                except OSError:
+                    pass
+            raise
+
+    def owned(self, now, before, directory=False):
+        return (now.st_dev == before.st_dev == self.tree.device and now.st_ino == before.st_ino
+                and now.st_uid == self.tree.owner and stat.S_IMODE(now.st_mode) == (0o700 if directory else 0o600)
+                and (stat.S_ISDIR(now.st_mode) if directory else stat.S_ISREG(now.st_mode) and now.st_nlink == 1))
+
+    def parent_for(self, path):
+        parts, fd, prefix = relative(path), os.dup(self.tree.fd), ''
+        try:
+            for part in parts[:-1]:
+                prefix = part if not prefix else prefix + '/' + part
+                if prefix not in self.dirs:
+                    os.mkdir(part, 0o700, dir_fd=fd)
+                nxt = os.open(part, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC, dir_fd=fd)
+                now = os.fstat(nxt)
+                self.dirs.setdefault(prefix, now)
+                require(self.owned(now, self.dirs[prefix], True))
+                os.close(fd)
+                fd = nxt
+            return fd, parts[-1]
+        except BaseException:
+            os.close(fd)
+            raise
+
+    def receive_file(self, frames, path, maximum, expected_hash, length=None):
+        self.phase = 'file_header'
+        c = frames.control('type index path length sha256')
+        require(c['type'] == 'file' and type(c['index']) is int and c['index'] == self.index and c['path'] == path
+                and type(c['length']) is int and 0 < c['length'] <= maximum and c['sha256'] == expected_hash
+                and (length is None or c['length'] == length))
+        parent, name = self.parent_for('package/' + path)
+        fd, primary = None, None
+        try:
+            self.phase = 'file_write'
+            fd = os.open(name, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW | os.O_CLOEXEC, 0o600, dir_fd=parent)
+            before = os.fstat(fd)
+            self.files['package/' + path] = before
+            require(self.owned(before, before))
+            left, hasher = c['length'], hashlib.sha256()
+            while left:
+                data = frames.read(b'D', min(left, TRANSFER_CHUNK))
+                hasher.update(data)
+                view = memoryview(data)
+                while view:
+                    frames.channel.pulse()
+                    n = os.write(fd, view)
+                    require(n > 0)
+                    view = view[n:]
+                left -= len(data)
+            require(hasher.hexdigest() == expected_hash and os.fstat(fd).st_size == c['length'])
+            self.phase = 'file_sync'
+            os.fsync(fd)
+            closed, fd = fd, None
+            os.close(closed)
+            require(self.owned(os.stat(name, dir_fd=parent, follow_symlinks=False), before))
+            os.fsync(parent)
+            frames.ack(self.index)
+            return c['length']
+        except BaseException as error:
+            primary = error
+            raise
+        finally:
+            for descriptor in (fd, parent):
+                if descriptor is not None:
+                    try:
+                        os.close(descriptor)
+                    except OSError:
+                        if primary is None:
+                            raise
+
+    def receive(self, frames, release):
+        self.index = 0
+        metadata = self.receive_file(frames, 'metadata/manifest.json', MAX_MANIFEST, release['manifest_hash'])
+        manifest = transfer_entries(self.tree.read('package/metadata/manifest.json', MAX_MANIFEST), release)
+        self.index = 1
+        metadata += self.receive_file(frames, 'metadata/validation.json', MAX_VALIDATION, manifest['validation_hash'])
+        require(self.tree.read('package/metadata/validation.json', MAX_VALIDATION) == canonical(manifest['validation_summary']))
+        public = 0
+        for self.index, e in enumerate(manifest['files'], 2):
+            public += self.receive_file(frames, e['relative_path'], e['byte_size'], e['sha256'], e['byte_size'])
+        self.phase = 'completion'
+        end = frames.control('type files public_bytes metadata_bytes data_frames manifest_hash')
+        expected = dict(type='end', files=len(manifest['files']) + 2, public_bytes=public, metadata_bytes=metadata,
+                        data_frames=frames.data_frames, manifest_hash=release['manifest_hash'])
+        require(all(type(end[k]) is type(v) and end[k] == v for k, v in expected.items()))
+        frames.channel.no_pending()
+        self.phase = 'verification'
+        verify_package(self.tree, 'package', release, pulse=frames.channel.pulse)
+        return self.tree, 'package'
+
+    def cleanup(self):
+        primary = None
+        try:
+            require(self.owned(os.stat(self.name, dir_fd=self.parent, follow_symlinks=False), self.root_identity, True))
+            for path, before in reversed(list(self.files.items())):
+                parent, name = self.tree.parent(path)
+                try:
+                    require(self.owned(os.stat(name, dir_fd=parent, follow_symlinks=False), before))
+                    os.unlink(name, dir_fd=parent)
+                finally:
+                    os.close(parent)
+            for path, before in sorted(self.dirs.items(), key=lambda e: len(e[0]), reverse=True):
+                parent, name = self.tree.parent(path)
+                try:
+                    require(self.owned(os.stat(name, dir_fd=parent, follow_symlinks=False), before, True))
+                    os.rmdir(name, dir_fd=parent)
+                finally:
+                    os.close(parent)
+            os.rmdir(self.name, dir_fd=self.parent)
+            os.fsync(self.parent)
+        except BaseException as error:
+            primary = error
+        finally:
+            for fd in (self.tree.fd, self.parent):
+                try:
+                    os.close(fd)
+                except OSError as error:
+                    primary = primary or error
+            self.tree.fd = None
+        if primary:
+            raise primary
+
+
+def verify_package(tree, path, release, public_only=False, manifest=None, pulse=lambda: None):
     """Reuse the sealed M6C manifest and its non-circular hashes; never render."""
     if manifest is None:
         raw = tree.read(path + '/metadata/manifest.json', MAX_RESPONSE)
@@ -474,6 +795,7 @@ def verify_package(tree, path, release, public_only=False, manifest=None):
     require(isinstance(entries, list) and 3 <= len(entries) <= 2000)
     observed, total, names = [], 0, []
     for entry in entries:
+        pulse()
         keys(entry, 'relative_path sha256 byte_size mime_type')
         p, mime = entry['relative_path'], entry['mime_type']
         relative(p)
@@ -514,6 +836,7 @@ def verify_package(tree, path, release, public_only=False, manifest=None):
             expected_dirs.add(parent)
             parent = parent.rsplit('/', 1)[0]
     require(set(dirs) == expected_dirs)
+    pulse()
     return manifest
 
 
@@ -584,7 +907,9 @@ class Authority:
     def observe(self, r):
         s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         try:
-            s.settimeout(5)
+            deadline = min(time.monotonic() + 5, getattr(self, 'deadline', None) or float('inf'))
+            require(deadline > time.monotonic())
+            s.settimeout(deadline - time.monotonic())
             s.connect('/run/ubo-site-publisher/authority.sock')
             # systemd socket is root-owned; the connected responder must be the configured authority UID
             # (for Accept=yes root socket activation, peer is root; root-owned service config is attested).
@@ -593,6 +918,8 @@ class Authority:
             s.sendall(canonical(r) + b'\n')
             data = bytearray()
             while b'\n' not in data:
+                require(deadline > time.monotonic())
+                s.settimeout(deadline - time.monotonic())
                 part = s.recv(min(65536, MAX_RESPONSE + 1 - len(data)))
                 require(part and len(data) + len(part) <= MAX_RESPONSE)
                 data.extend(part)
@@ -606,8 +933,8 @@ class Authority:
 
 
 class Publisher:
-    def __init__(self, source, served, journal, authority, binding):
-        self.source, self.served, self.journal = source, served, journal
+    def __init__(self, served, journal, authority, binding):
+        self.served, self.journal = served, journal
         self.authority, self.binding = authority, binding
         self.session = os.urandom(16).hex()
         self.state = None
@@ -670,38 +997,100 @@ class Publisher:
         manifest = decode(raw)
         return verify_package(self.served, 'releases/' + release['release_key'], release, True, manifest)
 
-    def stage(self, a, r):
-        release = a['release']
-        require(r['payload']['release'] == release)
-        path = release['site_key'] + '/' + release['release_key']
-        manifest = verify_package(self.source, path, release)
-        raw_manifest = self.source.read(path + '/metadata/manifest.json', MAX_RESPONSE)
-        require(digest(raw_manifest) == release['manifest_hash'])
-        target = 'releases/' + release['release_key']
+    @contextmanager
+    def receive_package(self, a, r, channel, transfer_id):
+        require(channel is not None)  # No operational direct-source reader/fallback.
+        ingress, primary = None, None
         try:
+            ingress = Ingress(self.served, transfer_id)
+            package = ingress.receive(TransferFrames(channel, transfer_id, r['sequence']), a['release'])
+            ingress.phase = 'publication'
+            yield package
+        except BaseException as error:
+            primary = error
+            if isinstance(error, TransferFailure):
+                raise
+            raise TransferFailure('admission' if ingress is None else ingress.phase, -1 if ingress is None else ingress.index,
+                                  'io' if isinstance(error, OSError) else 'validation') from None
+        finally:
+            if ingress is not None:
+                try:
+                    ingress.cleanup()
+                except BaseException:
+                    try:
+                        os.write(2, b'transfer_cleanup_unresolved\n')
+                    except OSError:
+                        pass
+                    if primary is None:
+                        raise TransferFailure('cleanup', ingress.index, 'io') from None
+
+    def stage(self, a, r, channel=None):
+        release = a['release']
+        require(r['payload']['release'] == release and a['attempt_kind'] == 'execution')
+        for k in ('site_id', 'release_id'):
+            positive(release[k])
+        for k in ('site_key', 'release_key'):
+            machine(release[k], UUID)
+        for k in ('artifact_hash', 'manifest_hash'):
+            machine(release[k], HASH)
+        require(release['build_profile'] == 'static-review-v1' and type(a['expires_in']) is int and a['expires_in'] > 0)
+        deadline = min(time.monotonic() + 30, self.started + 300, time.monotonic() + a['expires_in'],
+                       channel.deadline if channel is not None else float('inf'))
+        next_observation = 0
+        def check(force=False):
+            nonlocal next_observation
+            require(time.monotonic() < deadline)
+            if force or time.monotonic() >= next_observation:
+                self.authority.deadline = deadline
+                latest = self.observe(r)
+                require({k: v for k, v in latest.items() if k != 'expires_in'} == {k: v for k, v in a.items() if k != 'expires_in'}
+                        and latest['live'] and type(latest['expires_in']) is int and latest['expires_in'] > 0)
+                next_observation = time.monotonic() + 1
+            require(time.monotonic() < deadline)
+        if channel is not None:
+            channel.deadline, channel.check = deadline, check
+        try:
+            check(True)
+            target = 'releases/' + release['release_key']
+            retained = False
+            try:
+                self.verify_served(release)
+                retained = True
+            except FileNotFoundError:
+                require(not self.served.exists(target))
+            transfer_id = os.urandom(16).hex()
+            if channel is not None:
+                channel.reply(dict(version=1, type='transfer_ready', sequence=r['sequence'], transfer_version=1,
+                                   transfer_id=transfer_id, disposition='retained' if retained else 'receive'))
+            if not retained:
+                with self.receive_package(a, r, channel, transfer_id) as (source, path):
+                    manifest = verify_package(source, path, release, pulse=check)
+                    raw_manifest = source.read(path + '/metadata/manifest.json', MAX_MANIFEST)
+                    require(digest(raw_manifest) == release['manifest_hash'])
+                    check(True)  # Fully received/verified and currently authorized before permanent publication.
+                    stage = 'staging/' + a['deployment_key'] + '-' + str(a['attempt_id']) + '-' + os.urandom(8).hex()
+                    for entry in manifest['files']:
+                        check()
+                        data = source.read(path + '/' + entry['relative_path'], entry['byte_size'])
+                        require(digest(data) == entry['sha256'])
+                        self.served.write_new(stage + '/' + entry['relative_path'], data, served=True)
+                        if entry['relative_path'].startswith('public/assets/'):
+                            self.served.publish_immutable(entry['relative_path'][7:], data, served=True)
+                    verify_package(self.served, stage, release, True, manifest, check)
+                    self.served.seal_directories(stage)
+                    check(True)
+                    self.journal.publish_immutable('manifests/' + release['release_key'] + '.json', raw_manifest)
+                    self.served.rename_new(stage, target)
             self.verify_served(release)
-        except FileNotFoundError:
-            # Any preexisting target conflicts, even if metadata is missing.
-            require(not self.served.exists(target))
-            stage = 'staging/' + a['deployment_key'] + '-' + str(a['attempt_id']) + '-' + os.urandom(8).hex()
-            for entry in manifest['files']:
-                data = self.source.read(path + '/' + entry['relative_path'], entry['byte_size'])
-                require(digest(data) == entry['sha256'])
-                self.served.write_new(stage + '/' + entry['relative_path'], data, served=True)
-                if entry['relative_path'].startswith('public/assets/'):
-                    pool = entry['relative_path'][7:]
-                    self.served.publish_immutable(pool, data, served=True)
-            verify_package(self.served, stage, release, True, manifest)
-            self.served.seal_directories(stage)
-            self.journal.publish_immutable('manifests/' + release['release_key'] + '.json', raw_manifest)
-            self.served.rename_new(stage, target)
-        self.verify_served(release)
-        # Candidate is a separate private vhost pointer; it never changes active current.
-        latest = self.observe(r)
-        require(latest['live'] and 'stage' in latest['permitted'] and latest['fence_epoch'] == a['fence_epoch'])
-        self.served.switch(self.served.link('candidate'), release['release_key'], 'candidate')
-        self.state['phase'] = 1
-        self.persist()
+            check(True)
+            self.served.switch(self.served.link('candidate'), release['release_key'], 'candidate')
+            self.state['phase'] = 1
+            self.persist()
+            check(True)  # A lost/revoked acknowledgement never claims nothing changed.
+        finally:
+            self.authority.deadline = None
+            if channel is not None:
+                channel.check = lambda: None
 
     def switch(self, a, r, compensation=False):
         before = self.current()
@@ -736,7 +1125,7 @@ class Publisher:
         self.state['intent'] = None
         self.persist()
 
-    def dispatch(self, r):
+    def dispatch(self, r, channel=None):
         require(time.monotonic() - self.started < 300 and r['sequence'] == self.sequence + 1)
         self.sequence = r['sequence']
         binding = [r['lease'][k] for k in ('site_id', 'target_id', 'deployment_id', 'attempt_id', 'fence_epoch', 'token')]
@@ -751,7 +1140,7 @@ class Publisher:
             self.persist()
         op = r['operation']
         if op == 'stage':
-            self.stage(a, r)
+            self.stage(a, r, channel)
         elif op in ('activate', 'restore', 'compensate'):
             self.switch(a, r, op == 'compensate')
         elif op == 'inspect':
@@ -801,7 +1190,7 @@ class Publisher:
             except OSError as error:
                 primary = error
             self.lock = None
-        for tree in (self.source, self.served, self.journal):
+        for tree in (self.served, self.journal):
             try:
                 tree.close()
             except OSError as error:
@@ -839,32 +1228,37 @@ def local_mount(path):
 def load_config():
     require(sys.platform == 'linux' and len(sys.argv) == 1 and hasattr(os, 'O_NOFOLLOW'))
     c = decode(protected(CONFIG, 65536))
-    keys(c, 'version environment publisher_uid worker_uid authority_uid apache_gid source_owner source_root bindings')
-    require(c['version'] == 1 and c['environment'] == 'staging' and os.geteuid() == c['publisher_uid'] > 0
+    keys(c, 'version transfer_version environment publisher_uid worker_uid authority_uid apache_gid bindings')
+    require(type(c['version']) is int and c['version'] == 2 and type(c['transfer_version']) is int and c['transfer_version'] == 1 and c['environment'] == 'staging' and os.geteuid() == c['publisher_uid'] > 0
             and len({c['publisher_uid'], c['worker_uid'], c['authority_uid']}) == 3)
-    for k in ('worker_uid', 'authority_uid', 'apache_gid', 'source_owner'):
+    for k in ('publisher_uid', 'worker_uid', 'authority_uid', 'apache_gid'):
         positive(c[k])
     receipt = decode(protected('/etc/ubo-site-publisher/host-receipt.json', 65536))
     keys(receipt, 'version profile worker_config_sha256 verified_at expires_at gates installed_files')
-    require(receipt['profile'] == 'm6e-host-v1' and receipt['verified_at'] <= time.time() < receipt['expires_at']
+    require(type(receipt['version']) is int and receipt['version'] == 2 and receipt['profile'] == 'm6e-host-v2'
+            and type(receipt['verified_at']) is int and type(receipt['expires_at']) is int
+            and receipt['verified_at'] <= time.time() < receipt['expires_at']
             and receipt['expires_at'] - receipt['verified_at'] <= 86400)
     require(set(receipt['gates']) == {'apache', 'filesystem', 'ownership', 'assets', 'runtime', 'health', 'recovery', 'provisioning'})
     for g in receipt['gates'].values():
+        keys(g, 'result evidence_sha256')
         require(g['result'] == 'pass')
         machine(g['evidence_sha256'], HASH)
+    machine(receipt['worker_config_sha256'], HASH)
+    require(isinstance(receipt['installed_files'], dict) and len(receipt['installed_files']) <= 256)
     require(receipt['installed_files'].get(CONFIG) == digest(protected(CONFIG, 65536)))
     require({'/usr/local/lib/ubo-site-publisher/ubo_site_publish.py', '/usr/local/sbin/ubo-site-publish',
              '/etc/ubo-site-publisher/apache.conf', '/etc/ubo-site-publisher/authority.json',
              '/usr/local/lib/ubo-site-publisher/ubo-site-authority.php'}.issubset(receipt['installed_files']))
-    for p, h in receipt['installed_files'].items():
+    # Each identity verifies its own loaded code/config pins. The helper must not read
+    # worker artifact configuration, application credentials or authority credentials.
+    for path in ('/usr/local/lib/ubo-site-publisher/ubo_site_publish.py', '/usr/local/sbin/ubo-site-publish',
+                 CONFIG, '/etc/ubo-site-publisher/apache.conf'):
+        h = receipt['installed_files'].get(path)
         machine(h, HASH)
-        require(digest(protected(p, 2097152)) == h)
-    require(receipt['worker_config_sha256'] == digest(protected('/etc/ubo-site-publisher/worker.json', 65536)))
-    worker = decode(protected('/etc/ubo-site-publisher/worker.json', 65536))
-    require(all(worker[k] == c[k] for k in ('worker_uid', 'publisher_uid', 'authority_uid'))
-            and worker['artifact_root'] == c['source_root'] and c['source_owner'] == c['worker_uid'])
+        require(digest(protected(path, 2097152)) == h)
     require(isinstance(c['bindings'], list) and 1 <= len(c['bindings']) <= 32)
-    seen, roots = set(), [c['source_root']]
+    seen, roots = set(), []
     for b in c['bindings']:
         keys(b, 'site_id target_id site_key binding_key binding_version served_root journal_root')
         for k in ('site_id', 'target_id', 'binding_version'):
@@ -876,7 +1270,6 @@ def load_config():
         require(b['served_root'] == '/var/www/ubo-sites/staging/sites/' + b['site_key']
                 and b['journal_root'] == '/var/lib/ubo-site-publisher/staging/' + b['site_key'])
         roots += [b['served_root'], b['journal_root']]
-        require(sum(all(w[k] == b[k] for k in ('site_id', 'target_id', 'site_key', 'binding_key', 'binding_version')) for w in worker['bindings']) == 1)
     require(len(roots) == len(set(roots)))
     for x in roots:
         require(isinstance(x, str) and x.startswith('/'))
@@ -885,27 +1278,24 @@ def load_config():
     return c
 
 
+def accept_peer(incoming, worker_uid):
+    positive(worker_uid)
+    _, uid, _ = struct.unpack('3i', incoming.getsockopt(socket.SOL_SOCKET, socket.SO_PEERCRED, 12))
+    require(uid == worker_uid)
+
+
 def main():
     publisher = None
     exit_code = 1
     try:
         c = load_config()  # Before accepting a request, source I/O or authority network.
         incoming = socket.socket(fileno=os.dup(0))
-        _, uid, _ = struct.unpack('3i', incoming.getsockopt(socket.SOL_SOCKET, socket.SO_PEERCRED, 12))
-        require(uid == c['worker_uid'])
-        incoming.settimeout(30)
-        started, data, sequence = time.monotonic(), bytearray(), 0
+        accept_peer(incoming, c['worker_uid'])
+        started, sequence = time.monotonic(), 0
+        channel = Channel(incoming, started + 30)
         while time.monotonic() - started < 300:
-            part = incoming.recv(4096)
-            if not part:
-                break
-            data.extend(part)
-            require(len(data) <= MAX_REQUEST)
-            if b'\n' not in data:
-                continue
-            line, _, tail = data.partition(b'\n')
-            require(not tail)  # No request pipelining.
-            data.clear()
+            channel.deadline = min(started + 300, time.monotonic() + 30)
+            line = channel.line()
             r = request(bytes(line))
             sequence = r['sequence']
             if publisher is None:
@@ -914,12 +1304,11 @@ def main():
                 b = matches[0]
                 keys(b, 'site_id target_id site_key binding_key binding_version served_root journal_root')
                 machine(b['site_key'], UUID)
-                source = Tree(c['source_root'], c['source_owner'])
                 local_mount(b['served_root'])
                 local_mount(b['journal_root'])
                 served = Tree(b['served_root'], c['publisher_uid'], True, c['apache_gid'])
                 journal = Tree(b['journal_root'], c['publisher_uid'], True)
-                require(source.fd != served.fd and b['served_root'] != b['journal_root'])
+                require(b['served_root'] != b['journal_root'])
                 served_stat, journal_stat = os.fstat(served.fd), os.fstat(journal.fd)
                 require(served_stat.st_gid == c['apache_gid'] and stat.S_IMODE(served_stat.st_mode) == 0o750
                         and stat.S_IMODE(journal_stat.st_mode) == 0o700)
@@ -930,18 +1319,19 @@ def main():
                         require(st.st_gid == c['apache_gid'] and stat.S_IMODE(st.st_mode) == (0o700 if name == 'staging' else 0o750))
                     finally:
                         os.close(fd)
-                publisher = Publisher(source, served, journal, Authority(c['authority_uid']), b)
-            evidence = publisher.dispatch(r)
+                publisher = Publisher(served, journal, Authority(c['authority_uid']), b)
+            evidence = publisher.dispatch(r, channel)
             encoded = canonical({'version': 1, 'sequence': sequence, 'result': 'ok', 'evidence': evidence}) + b'\n'
             require(len(encoded) <= MAX_RESPONSE)
-            incoming.sendall(encoded)
+            channel.write(encoded)
             if r['operation'] == 'settle':
                 break
         exit_code = 0
-    except BaseException:
+    except BaseException as error:
         # A single fixed diagnostic; no exception interpolation, tracebacks or lease data.
         try:
-            os.write(2, b'publisher_unresolved\n')
+            os.write(2, (('transfer_unresolved kind=' + error.kind + ' phase=' + error.phase + ' index=' + str(error.index) + '\n').encode('ascii')
+                         if isinstance(error, TransferFailure) else b'publisher_unresolved\n'))
         except OSError:
             pass
     finally:

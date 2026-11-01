@@ -5,6 +5,7 @@ No installer/service/config mutation or database connection. Operator preprovisi
 fixed private roots, TLS Apache bindings and an exact-source admission. Failure or
 missing external evidence produces INCOMPLETE/FAILED, never a skipped PASS.
 """
+from contextlib import contextmanager
 import base64
 import hashlib
 import importlib.util
@@ -76,6 +77,17 @@ def wait_owned(pid, seconds=30):
     raise RuntimeError('owned_child_timeout:' + str(pid))
 
 
+class ComponentPublisher(p.Publisher):
+    def __init__(self, source, served, journal, authority, binding):
+        super().__init__(served, journal, authority, binding)
+        self.fixture_source = source
+
+    @contextmanager
+    def receive_package(self, a, r, channel, transfer_id):
+        # Explicit single-identity component adapter, never constructed by production main.
+        yield self.fixture_source, a['release']['site_key'] + '/' + a['release']['release_key']
+
+
 class Fixture:
     def __init__(self, admission, exported):
         self.admission, self.exported = admission, exported
@@ -83,6 +95,7 @@ class Fixture:
         self.children = []
         self.publication_observations = []
         self.publication_step = None
+        self.transfer_observations = None
         self.pub = None
         self.seq = 0
         uid, gid = os.geteuid(), os.getegid()
@@ -108,7 +121,7 @@ class Fixture:
             os.mkdir(name, 0o700 if name == 'staging' else 0o750, dir_fd=self.served.fd)
         self.journal.write_new('target.lock', b'')
         self.journal.write_new('state.json', p.canonical(dict(version=1, fence=0, owner=None, session=None, phase=0, current=None, intent=None, settled=True)))
-        self.pub = p.Publisher(self.source, self.served, self.journal, self.authority, self.binding)
+        self.pub = ComponentPublisher(self.source, self.served, self.journal, self.authority, self.binding)
 
     def call(self, op, payload=None):
         self.seq += 1
@@ -134,7 +147,7 @@ class Fixture:
     def replacement(self, deployment, attempt, fence, kind, producer):
         if self.pub.lock is not None:
             os.close(self.pub.lock)
-        self.pub = p.Publisher(self.source, self.served, self.journal, self.authority, self.binding)
+        self.pub = ComponentPublisher(self.source, self.served, self.journal, self.authority, self.binding)
         self.seq = 0
         self.lease.update(deployment_id=deployment, attempt_id=attempt, fence_epoch=fence, attempt_kind=kind, token=os.urandom(32).hex())
         self.a.update(deployment_id=deployment, attempt_id=attempt, fence_epoch=fence, attempt_kind=kind, producer_attempt_id=producer, live=True)
@@ -315,7 +328,7 @@ def run_case(name, f):
         def child_work():
             # Drop inherited ownership before proving another descriptor cannot acquire.
             os.close(f.pub.lock)
-            child = p.Publisher(f.source, f.served, f.journal, f.authority, f.binding)
+            child = ComponentPublisher(f.source, f.served, f.journal, f.authority, f.binding)
             try:
                 child.acquire()
             except BlockingIOError:
@@ -406,6 +419,12 @@ def run_case(name, f):
             setattr(tree, method, original)
         if name == 'stage_storage_fault':
             immutable_boundaries(f)
+    elif name == 'worker_helper_authority_integration':
+        identity_spec = importlib.util.spec_from_file_location('identity_driver', ROOT/'tests/support/WebsitePlatformM6EIdentityDriver.py')
+        identity_driver = importlib.util.module_from_spec(identity_spec)
+        identity_spec.loader.exec_module(identity_driver)
+        f.transfer_observations = identity_driver.observe(f.admission['source_sha'])
+        return 'INCOMPLETE'  # Transfer component does not complete installed DB/HTTP/service requirements.
     else:
         return 'INCOMPLETE'  # Separate Apache/provisioning/installed service evidence required.
     return 'PASS'
@@ -443,6 +462,8 @@ def main():
             if f:
                 if f.publication_observations:
                     report['immutable_publication'] = f.publication_observations
+                if f.transfer_observations is not None:
+                    report['artifact_transfer_identities'] = f.transfer_observations
                 try:
                     f.cleanup()
                     report['cleanup'].append({'case': name, 'result': 'PASS', 'owned_entries': len(f.ledger)})
