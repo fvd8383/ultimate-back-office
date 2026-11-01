@@ -62,6 +62,25 @@ intended fault. The local Windows helper suite separately runs real private file
 copies and the same production protocol/manifest/fence/dispatch code with explicitly
 modeled Linux mutations; it is not execution of the cases above.
 
+The PR #131 correction extends the existing `stage_storage_fault` case with nested
+immutable-object observations for both asset and manifest trees: complete publication
+and exact replay; injected prefix-write, file-sync, chmod, publication and asset-group
+failures; matching/conflicting no-replace winners; successful rename followed by a
+directory-sync failure; and SIGKILL during a private prefix write. Each observation
+records its step/result, with the active step in first-failure context. A fault must
+be reached after a valid baseline; current/candidate stay absent. Killed-child private
+leftovers must remain private and must not block a fresh exact insertion. No finally
+cleanup or power-loss durability is inferred. Asset and journal roots are checked
+independently; a shared filesystem between those roots is not required.
+
+These nested cases are **AUTHORED / NOT EXECUTED**, and do not expand the milestone
+acceptance matrix or complete any of the three drivers below. Windows tests execute
+the actual PHP session/Python parser and actual publication primitive, but explicitly
+model dirfd, Unix metadata/timestamps, renameat2, directory sync and read-only fsync.
+Additional native syscall/cleanup/ownership/race stress remains required. The fixture
+staging directory is 0700, matching the primitive's private-directory requirement;
+there is no change to worker-private M6C source permissions or installed admission.
+
 ## Concrete incomplete drivers and mandatory acceptance inventory
 
 Three inventory entries currently return **INCOMPLETE**. The harness therefore cannot

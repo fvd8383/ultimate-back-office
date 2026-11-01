@@ -15,6 +15,83 @@ second parent; native-tested `7cdbbeef639…` is an ancestor of that reviewed he
 Its native PASS belongs only to `7cdbbeef`, never this implementation or the merge.
 Historical failures and pre-merge reports are not rewritten or rerun.
 
+## Focused PR #131 review correction
+
+Starting source: `528b47fefbe2e7bacd4a3b7e8a365de7b4db8aa2`, verified clean on
+the existing branch with the PR still draft. Its completed review had two unresolved
+findings; completion was not a clean review:
+[empty wire payload](https://github.com/fvd8383/ultimate-back-office/pull/131#discussion_r4437330462)
+and [partial permanent objects](https://github.com/fvd8383/ultimate-back-office/pull/131#discussion_r4437330464).
+
+Before editing production code, the actual PHP session wrote `payload: []` for
+inspect/settle into a test-only memory stream (seven-byte writes, five-byte reads).
+The actual Python parser rejected both. Saved original producer bytes also reproduce
+the rejection in a bounded Python child loading the exact prior Git blob. No
+operational inspection/settlement occurred. The separately source-confirmed
+correlation mismatch also reproduces: the actual service-generated `site:<32 hex>`
+ID rejects, while a UUID-shaped correlation positive control parses. This is not a
+third reviewer thread or a claimed native failure.
+
+The PHP session now converts only the intentionally empty payload to an object.
+Nonempty payloads and nested lists/numbers/booleans/nulls/strings retain their types.
+CanonicalJson and shared hashing are unchanged. The Python correlation field now
+accepts precisely the normalized service grammar `[A-Za-z0-9._:-]{1,100}`, without
+trimming or rewriting. Deployment/release UUID validation remains strict. The
+bounded compatibility audit passes actual PHP-produced examples of all seven wire
+operations, including service-produced nullable expectations and recovery context;
+no further producer/parser mismatch was observed. Arrays/null/scalars/extra fields
+for empty payloads, invalid correlation IDs, UUID/identity/shape faults and oversized
+requests still reject. This is parsing evidence, not authority admission.
+
+The original `Tree.write_new` reproduction created the final asset/manifest name,
+wrote a three-byte prefix, then raised a controlled error. Real private files retained
+`bod` instead of the complete synthetic CSS, and `{"f` instead of the complete
+synthetic manifest; the next exact insertion raised FileExistsError. Original and
+partial bytes/digests are retained outside Git. Unix metadata/dirfd behavior was
+explicitly modeled on Windows; the executed writer/reader were production methods.
+
+Only two production files change in this correction: `SitePublisherSession.php` and
+`ubo_site_publish.py`. The new `Tree.publish_immutable` applies only to retained
+assets and pinned manifests. It validates fixed object identity and owned directory
+descriptors, creates a unique exclusive private temporary, handles partial writes,
+verifies full length/digest/type/owner/single-link/device, applies final 0440/group
+or private 0600 permissions, fsyncs and checks close before publishing. It reuses the
+existing Linux `renameat2(RENAME_NOREPLACE)` primitive and syncs both affected
+directories. Asset temporaries stay in private served-filesystem staging; manifest
+temporaries stay in the private journal root. Those filesystems need not be equal.
+
+Exact existing objects and matching no-replace race winners are safely read,
+identity/mode checked and synchronized before reuse. Conflicting/partial objects
+are never overwritten, deleted or repaired. Normal exception cleanup removes only
+the invocation's proven-owned temporary; a secondary cleanup error cannot replace
+the first error. A successful rename followed by sync failure remains an error and
+retains the complete published object. Later exact object replay can verify it;
+activation is not automatically replayed. SIGKILL/power loss does not run finally,
+and private leftovers do not create permanent-name conflicts or authorize pruning.
+
+The actual stage call sites use this primitive. Private incomplete stage writes,
+replaceable state journals and current/candidate replacement retain their separate
+semantics. Target locking, fencing, fresh authority, settlement, limits/timeouts and
+admission are unchanged. The worker-private 0700/0600 source-access blocker is not
+solved by this change. The artifact-transfer bridge and all three incomplete
+integration drivers remain unimplemented; M6E remains PARTIALLY IMPLEMENTED /
+REVIEW REQUIRED. M6C/M6D stay closed and M6F–M6G remain not started.
+
+The new publication suite executes the real primitive with real private regular-file
+I/O, fault injection and exact replay checks. Dirfd, Unix ownership/modes/timestamps,
+renameat2, directory sync and read-only-descriptor sync are Windows models. Initial
+test-adapter failures exposed Windows text-mode newline conversion, deferred file
+timestamps and read-only fsync differences; binary I/O and explicit model boundaries
+correct those test adapters without relaxing production Linux checks. The existing
+helper suite now invokes the actual primitive at stage's permanent-object call sites.
+
+Corresponding Linux publication/race/sync/kill observations are authored within the
+existing `stage_storage_fault` case; the top-level inventory and three INCOMPLETE
+driver results are unchanged. That harness was not executed. Native ownership,
+replacement races, filesystem durability, Apache and installed authority acceptance
+remain separate unexecuted obligations. Current focused command/count/exit/duration
+results are recorded below; the initial 68-program campaign remains historical.
+
 ## Implemented components and boundaries
 
 | Component | Executable behavior |
@@ -151,7 +228,7 @@ SSH, public URL, deployment, migration, provider, container, service, backup, sy
 restore, prune, merge or formal closure occurred. Fixture website restore tests are
 distinct from operational backup/system restore.
 
-### Executed Windows validation — 2026-11-01
+### Executed Windows validation — 2026-11-01, initial 528b47f source
 
 Installed tools: PHP 8.4.24 ZTS, Python 3.14.7 (existing GIMP-bundled
 interpreter), Git 2.56.0.windows.2 and existing Git Bash. No packages installed.
@@ -273,3 +350,45 @@ parses as JSON. Documentation checks cover seven documents, 119 relative links,
 paired fences and all 77 unchanged requirement rows; link anchors are not claimed
 verified by that checker. `git diff --check` passes. Apache/systemd templates were
 not configtested, installed or started.
+
+### Executed focused review-correction validation
+
+Installed PHP 8.4.24 ZTS, Python 3.14.7 and Git 2.56.0.windows.2. Eleven
+focused programs exit zero: 278 PHP behavior assertions plus the current scope
+guard, and 30 Python unittest cases (with additional subtests). These are local
+fixture results, not native acceptance. All PHP commands are
+`php -d memory_limit=256M tests/<File>`; Python commands use the existing interpreter
+with `-I -B tests/<File>`. The table records measured process wall time.
+
+| File | Actual count | Exit | Seconds |
+| --- | --- | --- | --- |
+| `WebsitePlatformM6EProtocolTest.php` | 19 assertions | 0 | 4.063 |
+| `WebsitePlatformM6EHostTest.php` | 31 assertions | 0 | 0.430 |
+| `WebsitePlatformM6EAuthorityTest.php` | 18 assertions | 0 | 0.482 |
+| `WebsitePlatformM6EHealthTest.php` | 43 assertions | 0 | 0.801 |
+| `WebsitePlatformM6DCliTest.php` | 44 assertions | 0 | 3.810 |
+| `WebsitePlatformM6DExecutionTest.php` | 63 assertions | 0 | 1.140 |
+| `WebsitePlatformM6DRecoveryTest.php` | 60 assertions | 0 | 0.618 |
+| `WebsitePlatformM6EScopeTest.php` | 132 assertions | 0 | 2.381 |
+| `WebsitePlatformM6EWireTest.py` | 5 unittest cases | 0 | 7.183 |
+| `WebsitePlatformM6EPublicationTest.py` | 8 unittest cases | 0 | 3.443 |
+| `WebsitePlatformM6EHelperTest.py` | 17 unittest cases | 0 | 4.447 |
+
+The wire audit uses 11 actual PHP-produced valid examples across seven operations,
+plus a serializer-only mixed-type example that intentionally fails the protocol
+shape. Invalid empty payloads, correlations, UUIDs/identities/shapes and size limits
+are tested separately. Actual memory-stream writes/reads are deliberately partial.
+The publication negatives verify the injected fault was reached after a valid
+publication baseline; complete prior objects and pointer sentinels are unchanged.
+
+Expected stderr consists of Python unittest progress/OK and six fixed PDOException
+classification lines from existing injected M6D execution/recovery failures. New PHP
+suites have empty stderr. No unexplained output is ignored. The prior 68-program
+campaign, 7,410-assertion synthetic launcher and closed M6C/M6D scope guards were
+not rerun. Their historical failures/timeouts remain recorded above.
+
+Changed PHP files pass `php -l`; changed Python files parse with the installed
+interpreter's AST compiler without executing the Linux harness or creating bytecode.
+Documentation links/fences, exact working/staged/committed scope and preservation
+checks are retained with commands/timings in the external SUMMARY. Original failure
+observations and corrected test runs are separate evidence files.

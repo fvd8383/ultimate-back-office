@@ -33,7 +33,9 @@ final class SitePublisherSession
             stream_set_timeout($this->stream,30);stream_set_blocking($this->stream,true);
         }
         $id=++$this->sequence;
-        $line=CanonicalJson::encode(['version'=>1,'sequence'=>$id,'operation'=>$operation,'target'=>$target,'lease'=>$this->lease,'payload'=>$payload])."\n";
+        // Only this wire object has an empty shape; nested lists retain their types.
+        $line=CanonicalJson::encode(['version'=>1,'sequence'=>$id,'operation'=>$operation,'target'=>$target,'lease'=>$this->lease,
+            'payload'=>$payload===[]?(object)[]:$payload])."\n";
         if(strlen($line)>16384)SiteDeploymentContract::invalid();
         $offset=0;
         while($offset<strlen($line)){$n=@fwrite($this->stream,substr($line,$offset));if(!$n)$this->broken();$offset+=$n;}

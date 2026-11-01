@@ -17,6 +17,8 @@ $allowed=[
     'tests/WebsitePlatformM6EHostTest.php','tests/WebsitePlatformM6EHealthTest.php','tests/WebsitePlatformM6EAuthorityTest.php',
     'tests/WebsitePlatformM6EHelperTest.py','tests/WebsitePlatformM6EProtocolTest.php','tests/WebsitePlatformM6EScopeTest.php',
     'tests/WebsitePlatformM6EIsolated.py','tests/support/WebsitePlatformM6EArtifactChild.php','tests/support/WebsitePlatformM6ESocketChild.php',
+    'tests/WebsitePlatformM6EWireTest.py','tests/WebsitePlatformM6EPublicationTest.py',
+    'tests/support/WebsitePlatformM6EWireChild.php','tests/support/WebsitePlatformM6EFilesystem.py',
     'docs/sprint-8.8-m6e-local-implementation.md','docs/sprint-8.8-m6e-isolated-validation.md',
     'docs/sprint-8.8-m6-implementation-plan.md','docs/codex-handoff.md','docs/sprint-8.8.md',
     'docs/sprint-8.8-m6d-native-acceptance.md','docs/sprint-8.8-m6d-local-implementation.md',

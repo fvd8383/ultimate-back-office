@@ -15,6 +15,8 @@ import unittest
 from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / 'tests/support'))
+from WebsitePlatformM6EFilesystem import FilesystemModel
 spec = importlib.util.spec_from_file_location('publisher', ROOT / 'infrastructure/deployment/ubo_site_publish.py')
 p = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(p)
@@ -48,6 +50,18 @@ class Files:
             raise OSError('synthetic_journal_failure')
         (self.root / name).write_bytes(p.canonical(value))
         self.writes += 1
+
+    def publish_immutable(self, name, data, served=False):
+        # Actual stage call sites and production primitive; only Linux syscalls/metadata are modeled.
+        if not hasattr(self, 'publication_model'):
+            self.publication_model = FilesystemModel(self.root)
+        ops = self.publication_model
+        with mock.patch.object(p, 'os', ops), mock.patch.object(p.Tree, '_rename_noreplace', staticmethod(ops.rename_noreplace)):
+            tree = ops.tree(p, self.root)
+            try:
+                tree.publish_immutable(name, data, served)
+            finally:
+                tree.close()
 
     def inventory(self, prefix):
         files, dirs = [], []

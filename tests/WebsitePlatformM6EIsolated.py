@@ -16,6 +16,7 @@ import stat
 import subprocess
 import sys
 import time
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location('m6e', ROOT / 'infrastructure/deployment/ubo_site_publish.py')
@@ -80,6 +81,8 @@ class Fixture:
         self.admission, self.exported = admission, exported
         self.ledger = []
         self.children = []
+        self.publication_observations = []
+        self.publication_step = None
         self.pub = None
         self.seq = 0
         uid, gid = os.geteuid(), os.getegid()
@@ -102,7 +105,7 @@ class Fixture:
         for path, data in exported['files'].items():
             self.source.write_new(self.source_path + '/' + path, base64.b64decode(data))
         for name in ('releases', 'staging', 'assets'):
-            os.mkdir(name, 0o750, dir_fd=self.served.fd)
+            os.mkdir(name, 0o700 if name == 'staging' else 0o750, dir_fd=self.served.fd)
         self.journal.write_new('target.lock', b'')
         self.journal.write_new('state.json', p.canonical(dict(version=1, fence=0, owner=None, session=None, phase=0, current=None, intent=None, settled=True)))
         self.pub = p.Publisher(self.source, self.served, self.journal, self.authority, self.binding)
@@ -182,6 +185,105 @@ def reject(call):
     except (p.Denied, OSError):
         return
     raise AssertionError('negative_probe_did_not_reject')
+
+
+def immutable_boundaries(f):
+    """Nested storage-boundary observations; existing acceptance inventory unchanged.
+
+    Actual Linux file/dirfd/rename/fsync/kill paths with explicitly injected API faults.
+    No claim to simulate kernel power loss or the installed identity boundary.
+    """
+    for served, tree in ((True, f.served), (False, f.journal)):
+        kind = 'asset' if served else 'manifest'
+        def object_(label):
+            f.publication_step = kind + ':' + label
+            data = ('synthetic immutable ' + f.publication_step).encode()
+            path = 'assets/' + p.digest(data) + '.css' if served else 'manifests/55555555-5555-4555-8555-' + os.urandom(6).hex() + '.json'
+            return path, data
+        def passed():
+            p.require(f.served.link() is None and f.served.link('candidate') is None)
+            f.publication_observations.append({'step': f.publication_step, 'result': 'PASS'})
+        path, data = object_('complete-replay')
+        tree.publish_immutable(path, data, served)
+        tree.publish_immutable(path, data, served)
+        p.require(tree.read(path, len(data)) == data)
+        passed()
+        for fault in ('partial-write', 'file-sync', 'chmod', 'publish') + (('chown',) if served else ()):
+            path, data = object_(fault)
+            reached = [False]
+            original_write, original_sync = os.write, os.fsync
+            def partial(fd, content):
+                if not reached[0]:
+                    reached[0] = True
+                    return original_write(fd, content[:3])
+                raise OSError('injected_partial_write')
+            def fail(*args):
+                reached[0] = True
+                raise OSError('injected_publication_api')
+            def sync(fd):
+                if stat.S_ISREG(os.fstat(fd).st_mode):
+                    fail()
+                original_sync(fd)
+            owner = p.Tree if fault == 'publish' else os
+            attribute = {'partial-write': 'write', 'file-sync': 'fsync', 'chmod': 'fchmod', 'chown': 'fchown', 'publish': '_rename_noreplace'}[fault]
+            replacement = partial if fault == 'partial-write' else sync if fault == 'file-sync' else fail
+            with mock.patch.object(owner, attribute, replacement):
+                reject(lambda: tree.publish_immutable(path, data, served))
+            p.require(reached[0] and not tree.exists(path))
+            tree.publish_immutable(path, data, served)
+            p.require(tree.read(path, len(data)) == data)
+            passed()
+        for matches in (True, False):
+            path, data = object_('matching-winner' if matches else 'conflicting-winner')
+            winner = data if matches else b'partial'
+            rename = p.Tree._rename_noreplace
+            def race(src, sn, dst, dn):
+                tree.write_new(path, winner, served)
+                rename(src, sn, dst, dn)
+            with mock.patch.object(p.Tree, '_rename_noreplace', staticmethod(race)):
+                if matches:
+                    tree.publish_immutable(path, data, served)
+                else:
+                    reject(lambda: tree.publish_immutable(path, data, served))
+            p.require(tree.read(path, len(data)) == winner)
+            passed()
+        path, data = object_('post-rename-directory-sync')
+        published = [False]
+        rename, sync = p.Tree._rename_noreplace, os.fsync
+        def publish(src, sn, dst, dn):
+            rename(src, sn, dst, dn)
+            published[0] = True
+        def uncertain(fd):
+            if published[0] and stat.S_ISDIR(os.fstat(fd).st_mode):
+                raise OSError('injected_post_rename_sync')
+            sync(fd)
+        with mock.patch.object(p.Tree, '_rename_noreplace', staticmethod(publish)), mock.patch.object(os, 'fsync', uncertain):
+            reject(lambda: tree.publish_immutable(path, data, served))
+        p.require(published[0] and tree.read(path, len(data)) == data)
+        tree.publish_immutable(path, data, served)
+        passed()
+        path, data = object_('sigkill-private-prefix')
+        private = tree.directory('staging') if served else os.dup(tree.fd)
+        try:
+            before = set(os.listdir(private))
+            def interrupted():
+                original_write = os.write
+                def kill(fd, content):
+                    original_write(fd, content[:3])
+                    os.kill(os.getpid(), signal.SIGKILL)
+                with mock.patch.object(os, 'write', kill):
+                    tree.publish_immutable(path, data, served)
+            pid = fork_owned(interrupted); f.children.append(pid)
+            status = wait_owned(pid)
+            p.require(os.WIFSIGNALED(status) and os.WTERMSIG(status) == signal.SIGKILL and not tree.exists(path))
+            leftovers = set(os.listdir(private)) - before
+            p.require(len(leftovers) == 1 and next(iter(leftovers)).startswith('immutable-'))
+            tree.publish_immutable(path, data, served)
+            p.require(leftovers.issubset(os.listdir(private)) and tree.read(path, len(data)) == data)
+            # Finally cleanup did not run in the killed child. Only fixture teardown owns these leftovers.
+        finally:
+            os.close(private)
+        passed()
 
 
 def run_case(name, f):
@@ -302,6 +404,8 @@ def run_case(name, f):
             p.require(f.served.link() is None)
         finally:
             setattr(tree, method, original)
+        if name == 'stage_storage_fault':
+            immutable_boundaries(f)
     else:
         return 'INCOMPLETE'  # Separate Apache/provisioning/installed service evidence required.
     return 'PASS'
@@ -333,9 +437,12 @@ def main():
         except BaseException as e:
             report['cases'][name] = 'FAILED'
             report['first_failure'] = report['first_failure'] or {'case': name, 'type': type(e).__name__, 'children': [] if f is None else f.children,
+                'publication_step': None if f is None else f.publication_step,
                 'phase': None if f is None or f.pub is None or f.pub.state is None else f.pub.state['phase']}
         finally:
             if f:
+                if f.publication_observations:
+                    report['immutable_publication'] = f.publication_observations
                 try:
                     f.cleanup()
                     report['cleanup'].append({'case': name, 'result': 'PASS', 'owned_entries': len(f.ledger)})

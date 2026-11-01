@@ -23,6 +23,7 @@ MAX_PACKAGE = 104857600
 UUID = re.compile(r'^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$')
 HASH = re.compile(r'^[0-9a-f]{64}$')
 KEY = re.compile(r'^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,190}$')
+CORRELATION = re.compile(r'[A-Za-z0-9._:-]{1,100}')
 PHASES = {'stage': 1, 'activate': 2, 'restore': 2, 'compensate': 3}
 CONFIG = '/etc/ubo-site-publisher/helper.json'
 
@@ -108,8 +109,9 @@ def request(data):
             require(c[k] == lease[k])
         require(c['lease_token'] == lease['token'] and c['binding_version'] == t['binding_version']
                 and c['phase_timeout_seconds'] == 30 and c['connect_timeout_seconds'] == 2 and c['request_timeout_seconds'] == 5)
-        for k in ('deployment_key', 'release_key', 'correlation_id'):
+        for k in ('deployment_key', 'release_key'):
             machine(c[k], UUID)
+        machine(c['correlation_id'], CORRELATION)
         machine(c['artifact_hash'], HASH)
         require(c['operation'] in ('publish', 'restore'))
         phases = {'stage': ('stage',), 'activate': ('activation',), 'restore': ('activation',),
@@ -249,6 +251,127 @@ class Tree:
         os.replace(temporary, path, src_dir_fd=self.fd, dst_dir_fd=self.fd)
         os.fsync(self.fd)
 
+    def _immutable_replay(self, path, parent, name, data, served):
+        before = os.stat(name, dir_fd=parent, follow_symlinks=False)
+        require(self.read(path, len(data)) == data)
+        fd = os.open(name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK | os.O_CLOEXEC, dir_fd=parent)
+        primary = None
+        try:
+            after = os.fstat(fd)
+            require(all(getattr(before, k) == getattr(after, k) for k in
+                        ('st_dev', 'st_ino', 'st_mode', 'st_nlink', 'st_uid', 'st_gid', 'st_size', 'st_mtime_ns', 'st_ctime_ns')))
+            require(stat.S_IMODE(after.st_mode) == (0o440 if served else 0o600)
+                    and (not served or after.st_gid == self.group))
+            os.fsync(fd)  # Exact replay after a prior uncertain acknowledgement still checks durability.
+        except BaseException as error:
+            primary = error
+            raise
+        finally:
+            try:
+                os.close(fd)
+            except OSError:
+                if primary is None:
+                    raise
+
+    def publish_immutable(self, path, data, served=False):
+        """Only retained assets/manifests: complete private write, then atomic no-replace.
+
+        A failed post-rename sync is unresolved, never cleanup of the final name.
+        No SIGKILL/power-loss cleanup claim; only proven-owned normal-path temps are removed.
+        """
+        require(self.writable and isinstance(data, bytes) and 0 < len(data) <= MAX_PACKAGE)
+        if served:
+            require(self.group is not None and re.fullmatch(r'assets/[0-9a-f]{64}\.(css|png|jpg|webp|pdf)', path)
+                    and path.split('/')[1].split('.')[0] == digest(data))
+        else:
+            require(re.fullmatch(r'manifests/[0-9a-f-]{36}\.json', path))
+            machine(path.split('/')[1][:-5], UUID)
+        parent = private = fd = owned = None
+        temporary = 'immutable-' + os.urandom(16).hex() + '.pending'
+        published = False
+        primary = None
+        try:
+            parent, name = self.parent(path, True)
+            private = self.directory('staging') if served else os.dup(self.fd)
+            for directory in (parent, private):
+                s = os.fstat(directory)
+                require(stat.S_ISDIR(s.st_mode) and s.st_uid == self.owner and s.st_dev == self.device and s.st_mode & 0o022 == 0)
+            require(stat.S_IMODE(os.fstat(private).st_mode) == 0o700)
+            try:
+                self._immutable_replay(path, parent, name, data, served)
+                os.fsync(parent)
+                return
+            except FileNotFoundError:
+                pass
+            fd = os.open(temporary, os.O_RDWR | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW | os.O_CLOEXEC, 0o600, dir_fd=private)
+            owned = os.fstat(fd)
+            require(stat.S_ISREG(owned.st_mode) and owned.st_nlink == 1 and owned.st_uid == self.owner and owned.st_dev == self.device)
+            view = memoryview(data)
+            while view:
+                n = os.write(fd, view)
+                require(0 < n <= len(view))
+                view = view[n:]
+            require(os.fstat(fd).st_size == len(data))
+            os.lseek(fd, 0, os.SEEK_SET)
+            observed, length = hashlib.sha256(), 0
+            while part := os.read(fd, 65536):
+                length += len(part)
+                require(length <= len(data))
+                observed.update(part)
+            require(length == len(data) and observed.hexdigest() == digest(data))
+            if served:
+                os.fchown(fd, -1, self.group)
+            os.fchmod(fd, 0o440 if served else 0o600)
+            final = os.fstat(fd)
+            require(stat.S_ISREG(final.st_mode) and final.st_nlink == 1 and final.st_uid == self.owner
+                    and final.st_dev == owned.st_dev and final.st_ino == owned.st_ino and final.st_size == len(data)
+                    and stat.S_IMODE(final.st_mode) == (0o440 if served else 0o600)
+                    and (not served or final.st_gid == self.group))
+            os.fsync(fd)
+            closing, fd = fd, None  # Do not retry close on an uncertain/reused descriptor.
+            os.close(closing)
+            named = os.stat(temporary, dir_fd=private, follow_symlinks=False)
+            require(all(getattr(final, k) == getattr(named, k) for k in
+                        ('st_dev', 'st_ino', 'st_mode', 'st_nlink', 'st_uid', 'st_gid', 'st_size', 'st_mtime_ns', 'st_ctime_ns')))
+            try:
+                self._rename_noreplace(private, temporary, parent, name)
+                published = True
+            except FileExistsError:
+                self._immutable_replay(path, parent, name, data, served)
+            os.fsync(private)
+            os.fsync(parent)
+        except BaseException as error:
+            primary = error
+            raise
+        finally:
+            cleanup_error = None
+            if fd is not None:
+                try:
+                    os.close(fd)
+                except OSError as error:
+                    cleanup_error = error
+            if owned is not None and not published:
+                try:
+                    try:
+                        s = os.stat(temporary, dir_fd=private, follow_symlinks=False)
+                    except FileNotFoundError:
+                        s = None
+                    if s is not None:
+                        require(stat.S_ISREG(s.st_mode) and s.st_uid == self.owner and s.st_nlink == 1
+                                and s.st_dev == owned.st_dev and s.st_ino == owned.st_ino)
+                        os.unlink(temporary, dir_fd=private)
+                        os.fsync(private)
+                except BaseException as error:
+                    cleanup_error = cleanup_error or error
+            for directory in (private, parent):
+                if directory is not None:
+                    try:
+                        os.close(directory)
+                    except OSError as error:
+                        cleanup_error = cleanup_error or error
+            if primary is None and cleanup_error is not None:
+                raise cleanup_error
+
     def inventory(self, path):
         names, dirs = [], []
         def walk(prefix):
@@ -289,18 +412,22 @@ class Tree:
         src, sn = self.parent(source)
         dst, dn = self.parent(destination, True)
         try:
-            # Linux renameat2(RENAME_NOREPLACE) closes check/rename overwrite races.
-            libc = ctypes.CDLL(None, use_errno=True)
-            rename = libc.renameat2
-            rename.argtypes = [ctypes.c_int, ctypes.c_char_p, ctypes.c_int, ctypes.c_char_p, ctypes.c_uint]
-            rename.restype = ctypes.c_int
-            if rename(src, os.fsencode(sn), dst, os.fsencode(dn), 1) != 0:
-                raise OSError(ctypes.get_errno(), 'exclusive_rename_failed')
+            self._rename_noreplace(src, sn, dst, dn)
             os.fsync(src)
             os.fsync(dst)
         finally:
             os.close(src)
             os.close(dst)
+
+    @staticmethod
+    def _rename_noreplace(src, sn, dst, dn):
+        # Linux renameat2(RENAME_NOREPLACE); shared by sealed directories and immutable files.
+        libc = ctypes.CDLL(None, use_errno=True)
+        rename = libc.renameat2
+        rename.argtypes = [ctypes.c_int, ctypes.c_char_p, ctypes.c_int, ctypes.c_char_p, ctypes.c_uint]
+        rename.restype = ctypes.c_int
+        if rename(src, os.fsencode(sn), dst, os.fsencode(dn), 1) != 0:
+            raise OSError(ctypes.get_errno(), 'exclusive_rename_failed')
 
     def link(self, name='current'):
         require(name in ('current', 'candidate'))
@@ -563,16 +690,10 @@ class Publisher:
                 self.served.write_new(stage + '/' + entry['relative_path'], data, served=True)
                 if entry['relative_path'].startswith('public/assets/'):
                     pool = entry['relative_path'][7:]
-                    try:
-                        self.served.write_new(pool, data, served=True)
-                    except FileExistsError:
-                        require(self.served.read(pool, entry['byte_size']) == data)
+                    self.served.publish_immutable(pool, data, served=True)
             verify_package(self.served, stage, release, True, manifest)
             self.served.seal_directories(stage)
-            try:
-                self.journal.write_new('manifests/' + release['release_key'] + '.json', raw_manifest)
-            except FileExistsError:
-                require(self.journal.read('manifests/' + release['release_key'] + '.json', MAX_RESPONSE) == raw_manifest)
+            self.journal.publish_immutable('manifests/' + release['release_key'] + '.json', raw_manifest)
             self.served.rename_new(stage, target)
         self.verify_served(release)
         # Candidate is a separate private vhost pointer; it never changes active current.
