@@ -103,7 +103,7 @@ function m6dNativeGrantPhase(string $sub,M6DNativeConnection $db,PDO $observer,a
             m6dNativeCheck($done['operation_status']==='failed' && (m6dNativeModel($f)['pointers'][$f['target_id']] ?? null)===null,'invalid_grant_recovery_only_compensates');
         }
     }
-    $grant=m6dNativeRow($observer,'site_deployment_approvals',$f,$g['deployment_approval_id']);
+    $grant=m6dNativeObservedRow($observer,'site_deployment_approvals',$f,$g['deployment_approval_id']);
     m6dNativeCheck($grant['consumed_by_deployment_id']==($phase==='success' ? $op['deployment_id'] : null),'consumption_only_at_activation_boundary');
     m6dNativeCheck(m6dNativeRow($observer,'site_deployment_targets',$f,$f['target_id'])['current_deployment_id']===null
         && m6dNativeEvents($observer,$f,'site_deployment_succeeded',$op['deployment_id'])===0,'denied_grant_no_new_success');
@@ -175,7 +175,7 @@ function m6dNativeHealthCase(string $sub,M6DNativeConnection $db,PDO $observer,a
     if($sub==='candidate-failure') $d->model->healthOverrides=['candidate'=>['result'=>'fail']];
     if($sub==='activation-audit-grant') {
         $db->faultEvent='site_activation_attempted'; m6dNativeDeny(fn()=>SiteDeploymentService::executeDeployment($l),'database_failure'); $db->faultEvent=null;
-        m6dNativeCheck(m6dNativeRow($observer,'site_deployment_approvals',$f,$g['deployment_approval_id'])['consumed_by_deployment_id']===null
+        m6dNativeCheck(m6dNativeObservedRow($observer,'site_deployment_approvals',$f,$g['deployment_approval_id'])['consumed_by_deployment_id']===null
             && m6dNativeRow($observer,'site_deployments',$f,$op['deployment_id'])['activation_fence']===null
             && !in_array('activate',m6dNativeModel($f)['calls'],true),'activation_audit_rollback_restores_grant_before_external_action'); return [];
     }
@@ -195,7 +195,7 @@ function m6dNativeHealthCase(string $sub,M6DNativeConnection $db,PDO $observer,a
         m6dNativeDeny(fn()=>SiteDeploymentService::completeDeploymentSuccess($l,$r),'database_failure'); $db->faultEvent=null;
         // Health probes are model observations; owning DB state is checked separately.
         m6dNativeCheck(m6dNativeRow($observer,'site_deployment_targets',$f,$f['target_id'])['current_deployment_id']===null
-            && (int)m6dNativeRow($observer,'site_deployment_approvals',$f,$g['deployment_approval_id'])['consumed_by_deployment_id']===$op['deployment_id']
+            && (int)m6dNativeObservedRow($observer,'site_deployment_approvals',$f,$g['deployment_approval_id'])['consumed_by_deployment_id']===$op['deployment_id']
             && m6dNativeEvents($observer,$f,'site_deployment_succeeded',$op['deployment_id'])===0,'result_rollback_keeps_activation_consumption_only');
         m6dNativeCheck($opBefore===m6dNativeRow($observer,'site_deployments',$f,$op['deployment_id'])
             && $targetBefore===m6dNativeRow($observer,'site_deployment_targets',$f,$f['target_id'])

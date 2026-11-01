@@ -8,8 +8,74 @@ $deny=static function(callable $call,string $expected) use($check): void {
     try { $call(); } catch(RuntimeException $e) { $check($e->getMessage()===$expected,'expected_'.$expected.'_got_'.$e->getMessage()); return; }
     throw new RuntimeException('missing_expected_failure');
 };
+/** Synthetic row fixtures only: no native SQL, locks or COMMIT evidence. */
+final class M6DObservationPDO extends PDO
+{
+    public int $prepares=0;
+    public function __construct(public array $rows,private bool $transaction) {}
+    public function inTransaction(): bool { return $this->transaction; }
+    public function prepare(string $query,array $options=[]): PDOStatement|false
+    {
+        $this->prepares++;
+        if(!preg_match('/^SELECT \* FROM (site_deployment_approvals|site_revisions) WHERE id = :id AND site_id = :site_id$/D',$query,$m))
+            throw new LogicException('observation_must_be_scoped_nonlocking_select');
+        return new class($this->rows[$m[1]]) extends PDOStatement {
+            private array $result=[];
+            public function __construct(private array $fixture) {}
+            public function execute(?array $params=null): bool
+            {
+                if(array_keys($params ?? [])!==['id','site_id']) throw new LogicException('observation_bound_values');
+                $this->result=array_values(array_filter($this->fixture,
+                    static fn($r)=>$r['id']===$params['id'] && $r['site_id']===$params['site_id']));
+                return true;
+            }
+            public function fetchAll(int $mode=PDO::FETCH_DEFAULT,mixed ...$args): array { return $this->result; }
+        };
+    }
+}
+$logicDeny=static function(callable $call,string $expected) use($check): void {
+    try { $call(); } catch(LogicException $e) { $check($e->getMessage()===$expected,'exact_observation_rejection'); return; }
+    throw new RuntimeException('missing_observation_rejection');
+};
 $identity=['profile'=>M6DNativeContract::PROFILE,'source_sha'=>str_repeat('a',40),'image_id'=>'sha256:'.str_repeat('b',64),'run_token'=>str_repeat('c',32)];
 try {
+    foreach([false,true] as $transaction) {
+        $fixtures=[
+            'site_deployment_approvals'=>['id'=>7,'site_id'=>10,'consumed_by_deployment_id'=>null,'consumed_at'=>null],
+            'site_revisions'=>['id'=>7,'site_id'=>10,'lifecycle_status'=>'published'],
+        ];
+        $rows=[]; foreach($fixtures as $table=>$row) $rows[$table]=[$row,
+            array_replace($row,['site_id'=>20]),array_replace($row,['id'=>8,'site_id'=>20])];
+        $observer=new M6DObservationPDO($rows,$transaction); $f=['site_id'=>10];
+        foreach($fixtures as $table=>$row) {
+            $check(m6dNativeObservedRow($observer,$table,$f,7)===$row,'observation_preserves_entire_row_'.$table);
+            $deny(fn()=>m6dNativeObservedRow($observer,$table,$f,8),'native_observation_row_count');
+            $deny(fn()=>m6dNativeObservedRow($observer,$table,$f,999),'native_observation_row_count');
+            $duplicate=new M6DObservationPDO([$table=>[$row,$row]],$transaction);
+            $deny(fn()=>m6dNativeObservedRow($duplicate,$table,$f,7),'native_observation_row_count');
+            $prepares=$observer->prepares;
+            $logicDeny(fn()=>SiteDeploymentStore::row($observer,$table,10,7),'Unsupported deployment read.');
+            $check($observer->prepares===$prepares,'production_rejection_before_sql_'.$table);
+        }
+        foreach(['sites','site_deployments','site_revisions WHERE 1=1 --',''] as $table) {
+            $prepares=$observer->prepares;
+            $logicDeny(fn()=>m6dNativeObservedRow($observer,$table,$f,7),'unsupported_native_observation_table');
+            $check($observer->prepares===$prepares,'unsupported_observation_before_sql');
+        }
+        $check($observer->rows===$rows && $observer->inTransaction()===$transaction,'observation_no_write_or_transaction_change');
+    }
+    // Catch the original pre-START dispatch and equivalent unreached wire reads at their actual call sites.
+    $dispatch=['m6dNativeRow'=>['site_deployments','site_deployment_attempts','site_deployment_targets','site_releases'],
+        'm6dNativeObservedRow'=>['site_deployment_approvals','site_revisions']];
+    $observed=[];
+    foreach(glob(__DIR__.'/support/WebsitePlatformM6DNative*.php') as $file) {
+        preg_match_all('/\b(m6dNativeRow|m6dNativeObservedRow)\(\s*\$\w+\s*,\s*\'([^\']+)\'/m',file_get_contents($file),$calls,PREG_SET_ORDER);
+        foreach($calls as $call) {
+            $check(in_array($call[2],$dispatch[$call[1]],true),'native_read_dispatch_'.basename($file).'_'.$call[2]);
+            if($call[1]==='m6dNativeObservedRow') $observed[]=$call[2];
+        }
+    }
+    $check(array_count_values($observed)===['site_deployment_approvals'=>7,'site_revisions'=>1],'all_eight_observation_dispatches_covered');
     foreach(['pass','early','malformed','wrong','partial','diagnostic','timeout','overflow'] as $mode) {
         $p=new M6CNativeProcess([PHP_BINARY,__DIR__.'/support/WebsitePlatformM6DNativeSyntheticChild.php',$mode],$mode==='timeout' ? 1 : 5,$mode==='overflow' ? 1024 : 16384);
         $run=static function() use($p,$identity): mixed { M6DNativeProtocol::ready($p); $p->send('START'); return M6DNativeProtocol::result($p,$identity); };

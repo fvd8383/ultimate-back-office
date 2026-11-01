@@ -19,7 +19,7 @@ function m6dNativeAuthorityOrder(string $sub,M6DNativeConnection $db,PDO $observ
     if($order==='denial') {
         if($phase!=='claim') { $work->send('START'); m6dNativeCheck($work->line(10)==='BOUNDARY','exact_boundary_reached'); }
         $before=m6dNativeRow($observer,'site_deployment_targets',$f,$f['target_id']);
-        $beforeGrant=m6dNativeRow($observer,'site_deployment_approvals',$f,$g['deployment_approval_id']);
+        $beforeGrant=m6dNativeObservedRow($observer,'site_deployment_approvals',$f,$g['deployment_approval_id']);
         $model=m6dNativeModel($f);
         $observer->beginTransaction(); $mutation($observer);
         $work->send($phase==='claim' ? 'START' : 'CONTINUE');
@@ -28,7 +28,7 @@ function m6dNativeAuthorityOrder(string $sub,M6DNativeConnection $db,PDO $observ
         m6dNativeCheck($phase==='claim' ? $r===null : $r===['denied'=>'unauthorized'],'denial_precedes_exact_boundary');
         $after=m6dNativeRow($observer,'site_deployment_targets',$f,$f['target_id']);
         $row=m6dNativeRow($observer,'site_deployments',$f,$op['deployment_id']);
-        m6dNativeCheck($after===$before && m6dNativeRow($observer,'site_deployment_approvals',$f,$g['deployment_approval_id'])===$beforeGrant,'denied_boundary_zero_pointer_slot_fence_grant_effects');
+        m6dNativeCheck($after===$before && m6dNativeObservedRow($observer,'site_deployment_approvals',$f,$g['deployment_approval_id'])===$beforeGrant,'denied_boundary_zero_pointer_slot_fence_grant_effects');
         m6dNativeCheck(m6dNativeModel($f)===$model && m6dNativeEvents($observer,$f,'site_deployment_succeeded',$op['deployment_id'])===0,'denied_boundary_zero_external_or_success');
         if($phase==='claim') m6dNativeCheck($row['status']==='cancelled' && (int)$row['attempt_count']===0
             && m6dNativeEvents($observer,$f,'site_deployment_cancelled',$op['deployment_id'])===1,'denied_queue_atomic_cancel');
@@ -54,7 +54,7 @@ function m6dNativeAuthorityOrder(string $sub,M6DNativeConnection $db,PDO $observ
     } elseif($phase==='activation') {
         m6dNativeCheck(isset($r['receipt_key']),'already_authorized_activation_can_finish');
         m6dNativeDeny(fn()=>SiteDeploymentService::completeDeploymentSuccess($f['lease'],$r),'unauthorized');
-        m6dNativeCheck((int)m6dNativeRow($observer,'site_deployment_approvals',$f,$g['deployment_approval_id'])['consumed_by_deployment_id']===$op['deployment_id'],'committed_activation_consumption_retained');
+        m6dNativeCheck((int)m6dNativeObservedRow($observer,'site_deployment_approvals',$f,$g['deployment_approval_id'])['consumed_by_deployment_id']===$op['deployment_id'],'committed_activation_consumption_retained');
     } else {
         $snapshot=m6dNativeSnapshot($observer,$f);
         m6dNativeCheck($r['operation_status']==='succeeded' && SiteDeploymentService::completeDeploymentSuccess($f['lease'],$f['receipt'])['operation_status']==='succeeded'

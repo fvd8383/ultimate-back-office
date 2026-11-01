@@ -10,6 +10,16 @@ function m6dNativeRows(PDO $db,string $sql,array $p=[]): array
 { $s=$db->prepare($sql); $s->execute($p); return $s->fetchAll(); }
 function m6dNativeRow(PDO $db,string $table,array $f,int $id): array
 { return SiteDeploymentStore::row($db,$table,$f['site_id'],$id); }
+/** Read-only native observations outside the production deployment-store boundary. */
+function m6dNativeObservedRow(PDO $db,string $table,array $f,int $id): array
+{
+    if(!in_array($table,['site_deployment_approvals','site_revisions'],true))
+        throw new LogicException('unsupported_native_observation_table');
+    $rows=m6dNativeRows($db,'SELECT * FROM '.$table.' WHERE id = :id AND site_id = :site_id',
+        ['id'=>$id,'site_id'=>$f['site_id']]);
+    if(count($rows)!==1) throw new RuntimeException('native_observation_row_count');
+    return $rows[0];
+}
 function m6dNativeEvents(PDO $db,array $f,string $type,int $id): int
 {
     return (int)m6dNativeRows($db,"SELECT COUNT(*) AS n FROM site_events WHERE site_id=? AND event_type=?

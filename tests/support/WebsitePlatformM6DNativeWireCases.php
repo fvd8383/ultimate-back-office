@@ -88,12 +88,12 @@ function m6dWireObserve(array $a,array $f,array $lease,bool $committed,array $be
         m6dNativeCheck((int)$target['current_deployment_id']===$lease['deployment_id'] && (int)$target['pointer_version']===1
             && $target['active_deployment_id']===null && $target['reconciliation_status']==='clean','fresh_committed_pointer_slot');
         m6dNativeCheck($state['sites'][0]['lifecycle_status']==='active' && (int)$state['sites'][0]['current_published_revision_id']===$f['revision_id']
-            && m6dNativeRow($fresh,'site_revisions',$f,$f['revision_id'])['lifecycle_status']==='published','fresh_committed_lifecycle');
+            && m6dNativeObservedRow($fresh,'site_revisions',$f,$f['revision_id'])['lifecycle_status']==='published','fresh_committed_lifecycle');
     } else {
         m6dNativeCheck($state===$before && $op['status']==='health_check_pending' && $attempt['status']==='leased'
             && $success===0 && $health===0 && $target['current_deployment_id']===null,'fresh_uncommitted_entire_result');
     }
-    $grant=m6dNativeRow($fresh,'site_deployment_approvals',$f,(int)$op['deployment_approval_id']);
+    $grant=m6dNativeObservedRow($fresh,'site_deployment_approvals',$f,(int)$op['deployment_approval_id']);
     m6dNativeCheck((int)$grant['consumed_by_deployment_id']===$lease['deployment_id'] && $op['activation_fence']!==null
         && m6dNativeEvents($fresh,$f,'site_activation_attempted',$lease['deployment_id'])===1,'prior_activation_grant_retained');
     m6dNativeCheck((int)$op['execution_count']===3 && (int)$op['attempt_count']===3 && (int)$op['recovery_count']===0,'wire_execution_three_no_reset');
