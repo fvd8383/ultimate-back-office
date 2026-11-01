@@ -1,13 +1,110 @@
 # Sprint 8.8 M6D — Local implementation
 
-Status: **PARTIALLY IMPLEMENTED / REVIEW REQUIRED**. Baseline: `1134c65c5f6cdfea804d634fad73e2d8a354d065`.
+Status: **OPEN / NATIVE ACCEPTANCE PENDING**. Baseline: `1134c65c5f6cdfea804d634fad73e2d8a354d065`.
 Branch: `codex/sprint-8.8-m6d-deployment-authority`.
 
 M6C is COMPLETE / ISOLATED NATIVE GATES PASS / FORMALLY CLOSED under the
 [final owner receipt](https://github.com/fvd8383/ultimate-back-office/pull/129#issuecomment-6549478529).
 M6B remains formally closed, M6 remains IN PROGRESS, and M6E–M6G remain NOT STARTED.
-This task implements service boundaries locally. Native SQL, activation and deployment
-are not authorized and are not executed.
+The authoring records below are historical. The latest failed native run and this
+test-only correction supersede their pre-run status; they do not establish acceptance.
+
+## Native schema fixture correction after e222dbb
+
+The clean starting checkout was `e222dbb9dd500c8c738b439fe7ca844c4691017c` on the existing
+branch. PR #130 activity was read once: its clean automated review covers that head,
+not this correction. This operator-discovered failure is not a new review finding and
+does not reopen the resolved queue conversation.
+
+The operator reported a failed native coordinator exit 1, no signal, **194.793839755
+seconds**, **26 PASS / 1 FAIL / 2 UNREACHED cases**, **121 PASS / 1 FAIL / 24 UNREACHED
+subcases**, all **22 ordering observations PASS**, and all five transport and five
+authoritative legs UNREACHED. **610 published assertions** have consistent case/subcase
+totals. These counts, failure context, all 41 workers exiting 0 without signals,
+capture/publication and child/schema cleanup were independently checked in the original
+report. Selected manifest-verified assessment/cleanup records corroborate elapsed time
+and namespace cleanup. The wrapper receipt separately records 195.17047738499969 seconds.
+
+Original evidence remains unchanged at
+`/mnt/ubo_stage_testdata/codex-validation/evidence/m6d-v3-native-20261101T170015Z-dc7b09743706`.
+Verified `report.json` SHA-256:
+`2cf5fc847628372657c521cf1639c0ba52e3b288b3db669c0d8c0e4768422890`.
+Only that report, its actual `SHA256SUMS` and seven selected existing diagnostic/assessment
+records were retrieved through `ubo-validation`; the 1,006-payload audit was not repeated.
+The report and coordinator stderr retain only `RuntimeException / exact_constraint_fk_sd_target`
+at `deployment-schema/target-owner`; the original SQLSTATE/driver/constraint tuple is
+**UNAVAILABLE** in the inspected records. Last completion was
+`health-compensation/health-timeout`.
+
+Source confirms four fixture defects: the target-owner mutation changes the tuple of
+a claimed deployment already referenced by `fk_sdt_active`; current-target, active-target
+and grant-consumption call a production store that rejects their tables before SQL.
+The active reference makes `1451 / fk_sdt_active` a plausible competing violation,
+**not the historical observation**. The local regression deliberately models that tuple
+and rejects it as different from the required `23000 / 1452 / fk_sd_target`.
+
+The target probe now creates a dedicated request through the real request service after
+all claims, verifies its unclaimed baseline, null outgoing references and all nine
+incoming FK fields across five tables, then changes only its target ID on the observer.
+Existing active/current slots are never cleared. Three fixed test-only UPDATE statements
+bind values plus row and site IDs, reject all other table/column combinations before SQL,
+and perform no commit or transaction management. Production store allowlists are intact.
+Both owned and foreign histories must match their pre-probe snapshots after rollback.
+The [finite 18-probe audit](sprint-8.8-m6d-native-validation.md#deployment-schema-fixture-audit)
+found no further demonstrated fixture/helper or production/schema defect. The other 14
+negative mutations retain their exact expected constraints and history semantics.
+
+The typed [constraint failure](../tests/support/WebsitePlatformM6DNativeConstraintFailure.php)
+retains only bounded case/subcase, expected and observed tuple fields, canonical parsed
+identifier or missing/unrecognized status, attempted SQL/unexpected success and rollback
+status. Raw server messages, SQL, values, credentials, tokens and arbitrary identifiers
+are discarded. A rollback failure is a separate fixed diagnostic and cannot replace the
+primary mismatch; existing cleanup/publication controls preserve it across secondary
+errors. `safeFailure` adds only this typed path; all other exception handling and the
+public PASS predicate remain unchanged.
+
+Focused Windows / PHP 8.4.24 regression results (sequential, exit 0 each):
+
+| Command | Assertions |
+| --- | ---: |
+| `php tests/WebsitePlatformM6DNativeSchemaTest.php` | 230 |
+| `php tests/WebsitePlatformM6DNativeControlTest.php` | 1,081 |
+| `php tests/WebsitePlatformM6DNativeHarnessTest.php` | 179 |
+| `php tests/WebsitePlatformM6DNativeWireTest.php` | 471 |
+| `php tests/WebsitePlatformM6DScopeTest.php` | 76 |
+
+Total **2,037 assertions**. The schema suite runs the actual helpers with synthetic
+PDO/statement/data fixtures, including all supported writes, pre-SQL production rejection,
+foreign-site isolation, malformed/unknown metadata, exact/wrong/missing tuples, unexpected
+success, rollback/reporting failures and privacy canaries. Service-created baseline and
+targeted mutation are tested separately. Source/DDL checks cover all 18 existing probes,
+the complete canonical identifier allowlist and all incoming deployment FKs. These are
+synthetic/model evidence; no MySQL constraint ordering or corrected native PASS is claimed.
+Harness now counts 179 rather than 181: three failed tuple checks no longer increment the
+native PASS-check counter, and the new valid observation call adds one dispatch assertion.
+Expected diagnostics remain visible: one labeled MODEL tuple on schema stdout, four
+sanitized PDOException lines from Harness and two from Wire. All five changed PHP files
+lint; documentation links/anchors/fences, diff and protected-source checks pass. Full
+commands, versions, assertion counts, exits, durations and originals are retained in the
+outside-Git `m6d-schema/SUMMARY.txt` and adjacent receipts.
+
+Production/application/store/lifecycle/worker and reviewed queue changes: **ZERO**.
+All 25 migrations and pins, M6C sources/contracts, all 77 requirements, native authority
+and transport obligations, admission/source/image/EXECUTE safeguards, limits and deadlines
+are unchanged. Migration 025 retains canonical SHA-256
+`dab585dc29aac11153f92703c65d3883aeea73a1b2283157cfa9d2f2ece85cb0` and is already applied to
+working staging (operator report); it was not edited or reapplied. Acceptance remains
+**29 / 146 / 22 / 5 / 5**. The failed run does not prove the complete run fits 600 seconds.
+
+The earlier failed 5f32b1b run (58.241917827 seconds, 18 cases / 31 subcases / three ordering
+observations PASS; blocked approval read) and successful cleanup remain preserved in
+PR #130 and its original evidence directory
+`m6d-v3-native-20261101T021448Z-88575d77dce9`, report SHA-256
+`1fcc967957bc60e0e6202c0a7771a59c09eb6f1eff8a7596e3e63cba1ba18cf6`.
+This desktop task performs only local correction/validation and one commit/review handoff.
+Remote activity is existing-file reads only; no server patch, database connection, native
+rerun, container/image/service action, installation, deployment, merge or M6D closure.
+Corrected real-MySQL behavior and the complete native gate remain pending separate work.
 
 ## Deployment-result transport authoring
 
@@ -419,7 +516,13 @@ operator-reported `f466fc1cdbfb53325a1db11445736bdc5ea7c6f4`; backups/receipts r
 retained and restore NOT EXECUTED. Local test-only restore decisions are not a backup
 or site restore execution.
 
-## Exact changed-file inventory
+## Historical implementation file inventory
+
+This inventory records implementation through transport authoring. The subsequent
+schema correction adds `WebsitePlatformM6DNativeSchemaTest.php` and
+`support/WebsitePlatformM6DNativeConstraintFailure.php` under `tests/`, and changes the
+schema cases, contract diagnostic dispatch, harness synthetic messages and these two M6D
+records. Its exact seven-file commit inventory is retained with the outside-Git handoff.
 
 Modified (7):
 

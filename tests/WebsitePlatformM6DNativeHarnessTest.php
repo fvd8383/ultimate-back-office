@@ -106,7 +106,8 @@ try {
     foreach(['correct','driver','state','constraint'] as $fault) {
         $fake=new M6DDatabase(); $before=$fake->snapshot();
         $invalid=static function() use($fault): void { $e=new PDOException('PRIVATE SQL');
-            $e->errorInfo=[$fault==='state' ? 'HY000' : '23000',$fault==='driver' ? 1062 : 1452,$fault==='constraint' ? 'other_constraint' : 'fk_sda_actor']; throw $e; };
+            $e->errorInfo=[$fault==='state' ? 'HY000' : '23000',$fault==='driver' ? 1062 : 1452,
+                'CONSTRAINT `'.($fault==='constraint' ? 'fk_sda_parent' : 'fk_sda_actor').'` FOREIGN KEY']; throw $e; };
         if($fault==='correct') m6dNativeConstraint($fake,$invalid,1452,'fk_sda_actor');
         else $deny(fn()=>m6dNativeConstraint($fake,$invalid,1452,'fk_sda_actor'),'exact_constraint_fk_sda_actor');
         $check(!$fake->inTransaction() && $fake->snapshot()===$before,'constraint_helper_rollback_'.$fault);

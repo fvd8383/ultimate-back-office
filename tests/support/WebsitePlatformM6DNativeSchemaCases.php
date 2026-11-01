@@ -2,18 +2,81 @@
 declare(strict_types=1);
 
 /** Assert the intended MySQL diagnostic, never publish raw SQL/server messages. */
-function m6dNativeConstraint(PDO $db,callable $invalid,int $driver,string $constraint): void
+function m6dNativeConstraint(PDO $db,callable $invalid,int $driver,string $constraint,?string $sub=null): void
 {
-    $db->beginTransaction();
+    $expected=M6DNativeConstraintFailure::expected($driver,$constraint);
+    if($sub!==null && !in_array($sub,M6DNativeContract::subcases('deployment-schema'),true))
+        throw new LogicException('unsupported_constraint_subcase');
+    if($db->inTransaction()) throw new LogicException('constraint_requires_own_transaction');
+    if(!$db->beginTransaction()) throw new RuntimeException('constraint_transaction_failed');
+    $primary=null; $rollback=null;
     try {
         try { $invalid(); }
         catch(PDOException $e) {
-            m6dNativeCheck(($e->errorInfo[1] ?? null)===$driver && ($e->errorInfo[0] ?? null)===($driver===3819 ? 'HY000' : '23000')
-                && preg_match('/(?<![a-z0-9_])'.preg_quote($constraint,'/').'(?![a-z0-9_])/i',(string)($e->errorInfo[2] ?? ''))===1,'exact_constraint_'.$constraint);
-            return;
+            $actual=M6DNativeConstraintFailure::observed($e);
+            if(array_intersect_key($actual,$expected)!==$expected) throw new M6DNativeConstraintFailure($driver,$constraint,$e,$sub);
+            m6dNativeCheck(true,'exact_constraint_'.$constraint);
+            $matched=true;
         }
-        throw new RuntimeException('constraint_not_enforced');
-    } finally { if($db->inTransaction()) $db->rollBack(); }
+        if(!isset($matched)) throw new M6DNativeConstraintFailure($driver,$constraint,null,$sub);
+    } catch(Throwable $e) { $primary=$e; }
+    finally {
+        try {
+            if(!$db->inTransaction() || !$db->rollBack()) throw new RuntimeException('constraint_rollback_failed');
+            if($primary instanceof M6DNativeConstraintFailure) $primary->rolledBack(true);
+        } catch(Throwable $e) {
+            $rollback=new RuntimeException('constraint_rollback_failed');
+            if($primary instanceof M6DNativeConstraintFailure) $primary->rolledBack(false);
+        }
+    }
+    if($primary!==null) throw $primary;
+    if($rollback!==null) throw $rollback;
+}
+
+/** Only the three schema-negative writes outside the production store's ownership. */
+function m6dNativeSchemaWrite(PDO $observer,string $table,array $values,int $id,int $siteId): void
+{
+    $sql=match(true) {
+        $table==='site_deployment_targets' && array_keys($values)===['current_deployment_id']=>
+            'UPDATE site_deployment_targets SET current_deployment_id=:current_deployment_id WHERE id=:id AND site_id=:site_id',
+        $table==='site_deployment_targets' && array_keys($values)===['active_deployment_id']=>
+            'UPDATE site_deployment_targets SET active_deployment_id=:active_deployment_id WHERE id=:id AND site_id=:site_id',
+        $table==='site_deployment_approvals' && array_keys($values)===['consumed_by_deployment_id','consumed_at']=>
+            'UPDATE site_deployment_approvals SET consumed_by_deployment_id=:consumed_by_deployment_id, consumed_at=:consumed_at WHERE id=:id AND site_id=:site_id',
+        default=>throw new LogicException('unsupported_schema_negative_write'),
+    };
+    $s=$observer->prepare($sql); $s->execute($values+['id'=>$id,'site_id'=>$siteId]);
+    m6dNativeCheck($s->rowCount()===1,'schema_negative_owned_row');
+}
+
+/** A service-created request dedicated to target ownership, never passed to claim. */
+function m6dNativeUnclaimedRequest(PDO $service,PDO $observer,array $f): array
+{
+    $op=SiteDeploymentService::requestDeployment($f['requester'],m6dNativeInput($service,$f));
+    m6dNativeUnreferencedRequest($observer,$f,$op['deployment_id']);
+    return $op;
+}
+function m6dNativeUnreferencedRequest(PDO $observer,array $f,int $id): void
+{
+    $row=m6dNativeRow($observer,'site_deployments',$f,$id);
+    m6dNativeCheck($row['status']==='requested' && (int)$row['target_id']===$f['target_id']
+        && (int)$row['release_id']===$f['release_id'] && $row['operation']==='publish'
+        && (int)$row['attempt_count']===0 && (int)$row['execution_count']===0 && (int)$row['recovery_count']===0,
+        'target_owner_valid_unclaimed_request');
+    foreach(['current_attempt_id','expected_current_deployment_id','previous_deployment_id','restored_from_deployment_id','deployment_approval_id'] as $key)
+        m6dNativeCheck($row[$key]===null,'target_owner_no_outgoing_'.$key);
+    // All incoming deployment FKs in canonical 025. Read every dependent table; no pointers are cleared.
+    foreach([
+        'site_deployment_targets'=>['current_deployment_id','active_deployment_id'],
+        'site_deployments'=>['previous_deployment_id','expected_current_deployment_id','restored_from_deployment_id'],
+        'site_deployment_attempts'=>['deployment_id'],
+        'site_deployment_health_checks'=>['deployment_id'],
+        'site_deployment_approvals'=>['expected_current_deployment_id','consumed_by_deployment_id'],
+    ] as $table=>$columns) foreach($columns as $column) {
+        $rows=m6dNativeRows($observer,'SELECT id FROM '.$table.' WHERE '.$column.' = :deployment_id AND site_id = :site_id',
+            ['deployment_id'=>$id,'site_id'=>$f['site_id']]);
+        m6dNativeCheck($rows===[],'target_owner_no_incoming_'.$table.'_'.$column);
+    }
 }
 function m6dNativeSchemaCase(string $sub,M6DNativeConnection $db,PDO $observer,array $f,M6DNativeDependencies $d): array
 {
@@ -28,12 +91,15 @@ function m6dNativeSchemaCase(string $sub,M6DNativeConnection $db,PDO $observer,a
     $driver=1452;
     $update=static fn(string $table,array $values,int $id)=>SiteDeploymentStore::update($observer,$table,['id'=>$id,'site_id'=>$f['site_id']],$values);
     switch($sub) {
-        case 'target-owner': $constraint='fk_sd_target'; $invalid=fn()=>$update('site_deployments',['target_id'=>$other['target_id']],$op['deployment_id']); break;
+        case 'target-owner':
+            // Create after all claims so no queue scan can reserve this dedicated request.
+            $unclaimed=m6dNativeUnclaimedRequest($db,$observer,$f);
+            $constraint='fk_sd_target'; $invalid=fn()=>$update('site_deployments',['target_id'=>$other['target_id']],$unclaimed['deployment_id']); break;
         case 'release-owner': $constraint='fk_sd_release'; $invalid=fn()=>$update('site_deployments',['release_id'=>$other['release_id']],$op['deployment_id']); break;
         case 'expected-target': $constraint='fk_sd_expected'; $invalid=fn()=>$update('site_deployments',['expected_current_deployment_id'=>$foreign['deployment_id']],$op['deployment_id']); break;
         case 'restore-target': $constraint='fk_sd_restore'; $invalid=fn()=>$update('site_deployments',['operation'=>'restore','restored_from_deployment_id'=>$foreign['deployment_id']],$op['deployment_id']); break;
-        case 'current-target': $constraint='fk_sdt_current'; $invalid=fn()=>$update('site_deployment_targets',['current_deployment_id'=>$foreign['deployment_id']],$f['target_id']); break;
-        case 'active-target': $constraint='fk_sdt_active'; $invalid=fn()=>$update('site_deployment_targets',['active_deployment_id'=>$foreign['deployment_id']],$f['target_id']); break;
+        case 'current-target': $constraint='fk_sdt_current'; $invalid=fn()=>m6dNativeSchemaWrite($observer,'site_deployment_targets',['current_deployment_id'=>$foreign['deployment_id']],$f['target_id'],$f['site_id']); break;
+        case 'active-target': $constraint='fk_sdt_active'; $invalid=fn()=>m6dNativeSchemaWrite($observer,'site_deployment_targets',['active_deployment_id'=>$foreign['deployment_id']],$f['target_id'],$f['site_id']); break;
         case 'request-unique':
             $second=SiteDeploymentService::requestDeployment($f['requester'],m6dNativeInput($db,$f));
             $driver=1062; $constraint='uq_sd_request'; $invalid=fn()=>$update('site_deployments',['request_key'=>$op['request_key']],$second['deployment_id']); break;
@@ -48,17 +114,21 @@ function m6dNativeSchemaCase(string $sub,M6DNativeConnection $db,PDO $observer,a
             'recovery_trigger'=>'operator','operator_request_key'=>SiteServiceSupport::uuidV4(),'recovery_actor_type'=>'super_admin','recovery_authorized_by_user_id'=>PHP_INT_MAX])); break;
         case 'history-restrict': $driver=1451; $constraint='fk_sd_current_attempt'; $invalid=fn()=>$observer->prepare('DELETE FROM site_deployment_attempts WHERE id=? AND site_id=?')->execute([$lease['attempt_id'],$f['site_id']]); break;
         case 'health-attempt':
+            $checkedAt=SiteBuildStore::now($observer);
             $constraint='fk_sdhc_attempt'; $invalid=fn()=>m6mysqlInsert($observer,'site_deployment_health_checks',[
                 'site_id'=>$f['site_id'],'deployment_id'=>$op['deployment_id'],'deployment_attempt_id'=>$foreignLease['attempt_id'],
                 'check_key'=>SiteServiceSupport::uuidV4(),'phase'=>'candidate','probe_profile'=>'release-v1','expected_release_id'=>$f['release_id'],
-                'expected_absent'=>0,'duration_ms'=>1,'result'=>'pass','summary_json'=>'{}','checked_at'=>SiteBuildStore::now($observer),'correlation_id'=>'constraint-fixture']); break;
+                'expected_absent'=>0,'duration_ms'=>1,'result'=>'pass','summary_json'=>'{}','checked_at'=>$checkedAt,'correlation_id'=>'constraint-fixture']); break;
         case 'grant-consumption':
             $g=m6dNativeProductionActors($db,$f,$d); $constraint='fk_sdap_consumed';
-            $invalid=fn()=>$update('site_deployment_approvals',['consumed_by_deployment_id'=>$foreign['deployment_id'],'consumed_at'=>SiteBuildStore::now($observer)],$g['deployment_approval_id']); break;
+            $now=SiteBuildStore::now($observer);
+            $invalid=fn()=>m6dNativeSchemaWrite($observer,'site_deployment_approvals',['consumed_by_deployment_id'=>$foreign['deployment_id'],'consumed_at'=>$now],$g['deployment_approval_id'],$f['site_id']); break;
         default: throw new RuntimeException('unknown_schema_subcase');
     }
-    $before=m6dNativeSnapshot($observer,$f); m6dNativeConstraint($observer,$invalid,$driver,$constraint);
+    $before=m6dNativeSnapshot($observer,$f); $foreignBefore=m6dNativeSnapshot($observer,$other);
+    m6dNativeConstraint($observer,$invalid,$driver,$constraint,$sub);
     m6dNativeCheck(m6dNativeSnapshot($observer,$f)===$before,'invalid_dml_rollback_preserves_owned_history');
+    m6dNativeCheck(m6dNativeSnapshot($observer,$other)===$foreignBefore,'invalid_dml_rollback_preserves_foreign_history');
     return ['constraint'=>$constraint,'driver'=>$driver];
 }
 

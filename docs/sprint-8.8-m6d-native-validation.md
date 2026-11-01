@@ -1,13 +1,95 @@
 # Sprint 8.8 M6D — DB-only native validation
 
-**AUTHORED / NOT EXECUTED.** No MySQL, migration, container, image, host service,
-publisher activation or browser was run while authoring this harness. No runtime
-image ID has been selected or invented. Local synthetic controls do not satisfy this gate.
+**OPEN / NATIVE ACCEPTANCE PENDING.** The latest native attempt at `e222dbb` failed;
+the corrected schema fixtures below have only local synthetic validation. Earlier
+AUTHORED / NOT EXECUTED statements describe their original authoring checkpoints.
+No native/infrastructure operation was run during this desktop correction.
 
 The distinct profile is `m6d-db-authority-v3`. Its exact **29 cases / 146 named subcases** are owned by
 [M6DNativeContract](../tests/support/WebsitePlatformM6DNativeContract.php).
 An M6B, core20, journal3 or supplement17 report cannot satisfy it. The existing M6C
 native profiles and their separate accepted source attribution remain unchanged.
+
+## Latest preserved native result
+
+At source `e222dbb9dd500c8c738b439fe7ca844c4691017c`: **26 PASS / 1 FAIL / 2 UNREACHED**
+cases; **121 PASS / 1 FAIL / 24 UNREACHED** subcases; all **22 ordering observations PASS**;
+all five transport and all five authoritative observations UNREACHED. The coordinator
+exited 1 without signal after **194.793839755 seconds**, with **610** consistently totaled
+published assertions. All 41 worker results exited 0 without signals. Report
+capture/publication, child/schema cleanup and the separate namespace cleanup passed.
+These operator-reported facts are corroborated by the bounded original-evidence inspection
+described in the [correction record](sprint-8.8-m6d-local-implementation.md#native-schema-fixture-correction-after-e222dbb).
+
+Original `report.json` in
+`/mnt/ubo_stage_testdata/codex-validation/evidence/m6d-v3-native-20261101T170015Z-dc7b09743706`
+is unchanged and hashes to
+`2cf5fc847628372657c521cf1639c0ba52e3b288b3db669c0d8c0e4768422890`.
+Its primary is `RuntimeException / exact_constraint_fk_sd_target` at
+`deployment-schema/target-owner`; last completion is `health-compensation/health-timeout`.
+Neither the report nor selected retained stderr/assessment records contains the original
+PDO tuple. **Historical SQLSTATE/driver/constraint: unavailable.** A simulated
+`23000 / 1451 / fk_sdt_active` is MODEL evidence only. The starting head's clean review
+does not cover the correction. The prior 5f32b1b failure and cleanup remain preserved.
+Neither partial run establishes complete acceptance or a full-run duration within 600 seconds.
+
+## Deployment-schema fixture audit
+
+This is a bounded audit of the existing 18 subcases, not an additional requirements matrix.
+Every row still requires its exact SQLSTATE, numeric driver and canonical named constraint.
+Unless stated otherwise, baseline O is a service-requested/claimed staging deployment with
+one execution E and an active target slot; F is an independently service-requested/claimed
+foreign-site deployment with one execution. X copies E without its ID, with attempt/execution
+number 2; R converts X to automatic recovery 1 of E with execution number NULL, system actor
+and no operator key. Each subcase starts fresh. Thus X/R retain valid lease/status/receipt
+fields, all sequence keys are unused, and there are no health or recovery dependents of E.
+
+| Existing subcase | Intended invariant / exact constraint | Expected state / driver | Baseline and deliberately invalid change | Other checks, keys and references / disposition |
+| --- | --- | --- | --- | --- |
+| `target-owner` | target/site owner: `fk_sd_target` | 23000 / 1452 | Dedicated service-created unclaimed request U, after all claims; change only target to F's target | **Corrected.** Original O has incoming `fk_sdt_active` on its id/target/site tuple. U verifies zero attempts/counters, publish shape, null current-attempt/previous/expected/restore/approval and absence of all nine incoming FK fields. Request UUID is fresh; release/site references remain valid. No dependent or outgoing tuple can compete. |
+| `release-owner` | release/revision/site owner: `fk_sd_release` | 23000 / 1452 | O; change release ID to F's release | Retained. Source revision/site remain owned; approval NULL avoids `fk_sd_approval`. No incoming FK uses release in O's referenced tuple; counters/operation/keys unchanged. |
+| `expected-target` | same target/site expected predecessor: `fk_sd_expected` | 23000 / 1452 | O; set expected deployment to F | Retained. Previous/restore/approval NULL, publish shape valid; modified field is not an incoming key or unique key. |
+| `restore-target` | same target/site restore source: `fk_sd_restore` | 23000 / 1452 | O; set operation restore and restore source F together | Retained. Both fields change together to satisfy `chk_sd_operation`; expected/previous/approval remain NULL. No altered incoming key. This is an intentional schema probe, not a lifecycle restore. |
+| `current-target` | current slot target/site: `fk_sdt_current` | 23000 / 1452 | Owned target; set current slot to F | **Corrected helper.** Fixed observer SQL reaches MySQL; production store previously rejected the table. Active slot still valid, target id/site/binding/environment and incoming deployment/grant references unchanged. |
+| `active-target` | active slot target/site: `fk_sdt_active` | 23000 / 1452 | Owned target; set active slot to F | **Corrected helper.** Fixed observer SQL. Current slot NULL; other target checks/unique keys and incoming target references unchanged. Rollback retains the original active owner. |
+| `request-unique` | scoped request identity: `uq_sd_request` | 23000 / 1062 | Second service-created unclaimed same-target request; replace its request key with O's | Retained. Fresh deployment key/id and all FKs valid; only site/target/request-key uniqueness is invalid. SQL does not change any referenced tuple. |
+| `attempt-parent` | deployment/site attempt owner: `fk_sda_parent` | 23000 / 1452 | X; replace deployment ID with F while retaining owned site | Retained. F has only execution 1, so its attempt/execution 2 unique keys are free; recovery/actor refs NULL, lease/status/number/shape valid. New row has no incoming references. |
+| `attempt-original` | original execution belongs to recovery parent/site: `fk_sda_original` | 23000 / 1452 | R; replace original attempt with F's execution | Retained. Parent O exists; attempt 2/recovery 1 are free; automatic/system shape and lease valid; actor FK NULL; no incoming references. |
+| `current-attempt` | current attempt belongs to deployment/site: `fk_sd_current_attempt` | 23000 / 1452 | O; replace current attempt with F's execution | Retained. Target/release and outgoing self/approval FKs unchanged; current-attempt field is not a referenced key. |
+| `execution-four` | at most three execution numbers: `chk_sda_shape` | HY000 / 3819 | X; attempt and execution number 4 | Retained. Positive attempt number and free keys, valid parent/lease/status, all recovery fields NULL. Only the execution range within shape fails. |
+| `execution-shape` | execution excludes recovery fields: `chk_sda_shape` | HY000 / 3819 | X; add recovery number 1 | Retained. There is no recovery row, so recovery unique key 1 is free; original/actor refs NULL, parent/lease/status valid. Only shape fails. |
+| `recovery-shape` | operator recovery requires operator key/actor shape: `chk_sda_shape` | HY000 / 3819 | R; change trigger to operator only | Retained. Original E and parent O valid, free attempt/recovery keys, valid lease/status. Missing operator key and system actor both violate this same named CHECK; no competing FK. |
+| `counter-shape` | attempt = execution + recovery totals: `chk_sd_counters` | HY000 / 3819 | O (1/1/0); set attempt count 7 | Retained. Budgets, status, FKs, unique/referenced keys unchanged. |
+| `actor-fk` | recovery authorizer exists: `fk_sda_actor` | 23000 / 1452 | R with operator trigger, fresh operator key, super_admin actor; set authorizer to absent PHP_INT_MAX | Retained. Operator shape is valid; canonical CHECK intentionally excludes authorizer for historical SET NULL. Original/parent/lease/status valid; attempt/recovery/operator keys free. |
+| `history-restrict` | current attempt history cannot be deleted: `fk_sd_current_attempt` | 23000 / 1451 | Delete E with id/site predicates while O still references E | Retained as restriction test. No recovery original or health row references E in this fresh baseline; O's current pointer is deliberately retained. Deletion cannot trigger outgoing-FK or CHECK competition. |
+| `health-attempt` | health attempt belongs to deployment/site: `fk_sdhc_attempt` | 23000 / 1452 | New candidate/pass health row for O and owned release; attempt is F's | Retained. Deployment and expected-release FKs valid; expected_absent=0/release set, candidate phase, result and small JSON valid; fresh check UUID and no incoming references. |
+| `grant-consumption` | consumed deployment belongs to grant target/site: `fk_sdap_consumed` | 23000 / 1452 | Service-created production approval grant; set consumer F and consumed time together | **Corrected helper.** Fixed observer SQL reaches MySQL. Both fields satisfy `chk_sdap_consumed`; approval/release/target/expected FKs and unique binding keys unchanged. No deployment consumes this fresh grant. |
+
+All negative statements execute on the disposable observer connection. Deployment updates
+retain the allowed production store path; attempt/health inserts retain the test insert
+path; the three corrected cross-owner UPDATEs have literal statements and a finite
+table/column dispatch. Values plus id/site predicates are bound, unsupported input fails
+before prepare, and the helper cannot commit or manage transactions. Ordinary setup still
+uses request/claim/grant services. The constraint helper owns a rollback-only transaction,
+rejects an existing transaction, attempts rollback on every entered negative path and
+requires a successful rollback before PASS. Every accepted negative then compares complete
+owned and foreign history snapshots, including slots, attempts, health, grants, audit rows
+and the publisher model. History-restrict keeps the exact reference it tests.
+
+Only four demonstrated fixture/helper defects were corrected; no production/schema defect
+was established. The [executable local regression](../tests/WebsitePlatformM6DNativeSchemaTest.php)
+checks the actual helpers, not a copied implementation. It also keeps a finite source/DDL
+consistency check for every row above. Exact MySQL rejection of all 18 probes remains
+**UNOBSERVED on the corrected source**; an unrelated constraint is always FAIL.
+
+Mismatch diagnostics now preserve expected versus observed fields through a bounded typed
+exception and the existing primary-failure report path. Parsed identifiers must belong to
+the canonical deployment identifier set; missing/unrecognized metadata stays explicit.
+Unexpected successful DML remains FAIL. Raw messages/SQL/values/credentials/DSNs/tokens,
+stack arguments and arbitrary identifiers are never published. Rollback failure is reported
+separately without replacing the mismatch. Cleanup/publication failure regressions retain
+the primary and cannot make an incomplete report acceptable. Public acceptance remains
+**29 cases / 146 subcases / 22 ordering / five transport / five authoritative observations**.
 
 ## Boundaries and prerequisites
 

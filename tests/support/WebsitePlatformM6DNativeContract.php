@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 require_once __DIR__.'/WebsitePlatformM6DNativeWireEvidence.php';
+require_once __DIR__.'/WebsitePlatformM6DNativeConstraintFailure.php';
 
 /** Definitions only. Distinct from every M6B/M6C report; no runtime bootstrap. */
 final class M6DNativeContract
@@ -129,6 +130,8 @@ final class M6DNativeContract
     }
     public static function safeFailure(Throwable $e): array
     {
+        if($e instanceof M6DNativeConstraintFailure) return ['class'=>M6DNativeConstraintFailure::class,
+            'code'=>$e->getMessage(),'constraint_diagnostic'=>$e->diagnostic()];
         $class=get_class($e); $r=['class'=>preg_match('/^[A-Za-z][A-Za-z0-9_\\\\]{0,100}$/D',$class) ? $class : 'Throwable',
             'code'=>preg_match('/^[a-z0-9_]{1,80}$/D',$e->getMessage()) ? $e->getMessage() : 'native_failure'];
         if($e instanceof PDOException) $r+=['sqlstate'=>preg_match('/^[A-Z0-9]{5}$/D',(string)($e->errorInfo[0] ?? '')) ? $e->errorInfo[0] : null,
