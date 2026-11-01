@@ -6,6 +6,7 @@ require_once __DIR__ . '/Database.php';
 
 final class SiteServiceException extends RuntimeException
 {
+    private ?array $transactionFailure = null;
     private const CLASSIFICATIONS = [
         'invalid_request',
         'not_found',
@@ -31,6 +32,35 @@ final class SiteServiceException extends RuntimeException
     public function classification(): string
     {
         return $this->classification;
+    }
+
+    /** @internal Fixed, non-sensitive evidence only; never retain a driver exception or its message. */
+    public function recordTransactionFailure(string $phase, string $cleanup, Throwable $primary, ?Throwable $secondary): void
+    {
+        $describe = static function (Throwable $error): array {
+            $state = $error instanceof PDOException ? ($error->errorInfo[0] ?? null) : null;
+            $driver = $error instanceof PDOException ? ($error->errorInfo[1] ?? null) : null;
+            return [
+                'kind' => $error instanceof PDOException ? 'pdo' : ($error instanceof self ? 'service' : 'other'),
+                'classification' => $error instanceof self ? $error->classification() : null,
+                'sqlstate' => is_string($state) && preg_match('/^[A-Z0-9]{5}$/D', $state) === 1 ? $state : null,
+                'driver' => is_int($driver) && $driver >= 0 && $driver <= 65535 ? $driver : null,
+            ];
+        };
+        $this->transactionFailure = ['phase' => $phase, 'cleanup' => $cleanup,
+            'primary' => $describe($primary), 'secondary' => $secondary === null ? null : $describe($secondary)];
+    }
+
+    public function transactionFailure(): ?array
+    {
+        return $this->transactionFailure;
+    }
+
+    /** @internal Termination before any COMMIT attempt; callers must still check conflict eligibility. */
+    public function transactionRetrySafe(): bool
+    {
+        return ($this->transactionFailure['phase'] ?? null) === 'callback'
+            && in_array($this->transactionFailure['cleanup'], ['rolled_back', 'inactive'], true);
     }
 }
 
@@ -185,25 +215,53 @@ final class SiteServiceSupport
 
     public static function transaction(callable $callback): mixed
     {
-        $connection = Database::connection();
-        if ($connection->inTransaction()) {
-            throw new SiteServiceException('conflict', 'A website mutation cannot join an existing transaction.');
-        }
-
+        $phase = 'connection';
+        $beginAttempted = false;
         try {
-            $connection->beginTransaction();
+            $connection = Database::connection();
+            $phase = 'preflight';
+            if ($connection->inTransaction()) {
+                throw new SiteServiceException('conflict', 'A website mutation cannot join an existing transaction.');
+            }
+            $phase = 'begin';
+            $beginAttempted = true;
+            if (!$connection->beginTransaction()) {
+                throw new RuntimeException('The website transaction could not be started.');
+            }
+            $phase = 'callback';
             $result = $callback($connection);
-            $connection->commit();
+            $phase = 'commit';
+            if (!$connection->commit()) {
+                throw new RuntimeException('The website transaction could not be committed.');
+            }
             return $result;
         } catch (Throwable $exception) {
-            if ($connection->inTransaction()) {
-                $connection->rollBack();
+            $cleanup = 'not_started';
+            $secondary = null;
+            // Never touch an outer transaction, including when preflight itself fails.
+            if ($beginAttempted) {
+                $cleanup = 'state_failed';
+                try {
+                    if ($connection->inTransaction()) {
+                        $cleanup = 'rollback_failed';
+                        $cleanup = $connection->rollBack() ? 'rolled_back' : 'rollback_false';
+                    } else {
+                        $cleanup = 'inactive';
+                    }
+                } catch (Throwable $cleanupException) {
+                    $secondary = $cleanupException;
+                }
             }
-            if ($exception instanceof SiteServiceException) {
-                throw $exception;
+            // Even inactive/rolled_back after a COMMIT error cannot establish its outcome.
+            if ($exception instanceof SiteServiceException
+                && in_array($cleanup, ['not_started', 'rolled_back', 'inactive'], true)) {
+                $failure = $exception;
+            } else {
+                error_log('Website M2 database operation failed: ' . get_class($exception));
+                $failure = new SiteServiceException('database_failure', 'The website operation could not be completed.');
             }
-            error_log('Website M2 database operation failed: ' . get_class($exception));
-            throw new SiteServiceException('database_failure', 'The website operation could not be completed.');
+            $failure->recordTransactionFailure($phase, $cleanup, $exception, $secondary);
+            throw $failure;
         }
     }
 

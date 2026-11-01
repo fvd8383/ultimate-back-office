@@ -62,6 +62,7 @@ final class SiteBuildStore
                     }
                 });
             } catch (SiteServiceException $e) {
+                if (!$e->transactionRetrySafe()) throw $e;
                 if (!$retry && $e->classification() !== 'stale_write') throw $e;
                 if ($afterRollback !== null && ($recorded = $afterRollback()) !== null) return $recorded;
                 if ($try >= 2) throw $e;

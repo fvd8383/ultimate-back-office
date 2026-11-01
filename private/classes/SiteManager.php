@@ -180,6 +180,13 @@ final class SiteManager
                 'suspension_preserved' => true,
             ];
         }
+        // Review of a successor does not demote the revision currently serving production.
+        // Explicit suspension remains available through its existing authorized transition.
+        if ($preserveSuspended && $current === 'active' && $site['current_published_revision_id'] !== null
+            && in_array($targetStatus, ['draft','pending_customer','pending_internal_review','approved'], true)) {
+            return ['site_id'=>$siteId,'lifecycle_status'=>'active','lock_version'=>(int)$site['lock_version'],
+                'publication_preserved'=>true];
+        }
         if ($targetStatus === $current && in_array($targetStatus, ['pending_customer', 'pending_internal_review'], true)) {
             if ($targetStatus === 'pending_customer') {
                 self::assertPendingCustomerGate($connection, $siteId);
@@ -292,6 +299,76 @@ final class SiteManager
             throw new SiteServiceException('not_found', 'The site was not found.');
         }
         return $site;
+    }
+
+    /** @internal Site lock must precede target locks. No provider configuration is read here. */
+    public static function lockDeploymentTarget(object $connection, int $siteId, int $targetId): array
+    {
+        if (!$connection->inTransaction()) throw new SiteServiceException('conflict','Target mutation requires a transaction.');
+        require_once __DIR__ . '/SiteDeploymentStore.php';
+        return SiteDeploymentStore::row($connection,'site_deployment_targets',$siteId,$targetId,true);
+    }
+
+    /** @internal Allocate a strictly greater fence and one target slot inside the claim transaction. */
+    public static function reserveDeploymentSlot(object $db, array $target, array $operation, bool $recovery, string $now): array
+    {
+        $target=self::lockDeploymentTarget($db,(int)$operation['site_id'],(int)$operation['target_id']);
+        $id=(int)$operation['id'];
+        if (($target['active_deployment_id'] !== null && (int)$target['active_deployment_id'] !== $id)
+            || (!$recovery && $target['reconciliation_status'] !== 'clean')
+            || ($operation['status'] === 'succeeded' && (int)$target['current_deployment_id'] !== $id)) {
+            throw new SiteServiceException('conflict','The target is occupied or has advanced.');
+        }
+        return self::updateDeploymentTarget($db,$target,['active_deployment_id'=>$id,
+            'fence_epoch'=>(int)$target['fence_epoch']+1,'updated_at'=>$now]);
+    }
+
+    /** @internal The service has verified the current token/kind and result before settling the slot. */
+    public static function settleDeploymentSlot(object $db, array $operation, array $attempt, string $state, bool $release, string $now): array
+    {
+        if (!in_array($state,['clean','required','blocked'],true)) throw new LogicException('Invalid target state.');
+        $target=self::lockDeploymentTarget($db,(int)$operation['site_id'],(int)$operation['target_id']);
+        if ((int)$target['active_deployment_id'] !== (int)$operation['id'] || (int)$target['fence_epoch'] !== (int)$attempt['fence_epoch']) {
+            throw new SiteServiceException('conflict','Target ownership was lost.');
+        }
+        return self::updateDeploymentTarget($db,$target,['active_deployment_id'=>$release ? null : (int)$operation['id'],
+            'reconciliation_status'=>$state,'last_observed_at'=>$now,'updated_at'=>$now]);
+    }
+
+    /** Unforgeable in ordinary PHP: service evidence has a private constructor and is never returned to callers. */
+    public static function recordVerifiedDeployment(object $db, SiteDeploymentService $verified): void
+    {
+        $e=$verified->verifiedResult($db); $op=$e['operation']; $attempt=$e['attempt'];
+        $target=self::lockDeploymentTarget($db,(int)$op['site_id'],(int)$op['target_id']);
+        if ((int)$target['active_deployment_id'] !== (int)$op['id'] || (int)$target['fence_epoch'] !== (int)$attempt['fence_epoch']
+            || (int)$target['pointer_version'] !== (int)$op['expected_pointer_version']
+            || $target['current_deployment_id'] != $op['expected_current_deployment_id']
+            || (int)$target['binding_version'] !== (int)$op['binding_version']) {
+            throw new SiteServiceException('stale_write','The verified pointer precondition changed.');
+        }
+        if ($target['environment'] === 'production') {
+            SiteRevisionManager::applyVerifiedPublication($db,$verified);
+            $s=$db->prepare('/* site-m6d:publish-site */ UPDATE sites SET lifecycle_status = :state,
+                current_published_revision_id = :revision_id, lock_version = lock_version + 1, updated_at = :now
+                WHERE id = :site_id AND lock_version = :lock_version');
+            $s->execute(['state'=>'active','revision_id'=>(int)$op['source_revision_id'],'now'=>$e['now'],
+                'site_id'=>(int)$op['site_id'],'lock_version'=>(int)$e['site']['lock_version']]);
+            if ($s->rowCount() !== 1) throw new SiteServiceException('stale_write','The publication site changed.');
+        }
+        self::updateDeploymentTarget($db,$target,['current_deployment_id'=>(int)$op['id'],
+            'pointer_version'=>(int)$target['pointer_version']+1,'active_deployment_id'=>null,
+            'reconciliation_status'=>'clean','last_observed_at'=>$e['now'],'updated_at'=>$e['now']]);
+    }
+
+    private static function updateDeploymentTarget(object $db, array $row, array $values): array
+    {
+        $s=$db->prepare('UPDATE site_deployment_targets SET ' . implode(', ',array_map(
+            static fn(string $k): string=>$k . ' = :' . $k,array_keys($values)))
+            . ' WHERE id = :owned_id AND site_id = :owned_site_id AND fence_epoch = :old_fence AND pointer_version = :old_version');
+        $s->execute($values+['owned_id'=>(int)$row['id'],'owned_site_id'=>(int)$row['site_id'],
+            'old_fence'=>(int)$row['fence_epoch'],'old_version'=>(int)$row['pointer_version']]);
+        if ($s->rowCount() !== 1) throw new SiteServiceException('stale_write','The target changed concurrently.');
+        return array_replace($row,$values);
     }
 
     public static function siteForActor(int $actingUserId, int $siteId): array

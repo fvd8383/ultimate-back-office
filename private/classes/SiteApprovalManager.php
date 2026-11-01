@@ -9,6 +9,122 @@ final class SiteApprovalManager
     public const IMPLEMENTED_TYPES = ['customer', 'internal'];
     public const FUTURE_GATED_TYPES = ['production', 'conversion'];
 
+    /** Separate service API; ordinary approval APIs remain unable to grant production. */
+    public static function approveProductionRelease(int $actingUserId, array $input): array
+    {
+        require_once __DIR__ . '/SiteDeploymentService.php';
+        SiteDeploymentContract::keys($input,['site_id','target_id','release_id','operation','expected_current_deployment_id',
+            'expected_pointer_version','binding_version','restored_from_deployment_id','ttl_seconds','supersedes_approval_id','correlation_id']);
+        $ttl=$input['ttl_seconds'];
+        if (!is_int($ttl) || $ttl < 1 || $ttl > 86400 || !in_array($input['operation'],['publish','restore'],true)) SiteDeploymentContract::invalid();
+        $supersedes=SiteDeploymentContract::nullableId($input['supersedes_approval_id']);
+        $request=$input; unset($request['ttl_seconds'],$request['supersedes_approval_id'],$request['operation']);
+        $request['request_key']=SiteServiceSupport::uuidV4();
+        $request['reason_code']=$input['operation'] === 'restore' ? 'restore_known_good' : 'publish_approved_release';
+        $request=SiteDeploymentContract::request($request,$input['operation']);
+        return SiteBuildStore::transaction(static function(object $db) use($actingUserId,$request,$ttl,$supersedes): array {
+            SiteManager::lockSite($db,$request['site_id']);
+            $actor=SiteAuthorizationPolicy::actorContext($actingUserId,$db);
+            if (!$actor['is_super_admin']) throw new SiteServiceException('unauthorized','Super Admin authority is required.');
+            $subject=SiteDeploymentService::lockGrantSubject($db,$request);
+            $release=$subject['release']; $target=$subject['target']; $now=SiteBuildStore::now($db);
+            if ($target['environment'] !== 'production') throw new SiteServiceException('invalid_request','A production target is required.');
+            $current=SiteBuildStore::rows($db,"/* site-m6d:current-production-approval */ SELECT * FROM site_approvals
+                WHERE site_id = :site_id AND revision_id = :revision_id AND approval_type = 'production'
+                AND state = 'approved' AND revoked_at IS NULL ORDER BY id FOR UPDATE",
+                ['site_id'=>$request['site_id'],'revision_id'=>(int)$release['source_revision_id']]);
+            if (count($current)>1 || ($current !== [] && (int)$current[0]['id'] !== $supersedes)
+                || ($current === [] && $supersedes !== null)) throw new SiteServiceException('conflict','Explicit approval supersession is required.');
+            if ($current !== []) {
+                $s=$db->prepare("/* site-m6d:supersede-grant */ UPDATE site_approvals SET state = :state, reason = :reason
+                    WHERE id = :approval_id AND site_id = :site_id AND state = :prior_state");
+                $s->execute(['state'=>'superseded','reason'=>'replacement_production_grant','approval_id'=>$supersedes,
+                    'site_id'=>$request['site_id'],'prior_state'=>'approved']);
+                if ($s->rowCount() !== 1) throw new SiteServiceException('stale_write','Production approval changed.');
+                SiteServiceSupport::event($db,$request['site_id'],(int)$release['source_revision_id'],$actor,
+                    'site_approval_superseded',$request['correlation_id'],'replacement_production_grant',['approval_id'=>$supersedes]);
+            }
+            $s=$db->prepare('/* site-m6d:create-production-approval */ INSERT INTO site_approvals
+                (site_id, revision_id, approval_type, state, actor_user_id, actor_type, supersedes_approval_id,
+                 requested_at, decided_at, correlation_id, metadata_json, created_at)
+                VALUES (:site_id, :revision_id, :approval_type, :state, :actor_user_id, :actor_type, :supersedes_approval_id,
+                 :requested_at, :decided_at, :correlation_id, :metadata_json, :created_at)');
+            $s->execute(['site_id'=>$request['site_id'],'revision_id'=>(int)$release['source_revision_id'],'approval_type'=>'production',
+                'state'=>'approved','actor_user_id'=>$actingUserId,'actor_type'=>$actor['actor_type'],'supersedes_approval_id'=>$supersedes,
+                'requested_at'=>$now,'decided_at'=>$now,'correlation_id'=>$request['correlation_id'],'metadata_json'=>'{}','created_at'=>$now]);
+            $approvalId=(int)$db->lastInsertId();
+            $grant=['site_id'=>$request['site_id'],'approval_id'=>$approvalId,'release_id'=>$request['release_id'],
+                'source_revision_id'=>(int)$release['source_revision_id'],'target_id'=>$request['target_id'],'operation'=>$request['operation'],
+                'artifact_hash'=>$release['artifact_hash'],'expected_current_deployment_id'=>$request['expected_current_deployment_id'],
+                'expected_pointer_version'=>$request['expected_pointer_version'],'binding_version'=>$request['binding_version'],
+                'expires_at'=>SiteBuildStore::after($now,$ttl),'consumed_by_deployment_id'=>null,'consumed_at'=>null,
+                'correlation_id'=>$request['correlation_id'],'created_at'=>$now];
+            $s=$db->prepare('INSERT INTO site_deployment_approvals (' . implode(', ',array_keys($grant)) . ') VALUES (:' . implode(', :',array_keys($grant)) . ')');
+            $s->execute($grant); $id=(int)$db->lastInsertId();
+            SiteServiceSupport::event($db,$request['site_id'],(int)$release['source_revision_id'],$actor,
+                'site_production_approval_granted',$request['correlation_id'],null,['deployment_approval_id'=>$id,'approval_id'=>$approvalId,
+                    'release_id'=>$request['release_id'],'target_id'=>$request['target_id'],'operation'=>$request['operation']]);
+            return ['deployment_approval_id'=>$id,'approval_id'=>$approvalId,'expires_at'=>$grant['expires_at']];
+        });
+    }
+
+    public static function revokeProductionRelease(int $actingUserId, int $siteId, int $grantId, string $correlationId): void
+    {
+        require_once __DIR__ . '/SiteDeploymentService.php';
+        SiteBuildContract::id($siteId); SiteBuildContract::id($grantId);
+        $correlationId=SiteServiceSupport::correlationId($correlationId);
+        SiteBuildStore::transaction(static function(object $db) use($actingUserId,$siteId,$grantId,$correlationId): void {
+            SiteManager::lockSite($db,$siteId);
+            $actor=SiteAuthorizationPolicy::actorContext($actingUserId,$db);
+            if (!$actor['is_super_admin']) throw new SiteServiceException('unauthorized','Super Admin authority is required.');
+            $grant=SiteBuildStore::one($db,'SELECT * FROM site_deployment_approvals WHERE id = :id AND site_id = :site_id FOR UPDATE',
+                ['id'=>$grantId,'site_id'=>$siteId]) ?? throw new SiteServiceException('not_found','Production grant was not found.');
+            $approval=self::lockApproval($db,(int)$grant['approval_id']);
+            if ($approval['approval_type'] !== 'production' || (int)$approval['site_id'] !== $siteId) throw new SiteServiceException('conflict','Grant ownership is inconsistent.');
+            if ($approval['revoked_at'] !== null) return;
+            $s=$db->prepare('/* site-m6d:revoke-grant */ UPDATE site_approvals SET state = :state, revoked_at = :now WHERE id = :approval_id AND site_id = :site_id');
+            $s->execute(['state'=>'revoked','now'=>SiteBuildStore::now($db),'approval_id'=>(int)$approval['id'],'site_id'=>$siteId]);
+            SiteServiceSupport::event($db,$siteId,(int)$grant['source_revision_id'],$actor,'site_production_approval_revoked',
+                $correlationId,null,['deployment_approval_id'=>$grantId]);
+        });
+    }
+
+    /** @internal Load authoritative approval/actor state; raw caller grant arrays are never accepted. */
+    public static function lockProductionGrant(object $db, array $operation, array $release, array $target, string $now, bool $consume = false): array
+    {
+        if (!$db->inTransaction() || $target['environment'] !== 'production' || $operation['deployment_approval_id'] === null) {
+            throw new SiteServiceException('unauthorized','An exact production grant is required.');
+        }
+        $grant=SiteBuildStore::one($db,'SELECT * FROM site_deployment_approvals WHERE id = :id AND site_id = :site_id FOR UPDATE',
+            ['id'=>(int)$operation['deployment_approval_id'],'site_id'=>(int)$operation['site_id']]);
+        if ($grant === null) throw new SiteServiceException('unauthorized','An exact production grant is required.');
+        $approval=self::lockApproval($db,(int)$grant['approval_id']);
+        foreach (['site_id','release_id','source_revision_id','target_id','operation','expected_current_deployment_id','expected_pointer_version','binding_version'] as $k) {
+            if ($grant[$k] != $operation[$k]) throw new SiteServiceException('unauthorized','Production grant intent does not match.');
+        }
+        if ($grant['artifact_hash'] !== $release['artifact_hash'] || $grant['expires_at'] <= $now
+            || $approval['approval_type'] !== 'production' || $approval['state'] !== 'approved' || $approval['revoked_at'] !== null
+            || (int)$approval['site_id'] !== (int)$operation['site_id'] || (int)$approval['revision_id'] !== (int)$release['source_revision_id']
+            || $approval['actor_user_id'] === null || (int)$target['binding_version'] !== (int)$grant['binding_version']) {
+            throw new SiteServiceException('unauthorized','The production grant is no longer valid.');
+        }
+        $approver=SiteAuthorizationPolicy::actorContext((int)$approval['actor_user_id'],$db);
+        if (!$approver['is_super_admin']) throw new SiteServiceException('unauthorized','The production approver is no longer authorized.');
+        if ($grant['consumed_by_deployment_id'] !== null && (int)$grant['consumed_by_deployment_id'] !== (int)($operation['id'] ?? 0)) {
+            throw new SiteServiceException('conflict','The production grant belongs to another operation.');
+        }
+        if ($consume && $grant['consumed_by_deployment_id'] === null) {
+            $s=$db->prepare('UPDATE site_deployment_approvals SET consumed_by_deployment_id = :deployment_id, consumed_at = :now
+                WHERE id = :id AND site_id = :site_id AND consumed_by_deployment_id IS NULL');
+            $s->execute(['deployment_id'=>(int)$operation['id'],'now'=>$now,'id'=>(int)$grant['id'],'site_id'=>(int)$operation['site_id']]);
+            if ($s->rowCount() !== 1) throw new SiteServiceException('stale_write','Production grant consumption changed.');
+            SiteServiceSupport::event($db,(int)$operation['site_id'],(int)$operation['source_revision_id'],SiteServiceSupport::systemActor(),
+                'site_production_approval_consumed',$operation['correlation_id'],null,['deployment_approval_id'=>(int)$grant['id'],'deployment_id'=>(int)$operation['id']]);
+            $grant['consumed_by_deployment_id']=(int)$operation['id']; $grant['consumed_at']=$now;
+        }
+        return $grant;
+    }
+
     public static function requestApproval(
         int $actingUserId,
         int $revisionId,
