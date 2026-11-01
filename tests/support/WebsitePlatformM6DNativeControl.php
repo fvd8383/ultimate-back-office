@@ -14,11 +14,28 @@ final class M6DNativeControl
     {
         try {
             $observations=$children();
+            $report['children']=array_map(static function(array $r): array {
+                $safe=array_intersect_key($r,array_flip(['pid','exit','signal','signaled','running','termination_requested']));
+                if(!is_int($safe['exit'] ?? null) || $safe['exit']<0)$safe['exit']=null;
+                foreach(['context','failure_observation','cleanup_observation'] as $key) {
+                    $allowed=$key==='context' ? ['case','subcase','leg','site_id','deployment_id','attempt_id','last_barrier'] : ['exit','signal','signaled','running','termination_requested'];
+                    $safe[$key]=array_intersect_key($r[$key] ?? [],array_flip($allowed));
+                    foreach($safe[$key] as $k=>$v)if((is_string($v) && !preg_match('/^[A-Za-z0-9_-]{1,80}$/D',$v))
+                        || (!is_string($v) && !is_int($v) && !is_bool($v) && $v!==null))unset($safe[$key][$k]);
+                    if(array_key_exists('exit',$safe[$key]) && (!is_int($safe[$key]['exit']) || $safe[$key]['exit']<0))$safe[$key]['exit']=null;
+                }
+                return $safe;
+            },$observations);
             foreach($observations as $r) M6DNativeContract::need(($r['running'] ?? true)===false,'child_cleanup');
-            $report['children']=array_map(static fn($r)=>array_intersect_key($r,array_flip(['pid','exit','signal','signaled','running','termination_requested'])),$observations);
-            if($owned) { $schema(); $report['cleanup']='PASS'; }
-            else $report['cleanup']='NOT_OWNED';
-        } catch(Throwable $e) { $report['cleanup']='FAIL'; $report['cleanup_failure']=M6DNativeContract::safeFailure($e); }
+            $report['children_cleanup']='PASS';
+        } catch(Throwable $e) {
+            $report['children_cleanup']='FAIL'; $report['schema_cleanup']='NOT_ATTEMPTED'; $report['cleanup']='FAIL';
+            $report['cleanup_failure']=$report['children_cleanup_failure']=M6DNativeContract::safeFailure($e); return;
+        }
+        try {
+            if($owned) { $schema(); $report['schema_cleanup']=$report['cleanup']='PASS'; }
+            else $report['schema_cleanup']=$report['cleanup']='NOT_OWNED';
+        } catch(Throwable $e) { $report['schema_cleanup']=$report['cleanup']='FAIL'; $report['cleanup_failure']=$report['schema_cleanup_failure']=M6DNativeContract::safeFailure($e); }
     }
     public static function publish(array &$report,callable $publisher,?array $identity=null): void
     {

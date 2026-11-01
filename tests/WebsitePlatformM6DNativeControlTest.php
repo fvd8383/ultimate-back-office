@@ -2,6 +2,7 @@
 declare(strict_types=1);
 require_once __DIR__.'/support/WebsitePlatformM6DNativeContract.php';
 require_once __DIR__.'/support/WebsitePlatformM6DNativeControl.php';
+require_once __DIR__.'/support/WebsitePlatformM6DNativeWireTestFixture.php';
 $assertions=0;
 function m6dnAssert(bool $ok,string $code): void { $GLOBALS['assertions']++; if(!$ok) throw new RuntimeException($code); }
 function m6dnDeny(callable $call,string $expected): void { try{$call();}catch(RuntimeException $e){m6dnAssert($e->getMessage()===$expected,'exact_control_rejection');return;}throw new RuntimeException('missing_rejection'); }
@@ -24,11 +25,13 @@ foreach(M6DNativeContract::CASES as $case) {
     $r['cases'][$case]=['status'=>'PASS','assertions'=>count(M6DNativeContract::subcases($case)),'subcases'=>[]];
     foreach(M6DNativeContract::subcases($case) as $sub) {
         $r['cases'][$case]['subcases'][$sub]=['status'=>'PASS','assertions'=>1];
+        if($case==='result-commit-transport') $r['cases'][$case]['subcases'][$sub]+=['site_id'=>1,
+            'transport'=>m6dWireSyntheticEvidence(array_intersect_key($r,array_flip(['profile','source_sha','image_id','run_token'])),$sub)];
         if(($order=M6DNativeContract::ordering($case,$sub))!==null) $r['cases'][$case]['subcases'][$sub]['ordering']=[
             'kind'=>$order,'observed'=>true,'first_connection'=>1,'second_connection'=>2,'first_committed'=>true,'second_completed'=>true];
     }
 }
-$r['cleanup']='PASS'; $r['capture']='PASS'; m6dnAssert(M6DNativeContract::complete($r),'synthetic_complete_report');
+$r['cleanup']='PASS'; $r['children_cleanup']='PASS'; $r['schema_cleanup']='PASS'; $r['capture']='PASS'; m6dnAssert(M6DNativeContract::complete($r),'synthetic_complete_report');
 foreach(M6DNativeContract::CASES as $case) {
     $bad=$r; $bad['cases'][$case]['status']='BLOCKED'; m6dnAssert(!M6DNativeContract::complete($bad),'missing_native_case_not_skipped');
     foreach(M6DNativeContract::subcases($case) as $sub) {
@@ -42,13 +45,20 @@ foreach(M6DNativeContract::CASES as $case) {
         }
     }
 }
-foreach(['profile'=>'m6c-native-v1','cleanup'=>'FAIL','capture'=>'FAIL','primary_failure'=>['code'=>'fail']] as $key=>$value) {
+foreach(['profile'=>'m6c-native-v1','cleanup'=>'FAIL','children_cleanup'=>'FAIL','schema_cleanup'=>'FAIL','capture'=>'FAIL','primary_failure'=>['code'=>'fail']] as $key=>$value) {
     $bad=$r; $bad[$key]=$value; m6dnAssert(!M6DNativeContract::complete($bad),'independent_result_component');
 }
 foreach(['source_sha'=>str_repeat('d',40),'image_id'=>'sha256:'.str_repeat('d',64),'run_token'=>str_repeat('d',32)] as $k=>$v) {
     $bad=$r; $bad[$k]=$v; m6dnAssert(!M6DNativeContract::complete($bad,$a),'exact_run_identity');
 }
 $bad=$r; $bad['profile']='m6d-db-authority-v1'; m6dnAssert(!M6DNativeContract::complete($bad),'old_incomplete_gate_rejected');
+$bad=$r; $bad['profile']='m6d-db-authority-v2'; m6dnAssert(!M6DNativeContract::complete($bad),'v2_missing_transport_rejected');
+foreach(M6DNativeContract::subcases('result-commit-transport') as $sub) {
+    $bad=$r; unset($bad['cases']['result-commit-transport']['subcases'][$sub]['transport']);
+    m6dnAssert(!M6DNativeContract::complete($bad),'missing_transport_cannot_pass');
+    $bad=$r; unset($bad['cases']['result-commit-transport']['subcases'][$sub]['transport']['authoritative']);
+    m6dnAssert(!M6DNativeContract::complete($bad),'missing_authoritative_cannot_pass');
+}
 $bad=$r; $bad['cases']=array_values($bad['cases']); m6dnAssert(!M6DNativeContract::complete($bad),'duplicate_list_not_inventory');
 $bad=$r; $bad['cases']['extra']=$bad['cases'][M6DNativeContract::CASES[0]]; m6dnAssert(!M6DNativeContract::complete($bad),'extra_case_rejected');
 $bad=$r; $bad['cases'][M6DNativeContract::CASES[0]]['subcases']['extra']=['status'=>'PASS','assertions'=>1]; m6dnAssert(!M6DNativeContract::complete($bad),'extra_subcase_rejected');

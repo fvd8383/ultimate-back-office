@@ -4,7 +4,7 @@
 publisher activation or browser was run while authoring this harness. No runtime
 image ID has been selected or invented. Local synthetic controls do not satisfy this gate.
 
-The distinct profile is `m6d-db-authority-v2`. Its exact **28 cases / 142 named subcases** are owned by
+The distinct profile is `m6d-db-authority-v3`. Its exact **29 cases / 146 named subcases** are owned by
 [M6DNativeContract](../tests/support/WebsitePlatformM6DNativeContract.php).
 An M6B, core20, journal3 or supplement17 report cannot satisfy it. The existing M6C
 native profiles and their separate accepted source attribution remain unchanged.
@@ -48,7 +48,7 @@ The preparer installs these fixed paths; no CLI/environment path override exists
 | --- | --- |
 | `/run/ubo-m6d/admission.json` | root, 0644, one regular link; exact fields below |
 | `/run/ubo-m6d/database.json` | UID 2000, 0600; only `password`, 32–128 characters |
-| `/run/ubo-m6d/EXECUTE` | root, 0644; exact `RUN_TOKEN:m6d-db-authority-v2`, created only after execution authorization |
+| `/run/ubo-m6d/EXECUTE` | root, 0644; exact `RUN_TOKEN:m6d-db-authority-v3`, created only after execution authorization |
 | `/run/ubo-m6d/state` | UID 2000, 0700, 128 MiB tmpfs; synthetic external pointer records |
 | `/run/ubo-m6d/reports` | UID 2000, 0700; new exclusive report output |
 
@@ -104,9 +104,8 @@ historical 490 behavior/control + 58 scope assertions belong to that earlier hea
 Subcases are part of the versioned report inventory, not optional narrative. The
 original committed-ack-history remains an exception injected after successful PDO
 commit; discarded request responses are a separate boundary. Neither establishes
-wire-level loss of a deployment-result COMMIT acknowledgement. That precise transport
-obligation remains outside this mechanism; M6C transport evidence is not credited as
-execution of an M6D deployment-result transaction. No new wire protocol is introduced.
+wire-level loss. The v3 transport addition below authors that distinct mechanism;
+M6C transport evidence is not credited as execution of an M6D result transaction.
 
 | Case | Plan requirements / authored proof |
 | --- | --- |
@@ -131,7 +130,7 @@ execution of an M6D deployment-result transaction. No new wire protocol is intro
 
 The first 18 parent case meanings remain mandatory. Payload-field cases now report
 each original-field mutation individually. The following exact subcase inventory is
-part of v2 acceptance; `service-observations` denotes a retained original case.
+part of v3 acceptance; `service-observations` denotes a retained original case.
 
 | Parent case | Exact required subcases |
 | --- | --- |
@@ -163,6 +162,100 @@ part of v2 acceptance; `service-observations` denotes a retained original case.
 | `health-compensation` | `candidate-failure`, `active-health-failure`, `third-null-absence`, `compensation-failed`, `compensation-unknown`, `newer-winner`, `activation-audit-grant`, `result-audit-grant`, `third-grant-expired`, `third-grant-revoked`, `health-status`, `health-site`, `health-release`, `health-artifact`, `health-marker`, `health-page`, `health-css`, `health-media`, `health-origin`, `health-tls`, `health-redirect`, `health-cache`, `health-no-store`, `health-timeout` |
 | `deployment-schema` | `target-owner`, `release-owner`, `expected-target`, `restore-target`, `current-target`, `active-target`, `request-unique`, `attempt-parent`, `attempt-original`, `current-attempt`, `execution-four`, `execution-shape`, `recovery-shape`, `counter-shape`, `actor-fk`, `history-restrict`, `health-attempt`, `grant-consumption` |
 | `deployment-history-access` | `operator-deletion`, `queue-index`, `history-index` |
+| `result-commit-transport` | `unarmed-success`, `commit-not-delivered`, `ack-withheld`, `authoritative-unavailable` |
+
+### Deployment-result transport addition — authored, not executed
+
+Starting head: `b0cda17699ed862301738d776308c244f0dbe636`; its exact-head review
+completed with no findings. The original **28 / 142 / 22** inventory remains intact.
+V3 adds four transport subcases, requiring **five relay/worker legs and five fresh
+direct authoritative observations** in total. These are additional structured
+requirements, separate from the retained 22 ordering/progress observations. A v2
+report or a narrative assertion about a disconnect cannot pass v3.
+
+The definitions-only [M6CSupplementWire](../tests/support/WebsitePlatformM6CSupplementWire.php)
+is reused byte-for-byte. Its two exact COM_QUERY forms (`COMMIT` and `COMMIT `),
+original packet forwarding, framing/sequence bounds, one-arm/one-fault rules,
+unsupported TLS/compression/query-attribute rejection and strict server OK validation
+are unchanged. The M6C executable proxy, context, profiles and accepted cases are
+untouched. M6D does not manufacture `/run/m6c/context.json` or use a second SQL parser.
+
+The new [relay/control adapter](../tests/support/WebsitePlatformM6DNativeWire.php),
+[executable relay](../tests/support/WebsitePlatformM6DNativeRelay.php) and
+[worker](../tests/support/WebsitePlatformM6DNativeWireWorker.php) independently require
+the protected M6D Linux/UID/source/image/run admission and the v3 EXECUTE receipt
+before credentials, sockets or SQL. The relay binds `127.0.0.1:0` only inside that
+future disposable namespace, accepts one connection after coordinator release, closes
+the listener, and connects only to the admitted `m6d-db-FIRST16:3306`. There is no
+host-published port, arbitrary destination, DSN option, persistent PDO or extra grant.
+
+LISTEN travels over the exact tracked child's owned control channel and must match
+its PID plus the current run, subcase, leg, site, target, deployment, attempt and fresh
+channel nonce. The coordinator writes an exclusive UID-2000/0600 endpoint record;
+the worker compares that record with its pipe-delivered endpoint and checks relay
+liveness. Both children verify their coordinator parent. A port alone is insufficient.
+The isolated namespace and reviewed source remain prerequisites; this is not a proxy
+for arbitrary or mutually untrusted same-UID processes. A stolen first connection
+prevents the intended worker from completing its required verified READY sequence.
+
+The worker independently queries database, CURRENT_USER account, server UUID,
+hostname and MySQL 8.4 version through the relay. All must match admission. The
+normal direct connection and cleanup connection implementations are unchanged.
+Additional preparation prerequisite: the disposable server/account must permit the
+reviewed inspectable, uncompressed mysqlnd connection on its private test network.
+Unsupported capabilities fail closed; this task does not change server security
+configuration or weaken operational TLS. No image/server identity is invented.
+
+The [test-only PDO decorator](../tests/support/WebsitePlatformM6DNativeWireConnection.php)
+recognizes the actual successful `site_deployment_succeeded` audit insert and exact
+site/target/deployment/execution-attempt metadata. Only the final inner PDO commit
+for that transaction reaches COMMIT. Before emitting the barrier, an acknowledged
+text-protocol `DO 0` drains any prior prepared-statement close packets without leaving
+another statement handle. That fixed no-op changes no fixture state and occurs while
+unarmed. The worker pauses there, the coordinator arms
+the owned relay and receives ARMED, then releases that same worker. The next operation
+is the real inner `PDO::commit()`; no SQL probe or `exec('COMMIT')` substitution occurs.
+The synthetic post-success-PDO exception is absent from this decorator. Earlier
+request/claim/activation/grant/heartbeat commits pass unarmed.
+
+| Subcase | Required future native observation |
+| --- | --- |
+| `unarmed-success` | Same route and selected result boundary with no ARM/FAULT; service returns succeeded, PDO commit returns true, fresh direct connection confirms result/pointer/lifecycle/health/audit/slot. |
+| `commit-not-delivered` | Execution three reaches result COMMIT; ARMED/FAULT prove command not forwarded and no OK received. Actual PDO loss and service database_failure are retained. Fresh direct state matches the pre-commit snapshot, including already committed probe renewals, activation and consumed grant; no success/pointer/active health is fabricated. Existing recovery finalizes the prior model effects at counts 4/3/1, retains the producer and automatic budget, rejects stale authority, and stages/activates no new candidate. |
+| `ack-withheld` | Execution-three COMMIT bytes forward unchanged; actual server OK is validated and suppressed. PDO does not return success. Fresh direct state establishes the atomic successful result before replay. Exact replay has no DB/model changes; a later service-created winner plus grant revocation/requester deactivation preserves historical success, denies the inactive history reader and permits the current authorized reader. |
+| `authoritative-unavailable` | First uses the acknowledgement-withheld result leg and a fresh direct observation. After both children exit, a new relay/worker arms drop-query immediately before executing the service's already-prepared, exact site-lock read on the authoritative reread connection. The intercepted read and PDO failure are observed; service returns no success. A new direct connection confirms unchanged committed history/model and budgets before normal service replay resolves that same outcome. Coordinator knowledge is not substituted for the unavailable worker's result. |
+
+All four fixtures use three real service execution claims with two controlled
+transient failures; no execution counter is set to three. The publisher/artifact and
+health effects remain the existing explicit models. No physical site switch, rollback,
+HTTP health or helper behavior is claimed. `committed-ack-history`, discarded request
+responses and unavailable-PDO injection retain their separate evidence meanings.
+
+[WireEvidence](../tests/support/WebsitePlatformM6DNativeWireEvidence.php) requires exact
+per-leg bindings, ordered barriers, endpoint/process/connection identities, forwarding
+and acknowledgement fields, actual service classification, exits/signals, final barriers,
+model effect counts and fresh authoritative outcome before replay. Missing, duplicate,
+wrong-case/run or foreign observations, early EOF, malformed/error acknowledgements,
+unobserved COMMIT, absent authoritative evidence and unexpected service failures block
+PASS. An escaped rollback PDO error is recorded but fails the required service
+classification; the harness does not relabel it a successful/unknown result or repair
+production. Parser recognition alone is never treated as commit proof.
+
+Children register immediately at spawn, before the first read. Safe phase/failure
+context survives cleanup; unknown exits become null while signals remain separate.
+At most worker+relay are active. Listener/client/backend resources close on faults and
+early exits; exact tracked children must be reaped before schema cleanup. Primary
+failure, child cleanup, schema cleanup, publication and later host capture remain
+separate. Existing 600/45/10/3-second, memory/PID/tmpfs/output/report limits remain.
+The expanded total duration is **UNVERIFIED**, not a demonstrated timeout.
+
+Locally executed [wire regressions](../tests/WebsitePlatformM6DNativeWireTest.php) use
+the actual parser/queue/boundary/contract helpers with synthetic packets, memory
+streams, fake PDO and bounded synthetic children. They do not open a listener or TCP
+connection. Final results are recorded in the [implementation record](sprint-8.8-m6d-local-implementation.md#deployment-result-transport-authoring).
+Native mysqlnd/MySQL transport behavior, rollback/error classification and execution
+timing remain unexecuted. No further transport mechanism is deliberately deferred;
+that is source coverage, not native acceptance. M6D remains pending validation and acceptance.
 
 The fixture uses real services/native PDO and the actual schema. Artifact verification,
 publisher observations, health, fences and compensation are explicit test models;
@@ -215,8 +308,9 @@ proof of service cancellation.
 
 ### Local harness proof and remaining execution requirements
 
-On Windows/PHP 8.4.24, the new report controls and harness regressions exercise the
-actual v2 contract, protocol/barrier helpers, PDO instrumentation and failure controls.
+Historical results at `b0cda176`, before the v3 addition: on Windows/PHP 8.4.24,
+report controls and harness regressions exercised the v2 contract, protocol/barrier
+helpers, PDO instrumentation and failure controls.
 Ten affected suites pass: **1,564 behavior/control + 65 scope = 1,629 assertions**.
 NativeControl contributes 1,045 synthetic report/admission checks; NativeHarness
 contributes 92 checks using real bounded local children/private files and modeled PDO.
@@ -238,12 +332,12 @@ complete run fits 600 seconds is unverified**. A deadline failure remains failur
 limits must not be raised or cases skipped to obtain PASS. Preparation, exact-source
 review, protected admission and execution still require separate authorization.
 
-The residual mechanism gap is wire-level acknowledgement loss for the M6D deployment
-result transaction (D11/C09). The retained post-commit application exception now uses
-execution three and preserves the limitation. M6C transport evidence is not proof of
-that M6D transaction. Actual HTTP/Apache/helper/filesystem activation and fencing are
-outside the DB-only lane. No new production defect was exposed by the executed local
-controls; native implementation/constraint behavior remains unverified until execution.
+At b0cda, D11/C09 wire-level result acknowledgement loss remained a mechanism gap.
+The v3 addition above now authors it independently of the retained post-commit API
+exception. M6C transport evidence is not proof of an M6D transaction. Actual
+HTTP/Apache/helper/filesystem activation and fencing remain outside the DB-only lane.
+No production defect was demonstrated by local controls; native implementation,
+driver and constraint behavior remain unverified until execution.
 
 ### PR #130 bounded queue-progress obligation — NOT EXECUTED
 
@@ -271,7 +365,8 @@ ordering/progress observations must identify distinct connections and completed 
 No global wait flag can credit another race. Missing, extra, duplicate, wrong-version,
 partial, FAIL or unobserved results cannot satisfy acceptance. Published JSON has one
 canonical pretty encoding; `M6DNativeContract::acceptPublished` verifies that encoding
-(rejecting duplicate keys), the exact source/image/run identity, and complete v2 results.
+(rejecting duplicate keys), the exact source/image/run identity, and complete v3 results,
+including the four structured transport subcases and successful child/schema cleanup.
 Missing/unavailable capabilities, worker errors, unresolved waits and incomplete
 inventory cannot become SKIP/PASS. Diagnostics retain exception class/fixed code and
 PDO SQLSTATE/driver number, never SQL text, connection credentials, tokens or bodies.

@@ -4,6 +4,7 @@ require_once __DIR__.'/WebsitePlatformM6DNativeCases.php';
 require_once __DIR__.'/WebsitePlatformM6DNativeAuthorityCases.php';
 require_once __DIR__.'/WebsitePlatformM6DNativeDecisionCases.php';
 require_once __DIR__.'/WebsitePlatformM6DNativeSchemaCases.php';
+require_once __DIR__.'/WebsitePlatformM6DNativeWireCases.php';
 
 function m6dNativeRows(PDO $db,string $sql,array $p=[]): array
 { $s=$db->prepare($sql); $s->execute($p); return $s->fetchAll(); }
@@ -69,6 +70,7 @@ function m6dNativeExpandedCase(string $case,string $sub,M6DNativeConnection $db,
         'health-compensation'=>m6dNativeHealthCase($sub,$db,$observer,$f,$d),
         'deployment-schema'=>m6dNativeSchemaCase($sub,$db,$observer,$f,$d),
         'deployment-history-access'=>m6dNativeHistoryCase($sub,$db,$observer,$f,$d),
+        'result-commit-transport'=>m6dNativeWireCase($sub,$db,$observer,$a,$f,$d),
         default=>throw new RuntimeException('unimplemented_subcase'),
     };
 }

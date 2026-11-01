@@ -1,10 +1,11 @@
 <?php
 declare(strict_types=1);
+require_once __DIR__.'/WebsitePlatformM6DNativeWireEvidence.php';
 
 /** Definitions only. Distinct from every M6B/M6C report; no runtime bootstrap. */
 final class M6DNativeContract
 {
-    public const PROFILE='m6d-db-authority-v2';
+    public const PROFILE='m6d-db-authority-v3';
     public const CASES=[
         'publish-request-history','restore-request-history','publish-payload-fields','restore-payload-fields',
         'scoped-current-access','concurrent-request-identity','concurrent-target-claims','result-audit-rollback',
@@ -13,13 +14,14 @@ final class M6DNativeContract
         'unavailable-result-no-compensation','deleted-recovery-actor',
         'authority-boundary-orders','independent-targets','publish-request-outcomes','restore-request-outcomes',
         'grant-field-bindings','grant-phase-denials','restore-eligibility','health-compensation',
-        'deployment-schema','deployment-history-access',
+        'deployment-schema','deployment-history-access','result-commit-transport',
     ];
-    /** Ordered, finite acceptance inventory. v1 parent PASS cannot satisfy v2. */
+    /** Ordered finite acceptance inventory. v1/v2 cannot satisfy the v3 transport gate. */
     public static function subcases(string $case): array
     {
         self::need(in_array($case,self::CASES,true),'unknown_case');
         return match($case) {
+            'result-commit-transport'=>['unarmed-success','commit-not-delivered','ack-withheld','authoritative-unavailable'],
             'publish-payload-fields'=>['release','operation','approval','binding','pointer','version','reason'],
             'restore-payload-fields'=>['release','operation','restore-source','approval','binding','pointer','version','reason'],
             'authority-boundary-orders'=>[
@@ -80,15 +82,17 @@ final class M6DNativeContract
         return ['profile'=>self::PROFILE,'source_sha'=>$sha,'image_id'=>$image,'run_token'=>$token,'status'=>'FAIL',
             'native'=>true,'cases'=>$cases,
             'primary_failure'=>null,'capture'=>'NOT_ATTEMPTED','cleanup'=>'NOT_ATTEMPTED','publication'=>'NOT_ATTEMPTED',
+            'children_cleanup'=>'NOT_ATTEMPTED','schema_cleanup'=>'NOT_ATTEMPTED',
             'limitations'=>['Publisher and artifact verification are explicit DB-only models.',
-                'Commit acknowledgement fault is injected after a real PDO commit; not a transport-loss test.',
+                'committed-ack-history is post-success-PDO API loss; result-commit-transport separately requires wire evidence.',
                 'Lease expiry uses scoped SQL metadata faults; not elapsed-clock proof.',
                 'No helper, Apache, network health, symlink activation or browser evidence.']];
     }
     public static function complete(array $r,?array $identity=null): bool
     {
         if(($r['profile'] ?? null)!==self::PROFILE || array_keys($r['cases'] ?? [])!==self::CASES || !array_key_exists('primary_failure',$r) || $r['primary_failure']!==null
-            || ($r['cleanup'] ?? null)!=='PASS' || ($r['capture'] ?? null)!=='PASS' || ($r['native'] ?? null)!==true) return false;
+            || ($r['cleanup'] ?? null)!=='PASS' || ($r['children_cleanup'] ?? null)!=='PASS' || ($r['schema_cleanup'] ?? null)!=='PASS'
+            || ($r['capture'] ?? null)!=='PASS' || ($r['native'] ?? null)!==true || ($identity!==null && ($identity['profile'] ?? null)!==self::PROFILE)) return false;
         foreach(['source_sha'=>'/^[a-f0-9]{40}$/D','image_id'=>'/^sha256:[a-f0-9]{64}$/D','run_token'=>'/^[a-f0-9]{32}$/D'] as $key=>$pattern) {
             if(!is_string($r[$key] ?? null) || !preg_match($pattern,$r[$key]) || ($identity!==null && $r[$key]!==($identity[$key] ?? null))) return false;
         }
@@ -100,6 +104,8 @@ final class M6DNativeContract
                 if(($s['status'] ?? null)!=='PASS' || !is_int($s['assertions'] ?? null) || $s['assertions']<1) return false;
                 $total+=$s['assertions']; $order=self::ordering($key,$sub);
                 if($order!==null && !self::ordered($s['ordering'] ?? [],$order)) return false;
+                if($key==='result-commit-transport' && (!is_int($s['site_id'] ?? null) || $s['site_id']<1
+                    || !M6DNativeWireEvidence::valid($s['transport'] ?? null,$sub,array_intersect_key($r,array_flip(['profile','source_sha','image_id','run_token'])),$s['site_id'])))return false;
             }
             if($total!==$c['assertions']) return false;
         }

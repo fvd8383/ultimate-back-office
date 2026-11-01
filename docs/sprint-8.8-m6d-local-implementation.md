@@ -9,7 +9,104 @@ M6B remains formally closed, M6 remains IN PROGRESS, and M6E–M6G remain NOT ST
 This task implements service boundaries locally. Native SQL, activation and deployment
 are not authorized and are not executed.
 
+## Deployment-result transport authoring
+
+Starting head: `b0cda17699ed862301738d776308c244f0dbe636`, exact-head review completed
+with no findings. This focused test/documentation slice authors the previously missing
+D11/C09 deployment-result COMMIT transport mechanism. **AUTHORED / NOT EXECUTED**:
+M6D remains pending native validation and acceptance. No production, application,
+service, CLI or runtime implementation changed; the queue correction is preserved.
+
+The current `m6d-db-authority-v3` contract requires **29 cases / 146 named subcases**,
+retaining the original 28/142 and all **22 ordering/progress observations**. The new
+`result-commit-transport` parent requires `unarmed-success`, `commit-not-delivered`,
+`ack-withheld` and `authoritative-unavailable`: four structured subcase records with
+five relay/worker legs and five fresh direct authoritative observations. Old v2
+admission, EXECUTE markers and reports cannot satisfy the expanded gate. Full
+[mechanism and finite inventory](sprint-8.8-m6d-native-validation.md#deployment-result-transport-addition--authored-not-executed)
+are documented with the exact preparation prerequisites.
+
+The unchanged definitions-only M6C packet recognizer handles the two exact COMMIT
+forms and before-commit/drop-ack/drop-query modes. M6D-specific protected admission,
+PID/run/case/attempt/channel-bound endpoints, one-worker loopback relay and backend
+identity checks supply the connection route. The M6C executable proxy and context
+are not reused. The direct/cleanup connection path stays byte-identical. No extra DB
+privilege, persistent PDO setting, general proxy or production hook is introduced.
+
+The test-only decorator selects the real result audit's site/target/deployment/attempt
+and pauses immediately before inner PDO commit. ARMED must precede release, and no
+SQL slips between the barrier and the real commit. The unavailable leg intercepts
+the prepared authoritative site read on a separate, sequentially started connection.
+Each fixture obtains execution three through real service claims and controlled
+failures. Current service return/error classification is recorded, never invented.
+Unexpected native failures will block acceptance and require separate review; they
+do not authorize production changes. The existing post-success-PDO exception,
+discarded request response and unavailable-PDO tests keep their original meanings.
+
+Fresh direct DB observations precede recovery/replay. They must distinguish the
+uncommitted result from committed pointer/lifecycle/health/audit/slot history, retain
+already committed activation/grant state, and verify recovery budgets, producer/stale
+ownership, no duplicate effects, later-winner protection and current history access.
+Publisher/artifact/health effects remain explicit models; there is no physical site
+activation or rollback proof. Primary test failure, safe pre-cleanup child context,
+child cleanup, schema cleanup, publication and later host capture remain separate.
+
+Actual final sequential Windows/PHP 8.4.24 results: Queue **90**, Execution **63**,
+Request **70**, Authority **96**, Recovery **60**, Artifact **4**, CLI **44**,
+NativeControl **1,081**, NativeHarness **92**, NativeWire **471**, Scope **74**.
+All eleven suites exited 0: **2,071 behavior/control + 74 scope = 2,145 assertions**.
+The unchanged M6C wire regression was freshly rerun because it is the reused dependency:
+**4,591 assertions / 562 scenarios**, exit 0. This is synthetic parser evidence, not
+execution of any M6D MySQL transaction. Historical 1,629/548/397 counts below remain
+attributed to their original heads.
+
+New local controls execute both COMMIT forms, fragmentation, exact bytes/suppression,
+memory-stream partial writes/backpressure, actual service/audit targeting with fake
+PDO, strict barriers/bindings, early exit, duplicate fault, unsupported capabilities,
+malformed/error acknowledgements, truncated input, privacy and required authoritative
+evidence. Real bounded synthetic children exercise ownership/cleanup and exit/signal
+handling. Both new executables reject Windows admission before credentials or sockets.
+Suite-specific negative diagnostics are checked: NativeWire expects two modeled PDO
+transaction failures; the other suites retain their existing diagnostic rules.
+
+The first new test run failed its fixed site-read seam because existing PHP source
+used CRLF and the new literal used LF. The matcher now normalizes only source line
+endings for that exact literal; it is not a SQL recognizer. Failed output and successive
+437/459-assertion rechecks are retained separately outside Git. A final source review
+added a fixed acknowledged `DO 0` before each barrier to drain pending prepared-statement
+closes while unarmed; its required evidence/controls bring NativeWire to 471. It leaves
+no statement destructor or SQL between arming and the selected commit/read. The final
+sequential rerun is recorded separately. The wire parser itself was not modified.
+No production defect was demonstrated locally.
+
+All **14 changed PHP files** pass lint. Documentation links/anchors/fences and
+working/staged/committed integrity checks are recorded outside Git. This slice changes
+**16 files: seven modified, nine added**. Of 528 baseline tracked files, **521 remain
+byte-identical**. All production/application/CLI/runtime paths, all 25 migrations/pins,
+all 77 requirement definitions, M6C behavior/evidence and browser allocation remain
+unchanged. The historical M6B scope-perimeter failure was not rerun or counted as PASS.
+
+Modified: this record, the native-validation record, `WebsitePlatformM6DNative.php`,
+`WebsitePlatformM6DNativeControlTest.php`, and native Contract/Control/Expansion support.
+Added: `WebsitePlatformM6DNativeWireTest.php` and native Relay/Wire/WireCases/
+WireConnection/WireEvidence/WireSyntheticChild/WireTestFixture/WireWorker support.
+
+No further transport mechanism is deliberately deferred, but actual mysqlnd/MySQL
+packet behavior, connection-loss/rollback classification, native assertions and total
+duration remain **UNVERIFIED**. The 600-second coordinator, 45-second children and all
+other bounds remain fixed. A future native failure is failure, not a reason to raise
+limits or omit cases. Review this exact source, then separately authorize disposable
+preparation, protected v3 admission and execution; verify actual image/server identity
+and the inspectable private test connection prerequisite. No host recipe was redesigned.
+
+No server, live socket/listener/relay, real SQL/migration, image/container/service,
+installation, deployment/provider, backup/restore/prune or merge action occurred.
+M6C stays formally closed; M6E–M6G remain unstarted. Backups/receipts are untouched;
+restore remains NOT EXECUTED.
+
 ## DB-only native coverage expansion
+
+Historical A–D expansion evidence at `b0cda176`; v3 transport authoring is recorded above.
 
 Expansion baseline: `926027c772004a4cd2e223a4b2242c4d21855283`, whose exact-head
 review completed without findings. This slice changes test infrastructure and these
@@ -306,10 +403,10 @@ checks the newly authorized perimeter and immutable M6C/migration sources.
 
 ## Remaining work and handoff
 
-The service slice is locally implemented and the finite A–D native obligations now
-have executable v2 cases/subcases. They remain **AUTHORED / NOT EXECUTED**, not closed
+The service slice is locally implemented and the finite A–D plus transport obligations
+have executable v3 cases/subcases. They remain **AUTHORED / NOT EXECUTED**, not closed
 acceptance gaps. Review the exact source, the artifact/publisher model boundary and
-the residual deployment-result transport fault mechanism described above, then separately
+the authored deployment-result transport mechanism described above, then separately
 authorize isolated preparation/admission and exact-source native execution. Missing
 native capability is failure/blockage, never a mock fallback or skip-to-PASS. Actual
 helper/Apache/network evidence remains M6E; controls and browser evidence remain M6F/M6G.
@@ -336,7 +433,7 @@ private/classes/SiteManager.php
 private/classes/SiteRevisionManager.php
 ```
 
-Added (37, including the queue regression and seven native expansion files):
+Added (46, including the queue regression, seven A–D expansion files and nine transport files):
 
 ```text
 docs/sprint-8.8-m6d-local-implementation.md
@@ -358,6 +455,7 @@ tests/WebsitePlatformM6DExecutionTest.php
 tests/WebsitePlatformM6DNative.php
 tests/WebsitePlatformM6DNativeControlTest.php
 tests/WebsitePlatformM6DNativeHarnessTest.php
+tests/WebsitePlatformM6DNativeWireTest.php
 tests/WebsitePlatformM6DQueueTest.php
 tests/WebsitePlatformM6DRecoveryTest.php
 tests/WebsitePlatformM6DRequestTest.php
@@ -376,4 +474,12 @@ tests/support/WebsitePlatformM6DNativeRuntime.php
 tests/support/WebsitePlatformM6DNativeSchemaCases.php
 tests/support/WebsitePlatformM6DNativeSyntheticChild.php
 tests/support/WebsitePlatformM6DNativeWorker.php
+tests/support/WebsitePlatformM6DNativeRelay.php
+tests/support/WebsitePlatformM6DNativeWire.php
+tests/support/WebsitePlatformM6DNativeWireCases.php
+tests/support/WebsitePlatformM6DNativeWireConnection.php
+tests/support/WebsitePlatformM6DNativeWireEvidence.php
+tests/support/WebsitePlatformM6DNativeWireSyntheticChild.php
+tests/support/WebsitePlatformM6DNativeWireTestFixture.php
+tests/support/WebsitePlatformM6DNativeWireWorker.php
 ```

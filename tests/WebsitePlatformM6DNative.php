@@ -66,6 +66,8 @@ try {
 } finally {
     if(function_exists('pcntl_alarm')) pcntl_alarm(0);
     $report['worker_results']=$GLOBALS['m6d_native_child_results'] ?? [];
+    $report['transport_observations']=$GLOBALS['m6d_wire_observations'] ?? [];
+    $report['authoritative_observations']=$GLOBALS['m6d_wire_authoritative'] ?? [];
     M6DNativeControl::cleanup($report,$owned,static fn()=>M6CNativeProcess::cleanup(),static function() use($raw,$observer,$a): void {
             if($raw->inTransaction()) $raw->rollBack(); if($observer->inTransaction()) $observer->rollBack();
             // Exact disposable schema identity is re-observed before the only destructive cleanup.
