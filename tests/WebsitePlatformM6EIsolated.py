@@ -1,9 +1,8 @@
 #!/usr/bin/python3 -I
-"""AUTHORED, NOT EXECUTED ON DESKTOP. Disposable Linux component/Apache acceptance.
+"""Disposable M6E acceptance coordinator; native execution is not commissioned.
 
-No installer/service/config mutation or database connection. Operator preprovisions
-fixed private roots, TLS Apache bindings and an exact-source admission. Failure or
-missing external evidence produces INCOMPLETE/FAILED, never a skipped PASS.
+The exact 13-case inventory is retained. Missing native implementation blocks before
+infrastructure effects. Component functions below remain explicitly separate evidence.
 """
 from contextlib import contextmanager
 import base64
@@ -20,6 +19,9 @@ import time
 from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0,str(ROOT/'tests/support'))
+from WebsitePlatformM6EProcess import Owner
+from WebsitePlatformM6EDrivers import DRIVERS, dispatch
 spec = importlib.util.spec_from_file_location('m6e', ROOT / 'infrastructure/deployment/ubo_site_publish.py')
 p = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(p)
@@ -32,15 +34,12 @@ ADMISSION = '/run/ubo-m6e-fixture/admission.json'
 
 def capture(command, timeout=30, expected_stderr=b''):
     """Bounded capture: retain first child result before teardown; no shell."""
-    child = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, start_new_session=True)
+    owner=Owner()
     try:
-        out, err = child.communicate(timeout=timeout)
-    except subprocess.TimeoutExpired:
-        os.killpg(child.pid, signal.SIGKILL)
-        out, err = child.communicate(timeout=5)
-        raise RuntimeError('child_timeout:' + str(child.pid))
-    p.require(len(out) <= 1048576 and len(err) <= 16384 and err == expected_stderr and child.returncode == 0)
-    return out
+        result=owner.capture(command,timeout)
+        p.require(result['stderr']==expected_stderr and result['exit']==0)
+        return result['stdout']
+    finally:owner.cleanup()
 
 
 class Authority:
@@ -90,6 +89,20 @@ class ComponentPublisher(p.Publisher):
 
 class Fixture:
     def __init__(self, admission, exported):
+        self.source=self.served=self.journal=None
+        self.may_cleanup=False
+        try:self._initialize(admission,exported)
+        except BaseException:
+            try:self.cleanup()
+            except BaseException:pass  # Preserve construction failure; never adopt unknown roots.
+            finally:
+                for tree in (self.source,self.served,self.journal):
+                    if tree is not None:
+                        try:tree.close()
+                        except BaseException:pass
+            raise
+
+    def _initialize(self, admission, exported):
         self.admission, self.exported = admission, exported
         self.ledger = []
         self.children = []
@@ -104,6 +117,7 @@ class Fixture:
         self.journal = p.Tree(admission['journal_root'], uid, True)
         for tree in (self.source, self.served, self.journal):
             p.require(os.listdir(tree.fd) == [])
+        self.may_cleanup=True
         self.release = exported['release']
         self.binding = {'site_id': self.release['site_id'], 'target_id': 20, 'site_key': self.release['site_key'], 'binding_key': 'isolated', 'binding_version': 1}
         self.target = {k: self.binding[k] for k in ('site_id', 'target_id', 'binding_key', 'binding_version')} | {
@@ -171,9 +185,12 @@ class Fixture:
         if self.pub and self.pub.lock is not None:
             os.close(self.pub.lock)
             self.pub.lock = None
-        for name in ('source_root', 'served_root', 'journal_root'):
+        for name in (('source_root', 'served_root', 'journal_root') if self.may_cleanup else ()):
             root = Path(self.admission[name])
             p.require(root.parent == Path(self.admission['fixture_root']) and not root.is_symlink())
+            tree={'source_root':self.source,'served_root':self.served,'journal_root':self.journal}[name]
+            pinned=os.fstat(tree.fd);named=root.lstat()
+            p.require((pinned.st_dev,pinned.st_ino)==(named.st_dev,named.st_ino))
             inventory = sorted(root.rglob('*'), key=lambda x: len(x.parts), reverse=True)
             self.ledger += [str(f.relative_to(root)) for f in inventory]
             for f in inventory:
@@ -189,7 +206,7 @@ class Fixture:
                     f.rmdir()
             p.require(list(root.iterdir()) == [])
         for tree in (self.source, self.served, self.journal):
-            tree.close()
+            if tree is not None:tree.close()
 
 
 def reject(call):
@@ -299,7 +316,10 @@ def immutable_boundaries(f):
         passed()
 
 
-def run_case(name, f):
+def run_case(name, f, backend=None, recorder=None):
+    if name in DRIVERS:
+        p.require(backend is not None and recorder is not None)
+        return dispatch(name,backend,recorder)
     if name == 'stage_replay_retention':
         one = f.stage()
         p.require(f.stage() == one and f.served.link() is None)
@@ -419,70 +439,24 @@ def run_case(name, f):
             setattr(tree, method, original)
         if name == 'stage_storage_fault':
             immutable_boundaries(f)
-    elif name == 'worker_helper_authority_integration':
-        identity_spec = importlib.util.spec_from_file_location('identity_driver', ROOT/'tests/support/WebsitePlatformM6EIdentityDriver.py')
-        identity_driver = importlib.util.module_from_spec(identity_spec)
-        identity_spec.loader.exec_module(identity_driver)
-        f.transfer_observations = identity_driver.observe(f.admission['source_sha'])
-        return 'INCOMPLETE'  # Transfer component does not complete installed DB/HTTP/service requirements.
     else:
-        return 'INCOMPLETE'  # Separate Apache/provisioning/installed service evidence required.
+        raise ValueError('unknown_component_case')
     return 'PASS'
 
 
 def main():
+    from WebsitePlatformM6EAcceptance import PROFILE, OBSERVATIONS
+    from WebsitePlatformM6ECoordinator import native_main
     if len(sys.argv) == 2 and sys.argv[1] == '--inventory':
-        print(json.dumps({'profile': 'm6e-isolated-v1', 'cases': INVENTORY, 'execution': 'NOT RUN'}))
+        print(json.dumps({'profile': PROFILE, 'cases': INVENTORY, 'observations':OBSERVATIONS,'execution': 'NOT RUN'}))
         return 0
     p.require(sys.platform == 'linux' and sys.argv[1:] == ['--run'])
-    admission = p.decode(p.protected(ADMISSION, 16384))
-    p.keys(admission, 'profile source_sha fixture_uid fixture_root source_root served_root journal_root report_root expires_at')
-    p.require(admission['profile'] == 'm6e-isolated-v1' and admission['fixture_uid'] == os.geteuid() != 0
-              and time.time() < admission['expires_at'])
-    p.require(capture(['/usr/bin/git', '-C', str(ROOT), 'rev-parse', 'HEAD']).decode().strip() == admission['source_sha'])
-    p.require(capture(['/usr/bin/git', '-C', str(ROOT), 'status', '--porcelain', '--untracked-files=all']) == b'')
-    p.require(admission['fixture_root'].startswith('/srv/ubo-m6e-fixture/'))
-    for k in ('source_root', 'served_root', 'journal_root', 'report_root'):
-        p.require(Path(admission[k]).parent == Path(admission['fixture_root']))
-    exported = p.decode(capture(['/usr/bin/php', '-d', 'memory_limit=256M', str(ROOT / 'tests/support/WebsitePlatformM6EArtifactChild.php')], 45))
-    report = {'profile': admission['profile'], 'source_sha': admission['source_sha'], 'cases': {}, 'first_failure': None, 'cleanup': [], 'result': 'INCOMPLETE'}
-    start = time.monotonic()
-    for name in INVENTORY:
-        f = None
-        try:
-            p.require(time.monotonic() - start < 600)
-            f = Fixture(admission, exported)
-            report['cases'][name] = run_case(name, f)
-        except BaseException as e:
-            report['cases'][name] = 'FAILED'
-            report['first_failure'] = report['first_failure'] or {'case': name, 'type': type(e).__name__, 'children': [] if f is None else f.children,
-                'publication_step': None if f is None else f.publication_step,
-                'phase': None if f is None or f.pub is None or f.pub.state is None else f.pub.state['phase']}
-        finally:
-            if f:
-                if f.publication_observations:
-                    report['immutable_publication'] = f.publication_observations
-                if f.transfer_observations is not None:
-                    report['artifact_transfer_identities'] = f.transfer_observations
-                try:
-                    f.cleanup()
-                    report['cleanup'].append({'case': name, 'result': 'PASS', 'owned_entries': len(f.ledger)})
-                except BaseException as e:
-                    report['cleanup'].append({'case': name, 'result': 'FAILED', 'type': type(e).__name__})
-                    report['first_failure'] = report['first_failure'] or {'case': name, 'type': 'cleanup'}
-        if report['first_failure']:
-            break
-    if report['first_failure']:
-        report['result'] = 'FAILED'
-    report['duration_seconds'] = time.monotonic() - start
-    output = Path(admission['report_root']) / ('m6e-' + os.urandom(8).hex() + '.json')
-    with output.open('xb') as h:
-        h.write(p.canonical(report))
-        h.flush()
-        os.fsync(h.fileno())
-    print(json.dumps({'result': report['result'], 'report': str(output), 'sha256': hashlib.sha256(output.read_bytes()).hexdigest()}))
-    return 1  # Installed Apache/provisioning/control-plane gate is intentionally incomplete.
+    return native_main()
 
 
 if __name__ == '__main__':
-    raise SystemExit(main())
+    try:raise SystemExit(main())
+    except (ValueError,RuntimeError,OSError) as error:
+        # Safe failure code; no raw exception text, paths or private child output.
+        print(json.dumps(dict(result='BLOCKED',code=type(error).__name__,missing=getattr(error,'context',{}).get('missing',[]))))
+        raise SystemExit(1)

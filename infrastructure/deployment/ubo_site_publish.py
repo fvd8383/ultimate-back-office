@@ -849,7 +849,7 @@ def identity(authority, previous=False):
             'producer_attempt_id': authority['producer_attempt_id'], 'fence_epoch': authority['activation_fence'] or authority['fence_epoch']}
 
 
-def fence(state, authority, operation, session):
+def fence(state, authority, operation, session, committed_current=None):
     """Pure admission, separately tested with controlled authority/fence fixtures."""
     keys(state, 'version fence owner session phase current intent settled')
     require(state['version'] == 1 and type(state['fence']) is int and state['fence'] >= 0
@@ -886,8 +886,20 @@ def fence(state, authority, operation, session):
         if operation in PHASES:
             require(PHASES[operation] >= state['phase'])
     elif not state['settled']:
-        require(authority['attempt_kind'] == 'recovery' and state['owner'][0] == authority['deployment_id']
-                and state['owner'][2] == authority['producer_attempt_id'])
+        # A completed activation can outlive its COMMIT acknowledgement/session. The
+        # independent authority supplies previous only for a committed successful
+        # deployment. Admit a later execution only after the locked filesystem read
+        # verifies that exact original producer and all retained public bytes.
+        committed = (authority['attempt_kind'] == 'execution' and authority['live']
+                     and state['phase'] == 2 and state['intent'] is None
+                     and committed_current is not None
+                     and committed_current == state['current'] == authority['previous']
+                     and state['owner'][0] == committed_current['deployment_id']
+                     and state['owner'][2] == committed_current['producer_attempt_id'])
+        require(committed or (authority['attempt_kind'] == 'recovery' and state['owner'][0] == authority['deployment_id']
+                and state['owner'][2] == authority['producer_attempt_id']))
+        if committed:
+            state = dict(state, phase=0)
     elif incoming > state['fence']:
         state = dict(state, phase=0)
     if authority['attempt_kind'] == 'recovery':
@@ -1135,7 +1147,11 @@ class Publisher:
         if self.lock is None:
             self.acquire()
         previous_fence = self.state['fence']
-        self.state = fence(self.state, a, r['operation'], self.session)
+        committed_current = None
+        if (a['fence_epoch'] > previous_fence and not self.state['settled'] and a['attempt_kind'] == 'execution'
+                and a['live'] and a['previous'] is not None):
+            committed_current = self.current()
+        self.state = fence(self.state, a, r['operation'], self.session, committed_current)
         if previous_fence != self.state['fence']:
             self.persist()
         op = r['operation']
@@ -1182,7 +1198,8 @@ class Publisher:
 
     def close(self):
         # Closing the descriptor releases flock. The un-settled durable record blocks
-        # ordinary execution; only a greater recovery fence may resolve it.
+        # ordinary execution unless an independent committed predecessor and its
+        # exact retained bytes resolve a completed activation at a greater fence.
         primary = None
         if self.lock is not None:
             try:

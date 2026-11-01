@@ -15,6 +15,97 @@ second parent; native-tested `7cdbbeef639…` is an ancestor of that reviewed he
 Its native PASS belongs only to `7cdbbeef`, never this implementation or the merge.
 Historical failures and pre-merge reports are not rewritten or rerun.
 
+## Integration controls following 065983d5 — partial implementation
+
+Starting source was the clean, exact branch head
+`065983d5a69269bcf8865d902a9a66f050860958`. Its exact-head review was observed once:
+completed, no findings, with both earlier threads resolved. This change does **not**
+achieve the requested complete installed integration handoff. Status remains
+**PARTIALLY IMPLEMENTED / LOCAL CONTROLS PASS / LINUX-APACHE-MYSQL ACCEPTANCE NOT EXECUTED**.
+
+| Existing driver | Implemented code | Mandatory executable work still missing |
+| --- | --- | --- |
+| `apache_private_health_headers` | Named driver loop, positive baselines, actual PHP HTTPS-checker child, independent bounded Python TLS requests, fixed fault mutations, response/hash/header observations and cleanup | VM Apache installation/commissioning, phase-bound two-release inputs, verified restore/retention cleanup and full native inventory predicates |
+| `config_failure_preservation` | Actual provisioning policy with fixed command vectors and protected-file storage; configtest-before-install, failed/unknown reload stays UNKNOWN, separate reconciliation; deterministic executor tests | Completed supervised native configuration/reload fault setup and independent command/syscall audit for routine operations |
+| `worker_helper_authority_integration` | Named driver loop and controlled adapter tests; authored separate-UID permission/protocol child, actual PDO SELECT-only/foreign-schema probes and instrumented worker/barriers | Native scenario backend, fixed installed worker/recovery service orchestration, real COMMIT wire faults, independent barriers/transaction observations, renewal/expiry and 300-second session scheduling |
+
+The three names now dispatch through `WebsitePlatformM6EDrivers.py`; dispatch alone
+is not completion. `WebsitePlatformM6ECoordinator.py` retains all 13 parents and
+initializes every named observation UNREACHED. `native_readiness()` lists absent
+executable methods. Both the integration `--run` path and preparation `--prepare`
+fail before fixture mutation while these dependencies are missing. There is no
+force flag, caller-provided completion boolean, fabricated command-counter file,
+all-PASS gate dictionary, generated host receipt or operational bypass.
+
+`WebsitePlatformM6EPreparation.py` contains guarded disposable-VM preflight,
+ownership intentions, account/private TLS/schema preparation and namespace teardown
+code. It requires a separately supplied VM with preinstalled pinned tools and a
+read-only exact checkout. That code is **not a complete runnable preparation path**:
+commissioning, receipt issuance, installed supervision and watchdog are still
+missing. The readiness barrier deliberately prevents partial construction followed
+by an unwritten operator step. Neither preparation nor any native child was run.
+
+The definitions-only v2 acceptance contract fixes source/run/config/tool/role/
+endpoint/database identities, exact names and evidence lanes. Five measured stages
+are required for every observation: baseline, reached boundary, outcome, independent
+effect and cleanup. Report-supplied assertions cannot override source-defined native
+predicates. Native policies for component/identity observations, manifest/retained
+inventory and command auditing are still missing and explicitly reject acceptance.
+Controlled adapter results cannot be promoted to native acceptance.
+
+The coordinator captures evidence before owned-resource cleanup, preserves the first
+error, retains child/reaping context and publishes original final bytes without
+replacement. Original bytes say publication PENDING; a separate checked publication
+receipt binds their exact hash/length. Missing receipt, bad cleanup, unreached cases
+or any first failure prevents exit zero. Namespace teardown remains separate.
+The 600-second coordinator, 30-second stage and 300-second helper session limits
+were not increased. Native duration has not been measured.
+
+### Narrow reproduced helper correction
+
+A local reproduction showed that successful database COMMIT followed by session
+EOF before `settle` left a completed activation journal permanently blocking the
+next ordinary deployment. The unchanged M6D recovery service intentionally does not
+allocate ordinary recovery for an already completed success. The helper now admits
+a greater execution fence only when fresh independent authority identifies the
+exact successful predecessor, journal phase is completed activation with no intent,
+original deployment/producer match, and the locked current-pointer/retained-byte
+read verifies that exact identity. It does not compensate or infer success from EOF.
+Unknown outcome, wrong producer/owner, pending intent, wrong phase, changed bytes,
+pointer drift and dead authority still reject without journal mutation.
+
+The first reproduction failed at the old fence guard; its output is retained outside
+Git. The final helper suite has 19 passing tests, including the reproduction and
+eight negative subcases. Only `fence` and `Publisher.dispatch` changed executable
+production logic; transfer framing, budgets and publication primitives are preserved.
+
+### Local verification and limits
+
+The focused local campaign uses installed Python/PHP, private files, bounded child
+pipes and the existing synthetic protocol/HTTP/PDO adapters. It does not use MySQL,
+Apache, installed helpers or supervisor services. The new control suite exercises
+the actual three driver functions, actual Provisioner, actual coordinator and
+definitions-only validator, including partial construction, primary/cleanup failure,
+fabricated inventory, self-serving assertions, wrong identity binding and absent
+publication receipt. Linux filesystem details remain explicitly modeled.
+
+Final directly affected results: 26 integration-control tests, 19 helper tests,
+8 publication tests, 20 transfer tests and 5 PHP-to-Python wire tests pass (78 Python
+tests). PHP host/authority/health/protocol suites pass 33/18/43/19 assertions (113).
+All 13 changed Python files parse and all 5 changed PHP files lint. The working
+scope guard passes 172 assertions; staged/committed counts are retained in the
+external handoff. Four relative document links resolve. AST comparison against
+065983d5 confirms that only the two declared helper functions changed executable
+production logic; all three reviewed PHP bridge files are byte-preserved.
+
+Raw per-program results, initial failures, rechecks, interpreter versions, syntax/
+scope/preservation results and complete handoff are retained outside Git in
+`m6e-integration/SUMMARY.txt` under this task's Codex visualization directory. The
+original Windows sandbox hard-link denial and successful authorized local rerun are
+both retained. The 68-program historical campaign and closed native gates were not
+rerun. No server, SSH, infrastructure, SQL, migration, installation, deployment,
+merge or formal closure operation occurred.
+
 ## Bounded artifact transfer — current local implementation
 
 Starting source: `659d59d7478df5bc0e42886a796a4e78c910ba23`, clean on the existing

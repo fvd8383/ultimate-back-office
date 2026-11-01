@@ -1,16 +1,120 @@
 # Sprint 8.8 M6E — Isolated Linux/Apache validation
 
-**AUTHORED / NOT EXECUTED.** The Windows implementation task does not authorize
+**PARTIALLY IMPLEMENTED / NATIVE NOT EXECUTED.** The Windows implementation task does not authorize
 installation, server preparation, Linux/Apache execution, SQL, service operations,
 working-staging activation or deployment. This document is the bounded later path,
 not a claim that a host contract exists. M6D’s closed native gate is not reopened.
 
-## Admission and ownership
+## Current v2 execution barrier and fixture contract
+
+The three final parent names dispatch through actual driver functions in
+`tests/support/WebsitePlatformM6EDrivers.py`. Their controlled adapters are tested;
+the installed path is incomplete. `WebsitePlatformM6EIsolated.py --run` and
+`WebsitePlatformM6EPreparation.py --prepare` reject at the executable-readiness
+barrier before creating infrastructure. There is no usable native launch command
+yet. Do not remove that barrier merely to run the preparation fragment.
+
+The exact 13 parents and every mandatory named subobservation are defined by
+`PARENTS` and `OBSERVATIONS` in `WebsitePlatformM6EAcceptance.py`. The first ten
+component functions are retained; conversion to their complete v2 measured report
+schemas remains missing. In particular, directory/file/named-inode replacement map
+to `link_hardlink_special_path_rejection`; actual ENOSPC and syscall-fsync faults map
+to `stage_storage_fault`; shutdown/timeout cleanup maps to `journal_fsync_fault`;
+interrupted recovery maps to `activation_restore_compensation`. These obligations
+remain required, not skipped or reclassified as injected API evidence.
+
+The authored preparation contract requires a disposable dedicated VM (not a
+container), PID 1 systemd, only loopback networking and no routes, matching machine
+and boot IDs, hostname `ubo-m6e-<first 16 run-id characters>` and kernel argument
+`ubo.m6e=<run-id>`. `/opt/ubo` must be a clean read-only exact-source checkout;
+`/opt/ubo-m6e` is its separately owned fixture copy. A root-owned
+`/run/ubo-m6e-bootstrap.json` binds version, source SHA, 128-bit run ID, machine/boot
+IDs, exact tool digests and expiry. No real-host path override is accepted.
+
+| Role | Fixed UID | Boundary |
+| --- | ---: | --- |
+| Operator | 0 | Preparation/configuration/teardown inside the owned VM only |
+| Coordinator | 2100 | Private reports and component fixture roots |
+| Worker | 2000 | Original artifact roots 0700/0600; worker-only credentials |
+| Helper | 2102 | Served and journal descendants; no source-artifact access |
+| Authority | 2103 | Independent protected service and SELECT-only SQL identity |
+| Apache | 2104 | Public-file read/traverse only |
+| MySQL | 2105 | Private disposable database files |
+| Fixture writer | 2106 | Scoped test mutations and independent transaction inspection |
+
+The fixed endpoint set is active.m6e.invalid/127.0.0.2:443,
+candidate.m6e.invalid/127.0.0.3:443 and MySQL 127.0.0.1:3306. Private OpenSSL CA,
+server/client and deliberately wrong test certificates are generated only inside
+the future admitted VM. No DNS, ACME or provider operation is involved. MySQL 8.4
+uses the unchanged 25 canonical migrations; `m6e_observer` has only SELECT on
+`ubo_m6e_<run-id>`, while the separate writer can mutate that disposable schema and
+inspect worker transactions. A foreign schema supplies the access-denial canary.
+
+Required preinstalled tools include pinned PHP with PDO MySQL/curl/posix support,
+Python, Apache with the reviewed modules, MySQL 8.4, OpenSSL, Git, systemd and account
+utilities. Actual local ext4/xfs/btrfs read/write storage, Unix sockets/peer identity,
+UID switching and supervision are necessary. Overlay/rootless Docker is not a
+substitute. Actual ENOSPC/fsync-error cases additionally need an owned fault-volume
+implementation and capabilities that have **not yet been authored**. No package
+installation is performed by the scripts.
+
+The required commissioning order remains: (1) verify namespace/source/tools;
+(2) create tracked private fixture resources; (3) execute separate actual component
+prerequisites for all eight Apache/filesystem/ownership/assets/runtime/health/
+recovery/provisioning gates; (4) issue a protected source/config-bound receipt from
+those measured bytes; (5) run normal protected installed entry points; (6) validate
+the final report; (7) capture original bytes before separate namespace teardown.
+Steps 3–5 are not connected end to end. No receipt issuer exists, and no integrated
+PASS is assumed to commission the same integrated test. Component PHP agents are
+not credited as normal protected worker/recovery CLI execution.
+
+### Report and cleanup contract
+
+Profile `m6e-isolated-v2` binds source SHA, run ID, configuration digest, tool hashes/
+versions, namespace, roles, endpoints and database identity. All 13 exact parents
+and their named observations must be present once. Unknown/renamed/count-only/
+missing/UNREACHED/INCOMPLETE rows reject. Every observation requires separately
+recorded baseline, intended boundary, outcome, independent PID/effect and cleanup;
+hashes bind their original safe scalar evidence. Lanes distinguish controlled-local,
+Linux component, real Apache/TLS, identity/supervisor, MySQL/authority, injected API
+and process/syscall observations. None is power-loss or M6G browser proof.
+
+`WebsitePlatformM6ECoordinator.py` captures a first evidence file before cleanup,
+keeps the first failure, bounds child output while reading, reaps tracked children
+and records unresolved resources. It writes original report bytes without replacing
+an existing name, checks write/fsync/close/readback and then publishes a separate
+hash/length-bound receipt. Original report bytes retain publication PENDING.
+`validate()` checks content; only `validate_published()` can accept finalized bytes.
+The offline CLI reads only the three named files and imports no application runtime:
+
+```text
+python3 -I -B tests/support/WebsitePlatformM6EAcceptance.py --validate report.json identity.json publication.json
+```
+
+The offline CLI requires native evidence. Native schemas for the first ten cases,
+identity scenarios, retained manifest inventory and command auditing remain
+unimplemented and reject; synthetic assertions cannot make them pass. A complete
+controlled-local report is usable only through the explicit controlled test API,
+never this native CLI. Coordinator cleanup and namespace teardown are separate;
+the fixed coordinator budget remains 600 seconds with no production-limit increase.
+
+### Concrete remaining executable work
+
+Finish `native_readiness()` dependencies: prerequisite commissioning, source-pinned
+service/socket installation and watchdog, protected receipt issuer and run/health/
+fixture-plan generation, full first-ten-case evidence conversion, identity scenario
+backend with real barriers and commit-fault relay, kernel command audit, and final
+owned-resource integration. Apache additionally needs two real same-site releases
+and exact restore/retention cleanup; config fault/reload recovery needs actual owned
+supervisor verification. The current instrumented session-hold barrier is **not** a
+300-second timeout test. Actual syscall faults and race tests are still absent.
+
+## Retained component definitions (historical v1 admission)
 
 The component harness is [WebsitePlatformM6EIsolated.py](../tests/WebsitePlatformM6EIsolated.py).
-It accepts `--inventory` without execution and `--run` only on Linux with a protected
-root-owned `/run/ubo-m6e-fixture/admission.json`. It never installs software or starts,
-reloads or provisions Apache/services. Operator preparation is a separate approval.
+It retains definitions from the earlier v1 fixture described below. The old launch
+coordinator has been replaced by the v2 readiness barrier above; the following v1
+admission is historical component context, not a current launch recipe.
 
 Admission keys are exactly: `profile=m6e-isolated-v1`, `source_sha`, `fixture_uid`,
 `fixture_root`, `source_root`, `served_root`, `journal_root`, `report_root`, `expires_at`.
@@ -28,7 +132,7 @@ real `Tree` and `Publisher`; its authority is explicitly a controlled test chann
 not a database PASS. Its real filesystem/locks and process kill points do not prove
 power-loss durability or installed service identity separation.
 
-The later authorized command is:
+The integration command (currently BLOCKED before effects) is:
 
 ```text
 /usr/bin/python3 -I -B tests/WebsitePlatformM6EIsolated.py --run
@@ -39,8 +143,8 @@ bounded child capture, exact SHA binding, a fixed case inventory, first-failure
 context before teardown, owned-child reaping and exact private-root inventory
 cleanup. Cleanup failure cannot turn the first failure into success. Reports use
 exclusive creation, flush/fsync and a SHA-256 receipt outside the source checkout.
-No assertion total is asserted before execution. Unexecuted cases are absent or
-INCOMPLETE, never skipped PASS.
+No assertion total is asserted before execution. In v2 all unexecuted cases and
+observations are explicitly UNREACHED; they cannot become skipped PASS.
 
 ## Exact authored component inventory
 
@@ -83,8 +187,9 @@ there is no change to worker-private M6C source permissions or installed admissi
 
 ## Concrete incomplete drivers and mandatory acceptance inventory
 
-Three inventory entries currently return **INCOMPLETE**. The harness therefore cannot
-emit overall PASS. Implement their controlled drivers before requesting M6E acceptance:
+Three inventory entries now call actual driver loops. Their required installed
+backends are incomplete, so the native readiness barrier prevents execution and
+overall PASS. The following native acceptance obligations still apply:
 
 1. `apache_private_health_headers`: provisioned private fixture active/candidate TLS
    vhosts using the exact reviewed template, explicit certificate/client-CA ownership
@@ -168,10 +273,10 @@ this PR at local implementation and exact-head review handoff.
 ## Authored transfer-only identity observations
 
 **AUTHORED / NOT EXECUTED.** The existing
-`worker_helper_authority_integration` case can now call
+Earlier transfer-only component evidence remains available through
 [WebsitePlatformM6EIdentityDriver.py](../tests/support/WebsitePlatformM6EIdentityDriver.py).
-It records nested transfer observations and still returns INCOMPLETE for remaining
-installed integration requirements. Missing separate-identity admission is an
+It records nested transfer observations, separate from the new full driver loop.
+It cannot satisfy remaining installed integration requirements. Missing separate-identity admission is an
 explicit INCOMPLETE result. Neither this module, its agents nor the isolated harness
 (including inventory mode) was executed during the desktop task.
 

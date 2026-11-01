@@ -325,6 +325,53 @@ class HelperTests(unittest.TestCase):
         self.assertEqual(self.pub.dispatch(self.request('inspect'))['deployment_id'], 200)
         self.assertEqual(self.pub.verify_served(previous)['artifact_hash'], self.release['artifact_hash'])
 
+    def committed_successor(self):
+        self.activate()
+        previous = p.identity(self.a)
+        # COMMIT succeeded, but EOF/death prevented the original session's settle call.
+        self.pub.close()
+        self.lease.update(deployment_id=200, attempt_id=201, fence_epoch=2, token='b'*64)
+        self.a.update(deployment_id=200, attempt_id=201, producer_attempt_id=201, fence_epoch=2,
+                      status='running', outcome='uncommitted', live=True, permitted=['stage', 'inspect', 'probe'],
+                      previous=previous, activation_fence=None)
+        self.pub = ModelPublisher(self.source, self.served, self.journal, self.authority, self.binding)
+        self.seq = 0
+        return previous
+
+    def test_committed_predecessor_after_eof_allows_later_winner(self):
+        previous = self.committed_successor()
+        staged = self.stage()
+        self.assertEqual(staged['result'], 'pass')
+        self.assertEqual(self.pub.current(), previous)
+        self.assertEqual(self.pub.state['owner'], [200, 201, 201])
+        self.assertEqual(self.pub.state['fence'], 2)
+        self.assertFalse(self.pub.state['settled'])
+        self.a.update(status='activation_attempted', activation_fence=2, permitted=['activate', 'inspect', 'probe'])
+        expected={k:previous[k] for k in ('site_key','release_id','release_key','artifact_hash','deployment_id')}
+        result=self.pub.dispatch(self.request('activate',dict(staged=staged,expected=expected,context=self.context('activation'))))
+        self.assertEqual(result['result'],'pass')
+        self.assertEqual(self.pub.current()['deployment_id'],200)
+        self.assertEqual(self.pub.verify_served(previous)['artifact_hash'],self.release['artifact_hash'])
+
+    def test_unresolved_predecessor_requires_exact_committed_identity(self):
+        for fault in ('unknown', 'owner', 'producer', 'intent', 'phase', 'bytes', 'pointer', 'not-live'):
+            with self.subTest(fault=fault):
+                self.setUp(); self.committed_successor()
+                state = p.decode(self.journal.read('state.json', 65536))
+                if fault == 'unknown': self.a['previous'] = None
+                elif fault == 'owner': self.a['previous']['deployment_id'] += 1
+                elif fault == 'producer': self.a['previous']['producer_attempt_id'] += 1
+                elif fault == 'intent': state['intent'] = dict(operation='activate', before=None, after=state['current'])
+                elif fault == 'phase': state['phase'] = 1
+                elif fault == 'bytes':
+                    (self.served.root / ('releases/' + self.release['release_key'] + '/public/index.html')).write_bytes(b'changed')
+                elif fault == 'pointer': self.served.links['current'] = None
+                else: self.a['live'] = False
+                self.journal.replace_json('state.json', state)
+                original = self.journal.read('state.json', 65536)
+                with self.assertRaises(p.Denied): self.stage()
+                self.assertEqual(self.journal.read('state.json', 65536), original)
+
     def test_stale_authority_and_pointer_cas(self):
         staged = self.stage()
         self.a.update(status='activation_attempted', activation_fence=1, permitted=['activate'])
