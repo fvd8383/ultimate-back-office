@@ -5,6 +5,58 @@ installation, server preparation, Linux/Apache execution, SQL, service operation
 working-staging activation or deployment. This document is the bounded later path,
 not a claim that a host contract exists. M6D’s closed native gate is not reopened.
 
+## Observation capture before restoration
+
+Review finding 4437786320 identified a shared ordering defect in all three final
+drivers: cleanup preceded capture, and an exception skipped the old aggregate
+`Recorder.add()`. The local before-fix reproduction saved UNREACHED rows after losing
+obtained baseline/fault measurements. The corrected control path records progress
+incrementally and publishes a checkpoint **before** `http_cleanup`, `config_cleanup`
+or `identity_cleanup`. Real private marker bytes and saved snapshot hashes prove
+the ordering in the controlled tests; a callback count alone is not the proof.
+
+Every started observation has `lifecycle.version=1`, attempted and last-completed
+stage, immutable safe events, first failure, secondary outcomes, separate capture
+and cleanup results and actually evaluated assertions. FAILED partial observations
+are diagnostic records, never acceptance. UNREACHED means the observation did not
+start. A measured fault is recorded only after obtaining its measurement; calling
+or partially executing the injection method does not manufacture a reached fault.
+Adapters can retain an outcome before an independent measurement throws.
+
+The fixed checkpoint boundaries are `observation` and, where applicable,
+`provision-pending`. Their names bind the run and a source/config/case/observation
+digest. Publication is exclusive, checked and at most 64 KiB per checkpoint; no
+filesystem image, response body, SQL, token, credential or exception argument is
+captured. Context is limited to 256 child/resource entries and 16 safe notes.
+Original snapshot bytes show capture PENDING; the final lifecycle carries their
+checked file/length/hash receipt. `validate_checkpoint()` verifies those bytes and
+bindings. Pending configuration is hashed before nested cleanup can erase it.
+
+Failure of required capture blocks PASS and never skips owned cleanup. If a case
+already failed, it remains primary through capture and cleanup failures. Cleanup
+responsibility is registered before partial construction. Successfully released
+resources are skipped by outer cleanup; unresolved resources remain tracked for
+bounded final handling. Pre-cleanup child context and final exit/reap metadata
+distinguish requested termination from an original child failure. No SIGKILL/finally,
+supervisor recovery, kernel durability or power-loss claim follows from these tests.
+
+The coordinator's `evidence-before-cleanup.json` remains a **global** checkpoint
+after per-observation checkpoints; it cannot recover lost per-case evidence.
+Final report/publication bytes are not rewritten on a later error; a separate safe
+post-publication diagnostic may describe that failure. Complete successful rows
+retain all previous requirements. Legacy v2 integration rows without the versioned
+lifecycle extension explicitly reject as `legacy_observation_lifecycle_missing`.
+Missing stages, fabricated completion, failed cleanup/capture, wrong lanes, missing
+native predicates and missing publication receipts still reject.
+
+The 37 focused desktop controls pass, including the requested A–K failure/success
+paths across actual driver functions and real private report files. The 600-second
+coordinator and existing component limits are unchanged. Production code and the
+native-readiness barrier are unchanged. Commissioning, receipts, supervised fixed
+entrypoints/watchdog, native scenario orchestration, real COMMIT relay, remaining
+Apache restore/retention/command auditing, native schemas and syscall/race work
+remain incomplete; this correction authorizes or proves none of those gates.
+
 ## Current v2 execution barrier and fixture contract
 
 The three final parent names dispatch through actual driver functions in

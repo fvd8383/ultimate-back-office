@@ -15,6 +15,67 @@ second parent; native-tested `7cdbbeef639…` is an ancestor of that reviewed he
 Its native PASS belongs only to `7cdbbeef`, never this implementation or the merge.
 Historical failures and pre-merge reports are not rewritten or rerun.
 
+## Failed-observation evidence correction following 3475bf4
+
+The review of `3475bf4f7829bc2b1b9342697e6e13f2e22a91e4` completed **with**
+[finding 4437786320](https://github.com/fvd8383/ultimate-back-office/pull/131#discussion_r4437786320).
+All three actual driver functions were reproduced through `dispatch`, `Recorder`,
+`coordinate` and the controlled backend before editing: baseline and fault returned,
+observation threw, cleanup saw the private marker still faulted and no capture file,
+then restoration destroyed that state. The later saved report contained only
+UNREACHED for the reached observation. That earlier behavior was incorrect.
+
+The recorder now starts each observation explicitly, retains immutable copies of
+safe measurements immediately, tracks attempted/last-completed stages and retains
+the first failure. The adapter progress seam records an outcome before a later
+independent read can throw. Started failures produce FAILED partial rows; genuinely
+unstarted observations stay UNREACHED. Earlier complete observations survive a
+later failure. Only evaluated assertions are retained, including a failed check;
+unexecuted planned assertions are not counted.
+
+All three drivers share a required checked disk checkpoint before their per-case
+cleanup. It binds source/run/config/case/observation and contains available events,
+safe failure classification, bounded notes and owned resource/child metadata.
+Snapshots are at most 64 KiB, use distinct no-replace names and keep original bytes.
+Provisioner additionally checkpoints safe pending-file size/hash and actual result
+state before pending-file cleanup. This does not change provisioning decisions or
+add rollback. The coordinator's later capture covers remaining global cleanup; it
+is no longer described as the first capture for an observation already restored.
+
+Capture failure is separately recorded and blocks acceptance. Cleanup still runs.
+A prior case exception remains primary through capture and cleanup failures;
+secondary outcomes remain distinct. Ownership is registered before begin/setup can
+partially succeed. Released resources are not destructively cleaned again; failed
+or explicitly incomplete cleanup stays tracked for bounded final handling, while
+retaining the first cleanup measurement if a final retry releases it. Child diagnostics distinguish
+observed exit before cleanup from requested termination and actual final exit/reap.
+Exception messages/arguments, private handles/paths, bodies and credentials are not
+serialized. A post-publication diagnostic cannot rewrite finalized report bytes.
+
+The v2 report adds explicitly versioned `lifecycle.version=1` diagnostic fields.
+Current integration PASS rows require successful per-observation capture and cleanup
+alongside every existing measurement/assertion requirement. Historical v2 integration
+rows without the lifecycle extension reject explicitly as
+`legacy_observation_lifecycle_missing`; they are not retroactively credited with
+capture. FAILED partial records can be validated diagnostically but never accepted
+as a passed observation. The native predicates, 13 parents, mandatory inventory,
+lane separation and final publication-receipt requirement remain intact.
+
+Focused local validation: **37 integration-control tests PASS**, including the
+parameterized baseline/fault/outcome/independent/assertion/cleanup failures, combined
+capture/cleanup failures, partial construction, multiple observations, real private
+file ordering, pending cleanup, immutable copies, privacy/tampering and owned child
+context and incomplete-cleanup retry. The final run took 28.529 seconds. Original before/after files and hashes
+are retained outside Git in this task's `m6e-evidence-ordering` directory. Unchanged
+helper/transfer/publication suites, historical campaigns and native gates were not
+rerun. Production executable changes: **zero**.
+
+This correction does not complete native integration. Commissioning/receipt issuance,
+fixed supervised entrypoints/watchdog, complete native orchestration, COMMIT relay,
+Apache restore/retention, command audit and native schema/syscall/race obligations
+remain unfinished. `native_readiness()` still blocks them before effects. M6E stays
+**PARTIALLY IMPLEMENTED / REVIEW REQUIRED**; M6C/M6D remain formally closed.
+
 ## Integration controls following 065983d5 — partial implementation
 
 Starting source was the clean, exact branch head

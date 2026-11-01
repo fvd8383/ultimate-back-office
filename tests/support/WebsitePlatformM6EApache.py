@@ -67,12 +67,17 @@ class ApacheDriver:
     def independent_http(self,path='/',phase='candidate',method='GET',variant='none'):
         return fetch(self.binding,phase,path,method,variant)
 
-    def http_begin(self,name):
+    def http_begin(self,name,progress):
         need(name in self.http_names,'http_case')
         context=dict(name=name,files=[],links=[],config=None,stopped=[],canaries=[],requests=0,baseline=None,
                      probe='/',fault_sha256=None)
         self.owned.append(context)  # Before any partial setup, including initial inspection.
+        progress.own(context,lambda:self.http_cleanup(context),lambda:self.http_diagnostic(context))
         return context
+
+    def http_diagnostic(self,c):
+        return sample('operator',os.getpid(),state_sha256=digest(canonical(self.external_snapshot())),
+                      owned_files=len(c['files']),owned_links=len(c['links']),stopped_processes=len(c['stopped']))
 
     def http_baseline(self,c):
         checker=self.health(); raw=self.independent_http(); c['requests']+=1
@@ -135,7 +140,7 @@ class ApacheDriver:
             raw=self.independent_http();c['requests']+=1;changed=1
         return sample('operator',os.getpid(),boundary=name,count=changed,body_sha256=c['fault_sha256'])
 
-    def http_observe(self,c,name):
+    def http_observe(self,c,name,progress):
         negative=name in ('wrong-site','wrong-release','wrong-marker','login-body','generic-200','css-bytes','media-bytes','mime','size','digest',
             'redirect','bad-trust','bad-host','bad-sni','bad-client','stale-cache','timeout','absence-not-active')
         fault=name if name in ('bad-trust','bad-host','bad-sni','bad-client','absence','absence-not-active') else 'none'
@@ -144,9 +149,19 @@ class ApacheDriver:
         h=self.health(phase,fault); e=h['evidence']; expected='fail' if negative else 'pass'
         if name=='absence': expected='pass'
         checks=[check('outcome','health',expected)]; details=dict(health=e['result'],status=e['http_status'],duration_ms=e['duration_ms'])
+        separation=None
+        if name=='active-pair':
+            # Retain the first observation even if the second checker call fails.
+            progress.note('http-response',sample('worker',h['pid'],**details))
+            time.sleep(1);second=self.health('active')['evidence']
+            need(second['result']=='pass','second_active');details['pair_count']=2
+            separation=self.health_separation(e,second)
+        outcome=sample('worker',h['pid'],**details);progress.measured('outcome',outcome)
+        progress.attempt('independent')
         raw=self.independent_http(c['probe'],phase='active' if name in ('absence','absence-not-active','active-pair') else 'candidate',
                                   variant=name if name in ('bad-trust','bad-sni','bad-client') else 'none')
         measured=dict(status=raw['status'],bytes=raw['bytes'],body_sha256=raw['sha256'])
+        progress.note('http-response',sample('operator',os.getpid(),**measured))
         if name=='mime':
             measured['content_type']=raw['headers'].get('content-type','').split(';')[0]
             checks.append(check('independent','content_type','text/plain'))
@@ -156,9 +171,7 @@ class ApacheDriver:
         if c['fault_sha256'] is not None:
             need(raw['status']==200 and raw['sha256']==c['fault_sha256'],'intended_http_fault_reached')
         if name=='active-pair':
-            first=e;time.sleep(1);second=self.health('active')['evidence']
-            need(second['result']=='pass','second_active');details['pair_count']=2
-            measured['separation_ms']=self.health_separation(first,second);checks += [check('outcome','pair_count',2),check('independent','separation_ms',1000,'gte')]
+            measured['separation_ms']=separation;checks += [check('outcome','pair_count',2),check('independent','separation_ms',1000,'gte')]
         elif name in ('all-public-files','approved-pdf','restore-retained'):
             entries=self.manifest['files'] if name!='approved-pdf' else [x for x in self.manifest['files'] if x['mime_type']=='application/pdf']
             need(entries,'pdf_required');verified=0
@@ -201,7 +214,8 @@ class ApacheDriver:
         else:
             statuses=[0,400,401,403] if name in ('bad-trust','bad-sni','bad-client') else [302] if name=='redirect' else [200]
             checks.append(check('independent','status',statuses,'in'))
-        return sample('worker',h['pid'],**details),sample('operator',os.getpid(),**measured),checks
+        independent=sample('operator',os.getpid(),**measured);progress.measured('independent',independent)
+        return outcome,independent,checks
 
     def http_cleanup(self,c):
         primary=None

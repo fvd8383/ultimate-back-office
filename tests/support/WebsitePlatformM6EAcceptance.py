@@ -125,7 +125,8 @@ def observation(identity, case, name, events, assertions, execution):
     return value
 
 def validate_observation(identity,case,name,value,execution):
-    keys(value, ('result','lane','events','assertions','evidence_sha256'))
+    fields=('result','lane','events','assertions','evidence_sha256')
+    keys(value, fields+('lifecycle',) if 'lifecycle' in value else fields)
     need(value['result']=='PASS' and value['lane']==('controlled-local' if execution=='controlled-local' else lane(case,name)), 'observation_lane')
     stages=('baseline','fault','outcome','independent','cleanup'); ev=value['events']
     need(type(ev) is list and len(ev)==5, 'five_measured_stages')
@@ -143,17 +144,130 @@ def validate_observation(identity,case,name,value,execution):
     checks=value['assertions']; need(type(checks) is list and 2<=len(checks)<=64, 'assertions')
     used=set()
     for check in checks:
-        keys(check,('stage','key','op','expected')); stage=check['stage']; key=check['key']; op=check['op']; wanted=check['expected']
-        need(stage in ('outcome','independent') and op in ('eq','ne','gte','lte','in') and (stage,key) not in used, 'assertion_identity')
-        used.add((stage,key)); data=ev[stages.index(stage)]['data']; need(key in data, 'assertion_measurement')
-        actual=data[key]
-        if op=='eq': need(type(actual) is type(wanted) and actual==wanted,'assert_eq')
-        elif op=='ne': need(actual!=wanted,'assert_ne')
-        elif op=='in': need(type(wanted) is list and actual in wanted,'assert_in')
-        else:
-            integer(actual); integer(wanted); need(actual>=wanted if op=='gte' else actual<=wanted,'assert_order')
+        evaluate_assertion(ev,check,used)
     need(any(s=='outcome' for s,k in used) and any(s=='independent' for s,k in used), 'outcome_and_effect')
+    if case in PARENTS[-3:]:
+        need('lifecycle' in value,'legacy_observation_lifecycle_missing')
+        validate_lifecycle(identity,case,name,value,complete=True)
     if execution=='native': native_predicates(case,name,ev)
+
+def evaluate_assertion(events,check,used):
+    assertion_shape(check);stage=check['stage'];key=check['key'];op=check['op'];wanted=check['expected']
+    need(stage in ('outcome','independent') and op in ('eq','ne','gte','lte','in') and (stage,key) not in used,'assertion_identity')
+    used.add((stage,key));data=next((e['data'] for e in events if e['stage']==stage),{})
+    need(key in data,'assertion_measurement');actual=data[key]
+    if op=='eq':need(type(actual) is type(wanted) and actual==wanted,'assert_eq')
+    elif op=='ne':need(actual!=wanted,'assert_ne')
+    elif op=='in':need(type(wanted) is list and actual in wanted,'assert_in')
+    else:
+        integer(actual);integer(wanted);need(actual>=wanted if op=='gte' else actual<=wanted,'assert_order')
+
+def assertion_shape(check):
+    keys(check,('stage','key','op','expected'))
+    need(check['stage'] in ('outcome','independent') and check['op'] in ('eq','ne','gte','lte','in'),'assertion_shape')
+    need(type(check['key']) is str and re.fullmatch('[a-z][a-z0-9_]{0,47}',check['key']) is not None,'assertion_key')
+    need(check['key'] not in ('body','password','token','sql','credentials','private_key'),'assertion_private_key')
+    values=check['expected'] if type(check['expected']) is list else [check['expected']]
+    need(len(values)<=64 and all(type(v) in (str,int) or v is None for v in values),'assertion_values')
+    need(all(type(v) is not str or (len(v)<=256 and '\n' not in v and '\r' not in v) for v in values),'assertion_strings')
+
+# Diagnostic lifecycle is an explicitly versioned extension. Historical v2 rows
+# without it are never silently credited with pre-restoration capture.
+STAGES=('admit','begin','baseline','fault','provision','outcome','independent','assertions','cleanup','complete')
+BOUNDARIES=('provision-pending','observation')
+
+def safe_error(error):
+    # Exception messages, args, context and arbitrary user-defined code strings are
+    # never diagnostic payloads. Preserve classification, not private text.
+    kind=type(error).__name__
+    if kind not in ('Failure','ValueError','OSError','PermissionError','FileExistsError','TimeoutError','AssertionError','RuntimeError','TypeError','KeyError'):
+        kind='Exception'
+    return dict(type=kind,code={'Failure':'control_failure','ValueError':'validation_failed','AssertionError':'assertion_failed',
+                              'TimeoutError':'timeout'}.get(kind,'operation_failed'))
+
+def checkpoint_stem(identity,case,name,boundary):
+    need(case in PARENTS and name in OBSERVATIONS[case] and boundary in BOUNDARIES,'checkpoint_identity')
+    tag=digest(canonical([identity['source_sha'],identity['config_sha256'],case,name]))[:20]
+    return 'cp-'+identity['run_id']+'-'+tag+'-'+boundary
+
+def validate_lifecycle(identity,case,name,row,complete=False):
+    life=row['lifecycle']
+    keys(life,('version','attempted','last_completed','first_failure','secondary','capture','cleanup','notes','evaluated'))
+    need(life['version']==1 and life['attempted'] in STAGES and life['last_completed'] in (None,*STAGES),'lifecycle_stage')
+    need(type(life['secondary']) is list and len(life['secondary'])<=16,'secondary_bound')
+    for error in ([life['first_failure']] if life['first_failure'] is not None else [])+life['secondary']:
+        keys(error,('kind','stage','type','code'))
+        need(error['kind'] in ('case','capture','cleanup') and error['stage'] in STAGES,'failure_stage')
+        need(error['type'] in ('Failure','ValueError','OSError','PermissionError','FileExistsError','TimeoutError','AssertionError','RuntimeError','TypeError','KeyError','Exception')
+             and error['code'] in ('control_failure','validation_failed','assertion_failed','timeout','operation_failed'),'failure_classification')
+    keys(life['capture'],BOUNDARIES)
+    for boundary,capture in life['capture'].items():
+        keys(capture,('result','receipt'))
+        need(capture['result'] in ('UNREACHED','PENDING','PASS','FAILED'),'capture_state')
+        if capture['result']=='PASS':
+            receipt=capture['receipt'];keys(receipt,('file','bytes','sha256'));hash_(receipt['sha256']);integer(receipt['bytes'],1,65536)
+            need(receipt['file']==checkpoint_stem(identity,case,name,boundary)+'.json','checkpoint_name')
+        else:need(capture['receipt'] is None,'capture_receipt')
+    need(type(life['cleanup']) is list and len(life['cleanup'])<=4,'cleanup_attempts')
+    for cleanup in life['cleanup']:
+        keys(cleanup,('boundary','result'));need(cleanup['boundary'] in BOUNDARIES and cleanup['result'] in ('PASS','FAILED'),'cleanup_state')
+    need(type(life['notes']) is list and len(life['notes'])<=16,'note_bound')
+    for note in life['notes']:
+        keys(note,('label','event'));need(note['label'] in ('diagnostic','provision','http-response'),'note_label')
+        e=note['event'];need(e==event(identity,case,name,e['stage'],e['role'],e['pid'],e['tick'],e['data']),'note_binding')
+    need(type(life['evaluated']) is list and len(life['evaluated'])==len(row['assertions'])<=64,'evaluated_count')
+    need(all(x in ('PASS','FAILED') for x in life['evaluated']),'evaluated_result')
+    if complete:
+        need(life['attempted']=='complete' and life['last_completed']=='cleanup' and life['first_failure'] is None and not life['secondary'],'lifecycle_complete')
+        need(life['capture']['observation']['result']=='PASS' and life['cleanup'] and all(x['result']=='PASS' for x in life['cleanup']),'checkpoint_cleanup_required')
+        if case==PARENTS[-2] and name not in ('reconcile-served','routine-zero-config-actions'):
+            need(life['capture']['provision-pending']['result']=='PASS','pending_checkpoint_required')
+        need(all(x=='PASS' for x in life['evaluated']),'assertions_complete')
+
+def validate_partial(identity,case,name,row,execution):
+    keys(row,('result','lane','events','assertions','evidence_sha256','lifecycle'))
+    need(row['result'] in ('INCOMPLETE','FAILED'),'diagnostic_not_pass')
+    need(row['lane']==('controlled-local' if execution=='controlled-local' else lane(case,name)),'diagnostic_lane')
+    need(type(row['events']) is list and len(row['events'])<=5,'partial_events')
+    seen=[];last=0
+    for e in row['events']:
+        stage=e['stage'];need(stage not in seen,'partial_duplicate');seen.append(stage)
+        need(e==event(identity,case,name,stage,e['role'],e['pid'],e['tick'],e['data']) and e['tick']>=last,'partial_binding');last=e['tick']
+    need(row['evidence_sha256']==digest(canonical(row['events'])),'partial_hash')
+    validate_lifecycle(identity,case,name,row)
+    need((row['result']=='FAILED')==(row['lifecycle']['first_failure'] is not None),'partial_failure')
+    used=set()
+    for check,result in zip(row['assertions'],row['lifecycle']['evaluated']):
+        assertion_shape(check)
+        try:evaluate_assertion(row['events'],check,used);actual='PASS'
+        except ValueError:actual='FAILED'
+        need(actual==result,'partial_assertion_tamper')
+
+def validate_checkpoint(raw,identity,case,name,boundary,receipt):
+    need(len(raw)<=65536 and receipt==dict(file=checkpoint_stem(identity,case,name,boundary)+'.json',bytes=len(raw),sha256=digest(raw)),'checkpoint_bytes')
+    value=decode(raw);keys(value,('profile','binding','case','name','boundary','observation','context'))
+    need(value['profile']=='m6e-observation-checkpoint-v1' and value['binding']=={k:identity[k] for k in ('source_sha','run_id','config_sha256')}
+         and value['case']==case and value['name']==name and value['boundary']==boundary,'checkpoint_binding')
+    validate_partial(identity,case,name,value['observation'],'controlled-local' if value['observation']['lane']=='controlled-local' else 'native')
+    need(value['observation']['lifecycle']['capture'][boundary]['result']=='PENDING','checkpoint_pending')
+    validate_context(value['context'])
+    return value
+
+def validate_context(context):
+    keys(context,('children','resources'))
+    need(all(type(context[k]) is list and len(context[k])<=256 for k in context),'context_bound')
+    for child in context['children']:
+        fields=('pid','exit','signal','last_barrier','reaped')
+        keys(child,fields+('termination_requested','exit_before_cleanup') if 'termination_requested' in child else fields)
+        integer(child['pid'],1);integer(child['signal'],0,64)
+        need(child['exit'] is None or type(child['exit']) is int,'context_exit')
+        need(type(child['reaped']) is bool and type(child['last_barrier']) is str and re.fullmatch('[A-Za-z0-9_-]{1,80}',child['last_barrier']) is not None,'context_barrier')
+        if 'termination_requested' in child:
+            need(type(child['termination_requested']) is bool and (child['exit_before_cleanup'] is None or type(child['exit_before_cleanup']) is int),'context_termination')
+    for resource in context['resources']:
+        keys(resource,('id','kind','identity_sha256','state'));hash_(resource['identity_sha256'])
+        need(all(type(resource[k]) is str and re.fullmatch('[A-Za-z0-9_-]{1,160}',resource[k]) is not None for k in ('id','kind')),'context_resource')
+        need(resource['state'] in ('INTENT','CREATED','RELEASED','UNRESOLVED'),'context_state')
 
 def native_predicates(case,name,events):
     """Source-defined predicates cannot be replaced by self-serving report assertions.
@@ -220,7 +334,11 @@ def validate(report, expected, native=True):
     need(report['last_step']==[PARENTS[-1],OBSERVATIONS[PARENTS[-1]][-1]], 'last_reached')
     need(type(report['children']) is list and type(report['resources']) is list, 'ledgers')
     for child in report['children']:
-        keys(child, ('pid','exit','signal','last_barrier','reaped')); integer(child['pid'],1); integer(child['signal'],0,64)
+        fields=('pid','exit','signal','last_barrier','reaped')
+        keys(child,fields+('termination_requested','exit_before_cleanup') if 'termination_requested' in child else fields)
+        if 'termination_requested' in child:
+            need(type(child['termination_requested']) is bool and (child['exit_before_cleanup'] is None or type(child['exit_before_cleanup']) is int),'termination_context')
+        integer(child['pid'],1); integer(child['signal'],0,64)
         need(child['reaped'] is True and type(child['exit']) is int and type(child['last_barrier']) is str, 'child_cleanup')
     for resource in report['resources']:
         keys(resource, ('id','kind','identity_sha256','state')); hash_(resource['identity_sha256'])

@@ -3,6 +3,7 @@ import hashlib
 import os
 from pathlib import Path
 import stat
+import time
 
 from WebsitePlatformM6EProcess import Failure
 
@@ -18,9 +19,9 @@ COMMANDS={
 }
 
 class Provisioner:
-    def __init__(self,storage,execute,observe,admit):
+    def __init__(self,storage,execute,observe,admit,progress=None):
         self.storage,self.execute,self.observe,self.admit=storage,execute,observe,admit
-        self.actions=[]
+        self.actions=[];self.progress=progress
 
     def command(self,name):
         if name not in COMMANDS: raise Failure('provision_command')
@@ -32,6 +33,20 @@ class Provisioner:
         if variant not in ('valid','invalid'): raise Failure('provision_variant')
         before=self.storage.snapshot(); prior=self.observe(); installed=False; primary=None
         result=dict(result='UNKNOWN',before=before,observed_before=prior,installed=None,observed_after=None,phase='stage')
+        pending=None
+        def cleanup_pending():
+            try:
+                self.storage.cleanup_pending()
+                if pending is not None:pending['state']='RELEASED'
+                if self.progress is not None:self.progress.nested_cleanup('PASS')
+            except BaseException as error:
+                if pending is not None:pending['state']='UNRESOLVED'
+                if self.progress is not None:
+                    self.progress.nested_cleanup('FAILED');self.progress.fail(error,'cleanup',stage='provision')
+                raise
+        if self.progress is not None:
+            pending=self.progress.record.owner.track(self.progress.resource['id']+'-pending','pending-config',
+                (self.progress.case+'/'+self.progress.name).encode(),cleanup_pending)
         try:
             self.storage.stage(variant)
             result['phase']='configtest'
@@ -56,9 +71,27 @@ class Provisioner:
         except BaseException as error:
             primary=error; raise
         finally:
-            try: self.storage.cleanup_pending()
-            except BaseException:
-                if primary is None: raise Failure('provision_cleanup')
+            capture_error=cleanup_error=None
+            if self.progress is not None:
+                if primary is not None:self.progress.fail(primary,stage='provision')
+                def diagnostic():
+                    return dict(role='operator',pid=os.getpid(),tick=time.monotonic_ns(),data=self.storage.pending_snapshot())
+                try:
+                    self.progress.note('provision',dict(role='operator',pid=os.getpid(),tick=time.monotonic_ns(),data=dict(
+                        phase=result['phase'],result=result['result'],before_sha256=before,installed_sha256=result['installed'],
+                        configtest_exit=result.get('configtest_exit'),reload_exit=result.get('reload_exit'))))
+                    self.progress.checkpoint('provision-pending',diagnostic)
+                except BaseException as error:
+                    capture_error=error
+                    if self.progress.life['capture']['provision-pending']['result']=='UNREACHED':
+                        self.progress.life['capture']['provision-pending'].update(result='FAILED',receipt=None)
+                        self.progress.fail(error,'capture',stage='provision')
+            try:cleanup_pending()
+            except BaseException as error:
+                cleanup_error=error
+            if primary is None:
+                if capture_error is not None:raise capture_error
+                if cleanup_error is not None:raise cleanup_error
 
     def reconcile(self):
         self.admit()
@@ -116,3 +149,10 @@ class FixedStorage:
             now=Path(PENDING).lstat()
             if (now.st_dev,now.st_ino)!=(self.pending_identity.st_dev,self.pending_identity.st_ino): raise Failure('config_cleanup_identity')
             Path(PENDING).unlink(); self.pending_identity=None
+
+    def pending_snapshot(self):
+        if self.pending_identity is None:return dict(pending_present=0,pending_bytes=0,pending_sha256=None)
+        now=Path(PENDING).lstat()
+        if (now.st_dev,now.st_ino)!=(self.pending_identity.st_dev,self.pending_identity.st_ino):raise Failure('pending_diagnostic_identity')
+        raw=self.safe_read(PENDING)
+        return dict(pending_present=1,pending_bytes=len(raw),pending_sha256=hashlib.sha256(raw).hexdigest())

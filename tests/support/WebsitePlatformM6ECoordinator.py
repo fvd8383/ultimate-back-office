@@ -1,32 +1,35 @@
 """Bounded acceptance coordination. Definitions only; never prepares infrastructure."""
 import os
+import copy
 from pathlib import Path
 import re
 import time
 
 from WebsitePlatformM6EAcceptance import (PARENTS, OBSERVATIONS, initial, canonical, validate,
-    validate_published, publication_receipt, need)
+    validate_published, publication_receipt, need, safe_error, digest)
 from WebsitePlatformM6EDrivers import DRIVERS, Recorder, dispatch
 from WebsitePlatformM6EProcess import Failure, Owner, publish_bytes
 
 
 def failure(error,step):
-    code=getattr(error,'code',type(error).__name__)
-    if not isinstance(code,str) or re.fullmatch('[a-zA-Z0-9_]{1,80}',code) is None:code=type(error).__name__
-    return dict(code=code,step=step,type=type(error).__name__)
+    return dict(step=copy.deepcopy(step),**safe_error(error))
 
 
 def coordinate(identity,execution,factory,report_root,owner=None):
     """factory registers cleanup with owner before construction that can partly succeed.
 
-    The first capture precedes resource cleanup. Final publication uses original
+    Each driver checkpoints before per-observation restoration. This coordinator's
+    later capture precedes remaining global cleanup. Final publication uses original
     bytes plus a separately finalized receipt. Namespace destruction is a separate
     operation and is never performed here. No failed case is retried.
     """
     owner=owner or Owner();started=time.monotonic();report=initial(identity,execution)
-    record=Recorder(identity,execution);backend=None;publication=None;accepted=False
+    record=Recorder(identity,execution,report_root,owner);backend=None;publication=None;accepted=False
     def fail(error):
-        if report['first_failure'] is None:report['first_failure']=failure(error,record.last)
+        if report['first_failure'] is None:
+            row=record.rows.get(tuple(record.last or ()),{})
+            primary=row.get('lifecycle',{}).get('first_failure')
+            report['first_failure']=dict(step=copy.deepcopy(record.last),**copy.deepcopy(primary)) if primary else failure(error,record.last)
         report['result']='FAILED'
     try:
         backend=factory(owner)
@@ -45,14 +48,17 @@ def coordinate(identity,execution,factory,report_root,owner=None):
         for (case,name),value in record.rows.items():report['cases'][case]['observations'][name]=value
         if report['first_failure'] and record.last is not None:
             report['cases'][record.last[0]]['result']='FAILED'
-        report['children']=owner.context;report['resources']=owner.resources
         report['duration_ms']=max(1,int((time.monotonic()-started)*1000))
         try:
-            publish_bytes(report_root,'evidence-before-cleanup',canonical(report));report['capture']='PASS'
+            report.update(owner.snapshot())
+            publish_bytes(report_root,'evidence-before-cleanup',canonical(report))
+            failed_capture=any(c['result']=='FAILED' for r in record.rows.values() for c in r.get('lifecycle',{}).get('capture',{}).values())
+            report['capture']='FAILED' if failed_capture else 'PASS'
         except BaseException as error:report['capture']='FAILED';fail(error)
         try:owner.cleanup();report['cleanup']='PASS'
         except BaseException as error:report['cleanup']='FAILED';fail(error)
-        report['children']=owner.context;report['resources']=owner.resources
+        try:report.update(owner.snapshot())
+        except BaseException as error:report['capture']='FAILED';fail(error)
         report['duration_ms']=max(1,int((time.monotonic()-started)*1000))
         report['publication']='PENDING'
         if report['first_failure'] is None:
@@ -69,6 +75,9 @@ def coordinate(identity,execution,factory,report_root,owner=None):
                 validate_published(raw,identity,receipt,native=execution=='native');accepted=True
         except BaseException as error:
             fail(error)  # Original published bytes, if any, are never rewritten.
+            try:publish_bytes(report_root,'post-publication-failure',canonical(dict(profile='m6e-publication-failure-v1',
+                binding={k:identity[k] for k in ('source_sha','run_id','config_sha256')},report_sha256=digest(raw),failure=failure(error,record.last))))
+            except BaseException:pass
     return dict(accepted=accepted,report=report,publication=publication,exit=0 if accepted else 1)
 
 

@@ -1,9 +1,11 @@
 """Bounded child ownership/capture and exact report publication; no import-time effects."""
 import hashlib
+import copy
 import json
 import os
 from pathlib import Path
 import queue
+import re
 import signal
 import stat
 import subprocess
@@ -21,10 +23,26 @@ class Owner:
 
     def track(self,name,kind,identity,cleanup):
         """Register an intention BEFORE partially successful construction/mutation."""
+        if any(not isinstance(x,str) or re.fullmatch('[A-Za-z0-9_-]{1,160}',x) is None for x in (name,kind)):raise Failure('resource_label')
         if any(r['id']==name for r in self.resources): raise Failure('duplicate_resource')
         record=dict(id=name,kind=kind,identity_sha256=hashlib.sha256(identity).hexdigest(),state='INTENT')
         self.resources.append(record);self.finalizers.append((record,cleanup))
         return record
+
+    def snapshot(self):
+        """Safe bounded metadata only; never handles, argv, pipes, paths or bodies."""
+        if len(self.context)>256 or len(self.resources)>256:raise Failure('context_bound')
+        children=[]
+        for c in self.context:
+            child={k:c[k] for k in ('pid','exit','signal','last_barrier','reaped')}
+            for key in ('termination_requested','exit_before_cleanup'):
+                if key in c:child[key]=c[key]
+            if not isinstance(child['last_barrier'],str) or re.fullmatch('[A-Za-z0-9_-]{1,80}',child['last_barrier']) is None:raise Failure('barrier_label')
+            children.append(child)
+        resources=[{k:r[k] for k in ('id','kind','identity_sha256','state')} for r in self.resources]
+        snapshot=copy.deepcopy(dict(children=children,resources=resources))
+        from WebsitePlatformM6EAcceptance import validate_context
+        validate_context(snapshot);return snapshot
 
     def capture(self,command,seconds=30,stdin=b'',limit=1048576,error_limit=16384,identity=None):
         if time.monotonic()>=self.deadline: raise Failure('coordinator_deadline')
@@ -36,7 +54,7 @@ class Owner:
             uid,gid,groups=identity; kwargs.update(user=uid,group=gid,extra_groups=groups,umask=0o077)
         child=subprocess.Popen(command,**kwargs)
         self.children.append(child)  # Before pipes/threads can fail.
-        record=dict(pid=child.pid,exit=None,signal=0,last_barrier='SPAWNED',reaped=False)
+        record=dict(pid=child.pid,exit=None,signal=0,last_barrier='SPAWNED',reaped=False,termination_requested=False,exit_before_cleanup=None)
         self.context.append(record); events=queue.Queue(maxsize=4); stop=threading.Event()
         def drain(stream,side):
             try:
@@ -79,12 +97,13 @@ class Owner:
         finally:
             stop.set()
             try:
+                record['exit_before_cleanup']=child.poll()
                 if os.name=='nt':
-                    if child.poll() is None: child.kill()
+                    if child.poll() is None:record['termination_requested']=True;child.kill()
                 else:
                     # A successful leader exit does not establish that its owned
                     # descendants exited; close the whole private process group.
-                    try: os.killpg(child.pid,signal.SIGKILL)
+                    try: os.killpg(child.pid,signal.SIGKILL);record['termination_requested']=True
                     except ProcessLookupError: pass
                 child.wait(timeout=5)
                 record.update(exit=child.returncode,signal=-child.returncode if child.returncode<0 else 0,reaped=True)
@@ -101,6 +120,7 @@ class Owner:
         for child,record in zip(self.children,self.context):
             try:
                 if child.poll() is None:
+                    record['exit_before_cleanup']=None;record['termination_requested']=True
                     if os.name=='nt': child.kill()
                     else: os.killpg(child.pid,signal.SIGKILL)
                 child.wait(timeout=5)
@@ -110,7 +130,8 @@ class Owner:
             if record['state']=='RELEASED': continue
             try: cleanup();record['state']='RELEASED'
             except BaseException as error:
-                record['state']='UNRESOLVED';self.secondary.append(type(error).__name__);failures.append(record['id'])
+                if record['state']!='RELEASED':record['state']='UNRESOLVED'
+                self.secondary.append(type(error).__name__);failures.append(record['id'])
         if failures: raise Failure('owned_cleanup',{'resources':failures})
 
 def publish_bytes(directory,stem,raw):

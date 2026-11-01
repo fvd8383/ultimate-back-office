@@ -131,9 +131,12 @@ class NativeBackend(ApacheDriver):
             result=self.command(['/usr/bin/systemctl','start','ubo-site-worker.service'],60)
         need(result['exit']==0,'known_good_restore')
 
-    def config_begin(self,name):
-        c=dict(name=name,original=protected(CONFIG/'apache.conf',131072),snapshot=self.external_snapshot(),stopped=[],pid_backup=None)
-        self.owned.append(c);return c
+    def config_begin(self,name,progress):
+        c=dict(name=name,original=None,snapshot=None,stopped=[],pid_backup=None)
+        self.owned.append(c)
+        progress.own(c,lambda:self.config_cleanup(c),lambda:sample('operator',os.getpid(),
+            state_sha256=digest(canonical(self.external_snapshot())),stopped_processes=len(c['stopped'])))
+        c['original']=protected(CONFIG/'apache.conf',131072);c['snapshot']=self.external_snapshot();return c
 
     def config_baseline(self,c):
         h=self.health('active');need(h['evidence']['result']=='pass','config_positive')
@@ -156,23 +159,29 @@ class NativeBackend(ApacheDriver):
             r=self.independent_http(phase='active');h=self.health('active')
             return dict(config_id=r['headers'].get('x-m6e-config'),health=h['evidence']['result'],status=r['status'],body_sha256=r['sha256'])
         return observe
-    def config_observe(self,c,name,value,actions):
+    def config_observe(self,c,name,value,actions,progress):
         expected='REJECTED' if name=='invalid-candidate' else 'UNKNOWN' if name in ('unknown-reload','failed-reload') else 'VERIFIED'
         if name=='routine-zero-config-actions':
             outcome=sample('worker',value['pid'],config_actions=value['config_actions'])
+            progress.measured('outcome',outcome);progress.attempt('independent')
             observed=sample('operator',os.getpid(),config_sha256=digest(protected(CONFIG/'apache.conf')))
+            progress.measured('independent',observed)
             return outcome,observed,[check('outcome','config_actions',0),check('independent','config_sha256',digest(c['original']))]
+        out=sample('operator',os.getpid(),result=value['result'],configtest_count=actions.count('validate'),reload_count=actions.count('reload'))
+        progress.measured('outcome',out);progress.attempt('independent')
         independent=self.external_snapshot()
         if name=='invalid-candidate':
             need(independent==c['snapshot'],'invalid_config_effects')
-        out=sample('operator',os.getpid(),result=value['result'],configtest_count=actions.count('validate'),reload_count=actions.count('reload'))
         r=self.child('helper','WebsitePlatformM6ENativePeer.py',['--config-observe'],10)
         need(r['exit']==0,'independent_config');peer=json.loads(r['stdout'])
         other=sample('helper',peer['pid'],config_sha256=peer['config_sha256'],current_sha256=peer['current_sha256'])
+        progress.measured('independent',other)
         checks=[check('outcome','result',expected),check('independent','config_sha256',independent['config_sha256'])]
         if name=='invalid-candidate':checks.extend([check('outcome','reload_count',0),check('independent','config_sha256',digest(c['original']))])
         return out,other,checks
     def config_cleanup(self,c):
+        if c['snapshot'] is None:
+            self.owned.remove(c);return sample('operator',os.getpid(),remaining=0,exit=0)
         self.apache_resume(c['stopped'])
         if c['pid_backup'] is not None:
             path=CONTROL/'apache.pid';need(not path.exists(),'pid_replaced');path.write_bytes(c['pid_backup'])
