@@ -1,7 +1,8 @@
 # Sprint 8.8 M6D — DB-only native validation
 
-**OPEN / NATIVE ACCEPTANCE PENDING.** The latest native attempt at `e222dbb` failed;
-the corrected schema fixtures below have only local synthetic validation. Earlier
+**OPEN / NATIVE ACCEPTANCE PENDING.** The latest native attempt at `48f6d2b` failed
+service-error classification after all schema probes passed. The shared transaction
+correction has local synthetic/regression validation only. Earlier
 AUTHORED / NOT EXECUTED statements describe their original authoring checkpoints.
 No native/infrastructure operation was run during this desktop correction.
 
@@ -11,6 +12,47 @@ An M6B, core20, journal3 or supplement17 report cannot satisfy it. The existing 
 native profiles and their separate accepted source attribution remain unchanged.
 
 ## Latest preserved native result
+
+At source `48f6d2b3fd3d30d2669046f63e94aae3616e26d6`: **28 PASS / 1 FAIL cases**,
+**143 PASS / 1 FAIL / 2 UNREACHED subcases**, all **22 ordering observations PASS**,
+all **18 deployment-schema probes PASS**, and **719 published assertions**. Coordinator
+exit 1 without signal after **221.698331632 seconds**. Unarmed result wire success passed;
+the first failure was `result-commit-transport/commit-not-delivered`, primary assertion
+`service_failure_classification`. Only one transport leg and one authoritative observation
+were accepted; four of each remain incomplete/missing. Partial relay records are not full
+accepted transport evidence. Capture/publication and child/schema/namespace cleanup passed.
+
+Original `report.json` in
+`/mnt/ubo_stage_testdata/codex-validation/evidence/m6d-v3-native-20261101T180413Z-60b78675cbfb`
+is unchanged; its verified SHA-256 is
+`ad715659d862be644cf1700873f731f82d83a444a82af02ad914c9d594f33fb4`.
+Bounded report/manifest plus seven selected assessment/coordinator-file retrievals used
+the read-only validation channel. All eight selected payloads matched the manifest; the
+1,087-payload audit was not repeated. No runtime, SQL, infrastructure or deployment action
+was performed during this correction.
+
+The decorator retained the selected COMMIT's real `HY000 / 2006` transport failure.
+The worker recorded raw `PDOException` with classification NULL. It did not manufacture
+an error classification. The worker's subsequent cleanup-requested SIGTERM is distinct
+from the original failed assertion. The historical cleanup call/stack was not retained;
+neither the driver tuple nor partial relay records establish a completed outcome.
+
+The [shared correction and reproduction record](sprint-8.8-m6d-local-implementation.md#shared-transaction-failure-correction-after-48f6d2b)
+separates source-confirmed unprotected catch cleanup from synthetic reproductions of both
+rollback and state-inspection exceptions. Two production files change: the shared service
+transaction/exception representation and the store's retry-safety guard. No native harness
+or acceptance predicate changes. Local evidence is **34 passing suites / 5,717 assertions**,
+five PHP lints, plus one disclosed historical scope freeze failure (unchanged test).
+
+The old clean review covers 48f6d2b only. Review and native verification of the corrected
+source remain distinct obligations. Every COMMIT failure stays controlled database_failure
+and is never automatically replayed, including when cleanup reports inactive. Failed or
+unknown cleanup cannot authorize retry/winner reread. Existing fresh authoritative
+history/recovery must still resolve the outcome. All **29/146/22/5/5** obligations and
+strict `service_failure_classification` / `acceptPublished` predicates remain intact.
+No missing, failed or unreached observation becomes PASS. M6C remains formally closed.
+
+## Prior schema-probe failure at e222dbb
 
 At source `e222dbb9dd500c8c738b439fe7ca844c4691017c`: **26 PASS / 1 FAIL / 2 UNREACHED**
 cases; **121 PASS / 1 FAIL / 24 UNREACHED** subcases; all **22 ordering observations PASS**;

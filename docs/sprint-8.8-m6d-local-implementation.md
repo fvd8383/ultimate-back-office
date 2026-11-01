@@ -6,8 +6,141 @@ Branch: `codex/sprint-8.8-m6d-deployment-authority`.
 M6C is COMPLETE / ISOLATED NATIVE GATES PASS / FORMALLY CLOSED under the
 [final owner receipt](https://github.com/fvd8383/ultimate-back-office/pull/129#issuecomment-6549478529).
 M6B remains formally closed, M6 remains IN PROGRESS, and M6E–M6G remain NOT STARTED.
-The authoring records below are historical. The latest failed native run and this
-test-only correction supersede their pre-run status; they do not establish acceptance.
+The authoring records below are historical. The latest failed native run and the shared
+transaction correction below supersede their pre-run status; they do not establish acceptance.
+
+## Shared transaction failure correction after 48f6d2b
+
+Starting branch/head/worktree were exact and clean at
+`48f6d2b3fd3d30d2669046f63e94aae3616e26d6`. The one initial PR #130 activity read confirmed
+a clean automated review for that source only. This is an authorized **shared production
+correction**, not a test-only change, deployment, queue revision or M6C reopening.
+
+### Retained native observation
+
+The latest original report is in
+`/mnt/ubo_stage_testdata/codex-validation/evidence/m6d-v3-native-20261101T180413Z-60b78675cbfb`.
+Its unchanged bytes match the supplied SHA-256
+`ad715659d862be644cf1700873f731f82d83a444a82af02ad914c9d594f33fb4`.
+The report, its `SHA256SUMS`, and seven manifest-selected coordinator/assessment records
+were retrieved through the established read-only validation account; all eight selected
+payload hashes matched. The full 1,087-payload audit was not repeated.
+
+At that source: coordinator exit **1**, no signal, **221.698331632 seconds**; **28 PASS /
+1 FAIL cases**, **143 PASS / 1 FAIL / 2 UNREACHED subcases**, **719 assertions**. All **22
+ordering observations** and all **18 deployment-schema probes** passed. Unarmed wire
+success passed. `result-commit-transport/commit-not-delivered` failed
+`service_failure_classification`. Only **one transport leg and one authoritative
+observation** were accepted; four of each remain incomplete/missing. Partial relay
+records do not establish an accepted leg. Capture/publication and child/schema/namespace
+cleanup passed; the outer command wrapper separately records 221.8457206289968 seconds.
+
+The selected COMMIT decorator recorded `HY000 / 2006` and rethrew the actual PDO error.
+The worker's retained OUTCOME reports `PDOException`, classification NULL, with that same
+safe tuple. It did not invent a service classification. The failed worker was still
+running at OUTCOME and was subsequently cleanup-terminated with requested SIGTERM;
+that signal is not the original classification failure. No cleanup stack or exact
+historical `inTransaction` versus `rollBack` phase was retained. HY000/2006 alone does
+not prove committed or uncommitted state; no authoritative observation completed for
+this failed leg.
+
+### Source path, reproduction and correction
+
+`completeDeploymentSuccess -> success -> SiteBuildStore::transaction ->
+SiteServiceSupport::transaction -> PDO::commit` reaches the shared catch. Before this
+correction, its state inspection and rollback were unprotected: either could replace
+the original error before conversion. Acquisition/preflight also sat outside the catch,
+and begin/commit/rollback false returns were unchecked. The store captured retry
+eligibility from the original callback PDO error (1205/1213, optionally 1062), but had
+no explicit termination guard before retry/winner reread; `stale_write` was also eligible.
+
+Before editing production code, controlled PDO subclasses through the existing private
+connection reflection seam exercised **both actual production helpers**:
+
+| Synthetic model | Before-fix result | Callback / commit / rollback attempts | After-fix result |
+| --- | --- | --- | --- |
+| A: COMMIT loses connection, active state, rollback throws distinct error | Raw secondary PDOException, classification NULL | 1 / 1 / 1 | database_failure; primary 2006, secondary 1213, rollback_failed |
+| B: COMMIT loses connection, catch state check throws | Raw secondary PDOException, classification NULL | 1 / 1 / 0 | database_failure; primary 2006, secondary 1213, state_failed |
+| C: COMMIT applied before acknowledgement loss, inactive state | Controlled database_failure | 1 / 1 / 0 | Controlled database_failure; no replay, outcome still uncertain |
+| D: callback PDO error, rollback throws distinct error | Raw secondary PDOException, classification NULL | 1 / 0 / 1 | database_failure; original callback tuple retained |
+
+Operation sequences and origins are retained separately in outside-Git before/after
+receipts. These models prove the control-flow mechanism; they do not prove which native
+cleanup call failed or reconstruct historical MySQL state.
+
+Exactly two production files change:
+
+- [SiteServiceSupport.php](../private/classes/SiteServiceSupport.php) encloses connection
+  acquisition/preflight, tracks whether begin was attempted, checks false returns and
+  protects best-effort cleanup. It never rolls back a pre-existing outer transaction.
+  `SiteServiceException` retains fixed phase/cleanup labels and separately sanitized
+  primary/secondary kind, service classification, five-character SQLSTATE and bounded
+  integer driver code. It stores no raw exception/message/SQL/DSN/arguments/row values,
+  adds no previous PDO exception and emits no secondary log line. Existing primary-class
+  diagnostic wording is retained. Business exceptions remain original when cleanup is
+  safe; uncertain cleanup becomes database_failure with the business meaning retained
+  in the primary metadata.
+- [SiteBuildStore.php](../private/classes/SiteBuildStore.php) adds one guard using the
+  current exception's explicit termination signal before the existing eligibility,
+  winner-reread and attempt-limit decisions. Safe termination means successful rollback
+  or confirmed inactive state **in the callback phase before any COMMIT attempt** (which
+  preserves server-ended deadlock handling). False/throwing rollback and failed state
+  inspection are unsafe. A COMMIT failure is never retry-safe, even after inactive state
+  or successful cleanup. Only the original callback selects the existing error-code set.
+
+No reconnect, automatic uncertain replay, implicit outcome query, publication compensation,
+slot release, connection pool or new transaction framework is introduced. Failed result
+completion propagates to the caller; the CLI stops with its safe classification. Existing
+explicit history/recovery remains responsible for authoritative resolution. Duplicate-key
+winner lookup still follows successful rollback and precedes new-request gates; the
+three-attempt maximum is unchanged. A prior exception cannot carry a stale retry flag
+into a subsequent invocation.
+
+### Executed shared-helper regression evidence
+
+Installed Windows **PHP 8.4.24**, ZTS Visual C++ 2022 x64, sequential local execution,
+`php -d memory_limit=256M tests/<suite>.php`: **34 suites PASS / 5,717 assertions**, all
+exit 0. These are local fixtures, not native MySQL or deployment acceptance.
+
+| Impacted group | Suites | Assertions |
+| --- | ---: | ---: |
+| New actual-helper transaction and M6D completion tests | 2 | 870 |
+| Existing M2 lifecycle/approval, M3 review/composition, M4/M5 mutation behavior | 10 | 1,033 |
+| M6B behavior, authorization, contract, recovery, request replay comparison | 5 | 732 |
+| M6C execution, integration, recovery, stored input, security, supplement service | 6 | 694 |
+| M6D request, execution, queue, recovery, authority, artifact, CLI | 7 | 427 |
+| M6D local native control, harness, wire, schema | 4 | 1,961 |
+
+[TransactionTest](../tests/WebsitePlatformTransactionTest.php) has **773 assertions**;
+[M6DTransactionTest](../tests/WebsitePlatformM6DTransactionTest.php) has **97**. Coverage
+includes false returns, acquisition without real configuration, outer-transaction ownership,
+primary business errors, bounded conflict retries, failed cleanup prohibiting winner reads,
+strict duplicate winner order, stale writes, primary/secondary code disagreement and privacy
+canaries. The M6D test uses the existing service fixture and unchanged wire decorator to
+select the actual success-result COMMIT; it checks no later query/effect or callback replay
+and preserves the strict native-required database_failure classification.
+
+**One additional historical scope check exits 255:** unchanged `WebsitePlatformM6DScopeTest`
+requires `SiteBuildStore.php` to equal baseline `1134c65`. The newly authorized one-line
+guard deliberately violates that former production-file freeze. This is a disclosed scope
+assumption, not a behavior failure or a PASS. The test was not edited. Separate exact-file,
+protected-source, migration, requirement, documentation and Git integrity checks cover this
+correction. Historical M6B/M6C scope campaigns are not reopened.
+
+All five changed/new PHP files lint. Full commands, versions, assertion counts, exits,
+durations, diagnostic classifications and working/staged/committed integrity receipts are
+outside Git in `m6d-transaction/SUMMARY.txt`. Expected injected write/read/authorization,
+deadlock/duplicate and lost-ack diagnostics remain visible; new suites explicitly check
+their fixed line counts and privacy rather than suppressing arbitrary failures.
+
+All 25 migrations/pins, 77 requirement definitions, queue correction, lifecycle/grant/
+pointer/fence/lease checks, immutable artifact behavior, publisher defaults and native
+**29/146/22/5/5** inventory/acceptance predicates remain unchanged. Migration 025 retains
+`dab585dc29aac11153f92703c65d3883aeea73a1b2283157cfa9d2f2ece85cb0` and is not reapplied.
+No wire parser, worker classification, acceptance predicate, resource limit or source/image/
+admission/EXECUTE control changes. Native verification of the new source remains required
+after review. Server/deployed checkout and runtime are untouched; remote activity here is
+retained-evidence reads only. **M6D remains OPEN / NATIVE ACCEPTANCE PENDING.**
 
 ## Native schema fixture correction after e222dbb
 
