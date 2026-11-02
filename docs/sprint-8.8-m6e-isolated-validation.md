@@ -5,6 +5,68 @@ installation, server preparation, Linux/Apache execution, SQL, service operation
 working-staging activation or deployment. This document is the bounded later path,
 not a claim that a host contract exists. M6D’s closed native gate is not reopened.
 
+## Release-A component controls following cd4af965
+
+The native component lifecycle is implemented but **AUTHORED / UNEXECUTED**.
+[Its ownership and authority boundaries](sprint-8.8-m6e-local-implementation.md#isolated-release-a-component-lifecycle-following-cd4af965)
+remain separate from operational publishing and every commissioning gate.
+
+[Component controls](../tests/WebsitePlatformM6EComponentTest.py) exercise the actual
+runner with three separate processes: original PHP M6C builder/exporter/sender,
+Python receiver/publisher and a fresh Python observer. The success case verifies
+seven original public files (9,144 bytes), three asset objects including the
+approved PDF, fence 1/phase 1, separate process IDs and capture-before-removal.
+The full namespace is removed with its journal; the original target/database
+sentinels remain byte-identical and no receipt exists. Unix identity/permission,
+filesystem syscall and peer observations on Windows are explicitly modeled.
+The local transport is private loopback TCP, not a claim of native Unix IPC.
+
+Controls cover original producer binding, source change/extra files, worker write
+and helper source denial, corrupted manifest/body, truncation/EOF, child startup
+and helper death before/during transfer, independent readback corruption, extra,
+foreign and hardlinked paths, replacement after capture, no-retry replay denial,
+cleanup/capture/result-write faults and first-error preservation. Unknown
+interrupted scratch is retained as LIMITED. Existing transfer/publication suites
+add actual retained replay/no-overwrite, partial I/O and lost-ack cases. The native
+entry rejects desktop execution; unchanged native readiness and six MISSING
+entries prevent these component observations from authorizing commissioning.
+
+The cold include-graph control also checks the exact worker support dependency
+pins and rejects unknown support paths or changed bytes. This fixes the narrow
+commissioning inventory boundary without changing production receipt admission.
+
+Development runs first exposed PHP's handling of Windows extended-path prefixes;
+only the local adapter removes that prefix for PHP paths. A sandbox run could not
+connect its local TCP stream or create evidence hardlinks. Authorized local tests
+then ran outside that sandbox. These failed development attempts are not native
+acceptance. Detailed commands, outputs, counts, source hashes, preservation and
+review state are retained in the external m6e-release-a/SUMMARY.txt.
+
+Final focused local results (Python 3.14.7 -I -B; PHP 8.4.24):
+
+| Check | Observed result |
+| --- | --- |
+| Component lifecycle | 11 tests PASS / 69.927s, plus bounded fault subcases |
+| Commissioning collector/inventory | 47 tests PASS / 67.286s |
+| Actual PHP/Python transfer | 20 tests PASS / 24.914s |
+| Immutable publication | 8 tests PASS / 1.238s |
+| Original-source/serving controls | 12 tests PASS / 11.556s |
+| Bootstrap fixture | 35 assertions PASS |
+| Cold runtime dependency | 90 assertions PASS |
+| Operational default denial | 33 assertions PASS |
+| Changed sources | 6 PHP lint and 8 Python AST syntax checks PASS |
+| Current M6E scope | PASS; 25 migrations / 77 definitions preserved |
+| Documentation | Paired fences and 15 relative links PASS; anchors not checked |
+
+Distinct successful and interrupted component captures are retained outside Git.
+The immutable before-cleanup capture retains the original component fence; the
+quiescent ownership capture precedes removal. Interrupted unknown scratch remains
+LIMITED in its captured ledger. These extra retained runs are local OS models.
+
+No server/SSH, SQL/migration, native Linux, Apache/systemd, installation, receipt,
+activation, deployment or merge operation was performed. Release B/Apache/asset
+retention and the other four incomplete commissioning producers remain outstanding.
+
 ## Cold-process runtime dependency correction
 
 Before editing 50c4356, direct includes of CommissionServing.php and NativeSetup.php

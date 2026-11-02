@@ -293,7 +293,15 @@ class NativeProbes:
             measured[field]=read();self.remember({field:measured[field]})
         measured['served_assets']=len(self.step('assets-inventory',lambda:self.host.fs.inventory(self.helper['served_root']+'/assets')))
         self.remember({'served_assets':measured['served_assets']})
-        measured.update(self.serving_sources());return measured
+        measured.update(self.serving_sources())
+        # This isolated stage is diagnostic component evidence only. All existing
+        # asset/Apache missing producers and gate predicates remain unchanged.
+        from WebsitePlatformM6ECommission import budget
+        from WebsitePlatformM6EComponent import run,SECONDS
+        from WebsitePlatformM6EComponentHost import Native
+        budget(self.host,self.ledger,SECONDS)
+        self.step('component-release-a',lambda:run(Native(self.host,self.ledger)))
+        return measured
 
     def probe_runtime(self):
         value=self.child('authority','--runtime',True)['data']

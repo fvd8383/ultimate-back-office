@@ -15,6 +15,80 @@ second parent; native-tested `7cdbbeef639…` is an ancestor of that reviewed he
 Its native PASS belongs only to `7cdbbeef`, never this implementation or the merge.
 Historical failures and pre-merge reports are not rewritten or rerun.
 
+## Isolated release-A component lifecycle following cd4af965
+
+The component staging lifecycle is implemented in test support. Its native Linux
+path is **AUTHORED / UNEXECUTED**. This is not an operational deployment or a
+commissioning gate. The exact starting head was
+`cd4af96520f443ccbd6438b15f78364960ceb3c6`; its completed review had no findings.
+M6C/M6D remain FORMALLY CLOSED. All six MISSING entries remain unchanged.
+
+[Component.py](../tests/support/WebsitePlatformM6EComponent.py) owns the one-attempt
+lifecycle, invoked from the existing assets probe after its unchanged baseline and
+source checks. [ComponentHost.py](../tests/support/WebsitePlatformM6EComponentHost.py)
+uses the existing ledger and original commissioning/watchdog budgets: 90 seconds
+inside the 420-second service, with the original cleanup reserve. There is no
+stage retry. Native process intent precedes spawn; each child waits on its private
+stdin until its real PID is durable. Linux pidfds address the owned children;
+remaining process-group/session members prevent namespace removal. No unit,
+watchdog, account, operational socket template or publisher entry changes.
+
+Only the original bootstrap release A is staged. The worker UID 2000 rechecks
+original release/job/producer rows, the sealed store and the reviewed exporter,
+then repeats source inspection before sending actual UBT1 bytes. The helper UID
+2102 accepts one private Unix connection, checks SO_PEERCRED UID and the exact
+operator-supplied worker PID before dispatch, and uses the original receiver,
+Publisher, Tree, fence and no-overwrite primitives. The component authority is
+explicitly synthetic, expiry/run/namespace/release/request bound and stage-only.
+It is absent from operational entry points and creates no deployment lease,
+success row or database target pointer. No SitePublisherSession is opened.
+
+The roots are fixed to the admitted run:
+
+- /run/ubo-m6e-fixture/component-a-<run>: protected plan and helper-owned IPC.
+- /var/lib/ubo-m6e-fixture/component-a-<run>: separate helper-owned served pool,
+  staging scratch, lock and journal.
+
+All root, scratch-container, socket and candidate intent is ledgered before its
+producer can act. The component may create its own candidate; it never creates
+current or changes operational pointers. Its journal reaches fence 1/phase 1 and
+is discarded only with the entire independently owned namespace after quiescence.
+The original target is checked before staging, after staging and after cleanup:
+empty pools, pristine journal, absent current/candidate/receipt and unchanged
+read-only worker/database inspection. No fence is rewound.
+
+A third, independently launched observer acquires the lock and reopens the actual
+files. It checks the original retained manifest, release identity, every public
+file's MIME/size/digest/bytes, approved PDF, retained pool objects, exact native
+UID/GID/modes/link counts and closed namespace inventory. Helper success alone is
+insufficient. Worker write denial and helper direct-source denial are separate
+observations. Source, receiver, helper, acknowledgement and observer evidence are
+retained separately under the component profile, never converted into a gate PASS.
+
+The first immutable capture precedes child termination and includes resource
+intent/identities, journal digest/fence/phase, process status and the first failure.
+A second immutable capture records quiescent ownership before removal. Cleanup
+rechecks identities, removes only the exact owned candidate and complete owned
+trees, and preserves unknown, foreign, replaced or interrupted scratch as
+LIMITED/INCOMPLETE. The existing watchdog stops the commissioning cgroup; an
+unreleased component producer tree is intentionally not adopted by generic
+bootstrap cleanup. Its unknown producer leaves that cleanup LIMITED.
+
+The actual cold PHP include graph exposed a commissioning inventory dependency:
+its earlier single-verifier allowlist rejected CommissionServing/NativeSetup.
+The test-only inventory now accepts exactly those two worker files plus
+Component.php, hashes their protected bytes, and still rejects arbitrary support
+paths, wrong owners/modes and changed pins. No production host admission changed.
+
+Local controls use this same runner and actual distinct PHP/Python processes with
+original M6C release-A bytes. Windows UID/permissions, Unix sockets, dirfd,
+renameat2, symlink metadata, flock and directory durability are explicit adapters;
+private loopback TCP transports the actual reviewed protocol. They are not Linux
+identity or durability proof. The local fixture's optional A-only mode preserves
+the existing two-release default. Remaining work includes release B, private
+HTTPS/Apache responses, retention/conflict validation, supervised runtime authority,
+health, recovery and provisioning. No receipt or full native acceptance is issued.
+
 ## Serving-source runtime dependency correction following 50c4356
 
 The exact-head review of 50c4356 completed **with finding

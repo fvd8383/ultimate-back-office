@@ -8,7 +8,7 @@ import copy
 import importlib.util
 import json
 import os
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 import shutil
 import stat
 import sys
@@ -242,6 +242,31 @@ class Controls(unittest.TestCase):
         with self.assertRaises(ValueError):r.verify_inventory(self.files,bad,loaded)
         missing=copy.deepcopy(loaded);missing['worker'].remove('/opt/ubo-m6e/private/classes/SiteDeploymentService.php')
         with self.assertRaises(ValueError):r.installed_inventory(self.files,missing)
+
+    def test_actual_component_include_graph_is_pinned_without_wildcard_support(self):
+        loaded,_=self.inventory()
+        # Cold actual PHP include graph, with no SQL, config or native admission.
+        entry=str(ROOT/'tests/support/WebsitePlatformM6EComponent.php').replace('\\','/')
+        result=self.host.owner.capture([PHP,'-d','display_errors=0','-r',
+            'require '+json.dumps(entry)+'; echo json_encode(get_included_files());'],10)
+        self.assertEqual(result['exit'],0);self.assertEqual(result['stderr'],b'')
+        paths=['/opt/ubo-m6e/'+Path(name).resolve().relative_to(ROOT).as_posix() for name in decode(result['stdout'])]
+        loaded['worker']=sorted(set(paths)|{'/opt/ubo-m6e/tests/support/WebsitePlatformM6ECommissionChild.php'})
+        self.assertTrue(set(r.WORKER_SUPPORT)<=set(paths))
+        for name in paths:
+            if not self.files.exists(name):
+                self.files.makedirs(str(PurePosixPath(name).parent))
+                self.files.create(name,b'private mapped dependency',lambda fd:None);self.files.metadata(name,0,0,0o644)
+        pins=r.installed_inventory(self.files,loaded)
+        self.assertTrue(set(r.WORKER_SUPPORT)<=set(pins))
+        for name in (*r.WORKER_SUPPORT,'/opt/ubo-m6e/tests/support/Unapproved.php'):
+            if name in r.WORKER_SUPPORT:
+                self.files.path(name).write_bytes(b'changed')
+                with self.assertRaises(ValueError):r.verify_inventory(self.files,pins,loaded)
+                self.files.path(name).write_bytes(b'private mapped dependency')
+            else:
+                invalid=copy.deepcopy(loaded);invalid['worker'].append(name)
+                with self.assertRaisesRegex(ValueError,'included_path'):r.installed_inventory(self.files,invalid)
 
     def test_unsafe_modes_hardlinks_and_ancestors_reject(self):
         loaded,installed=self.inventory();name=r.REQUIRED[0]

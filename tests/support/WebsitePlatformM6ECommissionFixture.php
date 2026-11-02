@@ -5,7 +5,7 @@ require_once __DIR__.'/WebsitePlatformM6CFixture.php';
 require_once __DIR__.'/WebsitePlatformM6CSupplementPdf.php';
 require_once __DIR__.'/WebsitePlatformM6ECommissionServing.php';
 
-function m6eLocalServingFixture():array {
+function m6eLocalServingFixture(bool $onlyA=false):array {
     $f=new WebsitePlatformM6CFixture();$base=$f->db->read->base;$pdf=M6CSupplementPdf::bytes();
     file_put_contents($f->root.'/uploads/approved.pdf',$pdf);chmod($f->root.'/uploads/approved.pdf',0600);
     $base->siteAssets[2]=array_replace($base->siteAssets[1],['id'=>2,'asset_type'=>'document','storage_key'=>'/uploads/approved.pdf',
@@ -15,7 +15,7 @@ function m6eLocalServingFixture():array {
     $base->revisions[99]=array_replace($base->revisions[100],['id'=>99,'revision_number'=>1]);
     $base->revisions[100]['revision_number']=2;$base->revisions[100]['materiality']='non_material';$base->approvals[700]['revision_id']=99;
     $built=[];
-    foreach(['#123456','#654321'] as $color) {
+    foreach($onlyA?['#123456']:['#123456','#654321'] as $color) {
         $base->revisions[100]['lifecycle_status']='draft';
         $composition=WebsitePlatformM6CFixture::composition($base->revisions[100]['snapshot_hash']);
         $composition['theme']['primary_color']=$color;$composition['pages'][0]['sections'][]=M6CSupplementPdf::section(2);

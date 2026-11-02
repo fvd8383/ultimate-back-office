@@ -22,6 +22,8 @@ REQUIRED=(
     '/run/systemd/system/ubo-site-worker.service',
     '/run/systemd/system/ubo-site-publisher.socket', '/run/systemd/system/ubo-site-authority.socket',
 )
+WORKER_SUPPORT=tuple('/opt/ubo-m6e/tests/support/WebsitePlatformM6E'+name for name in
+    ('CommissionServing.php','NativeSetup.php','Component.php'))
 
 def protected_file(files,path,limit=2097152,mode=None):
     for parent in reversed(PurePosixPath(path).parents):
@@ -51,7 +53,8 @@ def installed_inventory(files,loaded):
         must.add(prefix+('SiteDeploymentService.php' if role=='worker' else 'SitePublisherAuthority.php'))
         need(must<=set(paths), 'included_required')
         for name in paths:
-            need(name==verifier or name in (CONFIG+'/application.php','/opt/ubo-m6e/private/config/env.php')
+            need(name==verifier or (role=='worker' and name in WORKER_SUPPORT)
+                 or name in (CONFIG+'/application.php','/opt/ubo-m6e/private/config/env.php')
                  or (name.startswith(prefix) and name.endswith('.php') and
                      all(part and part not in ('.','..') and part.replace('_','').replace('-','').replace('.','').isalnum()
                          for part in name[len(prefix):].split('/'))), 'included_path')
