@@ -5,6 +5,50 @@ installation, server preparation, Linux/Apache execution, SQL, service operation
 working-staging activation or deployment. This document is the bounded later path,
 not a claim that a host contract exists. M6D’s closed native gate is not reopened.
 
+## Failed-measurement and deterministic-admission correction
+
+Review of bcf64ec reported [lost failed measurements (4446480421)](https://github.com/fvd8383/ultimate-back-office/pull/131#discussion_r4446480421) and
+a [host-dependent admission assertion (4446480432)](https://github.com/fvd8383/ultimate-back-office/pull/131#discussion_r4446480432). Both findings were reproduced locally through actual
+collector/helper functions and controlled dependencies; this is not Linux execution.
+Before-fix filesystem replacement_rejected=0 reached the strict rejecting predicate,
+then an empty checkpoint and cleanup. A native runtime producer's post-child pin
+failure likewise lost its obtained hash and real child PID. Controlled Linux
+platform/argv/feature prerequisites plus a missing-config reader produced the actual
+FileNotFoundError, with zero UID calls, instead of the test's intended Denied.
+
+The corrected failed checkpoints retain the observed zero/hash and participant
+context, first safe failure classification and finite stage progress before cleanup.
+They remain invalid gate evidence. Independent failure leaves its unavailable
+observations absent; earlier publications stay unchanged; later gates do not execute.
+The fixed mutation case proves published bytes survive backend cleanup changes.
+Capture and cleanup failures stay secondary to the original probe failure, owned
+resources stay tracked, and no host receipt is issued.
+
+Regression coverage includes returned invalid numbers/status, exceptions before any
+measurement, child execution/parse/internal-pin failures, first-role/first-HTTP
+progress, inventory/journal/configtest failure, malformed/private fields, complete
+filesystem/ownership positive and malformed-negative paths, offline rejection and
+existing controlled commissioning. No expected measurement is supplied to replace
+missing data. Native outcomes remain modeled through explicit infrastructure adapters.
+
+Platform, wrong-UID and missing-config tests are separate. They patch only the
+helper module's system/OS references within context managers and assert exact
+protected-reader/UID call boundaries. The real positive configuration/receipt parser
+still runs with private mapped files. Operational paths are never read or written.
+
+Windows local verification with installed Python 3.14.7 (MINGW Clang UCRT) passes:
+**46 commissioning controls / 106.051s**, followed sequentially by **37 integration
+controls / 47.205s**, then **8 immutable-publication controls / 1.971s**. The earlier 44-control development run also passed (85.916s);
+then two explicit complete-producer controls were added and the finite malformed
+access boundary was checked. Before/after reproductions pass their distinct expected
+loss/preservation assertions. Two changed Python AST checks with warnings as errors
+and the working 242-assertion M6E scope guard pass. Staged/committed integrity, exact tested blobs and review dispositions are retained in
+m6e-measurement-correction/SUMMARY.txt outside Git. No PHP source changed,
+so no PHP lint expansion or production edits were needed. Historical bootstrap inode
+repetitions, closed M6C/M6D campaigns and native infrastructure were not rerun.
+The six incomplete gate producers and native issuance block are unchanged;
+commissioning, installed workflow and full M6E acceptance remain unfinished.
+
 ## Current commissioning command and local controls — partial
 
 **COMMISSIONING / RECEIPT ISSUER — PARTIALLY IMPLEMENTED LOCALLY.** Filesystem

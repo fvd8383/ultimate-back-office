@@ -36,6 +36,10 @@ import WebsitePlatformM6ECommissionProbes as probes
 ROOT=Path(__file__).resolve().parents[1]
 PHP=shutil.which('php')
 
+def load_helper():
+    spec=importlib.util.spec_from_file_location('controlled_admission_helper',ROOT/'infrastructure/deployment/ubo_site_publish.py')
+    helper=importlib.util.module_from_spec(spec);spec.loader.exec_module(helper);return helper
+
 class MappedFiles(PrivateFiles):
     def path(self,path):return self.root if str(path)=='/' else super().path(path)
 
@@ -63,7 +67,7 @@ class ModelBackend(NativeProbes):
         self.host,self.ledger,self.binding=host,ledger,expected;self.partial={};self.participants=[]
         self.fixture=ledger.state['observations'].setdefault('fixture',{})
         database=ledger.state['observations'].setdefault('database',{})
-        self.events=[];self.fail_gate=None;self.fail_cleanup=False
+        self.events=[];self.fail_gate=None;self.fail_cleanup=False;self.values={}
         ledger.state['observations']['commission']=dict(resources=[],binding=expected)
         def setup(mode,role):
             value=self.host.owner.capture([sys.executable,'-I','-B','-c','print("{}")'],3)
@@ -80,7 +84,7 @@ class ModelBackend(NativeProbes):
         if self.fail_gate==gate:raise OSError('SECRET_PRIMARY_CANARY')
         # Actual bounded child parsing, using explicitly synthetic data, never a
         # native producer executable or native mode.
-        out=self.host.owner.capture([sys.executable,'-I','-B','-c','import sys;sys.stdout.buffer.write(sys.stdin.buffer.read())'],3,stdin=canonical(data(gate)))
+        out=self.host.owner.capture([sys.executable,'-I','-B','-c','import sys;sys.stdout.buffer.write(sys.stdin.buffer.read())'],3,stdin=canonical(self.values.get(gate,data(gate))))
         self.participants.append(dict(role='operator',uid=0,pid=out['pid'],exit=out['exit']))
         return decode(out['stdout'])
     def cleanup(self,gate):
@@ -216,7 +220,8 @@ class Controls(unittest.TestCase):
         backend=ModelBackend(self.host,self.ledger,self.expected);backend.fail_gate='apache'
         with self.assertRaises(OSError):c.collect(self.host,self.ledger,backend,self.expected)
         value=decode(self.files.read(self.ledger.root+'/commission-apache-before-restore.json'))
-        self.assertEqual(value['observations'],{});self.assertIsNotNone(value['first_failure'])
+        self.assertEqual(value['observations']['data'],{});self.assertEqual(value['observations']['participants'],[])
+        self.assertEqual(value['observations']['progress']['producer'],'FAILED');self.assertIsNotNone(value['first_failure'])
         self.assertEqual(backend.events,[('probe','apache'),('cleanup','apache')])
 
     def test_missing_duplicate_publication_and_bootstrap_only_reject(self):
@@ -252,18 +257,298 @@ class Controls(unittest.TestCase):
         self.assertIsNotNone(PHP)
         result=self.host.owner.capture([PHP,'-d','display_errors=0','-d','log_errors=0',str(ROOT/'tests/support/WebsitePlatformM6ECommissionChild.php'),'--format'],10,stdin=canonical(payload))
         self.assertEqual(result['exit'],0,result['stderr']);self.assertEqual(decode(result['stdout']),{'result':'FORMAT VALID'})
-        spec=importlib.util.spec_from_file_location('format_helper',ROOT/'infrastructure/deployment/ubo_site_publish.py')
-        helper=importlib.util.module_from_spec(spec);spec.loader.exec_module(helper)
+        helper=load_helper()
         def private_read(name,limit):return canonical(candidate) if name==r.RECEIPT else self.files.read(name,limit)
         # Explicit modeled OS/protected-file boundaries; execute the real function's
         # complete schema/pinning/identity checks. No operational path is written.
-        with mock.patch.object(helper,'protected',side_effect=private_read),mock.patch.object(helper.sys,'platform','linux'),\
-             mock.patch.object(helper.sys,'argv',['helper']),mock.patch.object(helper.os,'geteuid',return_value=2102,create=True),\
-             mock.patch.object(helper.os,'O_NOFOLLOW',getattr(os,'O_NOFOLLOW',0),create=True):
+        with mock.patch.object(helper,'protected',side_effect=private_read),mock.patch.object(helper,'sys',types.SimpleNamespace(platform='linux',argv=['helper'])),\
+             mock.patch.object(helper,'os',types.SimpleNamespace(geteuid=lambda:2102,O_NOFOLLOW=0)):
             self.assertEqual(helper.load_config(),cfgs['helper.json'])
             candidate['installed_files'][p.CONFIG+'/helper.json']='0'*64
             with self.assertRaises(helper.Denied):helper.load_config()
-        with self.assertRaises(helper.Denied):helper.load_config()
+
+    def rejected_checkpoint(self,backend,gate,kind=Exception):
+        with self.assertRaises(kind) as failure:c.collect(self.host,self.ledger,backend,self.expected)
+        raw=self.files.read(self.ledger.root+'/commission-'+gate+'-before-restore.json');value=decode(raw)
+        self.assertEqual(value['first_failure'],c.safe_error(failure.exception))
+        self.assertIn(('cleanup',gate),backend.events)
+        self.assertFalse(self.files.exists(self.ledger.root+'/commission-'+gate+'.json'))
+        self.assertFalse(self.files.exists(r.RECEIPT))
+        with self.assertRaises(ValueError):e.validate_record(raw,self.expected,gate,int(time.time()),native=False)
+        with self.assertRaises(ValueError):e.finalized_evidence(lambda name:self.files.read(self.ledger.root+'/'+name),
+            self.expected,self.ledger.state['observations']['commission'].get('publications',{}),int(time.time()))
+        return value,failure.exception
+
+    def native_backend(self,gate):
+        backend=ModelBackend(self.host,self.ledger,self.expected)
+        backend.fixture=fixture();self.ledger.state['observations']['fixture']=backend.fixture
+        backend.helper={'served_root':'/var/www/ubo-sites/staging/sites/'+backend.fixture['site_key'],
+                        'journal_root':'/var/lib/ubo-site-publisher/staging/'+backend.fixture['site_key']}
+        backend.worker={'bindings':[{}]};backend.plan={'config':{'tool_sha256':{'php':'b'*64}}}
+        # Infrastructure effects are explicitly intercepted; actual probe bodies,
+        # child parsing, collector, validation and private publication still run.
+        backend.own=mock.Mock();setattr(backend,'probe_'+gate,lambda:getattr(NativeProbes,'probe_'+gate)(backend))
+        return backend
+
+    def child_adapter(self,value,exit_code=0,malformed=False):
+        def run(label,args,seconds=30,role='operator',**kwargs):
+            payload=value(role) if callable(value) else value
+            script='import sys,json,os;v=json.load(sys.stdin);v["pid"]=os.getpid();print(json.dumps(v));sys.exit('+str(exit_code)+')'
+            if malformed:script='import sys;sys.stdout.write("{SECRET_INVALID_JSON");sys.exit('+str(exit_code)+')'
+            result=self.host.owner.capture([sys.executable,'-I','-B','-c',script],3,
+                stdin=canonical(dict(data=payload,uid=ROLES[role])))
+            self.ledger.state['commands'].append(dict(id=label,caller=role,pid=result['pid'],exit=result['exit']))
+            if result['exit'] not in kwargs.get('allowed',(0,)):raise Failure('controlled_child_exit')
+            return result
+        self.host.run=run
+
+    def test_failed_filesystem_return_survives_cleanup_and_keeps_prior_evidence(self):
+        backend=ModelBackend(self.host,self.ledger,self.expected)
+        backend.values['filesystem']=dict(data('filesystem'),replacement_rejected=0)
+        original=backend.cleanup;prior=[];snapshots=[]
+        def cleanup(gate):
+            if gate=='filesystem':
+                prior.append(self.files.read(self.ledger.root+'/commission-apache.json'))
+                raw=self.files.read(self.ledger.root+'/commission-filesystem-before-restore.json');snapshots.append(raw)
+                self.assertEqual(decode(raw)['observations']['data']['replacement_rejected'],0)
+                self.assertEqual(backend.partial['data']['replacement_rejected'],0)
+                backend.values[gate]['replacement_rejected']=1;backend.partial.clear()
+            return original(gate)
+        backend.cleanup=cleanup;before,error=self.rejected_checkpoint(backend,'filesystem',ValueError)
+        self.assertEqual(str(error),'filesystem_negatives')
+        self.assertEqual(before['observations']['data']['replacement_rejected'],0)
+        self.assertEqual(before['observations']['progress']['predicate'],'FAILED')
+        self.assertNotIn('independent',before['observations'])
+        self.assertEqual(self.files.read(self.ledger.root+'/commission-filesystem-before-restore.json'),snapshots[0])
+        self.assertEqual(self.files.read(self.ledger.root+'/commission-apache.json'),prior[0])
+        self.assertEqual(backend.events,[('probe','apache'),('cleanup','apache'),('probe','filesystem'),('cleanup','filesystem')])
+
+    def test_valid_filesystem_return_reaches_independent_publication(self):
+        backend,receipts=self.collector()
+        raw=e.published_record(lambda name:self.files.read(self.ledger.root+'/'+name),self.expected,
+            'filesystem',receipts['filesystem'],int(time.time()),native=False)
+        value=decode(raw);self.assertEqual(value['observations']['data']['replacement_rejected'],1)
+        self.assertGreater(value['observations']['independent']['pid'],0)
+        self.assertEqual(value['result'],'MEASURED');self.assertEqual(value['cleanup']['remaining'],0)
+
+    def test_other_invalid_returned_numbers_and_status_remain_actual(self):
+        for gate,field,invalid in (('filesystem','reader_exit',9),('ownership','helper_source_errno',0),
+                                   ('runtime','utc_equal',0),('provisioning','result','VERIFIED')):
+            with self.subTest(gate=gate):
+                case=Controls();case.setUp()
+                try:
+                    backend=ModelBackend(case.host,case.ledger,case.expected);backend.values[gate]=dict(data(gate),**{field:invalid})
+                    before,_=case.rejected_checkpoint(backend,gate,ValueError)
+                    self.assertEqual(before['observations']['data'][field],invalid)
+                finally:case.doCleanups()
+
+    def test_native_runtime_internal_pin_failure_retains_child_measurements(self):
+        backend=self.native_backend('runtime');self.child_adapter(data('runtime'))
+        before,error=self.rejected_checkpoint(backend,'runtime',ValueError)
+        self.assertEqual(str(error),'runtime_php_pin');observed=before['observations']
+        self.assertEqual(observed['data']['php_sha256'],'a'*64)
+        self.assertEqual(observed['progress']['child-authority-parse'],'COMPLETED')
+        self.assertEqual(observed['progress']['runtime-php-pin'],'FAILED')
+        self.assertEqual(observed['participants'],[dict(role='authority',uid=ROLES['authority'],
+            pid=self.host.owner.context[-1]['pid'],exit=0)])
+        self.assertNotIn('independent',observed)
+
+    def test_native_child_decode_failure_retains_executed_participant(self):
+        backend=self.native_backend('runtime');self.child_adapter({},malformed=True)
+        before,_=self.rejected_checkpoint(backend,'runtime');observed=before['observations']
+        self.assertEqual(observed['data'],{});self.assertEqual(observed['progress']['child-authority-parse'],'FAILED')
+        self.assertEqual(observed['participants'][0]['pid'],self.host.owner.context[-1]['pid'])
+        self.assertNotIn(b'SECRET_',canonical(before))
+
+    def test_native_command_error_retains_recorded_pid_and_nonzero_exit(self):
+        backend=self.native_backend('runtime');self.child_adapter({},exit_code=7)
+        before,_=self.rejected_checkpoint(backend,'runtime',Failure);observed=before['observations']
+        self.assertEqual(observed['data'],{});self.assertEqual(observed['participants'][0]['exit'],7)
+        self.assertEqual(observed['participants'][0]['pid'],self.host.owner.context[-1]['pid'])
+        self.assertEqual(observed['progress']['child-authority'],'FAILED')
+        self.assertNotIn('child-authority-parse',observed['progress'])
+
+    def test_independent_failure_preserves_measurements_without_inventing_independence(self):
+        backend=ModelBackend(self.host,self.ledger,self.expected);setup=self.host.setup
+        def failed(mode,role):
+            result=setup(mode,role)
+            if backend.gate=='filesystem':raise OSError('SECRET_INDEPENDENT')
+            return result
+        self.host.setup=failed
+        before,_=self.rejected_checkpoint(backend,'filesystem',OSError);observed=before['observations']
+        self.assertEqual(observed['data'],data('filesystem'));self.assertNotIn('independent',observed)
+        self.assertEqual(observed['progress']['independent'],'FAILED')
+        self.assertEqual(observed['participants'][-1]['pid'],self.host.owner.context[-1]['pid'])
+        self.assertNotIn(b'SECRET_',canonical(before))
+
+    def test_probe_capture_cleanup_failures_remain_distinct_and_owned(self):
+        backend=ModelBackend(self.host,self.ledger,self.expected);backend.values['filesystem']=dict(data('filesystem'),replacement_rejected=0)
+        row=self.ledger.write(p.CONFIG+'/controlled-owned',b'nonsecret owned bytes')
+        original_publish=self.ledger.publish;attempted=[]
+        def publish(stem,value):
+            if stem=='commission-filesystem-before-restore':attempted.append(copy.deepcopy(value));raise OSError('SECRET_CAPTURE')
+            return original_publish(stem,value)
+        original_cleanup=backend.cleanup
+        def cleanup(gate):
+            if gate=='filesystem':
+                backend.events.append(('cleanup',gate));backend.partial.clear();raise RuntimeError('SECRET_CLEANUP')
+            return original_cleanup(gate)
+        backend.cleanup=cleanup
+        with mock.patch.object(self.ledger,'publish',side_effect=publish),self.assertRaisesRegex(ValueError,'filesystem_negatives'):
+            c.collect(self.host,self.ledger,backend,self.expected)
+        self.assertEqual(attempted[0]['observations']['data']['replacement_rejected'],0)
+        self.assertEqual(self.ledger.state['first_failure']['type'],'ValueError')
+        self.assertTrue({'commission-capture','commission-cleanup'}<={x['kind'] for x in self.ledger.state['secondary']})
+        self.assertIn(('cleanup','filesystem'),backend.events)
+        self.assertNotEqual(row['state'],'RELEASED');self.assertTrue(self.files.exists(row['path']))
+        self.assertFalse(self.files.exists(r.RECEIPT));self.assertNotIn(b'SECRET_',canonical(self.ledger.public()))
+
+    def test_private_and_malformed_returned_data_is_bounded_and_redacted(self):
+        backend=ModelBackend(self.host,self.ledger,self.expected)
+        value=data('filesystem');value.update(replacement_rejected='SECRET_TOKEN',device={'secret':'SECRET_PASSWORD'},
+            read_sha256='/private/SECRET_PATH',reader_exit=True,sync_calls=2**100)
+        value['SECRET_UNKNOWN_FIELD']=['SECRET_BODY']*10000;backend.values['filesystem']=value
+        before,_=self.rejected_checkpoint(backend,'filesystem',ValueError);observed=before['observations']
+        self.assertEqual(observed['data']['replacement_rejected'],{'invalid':'string'})
+        self.assertEqual(observed['data']['device'],{'invalid':'object'})
+        self.assertEqual(observed['data']['reader_exit'],{'invalid':'boolean'})
+        self.assertEqual(observed['data']['sync_calls'],{'invalid':'integer'})
+        self.assertEqual(observed['unexpected_fields'],1)
+        self.assertLess(len(canonical(before)),8192);self.assertNotIn(b'SECRET_',canonical(before))
+        # No inspection of arbitrary object contents or class names is allowed.
+        class PrivateObject:
+            def __repr__(self):raise AssertionError('must not stringify')
+        self.assertEqual(NativeProbes.diagnostic('device',PrivateObject()),{'invalid':'unsupported'})
+
+    def test_native_ownership_keeps_first_role_before_later_child_failure(self):
+        backend=self.native_backend('ownership')
+        first=dict(source=dict(errno=0,mode=0o600,parent_mode=0o700),served=dict(errno=13),journal=dict(errno=13))
+        def payload(role):
+            if role=='helper':raise OSError('SECRET_LATER_ROLE')
+            return first
+        self.child_adapter(payload)
+        before,_=self.rejected_checkpoint(backend,'ownership',OSError);observed=before['observations']
+        self.assertEqual(observed['data']['worker_source_errno'],0)
+        self.assertEqual(observed['data']['source_mode'],0o600)
+        self.assertNotIn('helper_source_errno',observed['data'])
+        self.assertEqual(observed['participants'][0]['role'],'worker')
+        self.assertEqual(observed['participants'][0]['pid'],self.host.owner.context[-1]['pid'])
+
+    def test_native_http_first_response_survives_later_failure(self):
+        for gate in ('apache','health'):
+            with self.subTest(gate=gate):
+                case=Controls();case.setUp()
+                try:
+                    backend=case.native_backend(gate)
+                    modules='\n'.join(name+'_module (shared)' for name in (*p.MODULES,'core','so','http')).encode()
+                    # Apache module command is an explicit controlled boundary;
+                    # no Apache binary or HTTP request is executed.
+                    case.host.run=lambda *args,**kwargs:dict(stdout=modules,pid=os.getpid(),exit=0)
+                    with mock.patch.object(probes,'fetch',side_effect=[dict(status=503,body='SECRET_BODY'),OSError('SECRET_HTTP')]):
+                        before,_=case.rejected_checkpoint(backend,gate,OSError)
+                    self.assertEqual(before['observations']['data']['active_status'],503)
+                    self.assertNotIn('candidate_status',before['observations']['data']);self.assertNotIn(b'SECRET_',canonical(before))
+                finally:case.doCleanups()
+
+    def test_native_inventory_and_journal_progress_before_later_failure(self):
+        for gate in ('assets','recovery'):
+            with self.subTest(gate=gate):
+                case=Controls();case.setUp()
+                try:
+                    backend=case.native_backend(gate)
+                    if gate=='assets':
+                        with mock.patch.object(case.files,'inventory',side_effect=OSError('controlled inventory failure')):
+                            before,_=case.rejected_checkpoint(backend,gate,OSError)
+                        self.assertEqual(before['observations']['data']['release_count'],2)
+                        self.assertNotIn('served_assets',before['observations']['data'])
+                    else:
+                        raw=b'{SECRET_INVALID_JOURNAL';root=backend.helper['journal_root'];case.files.makedirs(root)
+                        case.files.create(root+'/state.json',raw,lambda fd:None)
+                        before,_=case.rejected_checkpoint(backend,gate)
+                        self.assertEqual(before['observations']['data'],dict(journal_sha256=digest(raw)))
+                        self.assertNotIn(b'SECRET_',canonical(before))
+                finally:case.doCleanups()
+
+    def test_native_provisioning_retains_configtest_before_internal_rejection(self):
+        backend=self.native_backend('provisioning');self.child_adapter({})
+        self.host.namespace=lambda config:None
+        # FixedStorage I/O is mapped explicitly; never touch real /etc paths.
+        self.files.makedirs(backend.helper['journal_root'])
+        self.files.create(backend.helper['journal_root']+'/state.json',b'{}',lambda fd:None)
+        with mock.patch.object(probes.FixedStorage,'safe_read',return_value=b'controlled config'),\
+             mock.patch.object(probes.FixedStorage,'stage',return_value=None):
+            before,error=self.rejected_checkpoint(backend,'provisioning',Failure)
+        self.assertEqual(str(error),'invalid_config_accepted');observed=before['observations']['data']
+        self.assertEqual(observed['baseline_exit'],0);self.assertEqual(observed['candidate_exit'],0)
+        self.assertEqual(observed['before_sha256'],digest(b'controlled config'))
+        self.assertNotIn('result',observed)
+
+    def test_native_filesystem_dispatch_preserves_valid_and_invalid_child_values(self):
+        for rejected in (0,1):
+            with self.subTest(replacement_rejected=rejected):
+                case=Controls();case.setUp()
+                try:
+                    backend=case.native_backend('filesystem');case.child_adapter(dict(data('filesystem'),replacement_rejected=rejected))
+                    if rejected==0:
+                        before,_=case.rejected_checkpoint(backend,'filesystem',ValueError)
+                        self.assertEqual(before['observations']['data']['replacement_rejected'],0)
+                    else:
+                        receipts=c.collect(case.host,case.ledger,backend,case.expected)
+                        value=decode(e.published_record(lambda name:case.files.read(case.ledger.root+'/'+name),case.expected,
+                            'filesystem',receipts['filesystem'],int(time.time()),native=False))
+                        self.assertEqual(value['observations']['data']['replacement_rejected'],1)
+                        self.assertEqual(value['result'],'MEASURED')
+                finally:case.doCleanups()
+
+    def test_native_ownership_missing_or_scalar_sections_never_satisfy_predicates(self):
+        for variant in ('valid','scalar','missing'):
+            with self.subTest(variant=variant):
+                case=Controls();case.setUp()
+                try:
+                    backend=case.native_backend('ownership')
+                    rows={'worker':dict(source=dict(errno=0,mode=0o600,parent_mode=0o700),served=dict(errno=13),journal=dict(errno=13)),
+                          'helper':dict(source=dict(errno=13)),
+                          'apache':dict(source=dict(errno=13),public=dict(errno=0,mode=0o440,sha256=digest(b'M6E public access canary\n')),public_write=dict(errno=13))}
+                    if variant=='scalar':rows['helper']['source']=13
+                    if variant=='missing':del rows['worker']['source']['mode']
+                    case.child_adapter(lambda role:rows[role])
+                    if variant=='valid':
+                        receipts=c.collect(case.host,case.ledger,backend,case.expected)
+                        value=decode(e.published_record(lambda name:case.files.read(case.ledger.root+'/'+name),case.expected,
+                            'ownership',receipts['ownership'],int(time.time()),native=False))
+                        self.assertEqual(value['observations']['data'],data('ownership'))
+                    else:
+                        before,_=case.rejected_checkpoint(backend,'ownership',ValueError)
+                        if variant=='scalar':self.assertEqual(before['observations']['data']['helper_source_errno'],{'invalid':'section'})
+                        else:self.assertNotIn('source_mode',before['observations']['data'])
+                finally:case.doCleanups()
+
+    def test_non_linux_denial_precedes_every_protected_read(self):
+        helper=load_helper();uid=mock.Mock(side_effect=AssertionError('UID reached'))
+        with mock.patch.object(helper,'sys',types.SimpleNamespace(platform='controlled-non-linux',argv=['helper'])),\
+             mock.patch.object(helper,'os',types.SimpleNamespace(geteuid=uid,O_NOFOLLOW=0)),\
+             mock.patch.object(helper,'protected',side_effect=AssertionError('operational read reached')) as protected:
+            with self.assertRaises(helper.Denied):helper.load_config()
+            protected.assert_not_called();uid.assert_not_called()
+
+    def test_linux_wrong_uid_denial_reads_only_synthetic_configuration(self):
+        helper=load_helper();cfg=p.configurations(fixture(),dict(schema='ubo_m6e_'+'b'*32,credentials_sha256='b'*64),'c'*64)['helper.json']
+        def read(name,limit):
+            self.assertEqual((name,limit),(helper.CONFIG,65536));return canonical(cfg)
+        uid=mock.Mock(return_value=cfg['publisher_uid']+1)
+        with mock.patch.object(helper,'sys',types.SimpleNamespace(platform='linux',argv=['helper'])),\
+             mock.patch.object(helper,'os',types.SimpleNamespace(geteuid=uid,O_NOFOLLOW=0)),\
+             mock.patch.object(helper,'protected',side_effect=read) as protected:
+            with self.assertRaises(helper.Denied):helper.load_config()
+            protected.assert_called_once_with(helper.CONFIG,65536);uid.assert_called_once_with()
+
+    def test_missing_protected_configuration_is_distinct_from_uid_denial(self):
+        helper=load_helper();uid=mock.Mock(side_effect=AssertionError('UID reached'));missing=FileNotFoundError('controlled missing config')
+        with mock.patch.object(helper,'sys',types.SimpleNamespace(platform='linux',argv=['helper'])),\
+             mock.patch.object(helper,'os',types.SimpleNamespace(geteuid=uid,O_NOFOLLOW=0)),\
+             mock.patch.object(helper,'protected',side_effect=missing) as protected:
+            with self.assertRaises(FileNotFoundError) as failure:helper.load_config()
+            self.assertIs(failure.exception,missing);protected.assert_called_once_with(helper.CONFIG,65536);uid.assert_not_called()
 
     def test_private_publication_and_exact_readonly_reconciliation(self):
         _,candidate,_=self.candidate();raw=canonical(candidate);acks=[]

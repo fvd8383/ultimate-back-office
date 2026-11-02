@@ -15,6 +15,56 @@ second parent; native-tested `7cdbbeef639…` is an ancestor of that reviewed he
 Its native PASS belongs only to `7cdbbeef`, never this implementation or the merge.
 Historical failures and pre-merge reports are not rewritten or rerun.
 
+## Commissioning measurement capture correction following bcf64ec
+
+The exact-head review of bcf64ec completed **with two findings**:
+[4446480421](https://github.com/fvd8383/ultimate-back-office/pull/131#discussion_r4446480421)
+(measurements lost before validation failure) and
+[4446480432](https://github.com/fvd8383/ultimate-back-office/pull/131#discussion_r4446480432)
+(host-dependent admission test). This correction does not implement additional
+commissioning gates or change production admission.
+
+Before correction, an actual controlled child returned filesystem
+replacement_rejected=0 to NativeProbes.probe. The strict filesystem predicate rejected
+it, but the original pre-restoration checkpoint contained observations={} and cleanup
+ran. No final gate evidence existed. A separate actual child returned runtime
+measurements and a real PID before the native runtime producer's PHP-pin check failed;
+those measurements and participant context were also absent from its checkpoint.
+Original and corrected reproductions are retained outside Git, without rewriting
+failed evidence or describing the rejected measurements as PASS.
+
+NativeProbes now retains bounded allowlisted measurements before evaluating the
+unchanged predicates. It records attempted/completed/failed stages, obtained child
+PID/role/exit context (including execution or parse failure), and incremental data
+from existing access, HTTP, inventory, journal and configtest collection points.
+The original returned values still feed strict validation. An observed zero remains
+zero; absent fields stay absent. Malformed access sections cannot become valid errnos.
+Unexpected text/objects receive fixed type/error classifications; arbitrary field
+names, paths, response bodies, SQL, credentials and exception messages are not copied.
+Diagnostic copies are separate from valid evidence and cannot authorize a receipt.
+
+The existing collector still publishes its immutable checkpoint before cleanup,
+preserves earlier gate publications and stops before later unexecuted gates. Tests
+exercise cleanup mutation/removal, combined probe/capture/cleanup failure, retained
+ownership and rejection of incomplete diagnostics by the actual offline validators.
+No report schema, evidence predicate, receipt issuer, ledger/watchdog/supervision or
+resource/time ceiling is changed.
+
+The admission controls now use bounded module-local system/OS replacements and
+controlled protected readers. Non-Linux Denied must precede every read; Linux wrong
+UID must read exactly the synthetic configuration and then deny before the receipt;
+missing configuration remains FileNotFoundError before UID evaluation. The existing
+positive actual-parser/private-receipt control remains. No live operational path is
+read, created or changed by these tests.
+
+Executed checks and platform limits are recorded in the isolated-validation section
+and external m6e-measurement-correction/SUMMARY.txt. **M6E remains PARTIALLY
+IMPLEMENTED / REVIEW REQUIRED**. Apache/assets/runtime/health/recovery/provisioning
+still lack the previously listed producers; native receipt issuance stays blocked.
+Filesystem and ownership remain authored/native-unexecuted. Installed workflows,
+COMMIT relay, audit/predicates and full Linux acceptance remain pending. M6C/M6D stay
+formally closed. No server/database/native infrastructure/deployment action occurred.
+
 ## Commissioning collector and protected receipt publication — partial
 
 **COMMISSIONING / RECEIPT ISSUER — PARTIALLY IMPLEMENTED LOCALLY. NATIVE
