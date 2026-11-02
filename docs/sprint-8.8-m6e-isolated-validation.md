@@ -5,6 +5,47 @@ installation, server preparation, Linux/Apache execution, SQL, service operation
 working-staging activation or deployment. This document is the bounded later path,
 not a claim that a host contract exists. M6D’s closed native gate is not reopened.
 
+## Fixture inode-assumption correction following 1834f93
+
+The prior 13-test Windows PASS below is preserved. Review of that exact head
+reported failures in both transient teardown subcases from stale modeled socket
+metadata, plus a foreign-inode failure in the full suite and three isolated runs.
+The review comments do not identify their platform; those are reviewer-reported
+results, not independently observed local Linux execution.
+
+Local deterministic reproduction seeded socket kind/group/mode for an actual newly
+opened regular descriptor's device/inode. The real identification callback observed
+that stale metadata and the unchanged ledger rejected it. This explicitly injects
+metadata reuse; no allocation loop or fake stat/inode is used. One observation of
+the old foreign-file setup on Windows did not reuse the original inode, which does
+not contradict the reviewer or establish portability. Original evidence is retained
+separately in external `m6e-fixture-inode-controls`.
+
+The corrected fixture initializes fresh metadata before identification. Controls
+verify normal/callback/injected failure ordering, intended prefix/file-sync fault
+boundaries, preservation of live unsafe metadata and collisions, renamed objects
+and remaining hardlink names. The corrected foreign-inode case preallocates a real
+file while the original exists, retains the installed object and checks all three
+identities before same-content substitution. Content and hardlink subcases assert
+their own conditions before triggering the original failure. Existing transient
+teardown, persistent failure and repeated replacement-denial controls remain.
+
+Validation uses installed Python 3.14.7 (MINGW Clang UCRT) on Windows 11 build 26300.
+Sequential full runs pass: `WebsitePlatformM6ELedgerRecoveryTest.py` **14 tests**
+in 20.369 seconds, then `WebsitePlatformM6EBootstrapControlTest.py` **31 tests** in
+173.974 seconds. Four sensitive controls pass in each of three fixed repetitions
+(12 executions, zero failures/errors) in fresh private directories. Two changed
+Python AST checks, the 221-assertion scope guard and document/diff checks pass.
+Every result is retained rather than retrying until green. Exact commands, timings,
+syntax/scope/document/diff checks and tested source hashes are recorded in external
+`m6e-fixture-inode-controls/SUMMARY.txt`. No scope expansion is needed.
+WSL reports it is not installed; no available local Linux runner was identified,
+installed or created. No Linux result is claimed. Real bytes/inodes/renames/hardlinks
+are exercised; Unix metadata and services remain modeled. Ledger/production code,
+watchdog/admission policy, closed M6C/M6D, 25 migrations and 77 definitions remain
+unchanged. M6E stays **PARTIALLY IMPLEMENTED / REVIEW REQUIRED**, with commissioning,
+receipts, installed workflows and native acceptance still pending.
+
 ## Pending-ledger correction controls following 82aef44
 
 Before-fix reproduction retained real 0-byte and 13-byte pending files, later

@@ -15,6 +15,42 @@ second parent; native-tested `7cdbbeef639…` is an ancestor of that reviewed he
 Its native PASS belongs only to `7cdbbeef`, never this implementation or the merge.
 Historical failures and pre-merge reports are not rewritten or rerun.
 
+## Controlled filesystem identity correction following 1834f93
+
+Review of `1834f93a101caa4d7e056960472e77f970c4f67e` completed with two fixture
+findings: [stale modeled metadata](https://github.com/fvd8383/ultimate-back-office/pull/131#discussion_r4438173135)
+and [foreign-object identity](https://github.com/fvd8383/ultimate-back-office/pull/131#discussion_r4438173144).
+The reviewer reported both transient teardown subcases failing when a new pending
+file inherited cached socket metadata, and the foreign-inode subcase failing in
+the full suite and three isolated repetitions. The recorded Windows PASS below
+remains historical evidence; it did not establish allocator-independent fixtures.
+These findings concern the test model, not a demonstrated recurrence of the
+previous pending-file implementation defect. The reviewed ledger stays unchanged.
+
+`PrivateFiles.create()` now initializes only the successfully opened exclusive
+creation's actual device/inode entry to modeled root/root, regular, 0600 before
+calling identification, including its injected failure path. It does not clear
+metadata on lookup, collision, rename or unlink. Existing unsafe metadata and
+remaining hardlink names retain their observations. Directory creation already
+initializes after successful mkdir; socket creation assigns its role afterward.
+
+The foreign-file control preallocates its file while the original ledger exists,
+retains the newly installed object under another name, and verifies original,
+created and foreign identities differ before injecting substitution. Foreign bytes
+equal the expected complete ledger; real rename operations preserve a single link.
+The original sync error remains primary and subsequent save must reject the
+unchanged foreign object. This tests distinct-object substitution, not general
+inode-reuse security, crash recovery or power-loss durability.
+
+Deterministic stale-cache injection uses the real exclusive-open descriptor without
+altering stat results or ledger checks. Before correction it reproduced a regular
+file observed as a socket and false `ledger_object_replaced`; after correction it
+reaches the intended empty/prefix/sync boundaries. Normal creation, callback failure,
+collisions, existing unsafe metadata, rename/hardlink behavior and teardown controls
+remain covered. Only the two existing control files and two M6E records change;
+ledger, orchestration/watchdog, socket policy and production code are byte/mode
+preserved. Commissioning and native integration remain pending.
+
 ## Pending-ledger recovery following 82aef44
 
 The outstanding [P2 finding 4438049274](https://github.com/fvd8383/ultimate-back-office/pull/131#discussion_r4438049274)

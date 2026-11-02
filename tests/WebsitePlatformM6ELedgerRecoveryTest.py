@@ -82,11 +82,21 @@ class Recovery(unittest.TestCase):
         for point in ('prefix','zero','sync'):
             with self.subTest(point=point):self.creation_failure(point)
 
-    def creation_failure(self,point):
+    def test_stale_metadata_does_not_move_the_intended_ledger_fault_boundary(self):
+        for point in ('empty','prefix','sync'):
+            with self.subTest(point=point):self.creation_failure(point,stale=True)
+
+    def creation_failure(self,point,stale=False):
         host,ledger=self.fresh();pending=ledger.path+'.pending';old=host.fs.read(ledger.path);identity=ledger.disk.copy()
         ledger.state['phase']='failed-attempt'
-        with fault(host.fs,pending,point) as (observed,error):
+        with ExitStack() as stack:
+            seeded=stack.enter_context(control.stale_creation(host.fs,pending)) if stale else []
+            observed,error=stack.enter_context(fault(host.fs,pending,point))
             with self.assertRaises((OSError,ValueError)) as caught:ledger.save()
+        if stale:
+            self.assertEqual(len(seeded),1);self.assertEqual(seeded[0]['kind'],stat.S_IFREG)
+            self.assertEqual(ledger.state['observations']['ledger_save_failure']['stage'],
+                {'empty':'identify','prefix':'write','sync':'file-sync'}[point])
         if point!='zero':self.assertIs(caught.exception,error)
         self.assertEqual(observed['bytes'],b'' if point in ('empty','zero') else observed['bytes'])
         if point=='prefix':self.assertEqual(len(observed['bytes']),13);self.assertGreaterEqual(observed['writes'],2)
@@ -124,9 +134,14 @@ class Recovery(unittest.TestCase):
                 host,ledger=self.fresh();path=host.fs.path(ledger.path+'.pending');old=host.fs.read(ledger.path)
                 if kind=='directory':path.mkdir()
                 elif kind=='hardlink':os.link(host.fs.path(ledger.path),path)
-                else:path.write_bytes(b'FOREIGN_PENDING')
+                else:
+                    path.write_bytes(b'FOREIGN_PENDING');s=path.stat()
+                    host.fs.meta[s.st_dev,s.st_ino]=dict(uid=2103,gid=2102,mode=0o640,kind=stat.S_IFSOCK)
+                cache=copy.deepcopy(host.fs.meta)
                 identity=host.fs.identity(ledger.path+'.pending')
                 with self.assertRaises((FileExistsError,PermissionError,ValueError)):ledger.save()
+                self.assertEqual(host.fs.meta,cache)
+                if kind=='regular':self.assertEqual(path.read_bytes(),b'FOREIGN_PENDING')
                 self.assertEqual(host.fs.identity(ledger.path+'.pending'),identity)
                 self.assertEqual(host.fs.path(ledger.path).read_bytes(),old)
 
@@ -200,19 +215,37 @@ class Recovery(unittest.TestCase):
         for kind in ('inode','content','hardlink'):
             with self.subTest(kind=kind):
                 host,ledger=self.fresh();old=ledger.disk.copy();error=OSError(PRIMARY)
+                target=host.fs.path(ledger.path);foreign=target.with_name('foreign-preallocated');created={}
+                if kind=='inode':
+                    # Allocate while the original still exists; retain both new objects
+                    # through substitution. No allocator retries or open-file rename needed.
+                    host.fs.create(ledger.root+'/foreign-preallocated',b'',lambda fd:None)
+                    foreign_identity=host.fs.identity(ledger.root+'/foreign-preallocated')
+                    self.assertNotEqual((foreign_identity['dev'],foreign_identity['ino']),(old['dev'],old['ino']))
                 def syncing(path):
                     target=host.fs.path(ledger.path)
+                    created.update(host.fs.identity(ledger.path));self.assertNotEqual(created,old)
+                    self.assertEqual(a.decode(target.read_bytes()),ledger.state)
                     if kind=='inode':
-                        raw=target.read_bytes();target.rename(target.with_name('created-retained'));target.write_bytes(raw)
-                    elif kind=='hardlink':os.link(target,target.with_name('foreign-link'))
-                    else:target.write_bytes(b'FOREIGN_CONTENT')
+                        self.assertNotEqual((foreign_identity['dev'],foreign_identity['ino']),(created['dev'],created['ino']))
+                        raw=target.read_bytes();foreign.write_bytes(raw)
+                        target.rename(target.with_name('created-retained'));foreign.rename(target)
+                        self.assertEqual(host.fs.identity(ledger.path),foreign_identity)
+                        self.assertEqual(target.read_bytes(),raw);self.assertEqual(target.stat().st_nlink,1)
+                    elif kind=='hardlink':
+                        os.link(target,target.with_name('foreign-link'));self.assertEqual(target.stat().st_nlink,2)
+                        self.assertEqual(host.fs.identity(ledger.path),created)
+                    else:
+                        target.write_bytes(b'FOREIGN_CONTENT');self.assertEqual(target.read_bytes(),b'FOREIGN_CONTENT')
+                        self.assertEqual(host.fs.identity(ledger.path),created)
                     raise error
                 with mock.patch.object(host.fs,'sync_dir',side_effect=syncing),self.assertRaises(OSError) as caught:ledger.save()
                 self.assertIs(caught.exception,error);self.assertEqual(ledger.disk,old)
                 self.assertFalse(ledger.state['observations']['ledger_save_failure']['installed'])
-                before=host.fs.path(ledger.path).read_bytes()
-                with self.assertRaises(ValueError):ledger.save()
+                before=host.fs.path(ledger.path).read_bytes();identity=host.fs.identity(ledger.path)
+                with self.assertRaisesRegex(ValueError,'ledger_object_replaced'):ledger.save()
                 self.assertEqual(host.fs.path(ledger.path).read_bytes(),before)
+                self.assertEqual(host.fs.identity(ledger.path),identity)
 
     def test_transient_save_then_real_journaled_teardown_and_repeated_replacement_denial(self):
         for point in ('empty','prefix'):

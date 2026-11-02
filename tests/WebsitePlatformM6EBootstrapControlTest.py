@@ -57,16 +57,35 @@ class PrivateFiles(Files):
     def mkdir(self,path,mode):
         super().mkdir(path,mode);self.metadata(path,0,0,mode)
     def create(self,path,raw,identified,outcome=None):
+        def initialized(fd):
+            # Only a successful exclusive create establishes a new cache entry.
+            # Old metadata may remain for a recycled inode; never reset on lookup.
+            s=os.fstat(fd)
+            self.meta[s.st_dev,s.st_ino]=dict(uid=0,gid=0,mode=0o600,kind=stat.S_IFREG)
+            identified(fd)
         if self.fail_write==path:
             self.fail_write=None
-            def interrupted(fd):identified(fd);raise OSError('SECRET_PARTIAL_WRITE_CANARY')
+            def interrupted(fd):initialized(fd);raise OSError('SECRET_PARTIAL_WRITE_CANARY')
             return super().create(path,raw[:3],interrupted,outcome)
-        return super().create(path,raw,identified,outcome)
+        return super().create(path,raw,initialized,outcome)
     def socket(self,path,uid,gid,mode):
         self.create(path,b'',lambda fd:None);self.metadata(path,uid,gid,mode)
         s=self.path(path).stat();self.meta[s.st_dev,s.st_ino]['kind']=stat.S_IFSOCK
     def unlink(self,path):self.audit.append(('unlink',path));super().unlink(path)
     def rmdir(self,path):self.audit.append(('rmdir',path));super().rmdir(path)
+
+@contextmanager
+def stale_creation(files,path):
+    """Model recycled metadata after real exclusive open; never invent stat results."""
+    opened=os.open;observed=[]
+    def opening(name,flags,*args,**kwargs):
+        fd=opened(name,flags,*args,**kwargs)
+        if os.fspath(name)==os.fspath(files.path(path)) and flags&os.O_EXCL:
+            s=os.fstat(fd);stale=dict(uid=0,gid=2102,mode=0o660,kind=stat.S_IFSOCK)
+            files.meta[s.st_dev,s.st_ino]=stale.copy()
+            observed.append(dict(dev=s.st_dev,ino=s.st_ino,kind=stat.S_IFMT(s.st_mode),stale=stale))
+        return fd
+    with mock.patch.object(os,'open',side_effect=opening):yield observed
 
 class ModelHost(NativeHost):
     lane='controlled-local'
@@ -181,6 +200,43 @@ class ModelHost(NativeHost):
         return dict(stdout=out,stderr=b'',pid=900,exit=0)
 
 class Controls(unittest.TestCase):
+    def test_new_creation_metadata_precedes_identification_and_failure(self):
+        for point in ('normal','callback','injected'):
+            with self.subTest(point=point):
+                host=self.host();path='/var/lib/new-object';seen=[]
+                def identified(fd):
+                    seen.append(host.fs.identity(path,fd))
+                    self.assertEqual({k:seen[-1][k] for k in ('uid','gid','mode','kind')},
+                        dict(uid=0,gid=0,mode=0o600,kind=stat.S_IFREG))
+                    if point=='callback':raise OSError('CONTROLLED_CALLBACK_FAILURE')
+                if point=='injected':host.fs.fail_write=path
+                with stale_creation(host.fs,path) as seeded:
+                    if point=='normal':host.fs.create(path,b'new',identified)
+                    else:
+                        with self.assertRaisesRegex(OSError,'CONTROLLED_CALLBACK_FAILURE|SECRET_PARTIAL_WRITE_CANARY'):
+                            host.fs.create(path,b'new',identified)
+                self.assertEqual(len(seeded),1);self.assertEqual(len(seen),1)
+                self.assertEqual(seeded[0]['kind'],stat.S_IFREG)
+                self.assertEqual((seen[0]['dev'],seen[0]['ino']),(seeded[0]['dev'],seeded[0]['ino']))
+                self.assertEqual(host.fs.read(path),b'new' if point=='normal' else b'')
+
+    def test_existing_metadata_survives_lookup_collision_rename_and_hardlinks(self):
+        host=self.host();path='/var/lib/existing';moved='/var/lib/renamed';link='/var/lib/linked'
+        host.fs.socket(path,2103,2102,0o640);identity=host.fs.identity(path);cache=copy.deepcopy(host.fs.meta)
+        self.assertEqual(host.fs.identity(path),identity)
+        with self.assertRaises(FileExistsError):host.fs.create(path,b'overwrite',lambda fd:self.fail('collision callback'))
+        self.assertEqual(host.fs.meta,cache);self.assertEqual(host.fs.path(path).read_bytes(),b'')
+        host.fs.path(path).rename(host.fs.path(moved));self.assertEqual(host.fs.identity(moved),identity)
+        os.link(host.fs.path(moved),host.fs.path(link))
+        self.assertEqual(host.fs.identity(link),identity);self.assertEqual(host.fs.path(link).stat().st_nlink,2)
+        with self.assertRaisesRegex(ValueError,'base_read'):host.fs.read(moved)
+        host.fs.unlink(moved);self.assertEqual(host.fs.identity(link),identity)
+        self.assertEqual(host.fs.meta,cache);self.assertEqual(host.fs.path(link).stat().st_nlink,1)
+        # mkdir initializes its successfully created entry; socket sets its role after create.
+        directory='/var/lib/directory';host.fs.mkdir(directory,0o700)
+        self.assertEqual(host.fs.identity(directory)['kind'],stat.S_IFDIR)
+        self.assertEqual(host.fs.identity(directory)['mode'],0o700)
+
     def host(self):
         folder=tempfile.TemporaryDirectory(prefix='m6e-bootstrap-controls-');self.addCleanup(folder.cleanup)
         return ModelHost(folder.name)
