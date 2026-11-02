@@ -5,6 +5,51 @@ installation, server preparation, Linux/Apache execution, SQL, service operation
 working-staging activation or deployment. This document is the bounded later path,
 not a claim that a host contract exists. M6D’s closed native gate is not reopened.
 
+## Component ancestor and observer-inventory correction
+
+Starting head: 8916b25a67f1f15e890cb7b2fc4b3a9eac7a3206. Its automated review completed
+WITH findings 4447829150 and 4447829161, not a clean review. Before-fix evidence is
+retained separately outside Git in m6e-component-review-fix.
+
+The first reproduction invokes the unchanged production Tree constructor through
+a deterministic helper UID 2102/mode adapter. O_RDONLY directory opening fails
+with EACCES on the original root-owned 0711 data ancestor even though search is
+permitted. The corrected 0755 ancestor opens successfully. Worker access to served
+and journal children and helper access to sealed worker files still reject.
+Control remains 0711. No native Linux/account/permission operation was executed.
+
+The second reproduction runs the actual worker/transfer/helper/observer lifecycle,
+then keeps the original index.html inode alive outside the component namespace and
+creates a new inode with identical bytes and identical expected metadata. At the
+starting head, cleanup deletes the replacement and reports success. Corrected
+controls require the original observer hash at quiescence and retain that same
+substitution as LIMITED before deletion. Source digests and observer evidence are
+preserved. Different bytes, wrong UID/GID/mode, changed link target, extra control
+or data objects, missing objects and missing/malformed observer hashes reject for
+the intended reason. A never-completed observer cannot authorize staged output.
+
+Races injected before ledger tree capture and after its deletion inventory reject
+using the original expected identities; a late hardlink also fails at unlink.
+Tests assert the fault was reached, the precise rejection, retained uncertain
+file/journal and unchanged original bootstrap sentinels. The successful path still
+verifies seven original public files, captures before removal, reaps children and
+destroys the complete separate journal at fence 1. Startup/helper-death controls
+assert the actual failed child/phase, preserving the original failure.
+
+The affected suite continues to reject controlled evidence as native readiness.
+Only focused component controls, current M6E scope, changed Python syntax,
+documentation and exact committed-inventory checks are run for this correction.
+Bootstrap/commissioning dependencies and transfer suites are unchanged and are not
+rerun. Six targeted controls passed (163.058s); the full affected component suite
+passed 17 tests (291.322s), including fault subcases. Four changed Python sources
+pass AST checks with -W error; current scope passes 278 assertions. Two documents
+pass paired-fence and 15 relative-link checks (anchors not verified). Retained
+success inventory hashes exactly to the original observer value; substitution and
+race captures retain fence 1 and the uncertain file. Exact committed inventory and
+review dispositions are recorded in external SUMMARY.txt.
+Native Linux remains AUTHORED / UNEXECUTED; six commissioning blockers
+remain, with no server/SQL/infrastructure/receipt/deployment/merge operations.
+
 ## Release-A component controls following cd4af965
 
 The native component lifecycle is implemented but **AUTHORED / UNEXECUTED**.

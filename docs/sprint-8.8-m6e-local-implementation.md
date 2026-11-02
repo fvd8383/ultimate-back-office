@@ -15,6 +15,60 @@ second parent; native-tested `7cdbbeef639…` is an ancestor of that reviewed he
 Its native PASS belongs only to `7cdbbeef`, never this implementation or the merge.
 Historical failures and pre-merge reports are not rewritten or rerun.
 
+## Component review corrections following 8916b25
+
+The exact-head review of 8916b25 completed **with two P2 findings**:
+[ancestor access](https://github.com/fvd8383/ultimate-back-office/pull/131#discussion_r4447829150)
+and [generated inode adoption](https://github.com/fvd8383/ultimate-back-office/pull/131#discussion_r4447829161).
+Both corrections are confined to component test support; production changes are zero.
+
+The root-owned component-data ancestor now uses 0755 in both creation and the exact
+inventory policy. The control ancestor remains 0711, served remains helper:apache
+0750 and journal remains helper:helper 0700. Source, served-file, journal and IPC
+restrictions are unchanged. Search permission alone on 0711 did not permit the
+unchanged Tree constructor's O_RDONLY | O_DIRECTORY opens. The local adapter now
+runs that actual constructor with explicit UID/mode checks rather than bypassing
+it with __new__. The checks distinguish parent traversal, directory reading and
+access to protected child files. Windows models are not native UID enforcement.
+
+The independent observer retains its original canonical inventory SHA-256. Once
+processes are quiescent, owned() captures the full current namespace and requires
+that exact hash before adopting generated output or publishing removal ownership.
+Paths, device/inode, type, UID/GID/mode, link counts and validated link targets are
+bound. Missing/malformed observer measurements and different inventories reject.
+A failed observer cannot authorize cleanup of staged output. Early partial
+construction/transfer retains the existing strict ownership behavior; unknown
+scratch remains LIMITED and no observer hash is fabricated.
+
+The restricted control ancestor need not be made listable: the observer stats its
+fixed root-owned child names and enumerates helper-owned IPC. The operator's full
+walk must match the earlier hash. Unknown control-root entries therefore reject,
+and directory-walk errors no longer silently omit entries. The data subtree is
+fully enumerated by both observers.
+
+Cleanup seeds each tree's ledger children from the already bound inventory before
+capture_tree(), preserving the original expected identities. Capture/release then
+reject replacement, omission or extra children instead of establishing a later
+baseline. A narrow filesystem wrapper also compares full file identity at the
+ledger's unlink boundary, including link count; directories retain all immutable
+identity fields while their link counts may fall as owned children are removed.
+The existing ledger deletion algorithm and per-object checks remain unchanged.
+The original observer evidence and first failure survive LIMITED/INCOMPLETE results.
+
+Before correction, the actual local lifecycle accepted an identical-byte,
+different-inode index.html substitution after observation, deleted it and reported
+STAGED_AND_REMOVED / REMOVED. The corrected case rejects before any deletion and
+retains the replacement and journal. Deterministic races during tree capture and
+after deletion inventory are rejected, and a hardlink introduced at the final
+removal boundary is retained. The old inode is held outside the component tree in
+controls so the negative does not depend on allocator reuse or an extra-path error.
+
+Successful cleanup still discards fence 1 only with the complete isolated namespace
+after child quiescence; it never rewinds a live or operational journal. Original
+bootstrap state remains untouched. All six MISSING entries and production default
+denial remain. M6C/M6D stay FORMALLY CLOSED; native Linux validation, release B,
+Apache/HTTPS, retention and remaining commissioning producers are still outstanding.
+
 ## Isolated release-A component lifecycle following cd4af965
 
 The component staging lifecycle is implemented in test support. Its native Linux

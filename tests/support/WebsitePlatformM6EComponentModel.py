@@ -23,10 +23,32 @@ class Model(FilesystemModel):
     def __init__(self,root,state):
         super().__init__(root);self.state=Path(state);data=decode(self.state.read_bytes())
         self.meta=data['meta'];self.links=data['links'];self.locks={}
+        self.uid=2102;self.groups={2102,2104};self.access=[]
+        for name in list(self.meta):
+            for parent in Path(name).parents:
+                if parent==self.root or parent.is_relative_to(self.root):
+                    self.meta.setdefault(str(parent),[0o755,0,0])
     def save(self):self.state.write_bytes(canonical(dict(meta=self.meta,links=self.links)))
+    def path(self,name,dir_fd=None):
+        if dir_fd is not None:return self.dirs[dir_fd]/name
+        path=Path(name)
+        return self.root/str(name).lstrip('/') if str(name).startswith('/') and not path.is_relative_to(self.root) else path
+    def permit(self,path,bits):
+        value=self.metadata(path,path.lstat());mode=value.st_mode
+        granted=(mode>>6 if value.st_uid==self.uid else mode>>3 if value.st_gid in self.groups else mode)&7
+        self.access.append(dict(path=str(path),uid=self.uid,required=bits,granted=granted))
+        if self.uid!=0 and granted&bits!=bits:raise PermissionError(13,'modeled_access',str(path))
     def open(self,name,flags,mode=0o777,*,dir_fd=None):
         path=self.path(name,dir_fd);fresh=not path.exists()
         need(str(path) not in self.links,'modeled_nofollow')
+        # Traverse needs search; O_RDONLY directory handles additionally need
+        # read. Exercise the original Tree constructor, not __new__ bypass.
+        for parent in reversed(path.parents):
+            if parent==self.root or parent.is_relative_to(self.root):self.permit(parent,1)
+        if fresh and flags&os.O_CREAT:self.permit(path.parent,2)
+        elif not fresh:
+            access=flags&os.O_ACCMODE
+            self.permit(path,4 if access==os.O_RDONLY else 6 if access==os.O_RDWR else 2)
         fd=super().open(name,flags,mode,dir_fd=dir_fd)
         if fresh:self.meta[str(path)]=[mode,2102,2102]
         return fd
@@ -59,7 +81,8 @@ class Model(FilesystemModel):
             held,lock=self.locks.pop(fd);os.close(held);lock.unlink()
         super().close(fd)
     def tree(self,module,path,group):
-        tree=super().tree(module,path);tree.owner=2102;tree.group=group;return tree
+        module.sys=SimpleNamespace(platform='linux') # Explicit OS adapter only.
+        return module.Tree('/'+Path(path).relative_to(self.root).as_posix(),2102,True,group)
 
 class Mapped(Files):
     def __init__(self,root,ops):self.root=Path(root);self.ops=ops

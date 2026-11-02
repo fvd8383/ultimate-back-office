@@ -13,6 +13,7 @@ import tempfile
 import time
 import unittest
 from types import SimpleNamespace
+from unittest import mock
 
 ROOT=Path(__file__).resolve().parents[1]
 sys.path[:0]=[str(ROOT/'tests'),str(ROOT/'tests/support')]
@@ -132,11 +133,88 @@ class Local(Native):
             path=self.fs.path(self.plan['paths']['served']+'/access-probe');path.rename(path.with_name('replaced-old'));path.write_bytes(b'component access\n')
         super().cleanup(owned)
 
+class ReviewLocal(Local):
+    """Inject only AFTER real observation, retaining the old inode outside output."""
+    def __init__(self,root,fault):
+        super().__init__(root,fault);self.injected=False;self.cleanup_errors=[];self.removals=[]
+        original_owned=self.owned
+        def owned():
+            try:return original_owned()
+            except BaseException as error:self.cleanup_errors.append(str(error));raise
+        self.owned=owned
+        for method in ('unlink','rmdir'):
+            original=getattr(self.fs,method)
+            def removed(path,original=original):self.removals.append(path);return original(path)
+            setattr(self.fs,method,removed)
+        original_capture=self.ledger.capture_tree
+        def capture(row,*args,**kwargs):
+            if fault=='capture-race' and row['path']==self.plan['paths']['served']:self.inject('same')
+            return original_capture(row,*args,**kwargs)
+        self.ledger.capture_tree=capture
+        original_inventory=self.fs.inventory;self.tree_scans=0;self.removing=False
+        def inventory(path):
+            value=original_inventory(path)
+            if path==self.plan['paths']['served']:
+                self.tree_scans+=1
+                if self.tree_scans==2:
+                    self.removing=True
+                    if fault=='delete-race':self.inject('same')
+            return value
+        self.fs.inventory=inventory
+        original_identity=self.fs.identity
+        def identity(path,fd=None):
+            value=original_identity(path,fd)
+            if fault=='delete-hardlink' and self.removing and path==getattr(self,'output',None) and not self.injected:
+                os.link(self.fs.path(path),self.root/'held-alias');self.injected=True
+            return value
+        self.fs.identity=identity
+    def inject(self,kind):
+        need(not self.injected,'duplicate_test_fault');self.injected=True
+        path=self.fs.path(self.output);self.before_identity=self.info(self.fs,self.output)
+        raw=path.read_bytes();self.before_bytes=digest(raw)
+        if kind in ('same','different','missing'):
+            path.rename(self.root/'held-original-index') # Never depend on inode reuse.
+            if kind!='missing':path.write_bytes(raw if kind=='same' else b'different public bytes')
+        elif kind in ('owner','group','mode'):
+            data=decode(self.model.read_bytes());column={'owner':1,'group':2,'mode':0}[kind]
+            data['meta'][str(path)][column]=0o640 if kind=='mode' else 999;self.model.write_bytes(canonical(data))
+        elif kind=='link':
+            candidate=str(self.fs.path(self.plan['paths']['served']+'/candidate'));data=decode(self.model.read_bytes())
+            data['links'][candidate]='releases/00000000-0000-4000-8000-000000000000/public';self.model.write_bytes(canonical(data))
+        elif kind in ('extra','control-extra'):
+            parent=path.parent if kind=='extra' else self.fs.path(self.plan['paths']['control'])
+            (parent/'unknown').write_bytes(b'unknown owned-test input')
+        self.load_model()
+        if kind!='missing':
+            self.after_identity=self.info(self.fs,self.output);self.after_bytes=digest(path.read_bytes())
+        if kind in ('same','different'):
+            need(self.before_identity['ino']!=self.after_identity['ino'],'test_requires_distinct_inode')
+            need({k:v for k,v in self.before_identity.items() if k!='ino'}==
+                 {k:v for k,v in self.after_identity.items() if k!='ino'},'test_preserves_metadata')
+    def observer(self):
+        if self.fault=='no-observer':raise Failure('observer_not_completed')
+        value=super().observer();self.independent=copy.deepcopy(value)
+        self.output=self.plan['paths']['served']+'/releases/'+self.plan['release']['release_key']+'/public/index.html'
+        self.observed_inventory=snapshot(self.fs,self.plan,self.manifest,self.info)
+        need(digest(canonical(self.observed_inventory))==value['inventory_sha256'],'test_original_observer_inventory')
+        if self.fault.startswith('post-'):self.inject(self.fault[5:])
+        if self.fault=='missing-hash':value.pop('inventory_sha256')
+        if self.fault=='invalid-hash':value['inventory_sha256']='not-a-sha256'
+        if self.fault=='no-control-list':
+            walk=os.walk
+            def restricted(path,*args,**kwargs):
+                if Path(path)==self.fs.path(self.plan['paths']['control']):raise PermissionError(13,'control_not_readable')
+                return walk(path,*args,**kwargs)
+            with mock.patch.object(os,'walk',restricted):
+                observed=snapshot(self.fs,self.plan,self.manifest,self.info,observer=True)
+            need(digest(canonical(observed))==value['inventory_sha256'],'test_fixed_control_inventory')
+        return value
+
 class ComponentTests(unittest.TestCase):
-    def execute(self,fault='',check=None):
+    def execute(self,fault='',check=None,backend_type=Local):
         root='\\\\?\\'+tempfile.gettempdir() if os.name=='nt' else tempfile.gettempdir()
         with tempfile.TemporaryDirectory(prefix='ubo-ca-',dir=root) as directory:
-            backend=Local(directory,fault);error=None
+            backend=backend_type(directory,fault);error=None
             try:c.run(backend)
             except BaseException as caught:error=caught
             state=backend.ledger.state['observations']['component_a']
@@ -144,6 +222,73 @@ class ComponentTests(unittest.TestCase):
             self.assertEqual(backend.operational(),backend.before)
             self.assertTrue(all(x['process'].poll() is not None for x in backend.active))
             return copy.deepcopy(state),error
+    def test_tree_constructor_directory_read_and_private_child_access(self):
+        root='\\\\?\\'+tempfile.gettempdir() if os.name=='nt' else tempfile.gettempdir()
+        with tempfile.TemporaryDirectory(prefix='ubo-ca-',dir=root) as directory:
+            x=Local(directory);x.prepare(dict(resources=[]));x.save_model();ops=Model(directory,x.model);m=c.publisher_module();m.os=ops
+            data=x.fs.path(x.plan['paths']['data']);control=x.fs.path(x.plan['paths']['control'])
+            self.assertEqual(x.fs.identity(x.plan['paths']['data'])['mode'],0o755)
+            self.assertEqual(x.fs.identity(x.plan['paths']['control'])['mode'],0o711)
+            for key,group in (('served',2104),('journal',2102)):
+                tree=ops.tree(m,x.fs.path(x.plan['paths'][key]),group);tree.close()
+            self.assertTrue(any(v['path']==str(data) and v['required']==4 for v in ops.access))
+            ops.meta[str(data)][0]=0o711;ops.permit(data,1) # Search succeeds, directory read does not.
+            with self.assertRaises(PermissionError) as failed:ops.tree(m,x.fs.path(x.plan['paths']['served']),2104)
+            self.assertEqual(failed.exception.errno,13);self.assertEqual(failed.exception.filename,str(data))
+            ops.meta[str(data)][0]=0o755;ops.permit(control,1)
+            with self.assertRaises(PermissionError):ops.permit(control,4)
+            for key,leaf in (('served','access-probe'),('journal','target.lock')):
+                ops.uid=2000;ops.groups={2000}
+                parent=ops.open(x.plan['paths']['data'],ops.O_DIRECTORY|os.O_RDONLY);ops.close(parent)
+                with self.assertRaises(PermissionError):ops.open(x.plan['paths'][key]+'/'+leaf,os.O_RDWR)
+            sealed=Path(directory)/'sealed';sealed.mkdir();source=sealed/'source';source.write_bytes(b'private')
+            ops.meta[str(sealed)]=[0o700,2000,2000];ops.meta[str(source)]=[0o600,2000,2000];ops.uid=2102;ops.groups={2102,2104}
+            with self.assertRaises(PermissionError):ops.open(source,os.O_RDONLY)
+    def test_post_observer_same_content_replacement_is_retained(self):
+        def check(x,s,error):
+            self.assertEqual(str(error),'component_observer_inventory_changed');self.assertTrue(x.injected)
+            self.assertEqual(x.before_bytes,x.after_bytes);self.assertNotEqual(x.before_identity['ino'],x.after_identity['ino'])
+            self.assertEqual(s['observations']['observer'],x.independent)
+            self.assertEqual(s['cleanup'],'LIMITED');self.assertEqual(s['result'],'INCOMPLETE');self.assertEqual(x.removals,[])
+            self.assertTrue(x.fs.exists(x.output));self.assertEqual(x.fs.read(x.plan['paths']['journal']+'/state.json'),x.journal_before)
+            self.assertNotIn('component-a-owned-before-remove',x.events)
+        self.execute('post-same',check,ReviewLocal)
+    def test_post_observer_changed_namespace_rejects_before_deletion(self):
+        for fault,reason in (('different','component_observer_inventory_changed'),('owner','component_object_metadata'),
+                ('group','component_object_metadata'),('mode','component_object_metadata'),('link','component_pointer_target'),
+                ('extra','component_unknown_path'),('control-extra','component_unknown_path'),('missing','component_observer_inventory_changed')):
+            with self.subTest(fault=fault):
+                def check(x,s,error):
+                    self.assertEqual(str(error),reason);self.assertTrue(x.injected);self.assertEqual(x.removals,[])
+                    self.assertEqual(s['observations']['observer'],x.independent);self.assertEqual(s['cleanup'],'LIMITED')
+                    self.assertTrue(x.fs.exists(x.plan['paths']['journal']+'/state.json'))
+                self.execute('post-'+fault,check,ReviewLocal)
+    def test_observer_inventory_is_required_without_adopting_output(self):
+        for fault,reason in (('missing-hash','component_observer_inventory_required'),('invalid-hash','hash'),
+                              ('no-observer','observer_not_completed')):
+            with self.subTest(fault=fault):
+                def check(x,s,error):
+                    self.assertEqual(str(error),reason);self.assertEqual(s['cleanup'],'LIMITED');self.assertEqual(x.removals,[])
+                    self.assertTrue(x.fs.exists(x.plan['paths']['served']+'/candidate'))
+                    if fault=='no-observer':self.assertIn('component_observer_inventory_required',x.cleanup_errors)
+                self.execute(fault,check,ReviewLocal)
+    def test_generated_identity_remains_bound_through_capture_and_delete(self):
+        for fault,reason in (('capture-race','owned_child_replaced'),('delete-race','cleanup_child_replaced'),
+                              ('delete-hardlink','component_removal_identity')):
+            with self.subTest(fault=fault):
+                def check(x,s,error):
+                    self.assertEqual(str(error),reason);self.assertTrue(x.injected)
+                    self.assertEqual(s['cleanup'],'LIMITED');self.assertEqual(s['result'],'INCOMPLETE')
+                    self.assertIn('component-a-owned-before-remove',x.events)
+                    self.assertTrue(x.fs.exists(x.output));self.assertNotIn(x.output,x.removals)
+                    self.assertEqual(x.fs.read(x.plan['paths']['journal']+'/state.json'),x.journal_before)
+                    self.assertEqual(s['observations']['observer'],x.independent)
+                self.execute(fault,check,ReviewLocal)
+    def test_restricted_control_ancestor_inventory_matches_complete_operator_walk(self):
+        def check(x,s,error):
+            if error:raise error
+            self.assertEqual(s['cleanup'],'REMOVED');self.assertEqual(s['result'],'STAGED_AND_REMOVED')
+        self.execute('no-control-list',check,ReviewLocal)
     def test_original_transfer_stage_independent_observer_cleanup(self):
         def check(x,s,error):
             if error:raise error
@@ -189,8 +334,17 @@ class ComponentTests(unittest.TestCase):
     def test_startup_or_helper_death(self):
         for fault in ('startup','helper-death','helper-stage-death'):
             with self.subTest(fault=fault):
-                state,error=self.execute(fault);self.assertIsNotNone(error);self.assertEqual(state['result'],'INCOMPLETE')
-                if fault=='helper-stage-death':self.assertEqual(state['cleanup'],'LIMITED')
+                def check(x,state,error):
+                    self.assertIsNotNone(error);self.assertEqual(state['result'],'INCOMPLETE')
+                    if fault=='startup':self.assertIsInstance(error,FileNotFoundError);self.assertEqual(state['children'],[])
+                    else:
+                        helper=next(ch for ch in state['children'] if ch['role']=='helper')
+                        self.assertEqual(helper['observed_exit'],17 if fault=='helper-death' else 18)
+                        self.assertIn('source',state['observations']);self.assertNotIn('observer',state['observations'])
+                    if fault=='helper-stage-death':
+                        self.assertEqual(state['cleanup'],'LIMITED');self.assertEqual(decode(x.journal_before)['fence'],1)
+                        self.assertEqual(decode(x.journal_before)['phase'],0)
+                self.execute(fault,check)
     def test_independent_bytes_inventory_foreign_hardlink_denied(self):
         for fault in ('bytes','extra','foreign','hardlink'):
             with self.subTest(fault=fault):

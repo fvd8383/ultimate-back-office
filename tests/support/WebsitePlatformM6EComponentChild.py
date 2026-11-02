@@ -36,7 +36,7 @@ def observer(m,plan,served,journal,fs,info=identity):
     value=c.observe(m,plan,served,journal,metadata)
     # Independent exact namespace inventory, beyond public-package validation.
     raw=fs.read(plan['paths']['journal']+'/manifests/'+plan['release']['release_key']+'.json')
-    manifest=m.transfer_entries(raw,plan['release']);objects=snapshot(fs,plan,manifest,info)
+    manifest=m.transfer_entries(raw,plan['release']);objects=snapshot(fs,plan,manifest,info,observer=True)
     value['inventory_sha256']=digest(canonical(objects));emit('observer',value)
 
 def main():

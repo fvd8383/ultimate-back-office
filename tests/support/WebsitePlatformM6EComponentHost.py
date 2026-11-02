@@ -9,7 +9,7 @@ import subprocess
 import threading
 import time
 
-from WebsitePlatformM6EAcceptance import ROLES, canonical, decode, digest, need
+from WebsitePlatformM6EAcceptance import ROLES, canonical, decode, digest, need, hash_
 from WebsitePlatformM6EProcess import Failure
 import WebsitePlatformM6EBootstrapPlan as b
 import WebsitePlatformM6EComponent as c
@@ -18,7 +18,8 @@ def allowed(plan,manifest):
     """Closed output vocabulary. Interrupted random scratch is deliberately uncertain."""
     p=plan['paths'];out={}
     def add(path,kind,uid,gid,mode):out[path]=(kind,uid,gid,mode)
-    for key in ('control','data'):add(p[key],stat.S_IFDIR,0,0,0o711)
+    add(p['control'],stat.S_IFDIR,0,0,0o711)
+    add(p['data'],stat.S_IFDIR,0,0,0o755)
     add(p['plan'],stat.S_IFREG,0,0,0o644);add(p['ipc'],stat.S_IFDIR,2102,2000,0o2710)
     add(p['socket'],stat.S_IFSOCK,2102,2000,0o660)
     for key,group,mode in (('served',2104,0o750),('journal',2102,0o700)):
@@ -47,13 +48,20 @@ def identity(fs,path):
                     mode=stat.S_IMODE(s.st_mode),nlink=s.st_nlink,target=os.readlink(fs.path(path)))
     return fs.identity(path)|dict(nlink=s.st_nlink)
 
-def snapshot(fs,plan,manifest,info=identity):
+def snapshot(fs,plan,manifest,info=identity,observer=False):
     permitted=allowed(plan,manifest);found={}
     for key in ('control','data'):
         root=plan['paths'][key]
         if not fs.exists(root):continue
-        names=[root]
-        for directory,dirs,files in os.walk(fs.path(root),followlinks=False):
+        names=[root];walk=root
+        if observer and key=='control':
+            # The 0711 root permits stat of fixed names, not directory listing.
+            # Its root-owned children are fixed; IPC is helper-readable. The
+            # operator's later full walk must match this independent inventory,
+            # so an unknown control-root child also prevents cleanup.
+            names=[plan['paths'][name] for name in ('control','plan','ipc','socket')];walk=plan['paths']['ipc']
+        def failed(error):raise error
+        for directory,dirs,files in os.walk(fs.path(walk),followlinks=False,onerror=failed):
             names.extend(root+'/'+(Path(directory)/name).relative_to(fs.path(root)).as_posix() for name in dirs+files)
             need(len(names)<=12000,'component_inventory_bound')
         device=info(fs,root)['dev']
@@ -65,6 +73,21 @@ def snapshot(fs,plan,manifest,info=identity):
                 need(item['target']=='releases/'+plan['release']['release_key']+'/public','component_pointer_target')
             found[name]=item
     return found
+
+class CleanupFiles:
+    """Extra identity checks at the existing ledger's removal boundary."""
+    def __init__(self,fs,owned,info):self.fs,self.owned,self.info=fs,owned,info
+    def __getattr__(self,name):return getattr(self.fs,name)
+    def remove(self,path,directory):
+        need(path in self.owned,'component_unobserved_removal')
+        before=self.owned[path];now=self.info(self.fs,path)
+        # Removing owned child directories legitimately changes the parent's
+        # link count. All other directory fields, and every file field, remain.
+        fields=set(before)-({'nlink'} if directory else set())
+        need(set(now)==set(before) and all(now[k]==before[k] for k in fields),'component_removal_identity')
+        self.fs.rmdir(path) if directory else self.fs.unlink(path)
+    def unlink(self,path):self.remove(path,False)
+    def rmdir(self,path):self.remove(path,True)
 
 class Child:
     """Bounded report-only pipes. Artifact bytes use a different private endpoint."""
@@ -135,7 +158,8 @@ class Native:
         row['sha256']=digest(raw);self.ledger.save()
     def prepare(self,state):
         self.state=state;p=self.plan['paths']
-        for key in ('control','data'):self.directory(p[key],0,0,0o711)
+        self.directory(p['control'],0,0,0o711)
+        self.directory(p['data'],0,0,0o755)
         self.directory(p['ipc'],2102,2000,0o2710)
         self.directory(p['served'],2102,2104,0o750,True);self.directory(p['journal'],2102,2102,0o700,True)
         for root,name,gid,mode in (('served','releases',2104,0o750),('served','assets',2104,0o750),
@@ -259,17 +283,43 @@ class Native:
                 except FileNotFoundError:continue
                 need(int(fields[2]) not in groups and int(fields[3]) not in groups,'component_descendant_alive')
     def owned(self):
+        self.quiescent()
         for row in self.rows:
             if row['identity'] is not None:self.ledger.verify(row)
-        return snapshot(self.fs,self.plan,self.manifest,self.info)
+        found=snapshot(self.fs,self.plan,self.manifest,self.info)
+        observations=self.state['observations']
+        # A partial transfer may leave only its mutable state file alongside
+        # explicit construction rows. Published/generated output needs the
+        # earlier independent observer; it cannot be adopted by pathname.
+        generated=set(found)-{row['path'] for row in self.rows}-{self.plan['paths']['journal']+'/state.json'}
+        if 'observer' in observations or 'helper' in observations or generated:
+            observed=observations.get('observer')
+            need(type(observed) is dict and 'inventory_sha256' in observed,'component_observer_inventory_required')
+            expected=observed['inventory_sha256'];hash_(expected)
+            need(digest(canonical(found))==expected,'component_observer_inventory_changed')
+        return found
     def cleanup(self,owned):
         self.quiescent();need(self.owned()==owned,'component_replaced_after_capture')
-        pointer=self.plan['paths']['served']+'/candidate'
-        if pointer in owned:
-            need(self.info(self.fs,pointer)==owned[pointer],'component_pointer_replaced');self.fs.unlink(pointer)
-        self.ledger.release(self.pointer_row)
+        pointer=self.plan['paths']['served']+'/candidate';trees={}
+        # Seed the ledger from the observer-bound snapshot BEFORE capture_tree.
+        # That call must verify these identities, never establish a later baseline.
         for row in self.rows:
             if row['kind']=='tree':
-                self.ledger.capture_tree(row,{ROLES['helper']},final=True);self.ledger.release(row)
-        for row in reversed(self.rows):self.ledger.release(row)
+                prefix=row['path']+'/'
+                expected={name[len(prefix):]:{k:item[k] for k in ('dev','ino','uid','gid','kind','mode')}
+                    for name,item in owned.items() if name.startswith(prefix) and name!=pointer}
+                need(not row['children'] and not row['retired'] and not row['sealed'],'component_tree_already_captured')
+                trees[row['id']]=expected;row['children']=copy.deepcopy(expected);row['sealed']=True
+        self.ledger.save()
+        original=self.ledger.fs;checked=CleanupFiles(self.fs,owned,self.info);self.ledger.fs=checked
+        try:
+            if pointer in owned:checked.unlink(pointer)
+            self.ledger.release(self.pointer_row)
+            for row in self.rows:
+                if row['kind']=='tree':
+                    self.ledger.capture_tree(row,{ROLES['helper']},final=True)
+                    need(row['children']==trees[row['id']] and not row['retired'],'component_tree_inventory_changed')
+                    self.ledger.release(row)
+            for row in reversed(self.rows):self.ledger.release(row)
+        finally:self.ledger.fs=original
         need(not any(self.fs.exists(self.plan['paths'][key]) for key in ('control','data')),'component_remaining')
