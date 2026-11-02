@@ -15,6 +15,93 @@ second parent; native-tested `7cdbbeef639…` is an ancestor of that reviewed he
 Its native PASS belongs only to `7cdbbeef`, never this implementation or the merge.
 Historical failures and pre-merge reports are not rewritten or rerun.
 
+## Fixture bootstrap and supervision following 935618a
+
+**FIXTURE BOOTSTRAP/SUPERVISION — IMPLEMENTED LOCALLY, NATIVE EXECUTION PENDING.**
+This bounded slice starts from clean `935618abc7fa6e5b3552f2efb1a6b5a14292f37d`.
+Its exact-head review was read once: completed without findings; all three earlier
+threads remained resolved. Overall M6E is still **PARTIALLY IMPLEMENTED / REVIEW
+REQUIRED**. The older sections below describe the state at their named heads;
+this section supersedes their bootstrap/supervision gaps only.
+
+`WebsitePlatformM6EPreparation.py --prepare-base` now executes the complete fixed
+bootstrap through `WebsitePlatformM6EBootstrap.py`. The existing VM contract,
+component templates and canonical setup are reused. `BootstrapPlan.py` contains
+definitions/rendering, `BootstrapHost.py` the native boundaries and safe command
+journal, and `BootstrapLedger.py` the durable ownership/evidence handling. No
+provider abstraction, software installation or production admission bypass was
+added. Legacy `--prepare` and full native `--run` retain the existing incomplete
+native-readiness barrier; no callable placeholder satisfies it.
+
+Preflight validates the version-2 admission, dedicated VM/run/machine/boot, exact
+read-only source and tracked modes, loopback-only network, fixed accounts/UIDs/GIDs,
+path/unit/drop-in collisions, pinned installed tools/modules, PHP extensions,
+local storage and capacity/cgroup policy. It checks bootstrap source completeness
+and syntax and resolves every fixed template before creating resources. Source
+copying preserves tracked executable bits. Generated application secrets stay in
+a separate root-owned configuration; the ignored installed `env.php` only loads it.
+
+The authored native path creates seven separate non-login accounts, private TLS,
+one fresh MySQL 8.4 instance and `ubo_m6e_<run-id>`, applies canonical migrations
+001–025 once and checks the `247sp` seed. Writer, worker and SELECT-only authority
+credentials have separate role access; the authority receives no foreign-schema
+grant. Safe output binds the server UUID, schema, accounts and setup records.
+Actual M6C service/builder/validator/store calls build two releases of the same site
+with separate jobs, execution producers and manifests, shared PNG/PDF and changed
+CSS, plus a foreign-site asset identity. Artifact roots/files remain worker-owned
+0700/0600. Synthetic approvals are fixture data preparation, not installed protected
+worker acceptance. The target is unpublished, deployment count is zero and the
+helper journal is pristine; no current/candidate link or activation is fabricated.
+
+The fixed systemd bootstrap service owns preparation after client disconnect. Its
+600-second preparation budget is separate from the unchanged acceptance deadline.
+An independent 1,200-second timer invokes the fixed watchdog cleanup service with
+a 120-second cleanup budget. Public teardown also dispatches that service. Only
+MySQL, Apache and the two sockets start; the protected worker is installed inactive.
+The standalone Apache main config loads admitted modules and supplies runtime,
+user/group, MIME and exact private listeners around the reviewed static/mTLS policy.
+Inspection checks source/tool/config/unit bytes, service PID/invocation/cgroup,
+socket type/ownership/mode/unit, role access, listener ownership, actual DB/artifact
+identities, empty served output, pristine journal and absent host receipt. Startup
+and socket presence are never credited as application authorization or TLS gates.
+
+Intent is persisted before partial creation; observed identities and safe command
+IDs/caller/PID/exit/time follow actual invocation. Commands, credentials, raw rows
+and content are not retained in report bodies. Immutable failure and teardown
+snapshots precede restoration; capture errors remain separate and do not suppress
+cleanup or replace the primary failure. Cleanup revalidates namespace and exact
+unit/invocation/object/account ownership, verifies processes are gone and preserves
+unknown/replaced resources as LIMITED. Sealed trees reject new/replaced children;
+partial account removal remains retryable. Successfully released resources are
+never adopted again. The watchdog remains armed through incomplete cleanup; its
+control files are removed last. `/opt/ubo` and the external evidence export remain.
+
+The checked immutable `m6e-fixture-bootstrap-v1` record says only **FIXTURE BOOTSTRAP
+READY / COMMISSIONING NOT EXECUTED / HOST RECEIPT ABSENT / NATIVE ACCEPTANCE NOT
+EXECUTED**. A separate publication receipt binds its bytes. The protected handoff
+contains measured configuration/source/tool/resource/DB/fixture identities for
+future commissioning. Read-only inspection rechecks that handoff and current
+state against the record. Archived READY bytes alone do not authorize later use
+after teardown, expiry or any state change. The full native validator rejects this
+distinct profile.
+
+Local evidence consists of the actual Python orchestration/adapters with real
+private files and modeled Linux/service/UID/SQL boundaries, and PHP controls that
+exercise schema command formation with fake PDO plus actual M6C artifact builds,
+validation and byte/digest cross-checks. The PHP controls use two isolated builder
+fixtures; they do not establish a native same-site SQL run. Final results and exact
+commands are recorded in the validation runbook. Original failures and rechecks
+are retained outside Git in `m6e-bootstrap`; no failure file was overwritten.
+
+Production executable changes in this slice: **zero**. The reviewed observation
+capture/cleanup implementation is unchanged. Current scope adds only six exact
+bootstrap support/test paths; all 25 migrations/pins, 77 requirement definitions,
+M6C/M6D code, historical scope policies and closed reports remain preserved.
+Commissioning/host-receipt issuance, installed protected successful workflow,
+remaining scenarios/COMMIT relay, full Apache restore/retention/command audit/native
+predicates and Linux syscall/race/identity acceptance remain unfinished. No server,
+SQL, migration, native service/configtest, VM, deployment or merge was executed.
+
 ## Failed-observation evidence correction following 3475bf4
 
 The review of `3475bf4f7829bc2b1b9342697e6e13f2e22a91e4` completed **with**
