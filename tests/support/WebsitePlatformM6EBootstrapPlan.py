@@ -29,6 +29,8 @@ STARTED=('ubo-m6e-mysql.service','ubo-site-authority.socket','ubo-site-publisher
 SOCKETS={'ubo-site-authority.socket':('/run/ubo-site-publisher/authority.sock',ROLES['helper'],ROLES['helper'],0o600),
          'ubo-site-publisher.socket':('/run/ubo-site-publisher/publish.sock',0,ROLES['worker'],0o660)}
 PRISTINE=dict(version=1,fence=0,owner=None,session=None,phase=0,current=None,intent=None,settled=True)
+TEMPLATE_UNITS=('ubo-site-authority@.service','ubo-site-authority.socket','ubo-site-publisher@.service',
+                'ubo-site-publisher.socket','ubo-site-worker.service')
 
 def safe_path(path):
     need(type(path) is str and re.fullmatch(r'/[A-Za-z0-9_./@-]+',path) and '..' not in PurePosixPath(path).parts,'base_path')
@@ -69,14 +71,44 @@ def control_units():
           '\nAccuracySec=1\nUnit=ubo-m6e-watchdog.service\nRemainAfterElapse=no\n').encode()}
 
 def templates(read):
-    names=('ubo-site-authority@.service','ubo-site-authority.socket','ubo-site-publisher@.service',
-           'ubo-site-publisher.socket','ubo-site-worker.service')
-    result={name:read('infrastructure/deployment/'+name+'.example').decode() for name in names}
+    result={name:read('infrastructure/deployment/'+name+'.example').decode() for name in TEMPLATE_UNITS}
+    socket_policy(result)
     result['apache']=read('infrastructure/apache/site-static-staging.conf.example').decode()
     # Resolve every placeholder before mutation, including future DB-selected site identifiers.
     values=template_values('00000000-0000-4000-8000-000000000000')
     for raw in result.values():render(raw,values)
     return result
+
+def socket_policy(units,values=None):
+    """Small fixed-template policy, not systemd syntax or installed-version validation.
+
+    systemd 257: Accept=yes selects the matching @.service; Service= is for
+    Accept=no. Reject extra/repeated sections/directives and continuation syntax.
+    Check canonical placeholders and, separately, actual substituted bytes.
+    """
+    need(set(units)==set(TEMPLATE_UNITS),'socket_template_names')
+    for name in SOCKETS:
+        need(name.replace('.socket','@.service') in units,'socket_service_name')
+        text=units[name].decode() if isinstance(units[name],bytes) else units[name]
+        sections={};section=None
+        for line in text.splitlines():
+            line=line.strip()
+            if not line or line.startswith(('#',';')):continue
+            need('\\' not in line,'socket_policy_continuation')
+            if line.startswith('['):
+                need(line in ('[Unit]','[Socket]') and line not in sections,'socket_policy_section')
+                section=line;sections[section]={};continue
+            key,separator,value=line.partition('=');key=key.strip();value=value.strip()
+            need(separator and section is not None and key not in sections[section],'socket_policy_directive')
+            sections[section][key]=value
+        need(set(sections)=={'[Unit]','[Socket]'} and set(sections['[Unit]'])=={'Description'},'socket_policy_sections')
+        authority=name=='ubo-site-authority.socket'
+        expected=dict(ListenStream=SOCKETS[name][0],Accept='yes',
+            SocketUser='@PUBLISHER_USER@' if authority else 'root',
+            SocketGroup='@PUBLISHER_GROUP@' if authority else '@DEDICATED_WORKER_GROUP@',
+            SocketMode='0600' if authority else '0660',DirectoryMode='0755',MaxConnections='4')
+        if values is not None:expected={k:render(v,values).decode() for k,v in expected.items()}
+        need(sections['[Socket]']==expected,'socket_policy_values')
 
 def template_values(site):
     need(re.fullmatch('[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}',site),'base_site')
@@ -106,18 +138,13 @@ def apache_main(config,raw,site):
     return ('\n'.join(loads+head)+'\n'+body).encode()
 
 def fixture_units(raw,config,site):
+    need(set(raw)==set(TEMPLATE_UNITS)|{'apache'},'socket_template_names')
+    socket_policy({name:raw[name] for name in TEMPLATE_UNITS})
     values=template_values(site)
     result={name:render(text,values) for name,text in raw.items() if name!='apache'}
-    # Accept=yes uses the matching @.service by name. Explicit Service= is not
-    # supported on the admitted older systemd installations; preserve the examples.
-    for name in SOCKETS:
-        directive=('Service='+name.replace('.socket','@.service')).encode()
-        need(result[name].splitlines().count(directive)==1 and b'Accept=yes' in result[name].splitlines(),'accepting_socket_template')
-        result[name]=b'\n'.join(line for line in result[name].splitlines() if line!=directive)+b'\n'
+    socket_policy(result,values)
     result['ubo-m6e-mysql.service']=service('Type=exec\nUser=m6e-mysql\nGroup=m6e-mysql\nExecStart=/usr/sbin/mysqld --defaults-file='+CONFIG+'/mysql.cnf\nRuntimeMaxSec='+str(LIFETIME_SECONDS))
     result['ubo-m6e-apache.service']=service('Type=exec\nExecStart=/usr/sbin/apache2 -f '+CONFIG+'/apache.conf -DFOREGROUND\nRuntimeMaxSec='+str(LIFETIME_SECONDS))
-    # Socket creation must use the helper group as well as UID; it is not root-group access.
-    result['ubo-site-authority.socket']+=b'\nSocketGroup=m6e-helper\n'
     return result
 
 def mysql_config():

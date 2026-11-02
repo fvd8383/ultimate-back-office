@@ -103,17 +103,51 @@ explicit controlled models. PHP builds/validates real M6C bytes in isolated fake
 PDO fixtures. No native SQL, migration, TLS, Apache, systemd or UID enforcement is
 claimed, and the native same-site build sequence remains unexecuted.
 
-Socket compatibility found during source review: the shared examples combine
-`Accept=yes` and explicit `Service=`, which systemd 257 documents as unsupported.
-Only fixture rendering removes that redundant directive and uses the matching
-`@.service` convention. The shared infrastructure examples remain byte-for-byte
-unchanged; their compatibility finding is retained separately for future review.
+Socket compatibility was originally recorded at `166765f`: both shared examples
+combined `Accept=yes` and explicit `Service=`, and the fixture renderer removed
+that line. The canonical correction now removes `Service=` from both examples
+and removes that fixture-only repair. Per-connection activation uses the existing
+matching `ubo-site-authority@.service` / `ubo-site-publisher@.service` names. Service
+stdio, identity, capability/filesystem restrictions and resource limits are unchanged.
+Authority group policy is explicit in the source as `SocketGroup=@PUBLISHER_GROUP@`
+inside `[Socket]`, exactly once; the renderer no longer appends a fixture group.
+With only `SocketUser` specified, systemd derives its default group; the earlier
+omission did not necessarily select root's group. The explicit binding preserves
+helper-only authority 0600 and root/worker-group publisher 0660 access.
+
+The compatibility target is **systemd 257**, whose documented `Service=` setting
+is for `Accept=no`. Do not assume identical behavior on every systemd release;
+verify the actual pinned installed version during later authorized Linux execution.
+The small policy check accepts only these fixed unit names and socket sections,
+one exact listener, `Accept=yes`, exact user/group/modes, directory mode0755 and
+MaxConnections4. It rejects duplicate/conflicting/extra directives, incompatible
+`Service=`, extra sections and continuation syntax in canonical and rendered input.
+It is deliberately not a general unit parser, `systemd-analyze` check or installed
+activation test. Rendered socket bytes must equal ordinary placeholder substitution
+of the canonical source, with no added fixture-only policy.
+
+Focused controls read real repository templates and real private copies for
+negative cases: old activation combination, duplicate access/activation, widened
+permissions, wrong listeners/groups/names, extra sections/listeners and missing
+matching service. They inspect actual renderer output and preserved service stdio/
+hardening. Existing controlled orchestration still reaches only bootstrap READY,
+with worker inactive, host receipt absent and no publisher/authority connections.
 Inspection checks `Accept=yes`, the exact listener, no triggered instances and
 zero accepted/active/refused connections, plus the pinned matching service bytes.
 An idle accepting socket cannot be required to report a triggered template
 ([systemd socket manual](https://www.freedesktop.org/software/systemd/man/257/systemd.socket.html),
 [systemd socket implementation](https://github.com/systemd/systemd/blob/v257/src/core/socket.c)).
 This is source/controlled evidence, not a native configuration reproduction.
+Original failing controls and passing rechecks, exact commands/durations, source
+hashes, syntax/current-scope/document checks and review snapshots are retained
+outside Git in this task's `m6e-socket-template-alignment` evidence directory.
+Eight directly affected controls pass: four template/rendering tests in 1.295
+seconds and four existing bootstrap workflow tests in 10.802 seconds. Two changed
+Python files pass AST syntax checks; the unchanged current scope guard passes 218
+assertions. The original two pre-fix controls recorded 30 failed assertions. No
+unrelated suite, native harness, SQL or service execution was run for this correction.
+The separate review finding about partial pending-ledger writes remains unresolved
+and is not corrected or obscured by these socket-policy tests.
 
 Remaining: measured commissioning and host-receipt issuer, installed protected
 successful workflow, remaining fault scenarios and COMMIT relay, full Apache

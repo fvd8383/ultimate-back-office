@@ -3,6 +3,7 @@ import ast
 import copy
 import json
 import os
+import re
 from pathlib import Path
 import shutil
 import stat
@@ -486,6 +487,93 @@ class Controls(unittest.TestCase):
         with self.assertRaises(ValueError):host.setup('free-command')
         with self.assertRaises(ValueError):host.run('bad',['/bin/sh','-c','true'])
         with self.assertRaises(ValueError):NativeHost.parse_unit(b'Id=x\nId=y\n')
+
+    def socket_template_copy(self):
+        folder=tempfile.TemporaryDirectory(prefix='m6e-socket-policy-');self.addCleanup(folder.cleanup)
+        root=Path(folder.name)
+        for name in (*p.SOCKETS,*[x.replace('.socket','@.service') for x in p.SOCKETS],'ubo-site-worker.service'):
+            path='infrastructure/deployment/'+name+'.example';target=root/path
+            target.parent.mkdir(parents=True,exist_ok=True);target.write_bytes((ROOT/path).read_bytes())
+        path='infrastructure/apache/site-static-staging.conf.example';target=root/path
+        target.parent.mkdir(parents=True,exist_ok=True);target.write_bytes((ROOT/path).read_bytes())
+        return root
+
+    def test_socket_canonical_templates_render_without_policy_repairs(self):
+        root=self.socket_template_copy();raw=p.templates(lambda name:(root/name).read_bytes())
+        values=p.template_values(fixture()['site_key']);units=p.fixture_units(raw,config(),fixture()['site_key'])
+        for name,(path,user,group,mode) in {
+            'ubo-site-authority.socket':('/run/ubo-site-publisher/authority.sock','m6e-helper','m6e-helper','0600'),
+            'ubo-site-publisher.socket':('/run/ubo-site-publisher/publish.sock','root','m6e-worker','0660')}.items():
+            with self.subTest(name=name):
+                self.assertEqual(units[name],p.render(raw[name],values))
+                lines=units[name].decode().splitlines();socket=lines.index('[Socket]')
+                expected=['Accept=yes','ListenStream='+path,'SocketUser='+user,'SocketGroup='+group,
+                          'SocketMode='+mode,'DirectoryMode=0755','MaxConnections=4']
+                for line in expected:self.assertEqual(lines.count(line),1);self.assertGreater(lines.index(line),socket)
+                self.assertFalse(any(line.startswith('Service=') for line in lines));self.assertNotIn('[Install]',lines)
+                self.assertNotRegex(units[name].decode(),r'@[A-Z0-9_]+@')
+                service=name.replace('.socket','@.service')
+                self.assertTrue((root/'infrastructure/deployment'/ (service+'.example')).is_file())
+                self.assertEqual(units[service],p.render(raw[service],values))
+                for directive in ('StandardInput=socket','StandardOutput=socket','StandardError=journal','Type=exec',
+                                  'NoNewPrivileges=yes','CapabilityBoundingSet=','ProtectSystem=strict','ProtectHome=yes',
+                                  'PrivateTmp=yes','PrivateDevices=yes','KillMode=control-group','UMask=0077','TasksMax=4'):
+                    self.assertEqual(units[service].decode().splitlines().count(directive),1)
+                authority=name=='ubo-site-authority.socket'
+                for directive in (('User=m6e-authority','Group=m6e-authority','RuntimeMaxSec=10','TimeoutStopSec=2','MemoryMax=128M',
+                                   'RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6') if authority else
+                                  ('User=m6e-helper','Group=m6e-helper','SupplementaryGroups=m6e-apache','RuntimeMaxSec=300',
+                                   'TimeoutStopSec=5','MemoryMax=256M','RestrictAddressFamilies=AF_UNIX','AmbientCapabilities=',
+                                   'SendSIGKILL=yes','RestrictSUIDSGID=yes','LockPersonality=yes')):
+                    self.assertIn(directive,units[service].decode().splitlines())
+                if not authority:
+                    for directive in ('InaccessiblePaths=','ReadWritePaths='):
+                        self.assertEqual(sum(line.startswith(directive) for line in units[service].decode().splitlines()),1)
+
+    def test_socket_policy_rejects_private_template_mutations_without_repair(self):
+        for name in p.SOCKETS:
+            original=(ROOT/'infrastructure/deployment'/(name+'.example')).read_text()
+            mutations={
+                'old-service':original+'\nService='+name.replace('.socket','@.service')+'\n',
+                'wrong-accept':original.replace('Accept=yes','Accept=no'),
+                'duplicate-accept':original+'\nAccept=yes\n',
+                'duplicate-user':original+'\nSocketUser=root\n',
+                'duplicate-group':original+'\nSocketGroup=root\n',
+                'wide-mode':re.sub(r'SocketMode=0[0-7]+','SocketMode=0666',original),
+                'wrong-listener':re.sub(r'ListenStream=.*','ListenStream=/run/foreign.sock',original),
+                'wrong-owner':re.sub(r'SocketUser=.*','SocketUser=nobody',original),
+                'wrong-group':re.sub(r'SocketGroup=.*','SocketGroup=nobody',original),
+                'connection-limit':original.replace('MaxConnections=4','MaxConnections=400'),
+                'wide-directory':original.replace('DirectoryMode=0755','DirectoryMode=0777'),
+                'wrong-section':original.replace('[Socket]','[Install]'),
+                'extra-section':original+'\n[Socket]\nSocketMode=0666\n',
+                'extra-listener':original+'\nListenDatagram=127.0.0.1:1234\n',
+            }
+            for label,changed in mutations.items():
+                with self.subTest(name=name,mutation=label):
+                    root=self.socket_template_copy();path=root/'infrastructure/deployment'/(name+'.example')
+                    path.write_text(changed);before=path.read_bytes()
+                    with self.assertRaises(ValueError):p.templates(lambda n:(root/n).read_bytes())
+                    # Direct rendering must reject the same private invalid input, never silently repair it.
+                    raw=p.templates(lambda n:(ROOT/n).read_bytes());raw[name]=path.read_text()
+                    with self.assertRaises(ValueError):p.fixture_units(raw,config(),fixture()['site_key'])
+                    self.assertEqual(path.read_bytes(),before)
+
+    def test_socket_policy_rejects_changed_names_and_rendered_access(self):
+        root=self.socket_template_copy();raw=p.templates(lambda name:(root/name).read_bytes())
+        for name in p.SOCKETS:
+            for wrong in (name,name.replace('.socket','@.service')):
+                with self.subTest(name=wrong):
+                    changed=dict(raw);changed['renamed-'+wrong]=changed.pop(wrong)
+                    with self.assertRaises(ValueError):p.fixture_units(changed,config(),fixture()['site_key'])
+            values=p.template_values(fixture()['site_key']);units=p.fixture_units(raw,config(),fixture()['site_key'])
+            rendered={key:units[key] for key in raw if key!='apache'}
+            path=root/'rendered.socket';path.write_bytes(rendered[name]+b'\nSocketGroup=root\n')
+            rendered[name]=path.read_bytes()
+            with self.assertRaises(ValueError):p.socket_policy(rendered,values)
+        service=root/'infrastructure/deployment/ubo-site-authority@.service.example'
+        service.rename(service.with_name('wrong@.service.example'))
+        with self.assertRaises(FileNotFoundError):p.templates(lambda name:(root/name).read_bytes())
 
     def test_idle_accepting_sockets_have_no_triggered_instances_or_connections(self):
         host,ledger,plan,_=self.ready();unit=host.unit;name='ubo-site-publisher.socket'

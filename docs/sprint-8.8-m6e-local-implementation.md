@@ -15,6 +15,45 @@ second parent; native-tested `7cdbbeef639…` is an ancestor of that reviewed he
 Its native PASS belongs only to `7cdbbeef`, never this implementation or the merge.
 Historical failures and pre-merge reports are not rewritten or rerun.
 
+## Canonical socket policy following 166765f
+
+The source compatibility issue recorded at `166765f308d5d0d09d4b406939f4711c88a50515`
+is now corrected in both operator-facing socket examples. `Accept=yes` remains;
+explicit `Service=` is removed. The existing matching `ubo-site-authority@.service`
+and `ubo-site-publisher@.service` names select per-connection services, whose socket
+stdin/stdout routing, identities and hardening are unchanged. This follows the
+[systemd 257 contract](https://www.freedesktop.org/software/systemd/man/257/systemd.socket.html);
+compatibility with the actual pinned installed version remains a later native check.
+
+The authority example now explicitly declares `SocketGroup=@PUBLISHER_GROUP@` once
+inside `[Socket]`. Omitting a group would derive the `SocketUser` account's primary
+group, not necessarily root's group. Explicit canonical binding keeps the existing
+fixture helper group without a fixture-only appended directive. Authority 0600,
+publisher root/worker-group 0660, fixed paths, directory policy and connection
+limits are preserved; neither example adds an installation/enablement section.
+
+`fixture_units()` now returns the canonical socket bytes with placeholder
+substitution only. It no longer expects/deletes an incompatible `Service=` line or
+appends `SocketGroup`. A small fixed-template policy checks the exact unit inventory,
+matching service names, expected sections/listener/activation/access/limits and
+rejects duplicate, extra or conflicting directives on canonical and rendered input.
+It rejects continuation syntax and is not a general systemd parser or unit-manager
+validation. Private-copy mutation controls and the existing limited bootstrap
+workflow exercise the real renderer; no socket activation or native configtest ran.
+
+This changes **two installation configuration examples**, two test/support Python
+files and these two M6E records. Production PHP/Python executables, both service
+examples, bootstrap host/inspection, watchdog, ownership ledger, teardown and
+capture-before-cleanup behavior are unchanged. Current scope needs no additions.
+The review of `166765f` published an unrelated P2 pending-ledger-write finding
+[4438049274](https://github.com/fvd8383/ultimate-back-office/pull/131#discussion_r4438049274).
+It remains unresolved outside this socket correction; the prior head is not claimed
+clean. Bootstrap remains **IMPLEMENTED LOCALLY / NATIVE EXECUTION PENDING** and
+overall M6E remains **PARTIALLY IMPLEMENTED / REVIEW REQUIRED**. Commissioning,
+receipt issuance, protected successful installed workflow, remaining scenarios/
+COMMIT relay, full restore/retention/audit and Linux filesystem/race/identity
+acceptance remain outstanding. M6C/M6D stay formally closed.
+
 ## Fixture bootstrap and supervision following 935618a
 
 **FIXTURE BOOTSTRAP/SUPERVISION — IMPLEMENTED LOCALLY, NATIVE EXECUTION PENDING.**
