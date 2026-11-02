@@ -4,7 +4,7 @@ import os
 from pathlib import Path, PurePosixPath
 import stat
 
-from WebsitePlatformM6EAcceptance import canonical, decode, digest, need
+from WebsitePlatformM6EAcceptance import canonical, decode, digest, need, safe_error
 from WebsitePlatformM6EProcess import publish_bytes
 from WebsitePlatformM6EBootstrapPlan import EVIDENCE, owned_path, base_identity, PROFILE
 
@@ -25,9 +25,16 @@ class Files:
         finally:os.close(fd)
     @staticmethod
     def signature(s):return [s.st_dev,s.st_ino,s.st_uid,s.st_gid,s.st_mode,s.st_size,s.st_mtime_ns,s.st_ctime_ns]
-    def identity(self,path):
+    def identity(self,path,fd=None):
         s=self.path(path).lstat()
         need(not stat.S_ISLNK(s.st_mode),'base_symlink')
+        if fd is not None:
+            opened=os.fstat(fd)
+            # Ownership fields, not mutable/cached timestamps, bind the name to the fd.
+            fields=('st_dev','st_ino','st_uid','st_gid','st_mode')
+            need(all(getattr(opened,k)==getattr(s,k) for k in fields) and stat.S_ISREG(opened.st_mode)
+                 and opened.st_nlink==s.st_nlink==1,'created_descriptor_identity')
+            s=opened
         return dict(dev=s.st_dev,ino=s.st_ino,uid=s.st_uid,gid=s.st_gid,kind=stat.S_IFMT(s.st_mode),mode=stat.S_IMODE(s.st_mode))
     def metadata(self,path,uid,gid,mode):
         os.chown(self.path(path),uid,gid,follow_symlinks=False);os.chmod(self.path(path),mode,follow_symlinks=False)
@@ -39,23 +46,71 @@ class Files:
         fd=os.open(self.path(path),os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW)
         try:os.fsync(fd)
         finally:os.close(fd)
-    def create(self,path,raw,identified):
+    def create(self,path,raw,identified,outcome=None):
+        outcome=outcome if outcome is not None else dict(secondary=[])
+        outcome['phase']='create';primary=None
         fd=os.open(self.path(path),os.O_WRONLY|os.O_CREAT|os.O_EXCL|getattr(os,'O_NOFOLLOW',0)|getattr(os,'O_BINARY',0),0o600)
         try:
-            identified()  # Durable identity before content writes can partially fail.
+            outcome['phase']='identify'
+            identified(fd)  # Caller decides persistence; replace() records only in-process ownership.
+            outcome['phase']='write'
             view=memoryview(raw)
             while view:
                 n=os.write(fd,view[:65536]);need(n>0,'base_write');view=view[n:]
-            os.fsync(fd)
-        finally:os.close(fd)
-    def replace(self,path,raw,expected):
-        pending=path+'.pending';created=None
-        try:
-            self.create(pending,raw,lambda:None);created=self.identity(pending)
-            need(self.identity(path)==expected,'ledger_replaced')
-            os.replace(self.path(pending),self.path(path));self.sync_dir(str(PurePosixPath(path).parent))
+            outcome['phase']='file-sync';os.fsync(fd)
+        except BaseException as error:primary=error;raise
         finally:
-            if created is not None and self.exists(pending) and self.identity(pending)==created:self.unlink(pending)
+            try:
+                if primary is None:outcome['phase']='close'
+                os.close(fd)
+            except BaseException as error:
+                if primary is None:raise
+                outcome['secondary'].append(dict(stage='close',**safe_error(error)))
+
+    def replace(self,path,raw,expected,outcome=None):
+        outcome=outcome if outcome is not None else {}
+        outcome.update(phase='parent',installed=None,secondary=[])
+        pending=path+'.pending';created=None;primary=None;attempted=False
+        parent=str(PurePosixPath(path).parent);parent_identity=self.identity(parent)
+        need(parent_identity['kind']==stat.S_IFDIR and parent_identity['uid']==0 and parent_identity['mode']==0o700,'ledger_parent')
+        def checked(name,identity,content=None):
+            need(self.identity(parent)==parent_identity,'ledger_parent_replaced')
+            actual=self.identity(name);s=self.path(name).lstat()
+            need(actual==identity and actual['kind']==stat.S_IFREG and actual['uid']==0 and actual['mode']==0o600
+                 and s.st_nlink==1,'ledger_object_replaced')
+            if content is not None:need(self.read(name)==content,'ledger_content_changed')
+        def identify(fd):
+            nonlocal created
+            created=self.identity(pending,fd)  # No Ledger.save(): the pending ledger cannot journal itself.
+            checked(pending,created)
+        try:
+            checked(path,expected)
+            self.create(pending,raw,identify,outcome)
+            outcome['phase']='verify-pending';checked(pending,created,raw);checked(path,expected)
+            outcome['phase']='replace';attempted=True
+            os.replace(self.path(pending),self.path(path))
+            outcome['phase']='directory-sync';self.sync_dir(parent)
+            outcome['phase']='acknowledgement';checked(path,created,raw)
+            outcome['installed']=created;return created
+        except BaseException as error:
+            primary=error
+            if attempted:
+                try:
+                    # A raised rename/dir-sync/ack does not prove the old inode remains.
+                    # Reconcile only this invocation's descriptor-bound object and full bytes.
+                    if self.identity(path)==created:
+                        checked(path,created,raw);outcome['installed']=created
+                    else:checked(path,expected)
+                except BaseException as secondary:
+                    outcome['secondary'].append(dict(stage='reconcile',**safe_error(secondary)))
+            raise
+        finally:
+            if created is not None:
+                try:
+                    if self.exists(pending):checked(pending,created);self.unlink(pending)
+                except BaseException as error:
+                    if primary is None:raise
+                    outcome['secondary'].append(dict(stage='pending-cleanup',**safe_error(error)))
     def inventory(self,path):
         root=self.path(path);items={};base=self.identity(path)
         for directory,dirs,files in os.walk(root,followlinks=False):
@@ -85,7 +140,7 @@ class Ledger:
         need(not files.exists(ledger.root),'existing_fixture_evidence')
         files.mkdir(ledger.root,0o700)
         ledger.state['evidence_identity']=files.identity(ledger.root)
-        files.create(ledger.path,canonical(ledger.state),lambda:None)
+        files.create(ledger.path,canonical(ledger.state),lambda fd:files.identity(ledger.path,fd))
         ledger.disk=files.identity(ledger.path);files.sync_dir(ledger.root)
         return ledger
 
@@ -109,7 +164,18 @@ class Ledger:
     def save(self):
         self.check_evidence()
         self.state['sequence']+=1;raw=canonical(self.state);need(len(raw)<=4194304,'ledger_bound')
-        self.fs.replace(self.path,raw,self.disk);self.disk=self.fs.identity(self.path)
+        outcome={}
+        try:self.disk=self.fs.replace(self.path,raw,self.disk,outcome)
+        except BaseException as error:
+            if outcome.get('installed') is not None:self.disk=outcome['installed']
+            # In-memory diagnostics only: never recursively save a failed ledger save.
+            self.record_failure(error,'capture')
+            self.state['observations']['ledger_save_failure']=dict(stage=outcome.get('phase','parent'),
+                installed=outcome.get('installed') is not None,durability='UNCONFIRMED')
+            for secondary in outcome.get('secondary',[]):
+                if len(self.state['secondary'])<16:
+                    self.state['secondary'].append(dict(kind='cleanup',phase=self.state['phase'],**secondary))
+            raise
 
     def phase(self,name):self.state['phase']=name;self.save()
 
@@ -118,8 +184,8 @@ class Ledger:
         row=dict(id=len(self.state['entries']),path=path,kind=kind,state='INTENT',identity=None,sha256=None,children={},retired={},sealed=False,producer=producer)
         self.state['entries'].append(row);self.save();return row
 
-    def identify(self,row):
-        row.update(identity=self.fs.identity(row['path']),state='CREATED');self.save()
+    def identify(self,row,fd=None):
+        row.update(identity=self.fs.identity(row['path'],fd),state='CREATED');self.save()
 
     def directory(self,path,uid=0,gid=0,mode=0o755,producer=None):
         row=self.intent(path,'tree' if producer else 'directory',producer)
@@ -128,7 +194,7 @@ class Ledger:
 
     def write(self,path,raw,uid=0,gid=0,mode=0o644):
         row=self.intent(path,'file')
-        self.fs.create(path,raw,lambda:self.identify(row))
+        self.fs.create(path,raw,lambda fd:self.identify(row,fd))
         self.fs.metadata(path,uid,gid,mode);self.identify(row)
         need(self.fs.read(path)==raw,'base_write_readback');row['sha256']=digest(raw);self.save();return row
 
@@ -182,10 +248,12 @@ class Ledger:
     def publish(self,stem,value):
         self.check_evidence();return publish_bytes(self.fs.path(self.root),stem,canonical(value))
 
-    def failure(self,error,kind):
-        from WebsitePlatformM6EAcceptance import safe_error
+    def record_failure(self,error,kind):
         value=dict(kind=kind,phase=self.state['phase'],**safe_error(error))
         if self.state['first_failure'] is None:self.state['first_failure']=value
         elif len(self.state['secondary'])<16:self.state['secondary'].append(value)
+
+    def failure(self,error,kind):
+        self.record_failure(error,kind)
         try:self.save()
         except BaseException:pass  # In-memory primary still survives a disk failure.

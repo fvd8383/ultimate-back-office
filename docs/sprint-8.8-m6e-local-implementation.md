@@ -15,6 +15,38 @@ second parent; native-tested `7cdbbeef639…` is an ancestor of that reviewed he
 Its native PASS belongs only to `7cdbbeef`, never this implementation or the merge.
 Historical failures and pre-merge reports are not rewritten or rerun.
 
+## Pending-ledger recovery following 82aef44
+
+The outstanding [P2 finding 4438049274](https://github.com/fvd8383/ultimate-back-office/pull/131#discussion_r4438049274)
+was reproduced against `82aef4403cf17faa5ff71ec317f568684ef0554a`: both an empty
+new pending file and a real 13-byte prefix survived a failed save, blocked later
+saves and prevented modeled teardown from reaching any service-stop executor.
+A separate directory-sync fault installed complete new bytes but left the cached
+ledger identity stale. Before-fix bytes, hashes and modeled commands are retained
+outside Git with the corrected results in `m6e-ledger-recovery`.
+
+The creation callback now captures descriptor/name identity before writing, without
+recursively journaling the pending ledger. Replacement checks the protected parent,
+exact object, regular type, single link, owner and mode. Pre-replace failure keeps
+the old ledger and removes only this invocation's verified pending object. Original
+write/sync errors survive close/cleanup errors; bounded secondary diagnostics use
+existing sanitized classifications. A post-replace error still fails and records
+its phase and unconfirmed durability. Cached identity changes only after proving
+this invocation's exact created inode and complete expected bytes are installed.
+The version-1 schema remains; `observations.ledger_save_failure` adds only fixed
+stage/installed/durability fields. Failure recording stays in memory until a later
+deliberate save; there is no automatic retry or crash-durability claim.
+
+Thirteen new recovery controls and twelve affected bootstrap lifecycle/capture/
+teardown controls pass. Cleared transient faults allow save, bound reload and the
+real modeled journaled teardown; persistent faults leave cleanup LIMITED and the
+watchdog ARMED. Foreign resources/replacements survive and repeated teardown does
+not repeat destructive effects. Native UID enforcement, directory durability,
+service cleanup, SIGKILL and power-loss recovery remain unexecuted. Production
+executables, corrected socket templates/policy, bootstrap orchestration and
+watchdog limits are unchanged. Commissioning/receipts, installed workflows, fault
+scenarios/COMMIT relay, full audit/predicates and native acceptance remain pending.
+
 ## Canonical socket policy following 166765f
 
 The source compatibility issue recorded at `166765f308d5d0d09d4b406939f4711c88a50515`
@@ -47,8 +79,9 @@ examples, bootstrap host/inspection, watchdog, ownership ledger, teardown and
 capture-before-cleanup behavior are unchanged. Current scope needs no additions.
 The review of `166765f` published an unrelated P2 pending-ledger-write finding
 [4438049274](https://github.com/fvd8383/ultimate-back-office/pull/131#discussion_r4438049274).
-It remains unresolved outside this socket correction; the prior head is not claimed
-clean. Bootstrap remains **IMPLEMENTED LOCALLY / NATIVE EXECUTION PENDING** and
+It was unresolved at that socket correction; the ledger section above supersedes
+that finding's implementation status. The prior head is not claimed clean.
+Bootstrap remains **IMPLEMENTED LOCALLY / NATIVE EXECUTION PENDING** and
 overall M6E remains **PARTIALLY IMPLEMENTED / REVIEW REQUIRED**. Commissioning,
 receipt issuance, protected successful installed workflow, remaining scenarios/
 COMMIT relay, full restore/retention/audit and Linux filesystem/race/identity

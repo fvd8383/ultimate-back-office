@@ -30,6 +30,7 @@ $allowed=[
     'tests/support/WebsitePlatformM6ENativeWorker.php','tests/support/WebsitePlatformM6EPreparation.py',
     'tests/support/WebsitePlatformM6EProcess.py','tests/support/WebsitePlatformM6EProvision.py',
     'tests/WebsitePlatformM6EBootstrapControlTest.py','tests/WebsitePlatformM6EBootstrapFixtureTest.php',
+    'tests/WebsitePlatformM6ELedgerRecoveryTest.py',
     'tests/support/WebsitePlatformM6EBootstrap.py','tests/support/WebsitePlatformM6EBootstrapHost.py',
     'tests/support/WebsitePlatformM6EBootstrapLedger.py','tests/support/WebsitePlatformM6EBootstrapPlan.py',
     'docs/sprint-8.8-m6e-local-implementation.md','docs/sprint-8.8-m6e-isolated-validation.md',

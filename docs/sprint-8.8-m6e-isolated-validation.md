@@ -5,6 +5,42 @@ installation, server preparation, Linux/Apache execution, SQL, service operation
 working-staging activation or deployment. This document is the bounded later path,
 not a claim that a host contract exists. M6D’s closed native gate is not reopened.
 
+## Pending-ledger correction controls following 82aef44
+
+Before-fix reproduction retained real 0-byte and 13-byte pending files, later
+`FileExistsError`, and zero modeled stop calls through actual bootstrap teardown.
+A post-rename directory-sync error separately reproduced a stale cached inode.
+After correction, each transient fault leaves no owned pending file; deliberate
+save and binding-checked reload succeed. Empty/prefix cases both reach five real
+controlled executor stop calls (four workloads, then the watchdog timer), release
+all recorded resources/accounts and retain failure/evidence records. Persistent
+save failure reaches no stop executor, reports LIMITED and leaves the guard ARMED.
+
+`python -I -B tests/WebsitePlatformM6ELedgerRecoveryTest.py`: **13 tests PASS**
+(22.376 seconds). Cases cover successful replace/reload, empty versus actual prefix,
+zero progress, file sync, close and cleanup failures, preexisting/foreign pending
+objects, descriptor/name disagreement, unsafe type/mode/hardlinks, pre/post-rename
+faults, exact-object/full-content reconciliation, actual teardown/repeat cleanup,
+persistent failure and diagnostic canaries. Twelve selected existing bootstrap
+controls pass in 60.368 seconds, including capture-before-cleanup, original failure,
+replacement safety, evidence roots, account cleanup and watchdog/public teardown.
+Three changed Python files pass AST syntax checks; the scope PHP file passes lint.
+Only the exact new test path is added to the current M6E scope policy. Working,
+staged and committed scope/diff results and exact commands are in external
+`m6e-ledger-recovery/SUMMARY.txt`, alongside original failures and corrected bytes.
+
+These use real private bytes/inodes. Unix metadata, directory synchronization and
+services are modeled on Windows; a real alternate descriptor models disagreement
+because Windows forbids renaming the open writer. Earlier timestamp-comparison and
+platform-specific exception failures are retained separately. In-process ownership
+does not prove persisted crash recovery. Post-replace failure records unconfirmed
+durability even when exact installed content permits cached-identity reconciliation.
+No Linux service cleanup, SIGKILL or power-loss recovery is claimed. Integration
+capture dependencies are unchanged; no unrelated campaign/native entry point ran.
+Overall M6E remains **PARTIALLY IMPLEMENTED / REVIEW REQUIRED**. Commissioning,
+receipt issuance, installed successful workflows, remaining scenarios/COMMIT relay,
+full audit/predicates and native acceptance remain outstanding; M6C/M6D stay closed.
+
 ## Current fixture bootstrap command and handoff
 
 **FIXTURE BOOTSTRAP/SUPERVISION — IMPLEMENTED LOCALLY, NATIVE EXECUTION PENDING.**
@@ -146,8 +182,8 @@ seconds and four existing bootstrap workflow tests in 10.802 seconds. Two change
 Python files pass AST syntax checks; the unchanged current scope guard passes 218
 assertions. The original two pre-fix controls recorded 30 failed assertions. No
 unrelated suite, native harness, SQL or service execution was run for this correction.
-The separate review finding about partial pending-ledger writes remains unresolved
-and is not corrected or obscured by these socket-policy tests.
+The separate pending-ledger finding was unresolved at that socket correction;
+the ledger recovery controls above now address it separately.
 
 Remaining: measured commissioning and host-receipt issuer, installed protected
 successful workflow, remaining fault scenarios and COMMIT relay, full Apache

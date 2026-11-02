@@ -48,22 +48,22 @@ class PrivateFiles(Files):
     def __init__(self,root):self.root=Path(root);self.meta={};self.fail_write=None;self.audit=[]
     def path(self,path):
         p.safe_path(str(path));return self.root/str(path).lstrip('/')
-    def identity(self,path):
-        value=super().identity(path);key=(value['dev'],value['ino'])
+    def identity(self,path,fd=None):
+        value=super().identity(path,fd);key=(value['dev'],value['ino'])
         value.update(self.meta.get(key,dict(uid=0,gid=0,mode=0o600 if value['kind']==stat.S_IFREG else 0o755)))
         return value
     def metadata(self,path,uid,gid,mode):
         s=self.path(path).lstat();self.meta[s.st_dev,s.st_ino]=dict(uid=uid,gid=gid,mode=mode)
     def mkdir(self,path,mode):
         super().mkdir(path,mode);self.metadata(path,0,0,mode)
-    def create(self,path,raw,identified):
+    def create(self,path,raw,identified,outcome=None):
         if self.fail_write==path:
             self.fail_write=None
-            def interrupted():identified();raise OSError('SECRET_PARTIAL_WRITE_CANARY')
-            return super().create(path,raw[:3],interrupted)
-        return super().create(path,raw,identified)
+            def interrupted(fd):identified(fd);raise OSError('SECRET_PARTIAL_WRITE_CANARY')
+            return super().create(path,raw[:3],interrupted,outcome)
+        return super().create(path,raw,identified,outcome)
     def socket(self,path,uid,gid,mode):
-        self.create(path,b'',lambda:None);self.metadata(path,uid,gid,mode)
+        self.create(path,b'',lambda fd:None);self.metadata(path,uid,gid,mode)
         s=self.path(path).stat();self.meta[s.st_dev,s.st_ino]['kind']=stat.S_IFSOCK
     def unlink(self,path):self.audit.append(('unlink',path));super().unlink(path)
     def rmdir(self,path):self.audit.append(('rmdir',path));super().rmdir(path)
@@ -114,7 +114,7 @@ class ModelHost(NativeHost):
             rows += [dict(protocol='tcp',ip=ip,port=443,uid=0,inode=2+i) for i,ip in enumerate(('127.0.0.2','127.0.0.3'))]
         return rows
     def put(self,path,raw=b'modeled private bytes',uid=0,gid=0,mode=0o600):
-        self.fs.path(path).parent.mkdir(parents=True,exist_ok=True);self.fs.create(path,raw,lambda:None);self.fs.metadata(path,uid,gid,mode)
+        self.fs.path(path).parent.mkdir(parents=True,exist_ok=True);self.fs.create(path,raw,lambda fd:None);self.fs.metadata(path,uid,gid,mode)
     def controlled_execute(self,args,seconds,stdin=b'',identity=None,limit=None,error_limit=None):
         self.calls.append((copy.deepcopy(args),identity));out=b''
         command=args[0]
