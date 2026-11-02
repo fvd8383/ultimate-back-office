@@ -17,6 +17,7 @@ from WebsitePlatformM6EProvision import Provisioner, FixedStorage, COMMANDS
 import WebsitePlatformM6EBootstrapPlan as p
 import WebsitePlatformM6ECommissionEvidence as evidence
 from WebsitePlatformM6ECommissionReceipt import protected_file
+import WebsitePlatformM6ECommissionServing as serving
 
 def scratch_inventory(host,ledger,resource):
     row=ledger.state['entries'][resource['entry']];ledger.verify(row)
@@ -173,6 +174,10 @@ class NativeProbes:
             need(not r['stderr'],'commission_child_diagnostic')
             value=decode(r['stdout']);need(type(value) is dict,'commission_child_json');return value
         value=self.step('child-'+role+'-parse',parse)
+        if mode=='--serving-source' and getattr(self,'gate',None) is not None:
+            # Retain obtained source identity even if the subsequent PID/UID
+            # predicate fails. This is diagnostics, not source authorization.
+            self.remember(self.step('child-source-observation',lambda:serving.source_measurements(value.get('sources'))))
         if getattr(self,'gate',None) is not None and 'data' in value:
             if mode=='--access':self.access_data(role,value['data'])
             elif mode in ('--filesystem','--runtime'):self.remember(value['data'])
@@ -251,6 +256,17 @@ class NativeProbes:
         self.step('ownership-public',lambda:need(measured.get('public_sha256')==digest(canary),'public_read_bytes'))
         return measured
 
+    def serving_sources(self):
+        value=self.child('worker','--serving-source',True)
+        observed=value.get('sources')
+        self.remember(self.step('serving-source-observation',lambda:serving.source_measurements(observed)))
+        manifests,data=self.step('serving-source-binding',lambda:serving.sources(self.fixture,observed))
+        self.remember(data)
+        if hasattr(self,'serving_source_sha256'):
+            self.step('serving-source-retained',lambda:need(data['source_sha256']==self.serving_source_sha256,'serving_source_changed'))
+        self.serving_source_sha256=data['source_sha256']
+        return data
+
     def probe_apache(self):
         # Unavailable responses remain prerequisites, never static-serving PASS.
         b=self.worker['bindings'][0]
@@ -267,7 +283,7 @@ class NativeProbes:
             measured[field]=self.step('apache-'+mode+'-'+variant,request)['status'];self.remember({field:measured[field]})
         self.step('apache-boundary',lambda:need(measured['active_status']==measured['candidate_status']==503
             and measured['unauthorized_status'] in (0,400,401,403),'bootstrap_http_boundary'))
-        return measured
+        measured.update(self.serving_sources());return measured
 
     def probe_assets(self):
         measured={}
@@ -276,7 +292,8 @@ class NativeProbes:
                            ('foreign_site_id',lambda:self.fixture['foreign_asset']['site_id'])):
             measured[field]=read();self.remember({field:measured[field]})
         measured['served_assets']=len(self.step('assets-inventory',lambda:self.host.fs.inventory(self.helper['served_root']+'/assets')))
-        self.remember({'served_assets':measured['served_assets']});return measured
+        self.remember({'served_assets':measured['served_assets']})
+        measured.update(self.serving_sources());return measured
 
     def probe_runtime(self):
         value=self.child('authority','--runtime',True)['data']

@@ -5,6 +5,64 @@ installation, server preparation, Linux/Apache execution, SQL, service operation
 working-staging activation or deployment. This document is the bounded later path,
 not a claim that a host contract exists. M6D’s closed native gate is not reopened.
 
+## Shared Apache/assets source and serving controls — native incomplete
+
+This source slice starts at ce2d15466bff1b0243e5f595762b721561980b9c. No native
+entry was executed. The two requested producers remain incomplete: new worker-source
+inspection is wired into both gates, but the shared serving checks still require
+the native fixture/process/socket/alias ownership and restoration adapter described
+in the [implementation inventory](sprint-8.8-m6e-local-implementation.md#shared-apacheassets-observations-following-ce2d154--incomplete-producers).
+All six prior MISSING entries remain and block host receipt issuance.
+
+[Serving controls](../tests/WebsitePlatformM6EServingControlTest.py) use two actual
+M6C builds in one local fixture and the real PHP exporter/UBT1 sender, Python receiver,
+original package validator, Publisher.stage and immutable pool. A replay transfers
+no files and preserves inodes. The exact original manifests bind distinct producer
+identities, shared image/PDF and changed CSS. GET/HEAD observations read actual stored
+bytes through deterministic HTTP adapters; original and changed assets remain readable
+after a modeled switch to B, with A retained on candidate. No native Apache claim is made.
+
+Negative controls cover original producer/source/binding changes, foreign identity,
+wrong active/candidate content, MIME/length/digest, redirects, cache/TLS/security/CSP,
+methods/private paths, immutable collisions, corrupt retained bytes, unexpected files,
+hardlinks, traversal and incomplete/interrupted frames. Failed HTTP summaries precede
+predicates/restoration; failed worker identity hashes survive native-probe validation.
+The original collector tests cover first-error preservation, checkpoint-before-cleanup,
+cleanup failure, modeled-evidence denial and absent operational receipt. Separate
+transfer regressions retain actual exporter mutation, old-producer, authority, deadline,
+storage-failure and lost-ack controls. No fake SQL deployment success is needed by the
+new two-release component path. Native canary handlers and uncertain-effect recovery
+are not credited by modeled denial of missing paths.
+
+Initial development observations are retained in the external summary: the first
+serving setup failed a strict PHP array comparison because original metadata key
+order differed. Comparison now canonicalizes mappings without weakening scalar
+types or reconstructing original manifest bytes. A sandbox commissioning run hit
+Windows hardlink permission denials; the authorized private-file controls were then
+run outside that sandbox. These failed attempts are not described as acceptance.
+
+Final focused local checks use installed Python 3.14.7 with -I -B and PHP 8.4.24:
+
+| Program | Actual result |
+| --- | --- |
+| WebsitePlatformM6EServingControlTest.py | 12 tests PASS / 9.998s |
+| WebsitePlatformM6ECommissionControlTest.py | 46 tests PASS / 63.979s |
+| WebsitePlatformM6ETransferTest.py | 20 tests PASS / 20.925s |
+| WebsitePlatformM6EIntegrationControlTest.py | 37 tests PASS / 27.904s |
+| WebsitePlatformM6EBootstrapFixtureTest.php | 35 assertions PASS |
+| WebsitePlatformM6EHostTest.php | 33 assertions PASS |
+
+Six changed PHP files lint; five changed Python files pass AST parsing with warnings
+as errors, without native execution or bytecode. The working M6E scope guard passes
+246 assertions. Both changed documents have paired fences and ten valid relative
+file links; this does not claim an automated anchor check. Exact staged/committed
+scope counts, tested blob inventory, diff/template integrity and new-head review
+handoff are in m6e-apache-assets/SUMMARY.txt outside Git.
+No server, SSH, real SQL, Apache/systemd/MySQL installation/start/reload, native
+bootstrap/commissioning, operational receipt, staging publication or deployment was
+performed. M6C/M6D remain formally closed. Full installed workflow, Linux acceptance
+and M6G browser behaviors remain pending.
+
 ## Failed-measurement and deterministic-admission correction
 
 Review of bcf64ec reported [lost failed measurements (4446480421)](https://github.com/fvd8383/ultimate-back-office/pull/131#discussion_r4446480421) and

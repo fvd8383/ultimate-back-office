@@ -37,6 +37,10 @@ final class M6ETransferStream {
 stream_wrapper_register('m6etransfer',M6ETransferStream::class);
 $mode=$argv[1]??'valid';$exit=0;
 try {
+    if($mode==='two-release') {
+        require_once __DIR__.'/WebsitePlatformM6ECommissionFixture.php';
+        m6eLocalServingTransfer();WebsitePlatformM6CFixture::cleanup();exit(0);
+    }
     $f=new WebsitePlatformM6CFixture();
     if($mode==='pdf'){
         require_once __DIR__.'/WebsitePlatformM6CSupplementPdf.php';

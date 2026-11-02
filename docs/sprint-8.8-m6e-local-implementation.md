@@ -15,6 +15,72 @@ second parent; native-tested `7cdbbeef639…` is an ancestor of that reviewed he
 Its native PASS belongs only to `7cdbbeef`, never this implementation or the merge.
 Historical failures and pre-merge reports are not rewritten or rerun.
 
+## Shared Apache/assets observations following ce2d154 — incomplete producers
+
+This slice adds executable source inspection and shared serving predicates. It does
+**not complete either native producer**. Both MISSING entries remain. No fixture
+aliases, transfer sockets, services or operational receipts are created by the new
+native source-inspection path. The exact ce2d154 review completed without findings;
+that disposition does not apply to this subsequent source change.
+
+[CommissionServing.php](../tests/support/WebsitePlatformM6ECommissionServing.php)
+uses the original worker identity, the bootstrap's existing two-release handoff,
+original build/producer rows, LocalSiteArtifactStore and SitePublisherArtifactExport.
+It verifies the original 0700/0600 source, reads original manifest bytes through the
+exporter's checked descriptor, and repeats exporter validation. Native entry remains
+inside the fixed admitted VM/expiry/UID guard; it checks the target is unpublished
+before and after read-only observation. It neither starts a deployment session nor
+renews a deployment lease. The loaded-file inventory includes its dependencies.
+
+Both existing probes now consume this same source observation. Apache retains its
+module and initial-503/unauthorized baseline. Assets retains its empty served-pool
+check. Each independently re-observes the worker sources; their bundle digest must
+match across gates. The existing profile/FIELDS add source release/file/asset/byte
+counts and hashes binding the original manifests, source bundle and shared/changed/
+PDF/foreign identity sets. Measurements are retained before binding predicates;
+failed observations remain diagnostics, never passed evidence. No receipt schema,
+normal host admission, watchdog, ledger or production helper behavior changes.
+
+[CommissionServing.py](../tests/support/WebsitePlatformM6ECommissionServing.py)
+provides shared exact-file/marker, GET/HEAD, MIME/length/digest, security/CSP/cache,
+method, private/dot/executable/traversal, authentication/Host/SNI/trust and binding
+checks. Its default request function is the existing private HTTPS client. Responses
+are summarized before predicates, including header digest and fixed policy matches;
+no response body or arbitrary header text enters diagnostics. Independent retained
+checks invoke the actual helper's verify_served and descriptor-based asset reads.
+These serving methods are **not yet called by native probes against a staged fixture**.
+They do not establish executable-handler denial merely from absent canary paths.
+
+Local controls share one M6C fixture with two actual same-site builds, distinct
+release/job/producer identities, unchanged approved PNG/PDF and changed CSS. The
+existing bootstrap fixture test now uses that factory. No replacement manifest is
+generated. The actual PHP exporter/UBT1 sender feeds the actual Python receiver and
+Publisher.stage, including retained replay with no file transfer or inode changes.
+Authority is an explicit local component DTO, not live database authority. The new
+sender path creates no deployment rows, target success or approval-consumption event.
+Controlled HTTP reads the real immutable files; transport, Unix metadata and pointers
+remain modeled. Foreign identity shares legitimate same-site bytes: a foreign-qualified
+route is denied, while the legitimate bare same-site content hash remains accessible.
+
+**Remaining code gap:** connect these checks to one ledger-owned native serving
+fixture with separately controlled worker/helper/authority processes and private
+sockets, actual stage A/replay/B, durable intent before transient helper paths and
+alias effects, and strict reconciliation of uncertain completion. It must capture
+before restoration, prove original current/candidate absence and unchanged original
+journal/fence, and retain unknown objects as LIMITED. The local model restores alias
+absence, but its component scratch journal changes during real stage and is not
+credited as native pristine-journal evidence. Existing collector primary-error and
+cleanup-failure controls remain in force. No blind cleanup or direct privileged
+source-copy shortcut was added to fill this gap.
+
+The six unchanged MISSING entries are retained-release-static-responses (apache),
+two-release-transfer-retention-conflict (assets), supervised-helper-lock-fence
+(runtime), candidate-active-fault-restoration (health),
+retained-state-interruption-authority-recovery (recovery), and
+owned-uncertain-reload-reconciliation (provisioning). Native receipt issuance stays
+blocked. Installed workflow/full Linux acceptance remain unexecuted. Multi-page and
+B14/B16 browser behavior remains M6G; header checks do not prove browser behavior.
+
 ## Commissioning measurement capture correction following bcf64ec
 
 The exact-head review of bcf64ec completed **with two findings**:

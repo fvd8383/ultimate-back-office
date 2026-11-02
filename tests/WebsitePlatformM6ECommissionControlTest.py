@@ -51,6 +51,9 @@ def binding():
 def data(gate):
     # Synthetic observations are solely for controlled parsing/schema tests.
     value={name:('a'*64 if name.endswith('sha256') else 'REJECTED' if name=='result' else 0) for name in e.FIELDS[gate]}
+    if gate in ('apache','assets'):value.update(source_releases=2,source_files=14,source_assets=6,source_bytes=12345)
+    if gate=='apache':value.update(active_status=503,candidate_status=503)
+    if gate=='assets':value.update(release_count=2,asset_count=6,foreign_site_id=11)
     if gate=='filesystem':value.update(device=1,journal_device=2,conflict_rejected=1,link_rejected=1,replacement_rejected=1,
         reader_pid=os.getpid(),old_observations=4,new_observations=7,sync_calls=8,
         read_sha256=digest(b'M6E nonsecret commissioning publication canary\n'),replay_sha256=digest(b'M6E nonsecret commissioning publication canary\n'))

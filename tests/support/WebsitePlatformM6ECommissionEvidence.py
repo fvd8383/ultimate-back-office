@@ -5,6 +5,7 @@ native producers remain explicit blockers, even if their available measurements 
 """
 import copy
 from WebsitePlatformM6EAcceptance import GATES, ROLES, canonical, decode, digest, need, keys, hash_, integer
+from WebsitePlatformM6ECommissionServing import SOURCE_FIELDS
 
 PROFILE = 'm6e-commissioning-v1'
 PRODUCERS = {gate: 'commission-' + gate + '-v1' for gate in GATES}
@@ -21,14 +22,14 @@ MISSING = {
     'provisioning': ('owned-uncertain-reload-reconciliation',),
 }
 FIELDS = {
-    'apache': ('active_status','candidate_status','unauthorized_status','modules_sha256'),
+    'apache': ('active_status','candidate_status','unauthorized_status','modules_sha256')+SOURCE_FIELDS,
     'filesystem': ('device','journal_device','mount_sha256','read_sha256','replay_sha256',
                    'conflict_rejected','link_rejected','replacement_rejected','reader_pid',
                    'reader_exit','old_observations','new_observations','other_observations','sync_calls'),
     'ownership': ('worker_source_errno','helper_source_errno','apache_source_errno',
                   'worker_served_errno','worker_journal_errno','apache_public_errno',
                   'apache_write_errno','source_mode','source_parent_mode','public_mode','public_sha256'),
-    'assets': ('release_count','asset_count','foreign_site_id','served_assets'),
+    'assets': ('release_count','asset_count','foreign_site_id','served_assets')+SOURCE_FIELDS,
     'runtime': ('php_sha256','extensions_sha256','native_prepare_value','duplicate_parameter_rejected',
                 'utc_equal','select_rows','update_errno','foreign_errno','before_sha256','after_sha256'),
     'health': ('active_status','candidate_status','current_present','candidate_present'),
@@ -44,7 +45,14 @@ def measurements(gate, value):
         else: integer(item, 0)
     # Fixed predicates examine observations, not supplied PASS booleans or an
     # arbitrary assertion list. Partial gates still cannot authorize issuance.
-    if gate == 'filesystem':
+    if gate in ('apache','assets'):
+        need(value['source_releases']==2 and 6<=value['source_files']<=4000
+             and 4<=value['source_assets']<value['source_files'] and value['source_bytes']>0,'serving_source_measurements')
+        if gate=='apache':need(value['active_status']==value['candidate_status']==503
+             and value['unauthorized_status'] in (0,400,401,403),'serving_absent_boundary')
+        else:need(value['release_count']==2 and value['asset_count']==value['source_assets']
+             and value['foreign_site_id']>0 and value['served_assets']==0,'serving_pristine_assets')
+    elif gate == 'filesystem':
         need(value['device'] > 0 and value['journal_device'] > 0, 'measured_devices')
         need(value['read_sha256'] == value['replay_sha256'], 'immutable_replay')
         need(value['read_sha256']==digest(b'M6E nonsecret commissioning publication canary\n'),'filesystem_baseline_bytes')

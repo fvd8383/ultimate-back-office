@@ -35,6 +35,8 @@ $allowed=[
     'tests/support/WebsitePlatformM6ECommission.py','tests/support/WebsitePlatformM6ECommissionEvidence.py',
     'tests/support/WebsitePlatformM6ECommissionReceipt.py','tests/support/WebsitePlatformM6ECommissionProbes.py',
     'tests/support/WebsitePlatformM6ECommissionChild.py','tests/support/WebsitePlatformM6ECommissionChild.php',
+    'tests/support/WebsitePlatformM6ECommissionServing.py','tests/support/WebsitePlatformM6ECommissionServing.php',
+    'tests/support/WebsitePlatformM6ECommissionFixture.php','tests/WebsitePlatformM6EServingControlTest.py',
     'tests/support/WebsitePlatformM6EBootstrap.py','tests/support/WebsitePlatformM6EBootstrapHost.py',
     'tests/support/WebsitePlatformM6EBootstrapLedger.py','tests/support/WebsitePlatformM6EBootstrapPlan.py',
     'docs/sprint-8.8-m6e-local-implementation.md','docs/sprint-8.8-m6e-isolated-validation.md',

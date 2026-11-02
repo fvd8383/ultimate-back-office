@@ -56,22 +56,11 @@ try {
     $bad=new M6EBaseDatabase();$bad->seed=0;
     $deny(fn()=>m6eSchemaData($bad,$admission,$write,static function(){}),'missing canonical seed');
 
-    $summaries=[];
-    foreach(['#123456','#654321'] as $color){
-        $f=new WebsitePlatformM6CFixture();$base=$f->db->read->base;$pdf=M6CSupplementPdf::bytes();
-        file_put_contents($f->root.'/uploads/approved.pdf',$pdf);chmod($f->root.'/uploads/approved.pdf',0600);
-        $base->siteAssets[2]=array_replace($base->siteAssets[1],['id'=>2,'asset_type'=>'document','storage_key'=>'/uploads/approved.pdf',
-            'checksum_sha256'=>hash('sha256',$pdf),'mime_type'=>'application/pdf','byte_size'=>strlen($pdf)]);
-        $base->revisions[99]=array_replace($base->revisions[100],['id'=>99,'revision_number'=>1]);
-        $base->revisions[100]['revision_number']=2;$base->revisions[100]['materiality']='non_material';$base->revisions[100]['lifecycle_status']='draft';
-        $base->approvals[700]['revision_id']=99;
-        $composition=WebsitePlatformM6CFixture::composition($base->revisions[100]['snapshot_hash']);
-        $composition['theme']['primary_color']=$color;$composition['pages'][0]['sections'][]=M6CSupplementPdf::section(2);
-        useWebsitePlatformM3ServiceDatabase($base);SiteCompositionManager::replaceDraftComposition(1,100,$composition);
-        $base->revisions[100]['lifecycle_status']='internally_approved';(new ReflectionProperty(Database::class,'connection'))->setValue(null,$f->db);
-        [$request,$claim,$receipt]=$f->run();SiteBuildService::completeBuildSuccess($claim['lease'],$receipt);
-        [$job,$producer]=$f->rows($claim);$verified=$f->store->verifyRelease($job,$producer);
-        $release=array_values($f->db->tables['site_releases'])[0];$summary=m6eReleaseSummary($release,$job,$producer,$verified);$summaries[]=$summary;
+    require_once __DIR__.'/support/WebsitePlatformM6ECommissionFixture.php';
+    [$f,$built,$pdf]=m6eLocalServingFixture();$summaries=[];
+    foreach($built as $actual){
+        $job=$actual['job'];$producer=$actual['producer'];$verified=$actual['verified'];$release=$actual['row'];
+        $summary=$actual['summary'];$summaries[]=$summary;
         $check($summary['producer_attempt_id']===$producer['id']&&$summary['build_job_id']===$job['id'],'original producer retained');
         $check($summary['manifest_sha256']===hash_file('sha256',$f->releasePath($job).'/metadata/manifest.json'),'summary actual manifest bytes');
         M6CSupplementPdf::verify($f->releasePath($job),$verified['manifest'],$pdf,$check);
