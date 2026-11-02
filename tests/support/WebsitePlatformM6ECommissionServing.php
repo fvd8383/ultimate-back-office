@@ -31,7 +31,7 @@ function m6eServingSources(array $admission):array {
     $fixture=SiteBuildContract::decode(SitePublisherHostContract::protectedFile('/run/ubo-m6e-fixture/fixture.json',1048576),1048576);
     m6eNeed(count($fixture['releases'])===2&&$fixture['run_id']===$admission['run_id']&&$fixture['unpublished']===true,'source_fixture');
     $config=m6eBuildConfig($admission);$db=Database::connection();
-    $store=new LocalSiteArtifactStore($config['work_root'],$config['artifact_root'],Closure::fromCallable([SiteBuildRuntime::class,'guard']));
+    $store=m6eArtifactStore($config);
     $pulse=static function()use($admission):void {m6eNeed(time()<$admission['expires_at'],'source_expired');SiteDeploymentService::guardExternal();};
     $result=[];m6ePristine($db,$fixture['site_id'],$fixture['target_id']);
     foreach($fixture['releases'] as $expected) {

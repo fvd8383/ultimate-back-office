@@ -15,6 +15,27 @@ second parent; native-tested `7cdbbeef639…` is an ancestor of that reviewed he
 Its native PASS belongs only to `7cdbbeef`, never this implementation or the merge.
 Historical failures and pre-merge reports are not rewritten or rerun.
 
+## Serving-source runtime dependency correction following 50c4356
+
+The exact-head review of 50c4356 completed **with finding
+[4447201891](https://github.com/fvd8383/ultimate-back-office/pull/131#discussion_r4447201891)**.
+A fresh PHP process with no autoloader or M6C fixture reproduced
+`TypeError: Failed to create closure from callable: class "SiteBuildRuntime" not found`
+after directly including CommissionServing.php. The local fixture's earlier runtime
+include had masked this dependency. NativeSetup.php alone had the same omission.
+
+NativeSetup now explicitly requires SiteBuildRuntime.php. Its small m6eArtifactStore
+function retains the real `Closure::fromCallable([SiteBuildRuntime::class,'guard'])`
+and is shared by m6eObserveRelease and commissioning source inspection. This removes
+reliance on the native build/inspect fixture's incidental include as well. Loading
+the class does not call fromTrustedCli or grant publishing authority. Production
+runtime/store/guard semantics and commissioning admission are unchanged.
+
+The new cold-process regression exercises both actual entry graphs and that shared
+store constructor, with no fixture preload, autoloader, SQL or operational writes.
+All six commissioning MISSING entries remain. Native staged-fixture/authority/
+ownership/serving work, installed workflow and full Linux acceptance remain pending.
+
 ## Shared Apache/assets observations following ce2d154 — incomplete producers
 
 This slice adds executable source inspection and shared serving predicates. It does

@@ -2,6 +2,7 @@
 declare(strict_types=1);
 /** AUTHORED ONLY. Fixed disposable VM schema/build preparation; never application startup. */
 require_once dirname(__DIR__,2).'/private/classes/SitePublisherHostContract.php';
+require_once dirname(__DIR__,2).'/private/classes/SiteBuildRuntime.php';
 
 function m6eNeed(bool $condition,string $code):void {if(!$condition)throw new RuntimeException($code);}
 function m6eBootstrap():array {
@@ -85,11 +86,15 @@ function m6eReleaseSummary(array $release,array $job,array $producer,array $e):a
         'producer_attempt_id'=>(int)$producer['id'],'manifest_sha256'=>$e['manifest_hash'],'artifact_sha256'=>$e['artifact_hash'],
         'file_count'=>$e['file_count'],'assets'=>$assets];
 }
+/** Construct only the artifact store; never invoke the protected runtime factory. */
+function m6eArtifactStore(array $config):LocalSiteArtifactStore {
+    return new LocalSiteArtifactStore($config['work_root'],$config['artifact_root'],Closure::fromCallable([SiteBuildRuntime::class,'guard']));
+}
 function m6eObserveRelease(PDO $db,array $config,int $id):array {
     $release=SiteBuildStore::one($db,'SELECT * FROM site_releases WHERE id=:id',['id'=>$id]);m6eNeed($release!==null,'release_missing');
     $job=SiteBuildStore::one($db,'SELECT * FROM site_build_jobs WHERE id=:id',['id'=>(int)$release['build_job_id']]);
     $producer=SiteBuildStore::one($db,'SELECT * FROM site_build_attempts WHERE id=:id',['id'=>(int)$job['current_attempt_id']]);
-    $store=new LocalSiteArtifactStore($config['work_root'],$config['artifact_root'],Closure::fromCallable([SiteBuildRuntime::class,'guard']));
+    $store=m6eArtifactStore($config);
     return m6eReleaseSummary($release,$job,$producer,$store->verifyRelease($job,$producer));
 }
 function m6eFinishBuild(PDO $db,int $jobId):int {

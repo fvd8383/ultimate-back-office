@@ -5,6 +5,35 @@ installation, server preparation, Linux/Apache execution, SQL, service operation
 working-staging activation or deployment. This document is the bounded later path,
 not a claim that a host contract exists. M6D’s closed native gate is not reopened.
 
+## Cold-process runtime dependency correction
+
+Before editing 50c4356, direct includes of CommissionServing.php and NativeSetup.php
+in separate PHP CLI processes each left SiteBuildRuntime unloaded and raised the
+reviewed missing-class TypeError at the real Closure::fromCallable call. Both had
+zero autoloaders and no M6C fixture. Identical reproductions succeed after the one
+explicit runtime require in NativeSetup; original before/after results are retained
+separately in m6e-source-dependency outside Git.
+
+[WebsitePlatformM6EServingDependencyTest.php](../tests/WebsitePlatformM6EServingDependencyTest.php)
+passes **90 assertions**. Two new PHP processes prove the class initially absent,
+load each actual entry graph, and call the same m6eArtifactStore function used by
+both native callers. Reflection identifies the stored closure as SiteBuildRuntime::guard;
+an initialized transaction-active PDO model proves the constructor executes that
+guard and rejects before effects. Database connection/config remain uninitialized,
+no fixture/autoloader is introduced, and private directories are unchanged and removed.
+Two Windows entry checks retain unsupported-host/missing-argument denial. Linux
+UID/bootstrap/missing-or-invalid-admission checks remain unchanged and unexecuted;
+these local results do not establish native admission or PHP/MySQL/Apache acceptance.
+
+The original bootstrap fixture passes **35 assertions** and the related real
+PHP/Python serving/transfer controls pass **12 tests**. Four changed PHP files lint;
+no Python source changed. Current scope, document/diff checks and exact committed
+blobs are recorded in external SUMMARY.txt. Production code, receipt/schema,
+transfer framing, permissions, ledger/watchdog/socket policy and all six MISSING
+entries are unchanged. The reviewed head had an unresolved P2 finding, not a clean
+review; correction-thread disposition and new-head review status belong to the
+external handoff record. No server, live SQL, native infrastructure or deployment ran.
+
 ## Shared Apache/assets source and serving controls — native incomplete
 
 This source slice starts at ce2d15466bff1b0243e5f595762b721561980b9c. No native
