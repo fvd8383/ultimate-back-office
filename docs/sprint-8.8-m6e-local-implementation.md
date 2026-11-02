@@ -15,6 +15,38 @@ second parent; native-tested `7cdbbeef639…` is an ancestor of that reviewed he
 Its native PASS belongs only to `7cdbbeef`, never this implementation or the merge.
 Historical failures and pre-merge reports are not rewritten or rerun.
 
+## Directory lifetime correction following a5ff864
+
+Review of `a5ff864d56486447e50357833cd3112365f24044` completed with
+[finding 4438243969](https://github.com/fvd8383/ultimate-back-office/pull/131#discussion_r4438243969).
+The reviewer reported Linux full-suite and isolated index-1 partial-clone failures:
+`ModelHost.put()` created parents directly, bypassing metadata initialization, so
+a recycled directory could inherit the pending file's cached regular kind. Inventory
+then applied the regular-file link check. The earlier Windows PASS remains recorded.
+Deterministic local injection reproduced the wrong type and LIMITED cleanup; Windows
+reported one directory link, so its failure occurred later than Linux's reported
+`base_tree_hardlink`. No natural inode reuse or local Linux execution is inferred.
+
+Ordinary file/directory type now comes from real stat; only modeled sockets and
+intentional unsafe-type controls retain explicit overrides. Exclusive file creation
+still initializes fresh modeled ownership/mode from the actual descriptor before
+identification. A small `PrivateFiles.makedirs()` helper initializes each directory
+only after its mkdir succeeds, checks existing parents' actual and modeled directory
+type without changing metadata, and rejects unexpected entries. The constructor and
+`ModelHost.put()` use it, covering clone, TLS, database/artifact and PID fixture output.
+Existing parent modes, rename identity, remaining hardlink names and collisions
+remain intact. No cache-wide clearing, lookup repair or unlink eviction was added.
+
+The finite creation audit preserves unmanaged foreign/replacement/fault fixtures;
+standalone template-copy scratch files have no modeled inode cache. Deterministic
+controls cover regular/socket metadata reused by directories, directory/socket
+metadata reused by files, recursive parents, constructor setup, unsafe existing
+types, collisions and partial clone teardown. Both corrected partial-clone cases
+retain their intended command failure and complete owned cleanup. The actual
+ledger, bootstrap/host/watchdog, admission/cleanup policy, socket templates and
+production code stay byte/mode unchanged. Commissioning, receipts, installed
+workflows, remaining fault scenarios and native acceptance remain pending.
+
 ## Controlled filesystem identity correction following 1834f93
 
 Review of `1834f93a101caa4d7e056960472e77f970c4f67e` completed with two fixture

@@ -83,14 +83,14 @@ class Recovery(unittest.TestCase):
             with self.subTest(point=point):self.creation_failure(point)
 
     def test_stale_metadata_does_not_move_the_intended_ledger_fault_boundary(self):
-        for point in ('empty','prefix','sync'):
-            with self.subTest(point=point):self.creation_failure(point,stale=True)
+        for point,kind in ((point,kind) for point in ('empty','prefix','sync') for kind in (stat.S_IFDIR,stat.S_IFSOCK)):
+            with self.subTest(point=point,stale_kind=kind):self.creation_failure(point,stale=True,stale_kind=kind)
 
-    def creation_failure(self,point,stale=False):
+    def creation_failure(self,point,stale=False,stale_kind=stat.S_IFSOCK):
         host,ledger=self.fresh();pending=ledger.path+'.pending';old=host.fs.read(ledger.path);identity=ledger.disk.copy()
         ledger.state['phase']='failed-attempt'
         with ExitStack() as stack:
-            seeded=stack.enter_context(control.stale_creation(host.fs,pending)) if stale else []
+            seeded=stack.enter_context(control.stale_creation(host.fs,pending,stale_kind)) if stale else []
             observed,error=stack.enter_context(fault(host.fs,pending,point))
             with self.assertRaises((OSError,ValueError)) as caught:ledger.save()
         if stale:

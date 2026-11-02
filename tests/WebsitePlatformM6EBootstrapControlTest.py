@@ -4,7 +4,7 @@ import copy
 import json
 import os
 import re
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 import shutil
 import stat
 import sys
@@ -56,12 +56,21 @@ class PrivateFiles(Files):
         s=self.path(path).lstat();self.meta[s.st_dev,s.st_ino]=dict(uid=uid,gid=gid,mode=mode)
     def mkdir(self,path,mode):
         super().mkdir(path,mode);self.metadata(path,0,0,mode)
+    def makedirs(self,path,mode=0o755):
+        """Initialize only entries actually created; existing parents are never repaired."""
+        current=''
+        for part in self.path(path).relative_to(self.root).parts:
+            current+='/'+part
+            try:self.mkdir(current,mode)
+            except FileExistsError:
+                a.need(stat.S_ISDIR(self.path(current).lstat().st_mode)
+                       and self.identity(current)['kind']==stat.S_IFDIR,'fixture_parent_type')
     def create(self,path,raw,identified,outcome=None):
         def initialized(fd):
             # Only a successful exclusive create establishes a new cache entry.
             # Old metadata may remain for a recycled inode; never reset on lookup.
             s=os.fstat(fd)
-            self.meta[s.st_dev,s.st_ino]=dict(uid=0,gid=0,mode=0o600,kind=stat.S_IFREG)
+            self.meta[s.st_dev,s.st_ino]=dict(uid=0,gid=0,mode=0o600)
             identified(fd)
         if self.fail_write==path:
             self.fail_write=None
@@ -75,17 +84,32 @@ class PrivateFiles(Files):
     def rmdir(self,path):self.audit.append(('rmdir',path));super().rmdir(path)
 
 @contextmanager
-def stale_creation(files,path):
+def stale_creation(files,path,kind=stat.S_IFSOCK):
     """Model recycled metadata after real exclusive open; never invent stat results."""
     opened=os.open;observed=[]
     def opening(name,flags,*args,**kwargs):
         fd=opened(name,flags,*args,**kwargs)
         if os.fspath(name)==os.fspath(files.path(path)) and flags&os.O_EXCL:
-            s=os.fstat(fd);stale=dict(uid=0,gid=2102,mode=0o660,kind=stat.S_IFSOCK)
+            s=os.fstat(fd);stale=dict(uid=0,gid=2102,mode=0o660,kind=kind)
             files.meta[s.st_dev,s.st_ino]=stale.copy()
             observed.append(dict(dev=s.st_dev,ino=s.st_ino,kind=stat.S_IFMT(s.st_mode),stale=stale))
         return fd
     with mock.patch.object(os,'open',side_effect=opening):yield observed
+
+@contextmanager
+def stale_directories(files,paths=None,kind=stat.S_IFREG):
+    """Inject stale cache state after real mkdir, before adapter initialization."""
+    mkdir=os.mkdir;observed=[]
+    def creating(name,*args,**kwargs):
+        result=mkdir(name,*args,**kwargs)
+        try:path='/'+Path(name).relative_to(files.root).as_posix()
+        except ValueError:return result
+        if paths is None or path in paths:
+            s=Path(name).lstat();stale=dict(uid=2103,gid=2102,mode=0o660,kind=kind)
+            files.meta[s.st_dev,s.st_ino]=stale.copy()
+            observed.append(dict(path=path,dev=s.st_dev,ino=s.st_ino,kind=stat.S_IFMT(s.st_mode),stale=stale))
+        return result
+    with mock.patch.object(os,'mkdir',side_effect=creating):yield observed
 
 class ModelHost(NativeHost):
     lane='controlled-local'
@@ -94,7 +118,7 @@ class ModelHost(NativeHost):
         self.cfg=config();self.accounts={};self.units={};self.calls=[];self.failure=None;self.inspection_fault=None;self.cleanup_fault=False
         self.expected_namespace=p.base_identity(self.cfg);self.processes_gone=True
         for path in ('/var/lib','/var/www','/etc','/run/systemd/system','/opt','/usr/local/lib','/usr/local/sbin'):
-            fs.path(path).mkdir(parents=True,exist_ok=True)
+            fs.makedirs(path)
         names=['infrastructure/deployment/ubo-site-publish','infrastructure/deployment/ubo_site_publish.py',
                'infrastructure/deployment/ubo-site-authority.php','private/classes/SitePublisherHostContract.php']
         self.source_files={name:(ROOT/name).read_bytes() for name in names}
@@ -133,7 +157,7 @@ class ModelHost(NativeHost):
             rows += [dict(protocol='tcp',ip=ip,port=443,uid=0,inode=2+i) for i,ip in enumerate(('127.0.0.2','127.0.0.3'))]
         return rows
     def put(self,path,raw=b'modeled private bytes',uid=0,gid=0,mode=0o600):
-        self.fs.path(path).parent.mkdir(parents=True,exist_ok=True);self.fs.create(path,raw,lambda fd:None);self.fs.metadata(path,uid,gid,mode)
+        self.fs.makedirs(str(PurePosixPath(path).parent));self.fs.create(path,raw,lambda fd:None);self.fs.metadata(path,uid,gid,mode)
     def controlled_execute(self,args,seconds,stdin=b'',identity=None,limit=None,error_limit=None):
         self.calls.append((copy.deepcopy(args),identity));out=b''
         command=args[0]
@@ -201,8 +225,8 @@ class ModelHost(NativeHost):
 
 class Controls(unittest.TestCase):
     def test_new_creation_metadata_precedes_identification_and_failure(self):
-        for point in ('normal','callback','injected'):
-            with self.subTest(point=point):
+        for point,kind in ((point,kind) for point in ('normal','callback','injected') for kind in (stat.S_IFDIR,stat.S_IFSOCK)):
+            with self.subTest(point=point,stale_kind=kind):
                 host=self.host();path='/var/lib/new-object';seen=[]
                 def identified(fd):
                     seen.append(host.fs.identity(path,fd))
@@ -210,7 +234,7 @@ class Controls(unittest.TestCase):
                         dict(uid=0,gid=0,mode=0o600,kind=stat.S_IFREG))
                     if point=='callback':raise OSError('CONTROLLED_CALLBACK_FAILURE')
                 if point=='injected':host.fs.fail_write=path
-                with stale_creation(host.fs,path) as seeded:
+                with stale_creation(host.fs,path,kind) as seeded:
                     if point=='normal':host.fs.create(path,b'new',identified)
                     else:
                         with self.assertRaisesRegex(OSError,'CONTROLLED_CALLBACK_FAILURE|SECRET_PARTIAL_WRITE_CANARY'):
@@ -218,7 +242,81 @@ class Controls(unittest.TestCase):
                 self.assertEqual(len(seeded),1);self.assertEqual(len(seen),1)
                 self.assertEqual(seeded[0]['kind'],stat.S_IFREG)
                 self.assertEqual((seen[0]['dev'],seen[0]['ino']),(seeded[0]['dev'],seeded[0]['ino']))
+                self.assertNotIn('kind',host.fs.meta[seen[0]['dev'],seen[0]['ino']])
                 self.assertEqual(host.fs.read(path),b'new' if point=='normal' else b'')
+
+    def test_recursive_put_initializes_new_directories_and_preserves_existing_parent(self):
+        for kind in (stat.S_IFREG,stat.S_IFSOCK):
+            with self.subTest(stale_kind=kind):
+                host=self.host();fs=host.fs;fs.metadata('/var/lib',2111,2112,0o500);parent=fs.identity('/var/lib')
+                paths={'/var/lib/new','/var/lib/new/child'}
+                with stale_directories(fs,paths,kind) as seeded:host.put('/var/lib/new/child/file',b'new')
+                self.assertEqual({x['path'] for x in seeded},paths);self.assertEqual(fs.identity('/var/lib'),parent)
+                inventory=fs.inventory('/var/lib')
+                for row in seeded:
+                    self.assertEqual(row['kind'],stat.S_IFDIR);info=fs.identity(row['path'])
+                    self.assertEqual((info['dev'],info['ino']),(row['dev'],row['ino']))
+                    self.assertEqual({k:info[k] for k in ('uid','gid','mode','kind')},dict(uid=0,gid=0,mode=0o755,kind=stat.S_IFDIR))
+                    self.assertNotIn('kind',fs.meta[info['dev'],info['ino']])
+                    self.assertEqual(inventory[row['path'][len('/var/lib/'):]],info)
+                self.assertEqual(fs.read('/var/lib/new/child/file'),b'new')
+
+    def test_constructor_initializes_every_new_directory(self):
+        folder=tempfile.TemporaryDirectory(prefix='m6e-creation-controls-');self.addCleanup(folder.cleanup)
+        fs=PrivateFiles(folder.name)
+        # Supply a real adapter so the injection can target its actual mkdir boundaries.
+        with mock.patch(__name__+'.PrivateFiles',return_value=fs),stale_directories(fs,kind=stat.S_IFSOCK) as seeded:
+            host=ModelHost(folder.name)
+        self.assertIs(host.fs,fs);self.assertTrue(seeded)
+        for row in seeded:
+            info=fs.identity(row['path']);self.assertEqual(row['kind'],stat.S_IFDIR)
+            self.assertEqual({k:info[k] for k in ('uid','gid','mode','kind')},dict(uid=0,gid=0,mode=0o755,kind=stat.S_IFDIR))
+            self.assertNotIn('kind',fs.meta[info['dev'],info['ino']])
+
+    def test_directory_creation_preserves_collisions_and_rejects_existing_unsafe_types(self):
+        for kind in ('file','directory','socket','unsafe-directory','unsafe-file'):
+            with self.subTest(kind=kind):
+                host=self.host();fs=host.fs;path='/var/lib/collision'
+                if kind in ('file','unsafe-file'):
+                    host.put(path,b'KEEP',2103,2102,0o400)
+                    if kind=='unsafe-file':
+                        s=fs.path(path).lstat();fs.meta[s.st_dev,s.st_ino]['kind']=stat.S_IFDIR
+                elif kind=='socket':fs.socket(path,2103,2102,0o600)
+                else:
+                    fs.mkdir(path,0o500)
+                    if kind=='unsafe-directory':
+                        s=fs.path(path).lstat();fs.meta[s.st_dev,s.st_ino]['kind']=stat.S_IFREG
+                original=fs.identity(path);cache=copy.deepcopy(fs.meta)
+                for action in (lambda:fs.mkdir(path,0o755),lambda:fs.create(path,b'BAD',lambda fd:self.fail('collision callback')),
+                               lambda:fs.socket(path,0,0,0o600)):
+                    with self.assertRaises((FileExistsError,PermissionError)):action()
+                    self.assertEqual(fs.meta,cache);self.assertEqual(fs.identity(path),original)
+                if kind=='directory':fs.makedirs(path);self.assertEqual(fs.meta,cache)
+                else:
+                    with self.assertRaisesRegex(ValueError,'fixture_parent_type'):fs.makedirs(path+'/child')
+                    self.assertFalse(fs.exists(path+'/child'));self.assertEqual(fs.meta,cache)
+                if kind in ('file','unsafe-file'):self.assertEqual(fs.path(path).read_bytes(),b'KEEP')
+
+    def test_partial_clone_recycled_directories_reach_original_failure_and_cleanup(self):
+        for kind in (stat.S_IFREG,stat.S_IFSOCK):
+            with self.subTest(stale_kind=kind):
+                host=self.host();ledger,plan=self.armed(host);target=p.CHECKOUT+'/infrastructure';seen=[]
+                inventory=host.fs.inventory
+                def inspected(path):
+                    result=inventory(path)
+                    if path==p.CHECKOUT:
+                        seen.append(result['infrastructure']);self.assertEqual(seen[-1]['kind'],stat.S_IFDIR)
+                        self.assertEqual({k:seen[-1][k] for k in ('uid','gid','mode')},dict(uid=0,gid=0,mode=0o755))
+                    return result
+                host.failure=lambda args:'clone' in args
+                with stale_directories(host.fs,{target},kind) as seeded,mock.patch.object(host.fs,'inventory',side_effect=inspected):
+                    with self.assertRaisesRegex(Failure,'SECRET_COMMAND_FAILURE_CANARY'):b.prepare_owned(host,ledger,plan)
+                self.assertEqual(len(seeded),1);self.assertEqual(seeded[0]['kind'],stat.S_IFDIR);self.assertTrue(seen)
+                self.assertTrue(any('clone' in args for args,_ in host.calls))
+                self.assertEqual(ledger.state['first_failure']['kind'],'prepare')
+                self.assertEqual(ledger.state['phase'],'removed');self.assertFalse(host.fs.exists(p.CHECKOUT))
+                self.assertTrue(all(x['state']=='RELEASED' for x in ledger.state['entries']));self.assertFalse(host.accounts)
+                self.assertTrue(list(host.fs.path(ledger.root).glob('before-teardown-*.json')))
 
     def test_existing_metadata_survives_lookup_collision_rename_and_hardlinks(self):
         host=self.host();path='/var/lib/existing';moved='/var/lib/renamed';link='/var/lib/linked'

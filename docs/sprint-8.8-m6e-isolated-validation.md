@@ -5,6 +5,48 @@ installation, server preparation, Linux/Apache execution, SQL, service operation
 working-staging activation or deployment. This document is the bounded later path,
 not a claim that a host contract exists. M6D’s closed native gate is not reopened.
 
+## Recursive directory lifecycle controls following a5ff864
+
+The previous 14/31 Windows results below remain historical PASS evidence. The
+reviewer reported Linux full-suite and isolated index-1 partial-construction failure
+on that head: a newly created `/opt/ubo-m6e/infrastructure` inherited cached regular
+kind, and inventory raised `base_tree_hardlink` for its real directory link count.
+This is reviewer-reported Linux execution, not a local Linux run.
+
+Before-fix local reproduction injected stale regular or socket metadata immediately
+after real mkdir at that path, using the directory's actual device/inode. Actual
+identity/inventory saw the wrong modeled type and cleanup remained LIMITED with
+resources/accounts retained. Windows reported directory link count 1, so the regular
+case passed that link check and failed later in cleanup. The command failure stayed
+primary. After correction the same injection is cleared by fresh metadata before
+inventory: real directory type, root/root and 0755. Both partial-clone cases reach
+their intended command failure, release all owned entries/accounts, preserve
+before-teardown evidence and finish in phase `removed`.
+
+The audit covers file/mkdir/socket helpers, recursive constructor and `put()` parents,
+modeled command outputs and direct test filesystem calls. Intentional foreign,
+replacement and unsafe-type fixtures remain unmanaged; independent text-template
+scratch files have no modeled metadata cache. New directory controls preserve
+restrictive existing parents and reject file/socket/mismatched-type collisions.
+File callback/prefix/fsync controls inject stale directory and socket metadata;
+transient teardown and distinct same-content foreign replacement remain exercised.
+Three fixed repetitions cover sensitive directory/partial-construction cases in
+fresh private directories: all 12 executions pass, with every result retained
+without retry-until-green.
+
+Sequential full standalone runs pass: **14 recovery tests in 19.381 seconds** and
+**35 bootstrap tests in 178.228 seconds**, using installed Python 3.14.7 (MINGW
+Clang UCRT) on Windows 11 build 26300. The five initial focused controls also pass
+in 6.624 seconds. Both changed Python AST checks and 221 current scope assertions
+pass; scope allowances are unchanged. Exact commands, durations, platform, document
+checks, finite audit and before/after bytes are retained outside Git in
+`m6e-fixture-directory-lifetimes/SUMMARY.txt`. No local Linux runner is available;
+none was installed or created. Actual bytes/inodes/renames/hardlinks are distinguished
+from modeled Unix metadata/services. No native bootstrap, crash or power-loss result
+is claimed. Ledger/production code and scope allowances stay unchanged; M6E remains
+**PARTIALLY IMPLEMENTED / REVIEW REQUIRED**, with commissioning/native work pending
+and M6C/M6D formally closed.
+
 ## Fixture inode-assumption correction following 1834f93
 
 The prior 13-test Windows PASS below is preserved. Review of that exact head
