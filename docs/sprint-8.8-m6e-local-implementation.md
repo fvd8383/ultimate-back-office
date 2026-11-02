@@ -15,6 +15,102 @@ second parent; native-tested `7cdbbeef639…` is an ancestor of that reviewed he
 Its native PASS belongs only to `7cdbbeef`, never this implementation or the merge.
 Historical failures and pre-merge reports are not rewritten or rerun.
 
+## Commissioning collector and protected receipt publication — partial
+
+**COMMISSIONING / RECEIPT ISSUER — PARTIALLY IMPLEMENTED LOCALLY. NATIVE
+COMMISSIONING — NOT EXECUTED. INSTALLED WORKFLOW / FULL ACCEPTANCE — PENDING.**
+This change does not complete the requested eight-gate commissioning slice. Two
+native producers are authored end to end; six still need executable steps listed
+below. The native evidence policy rejects those six even if every available
+prerequisite measurement succeeds. No usable operational receipt was created.
+
+The fixed entry is [WebsitePlatformM6ECommission.py](../tests/support/WebsitePlatformM6ECommission.py),
+also routed by the existing preparation CLI. It consumes the immutable bootstrap
+record/publication and protected bootstrap-handoff.json, using their current
+fixture, two-release, foreign-site, tool/module, configuration and identity schemas.
+It does not create run.json, fabricate deployment rows, or issue an initial receipt
+to enable components. The normal protected publishing worker remains inactive.
+
+A fixed ubo-m6e-commission.service owns the operation with TimeoutStartSec=420 and
+the existing process-group/resource restrictions. The existing watchdog now stops
+that service before taking the lifecycle lock. Its 1,200-second absolute lifetime,
+120-second cleanup reserve and bootstrap limits are unchanged. Every stage checks
+the original timer-start monotonic timestamp and admission expiry. No timer restart,
+deadline extension, general configuration-root option or production override exists.
+
+Collection validates source, bootstrap/handoff, configuration, tools/modules,
+identities, ownership, listeners and inactive worker before effects. The historical
+READY record is never rewritten. A dedicated post-commissioning inspection accepts
+released commissioning resources, checks original bindings and independently
+rechecks the unpublished fixture/database state. It does not call pristine
+inspect_ready after commissioning. Repeated commissioning rejects; inspection is
+read-only and cannot refresh a receipt or rerun measurements.
+
+The eight names remain the existing section-18 host-contract names. The following
+is an implementation inventory, **not native PASS evidence**:
+
+| Gate | Executable producer and current limitation |
+| --- | --- |
+| apache | NativeProbes.probe_apache observes the fixed private active/candidate 503 responses, denied unauthenticated TLS request and actual module output. **Incomplete:** retained-release static response, access/handler and final-binding checks are not implemented. |
+| filesystem | CommissionChild.py --filesystem uses actual helper Tree admission at the configured root, narrows its descriptor to owned scratch on that mount, checks local mounts, immutable write/replay/conflict, checked sync calls, no-follow rejection and a real named-inode replacement. A bounded child observes sibling pointer replacement with forced old/new baselines and unknown observations retained. **Authored, unexecuted.** This does not claim kernel-fsync failure or power-loss durability. |
+| ownership | CommissionChild.py --access runs as the actual worker/helper/Apache roles. It observes original worker-private manifest read and 0700/0600 modes, helper/Apache denial, worker served/journal denial, and Apache read/digest plus write denial on a commissioning-owned 0440 public canary inside the configured releases root. No existing permissions are repaired. **Authored, unexecuted.** |
+| assets | Reads and independently rechecks the current two-release/foreign-site fixture and empty served pool. **Incomplete:** actual two-release transfer, retained serving, conflict and foreign/unlisted/traversal negatives. The existing foreign asset shares a same-site digest; its digest alone is not a foreign-path denial test. |
+| runtime | CommissionChild.php --runtime uses the isolated authority configuration, actual PHP/extensions, TLS MySQL identity, native prepare positive/duplicate-parameter negative, UTC observation, SELECT baseline and denied UPDATE/foreign-schema attempts with unchanged state hashes. **Incomplete:** pre-receipt supervised helper properties and lock/fence observations. No old M6D result is credited. |
+| health | Records actual unavailable private HTTPS endpoints and absent pointers. **Incomplete:** actual SiteHttpHealthChecker candidate/active release positives, wrong marker/content, redirect/auth/error/stale cases and owned restoration. Unavailable HTTP is not release-health PASS; no retry budget is increased. |
+| recovery | Records the actual pristine journal/fence and absent pointers. **Incomplete:** retained-state component interruption/health-failure recovery, unavailable/unknown authority blocking and independently verified known-good byte preservation. No backup, successful deployment or compensation is fabricated. |
+| provisioning | Runs the existing fixed Provisioner with actual positive configtest and deliberately invalid pending configuration; preserves live config/journal and records zero reload commands. Pending bytes are captured before removal. **Incomplete:** owned uncertain-reload/reconciliation producer with restored and independently observed final configuration. |
+
+These missing steps need a component transfer/retained-state controller with a
+durable ownership transition protocol for the configured served/journal roots,
+pre-receipt helper supervision, checker fault/restoration orchestration and reload
+reconciliation. The existing NativeBackend expects a different later run.json and
+its commissioning restore method raises an unimplemented error; directly invoking
+it would be circular or unowned. The existing NativeSql child also expects the
+older nested fixture shape. This implementation supplies a narrow current-schema
+runtime producer but does not silently reinterpret those remaining drivers as
+commissioned. Native issuer authorization stays blocked until their producers and
+independent predicates are completed. Full COMMIT-loss relay/audit/installed
+workflows remain separate additional work.
+
+Evidence records retain bounded original observations, actual process/role IDs,
+source/run/machine/boot, protected bootstrap/handoff, final configuration/tool/module,
+root and loaded dependency bindings. The collector uses existing immutable evidence
+publication, captures each result or partial failure before cleanup, preserves the
+first failure and separates later capture/cleanup limitations. Measurements are
+copied once and never completed from expected counts. Controlled-local records
+remain visibly labeled and are rejected by native issuance. Records contain no
+raw SQL values, credentials, keys, bodies or arbitrary exception messages.
+
+The issuer code independently validates finalized gate bytes and their original
+pre-restoration publications before constructing the unchanged seven-field v2
+m6e-host-v2 receipt. Its installed inventory uses actual PHP include observations
+for worker and authority, required entrypoints/configuration and safe file checks,
+with the existing 256-file cap. Nested PHP include paths are preserved by bootstrap
+installation, rather than flattened. Service-template names containing @ cannot be
+entries in the unchanged PHP receipt path grammar; their exact bytes stay pinned
+through the bootstrap record and every final unit recheck. Runtime-loaded PHP files
+are still individually pinned and checked by each consumer.
+
+Expiry is no later than fixture authorization, the original watchdog deadline or
+24 hours. Complete private writes, checked file synchronization, atomic no-replace
+publication and directory synchronization target only the fixed protected receipt
+path. Intents and the complete candidate's bytes/inode are recorded before rename.
+Existing receipts reject. Post-rename/sync/ack failure retains the final object and
+reports uncertainty; read-only reconciliation requires the exact original binding,
+inode, bytes and unexpired issuance. It does not claim to reestablish durability.
+Actual PHP HostContract.load and helper load_config acknowledgements are authored
+without starting a publishing operation; the native path is not reached while
+producers are missing. Authority service execution remains unverified.
+
+Local verification and platform limits are recorded in the corresponding isolated
+validation section and external m6e-commissioning/SUMMARY.txt. Production publisher,
+transfer, helper, authority, health, host-contract schema/admission and canonical
+socket/service examples are unchanged. The reviewed fixture metadata implementation,
+ledger save/recovery, M6C/M6D behavior, migrations and requirement definitions remain
+unchanged. M6E/PR #131 remain partial/draft; M6C/M6D remain formally closed and
+M6F-M6G remain not started. Earlier sections below are historical evidence, not a
+claim that the newly added producers have executed.
+
 ## Directory lifetime correction following a5ff864
 
 Review of `a5ff864d56486447e50357833cd3112365f24044` completed with

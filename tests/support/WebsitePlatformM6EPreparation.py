@@ -112,6 +112,9 @@ def prepare():
 
 def main(argv):
     if argv==['--prepare']:return prepare()
+    if argv in (['--commission'],['--inspect-commissioning']):
+        from WebsitePlatformM6ECommission import main as commission_main
+        return commission_main(argv)
     need(argv in (['--plan'],['--prepare-base'],['--inspect-base'],['--teardown']),'usage')
     from WebsitePlatformM6EBootstrap import main as bootstrap_main
     return bootstrap_main(argv)

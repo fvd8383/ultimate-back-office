@@ -67,7 +67,16 @@ def install_source(host,plan):
     ledger.write(p.LAUNCHER,host.fs.read(p.CHECKOUT+'/infrastructure/deployment/ubo-site-publish'),mode=0o755)
     for name in plan['source']:
         if name.startswith('private/classes/') and name.endswith('.php'):
-            ledger.write('/usr/local/lib/ubo-site-publisher/php/'+Path(name).name,host.fs.read(p.CHECKOUT+'/'+name))
+            # Preserve runtime-relative includes (e.g. domains/DomainManager.php).
+            # Flattening basenames loses dependencies observed by the issuer.
+            relative=name[len('private/classes/'):]
+            destination='/usr/local/lib/ubo-site-publisher/php/'+relative
+            parent='/usr/local/lib/ubo-site-publisher/php'
+            for part in relative.split('/')[:-1]:
+                parent+='/'+part
+                if not host.fs.exists(parent):ledger.directory(parent)
+                else:ledger.verify(next(row for row in ledger.state['entries'] if row['path']==parent))
+            ledger.write(destination,host.fs.read(p.CHECKOUT+'/'+name))
 
 def tls(host):
     ledger=host.ledger;root=p.CONFIG+'/tls';ledger.directory(root)
@@ -213,8 +222,8 @@ def inspect_base(host,ledger,plan):
       database_sha256=digest(canonical(database)),fixture_sha256=digest(canonical(fixture)),
       source_sha256=digest(canonical(plan['source'])),host_receipt='ABSENT',activation='ABSENT',publisher_operations=0)
 
-def inspect_ready(host,ledger,plan):
-    need(ledger.state['phase']=='ready','base_not_ready')
+def inspect_record(host,ledger,plan):
+    """Validate immutable bootstrap history, independently of subsequent lifecycle state."""
     raw=host.fs.read(ledger.root+'/bootstrap.json');receipt=ledger.state['observations']['bootstrap_receipt']
     need(receipt==dict(file='bootstrap.json',bytes=len(raw),sha256=digest(raw))
          and decode(host.fs.read(ledger.root+'/bootstrap-publication.json'))==receipt,'bootstrap_publication')
@@ -227,6 +236,11 @@ def inspect_ready(host,ledger,plan):
          and record['host_receipt']=='ABSENT' and record['watchdog']=='ARMED'
          and record['plan_sha256']==plan['plan_sha256'],'bootstrap_record')
     need(digest(host.fs.read(p.CONTROL+'/bootstrap-handoff.json'))==record['handoff_sha256'],'handoff_bytes')
+    return record
+
+def inspect_ready(host,ledger,plan):
+    need(ledger.state['phase']=='ready','base_not_ready')
+    record=inspect_record(host,ledger,plan)
     need(inspect_base(host,ledger,plan)==record['inspected'],'bootstrap_state_changed')
     return record
 
@@ -246,6 +260,12 @@ def teardown(host,ledger,inside_prepare=False):
         except BaseException as error:ledger.failure(error,'cleanup');errors.append(error);services_gone=False
     try:host.no_role_processes()
     except BaseException as error:ledger.failure(error,'cleanup');errors.append(error);services_gone=False
+    if services_gone:
+        if 'commission' in ledger.state['observations']:
+            try:
+                from WebsitePlatformM6ECommissionProbes import cleanup_owned
+                cleanup_owned(host,ledger)
+            except BaseException as error:ledger.failure(error,'cleanup');errors.append(error);services_gone=False
     if services_gone:
         # Only the recorded exclusive producers may create descendants in these owned trees.
         for row in ledger.state['entries']:
@@ -340,9 +360,10 @@ def quiesce(host,ledger):
     prior_readonly=getattr(host,'readonly',False);host.readonly=True
     start=len(host.pre_commands);stopped=[];failures=[];tag=str(time.monotonic_ns())
     try:
-        try:ledger.publish('quiesce-intent-'+tag,dict(binding=p.base_identity(ledger.config),units=['ubo-m6e-bootstrap.service']))
+        units=('ubo-m6e-bootstrap.service','ubo-m6e-commission.service')
+        try:ledger.publish('quiesce-intent-'+tag,dict(binding=p.base_identity(ledger.config),units=list(units)))
         except BaseException as error:failures.append(('capture',error))
-        for name in ('ubo-m6e-bootstrap.service',):
+        for name in units:
             try:
                 current=Ledger.load(host.fs,ledger.config)
                 row=next((x for x in current.state['services'] if x['unit']==name and x['state']!='RELEASED'),None)
@@ -351,7 +372,7 @@ def quiesce(host,ledger):
                 if entry['state']=='RELEASED':continue  # Final handling verifies the recorded self-exit.
                 current.verify(entry);unit=host.unit(name)
                 need(unit['FragmentPath']==entry['path'],'quiesce_unit')
-                if row.get('invocation') and unit['ActiveState']=='active':need(unit['InvocationID']==row['invocation'],'quiesce_replaced')
+                if row.get('invocation') and unit['ActiveState'] in ('active','activating'):need(unit['InvocationID']==row['invocation'],'quiesce_replaced')
                 host.systemctl('stop',name,20);after=host.unit(name)
                 need(after['ActiveState'] in ('inactive','failed') and after.get('MainPID','0')=='0','quiesce_process')
                 stopped.append(name)

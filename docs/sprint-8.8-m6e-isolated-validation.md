@@ -5,6 +5,112 @@ installation, server preparation, Linux/Apache execution, SQL, service operation
 working-staging activation or deployment. This document is the bounded later path,
 not a claim that a host contract exists. M6D’s closed native gate is not reopened.
 
+## Current commissioning command and local controls — partial
+
+**COMMISSIONING / RECEIPT ISSUER — PARTIALLY IMPLEMENTED LOCALLY.** Filesystem
+and role-access component producers are authored; six required gate producers are
+incomplete. Native commissioning has not executed. Installed workflow and full
+acceptance remain pending. The native issuer rejects this incomplete inventory.
+A successful formatter/private-publication control is not a host prerequisite PASS.
+
+For a later separately authorized disposable VM prepared from the exact same
+reviewed source, as its root operator (never ubo-stage-app or the developer machine):
+
+~~~sh
+/usr/bin/python3 -I -B /opt/ubo/tests/support/WebsitePlatformM6EPreparation.py --commission
+/usr/bin/python3 -I -B /opt/ubo/tests/support/WebsitePlatformM6EPreparation.py --inspect-commissioning
+/usr/bin/python3 -I -B /opt/ubo/tests/support/WebsitePlatformM6EPreparation.py --teardown
+~~~
+
+The fixed commissioning service calls Commission.py --commission-owned internally.
+That mode checks its own systemd cgroup, MainPID and installed fragment; it is not
+a general privileged invocation. Public commission validates the original ready
+bootstrap before starting the service. The current expected terminal is
+COMMISSIONING INCOMPLETE / HOST RECEIPT ABSENT, with the six missing executable
+steps. These commands are authored entrypoints, not a recipe for obtaining a usable
+receipt from the current partial implementation.
+
+Inputs are the existing version-2 bootstrap admission, retained plan and ownership
+ledger, immutable bootstrap.json and bootstrap-publication.json under
+/var/lib/ubo-m6e-evidence/<run_id>/, protected bootstrap-handoff.json and current
+fixed configuration. The handoff must match its original bytes, complete schema,
+source inventory, run/VM/boot, roles, tools/modules, fixture/database and configuration.
+There is no supplied gate result, configurable root, environment bypass or new
+runtime configuration. Changing source/configuration or dependencies invalidates
+measurements; inspection cannot regenerate a matching receipt.
+
+The sequence is historical bootstrap validation, current ownership/configuration/
+identity/watchdog recheck, receipt absence, ordered eight-producer collection,
+immutable original observations before restoration, owned cleanup, final independent
+evidence and file validation, then receipt publication and consumer acknowledgement
+only if every gate is complete. The current implementation stops at evidence policy,
+which identifies six missing producers. It never writes a temporary all-PASS receipt.
+
+See the [gate-to-executable mapping](sprint-8.8-m6e-local-implementation.md#commissioning-collector-and-protected-receipt-publication--partial).
+The missing steps are: retained-release Apache static/access checks; two-release
+asset transfer/serving/conflict negatives; pre-receipt supervised helper/lock/fence;
+real checker candidate/active fault/restoration; retained-state interruption and
+unknown/unavailable-authority recovery; owned uncertain-reload reconciliation. They
+require additional executable state/ownership integration, not changed boolean
+attestations or removal of the missing-producer policy. Later native execution must
+also validate the authored filesystem/ownership and runtime/configtest portions.
+
+Commissioning appends commission-start, per-gate before-restore/final measurements
+and commission-result records; bootstrap READY bytes remain historical. All scratch,
+canaries, unexpected-success access-attempt leaves and pending config enter the
+existing ownership ledger before effects. The watchdog stops the commissioning
+service before locking and cleaning. Scratch cleanup checks original directory and
+child identities, rejects unknown names or replaced inodes, and does not follow
+links. If bounded cleanup cannot prove ownership, it retains state as LIMITED.
+The original worker-private two-release artifacts are retained by bootstrap for the
+later installed tests. No deployment row/current DB pointer or backup is invented.
+
+The 420-second service cap is subordinate to the existing 1,200-second timer and
+120-second cleanup reserve. Stage admission uses the original timer command's
+monotonic start, not a restarted watchdog. The full acceptance coordinator remains
+600 seconds and still rejects its missing scenarios/audit/predicate schemas.
+Commissioning does not add callable stubs to native_readiness().
+
+Publication code uses /etc/ubo-site-publisher/commission-receipt.pending and the
+fixed host-receipt.json. Both intentions precede effects. The candidate is fully
+written, synchronized and checked before the protected immutable issuance-intent
+record and no-replace rename. Final mode is root/root 0644, regular and one link,
+with trusted ancestors. The unchanged receipt has exactly version, profile,
+worker_config_sha256, verified_at, expires_at, gates and installed_files. Rich
+provenance stays in protected hash-bound evidence. Expiry is capped by the fixture
+and original watchdog, as well as the existing 24-hour maximum.
+
+Any existing receipt conflicts. Publication acknowledgement uncertainty preserves
+the exact final object and its intent; no delete/overwrite/retry is attempted.
+Inspection checks exact bytes, inode, original identity and expiry without changing
+the ledger or refreshing validity. A present conflicting/expired object fails.
+Native inspection additionally requires complete evidence, so a copied synthetic
+private receipt cannot authorize operational inspection. No operational receipt
+or actual consumer startup was executed in this desktop task.
+
+Local controls use installed PHP and Python, private files and bounded children.
+They exercise actual dispatch/result parsing, collector, missing/partial/failed and
+modeled-evidence rejection, binding/expiry/budget checks, source/configuration and
+include-inventory changes, modes/hardlinks/ancestors, original capture before cleanup,
+first-failure preservation, no-replace publication faults and exact read-only
+uncertainty reconciliation. PHP compatibility calls the real pure validate method;
+Python compatibility calls actual load_config with explicitly mapped protected-read
+and OS boundaries, preserving its checks. The unmodified desktop operational load
+still rejects. Synthetic format/publication objects exist only in private temporary
+directories, with no usable native evidence.
+
+Executed local verification on Windows 11, installed Python 3.14.7 (MINGW Clang UCRT) and PHP 8.4.24: **28 commissioning controls PASS (44.457s)**; **11 selected bootstrap lifecycle controls PASS (149.020s)**; **37 existing process/provisioning/evidence controls PASS (60.675s)**; **8 immutable-publication controls PASS (2.082s)**. Two watchdog controls were rechecked after the activating-service identity change and pass (21.301s). PHP host/fixture/authority/health programs pass **33/35/18/43 assertions**. Nine changed Python AST checks (warnings treated as errors), two PHP lints, six relative document links and working scope/diff checks pass. Staged/committed integrity and review handoff details are retained in the external summary.
+
+Validation commands and final integrity totals are recorded in the external
+SUMMARY.txt. Initial sandbox hard-link denials and corrected development failures
+are retained separately. The existing allocator-sensitive fixture controls and
+historical 68-program/M6C campaigns are not repeated. Windows bytes, child PIDs,
+inodes, replacements and publication are real; Unix ownership, service/VM/SQL and
+native probe outcomes in controls are modeled. Native directory durability,
+renameat2, Linux permission enforcement, actual Apache/MySQL/systemd and the new
+native probe bodies remain unexecuted. These limitations apply even when all local
+controls pass. Earlier sections are preserved as historical records.
+
 ## Recursive directory lifecycle controls following a5ff864
 
 The previous 14/31 Windows results below remain historical PASS evidence. The
