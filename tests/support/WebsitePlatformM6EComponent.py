@@ -155,6 +155,7 @@ def observe(m,plan,served,journal,metadata):
 
 def run(backend):
     """Same bounded lifecycle in native and controlled-local adapters. No retries."""
+    backend.admit() # Internal calls do not bypass fixed supervisor admission.
     ledger=backend.ledger
     need('component_a' not in ledger.state['observations'],'component_already_attempted')
     state=dict(profile=PROFILE,execution=backend.execution,resources=[],children=[],observations={},first_failure=None,cleanup='UNATTEMPTED')

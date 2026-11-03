@@ -115,6 +115,9 @@ def main(argv):
     if argv in (['--commission'],['--inspect-commissioning']):
         from WebsitePlatformM6ECommission import main as commission_main
         return commission_main(argv)
+    if argv==['--component-a']:
+        from WebsitePlatformM6EComponentEntry import main as component_main
+        return component_main(argv)
     need(argv in (['--plan'],['--prepare-base'],['--inspect-base'],['--teardown']),'usage')
     from WebsitePlatformM6EBootstrap import main as bootstrap_main
     return bootstrap_main(argv)

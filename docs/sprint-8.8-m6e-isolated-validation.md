@@ -5,6 +5,113 @@ installation, server preparation, Linux/Apache execution, SQL, service operation
 working-staging activation or deployment. This document is the bounded later path,
 not a claim that a host contract exists. M6D’s closed native gate is not reopened.
 
+## Standalone A and configtest local controls
+
+This increment starts at `71b1839ee3390ea7e4c4c2bfdba258c6e38ea6d0` on PR #131's
+existing OPEN DRAFT branch, with clean checkout and completed exact-head review.
+The ending commit SHA, command logs, timing/count summaries, original failed
+development runs and exact working/index/commit hashes are retained outside Git
+in `m6e-entry-configtest/SUMMARY.txt` and its sibling evidence files. The one
+automated review handoff identifies that ending SHA. See the
+[exact file inventory and implementation contract](sprint-8.8-m6e-local-implementation.md#supervised-standalone-a-and-required-configtest-following-71b1839).
+
+For later separately authorized native work only, the fixed public request is:
+
+```sh
+/usr/bin/python3 -I -B /opt/ubo/tests/support/WebsitePlatformM6EPreparation.py --component-a
+```
+
+The fixed bootstrap-owned `ubo-m6e-component-a.service` alone invokes
+`WebsitePlatformM6EComponentEntry.py --component-a-owned`. There is no command,
+path, release or config selector. Direct internal/protected invocation without
+the original admitted dispatch, matching MainPID/cgroup/fragment/invocation and
+lifecycle lock rejects before component effects. Public and owned paths recheck
+original READY, handoff, source/configuration/host/expiry and pristine target.
+The 90/420/1,200/120-second component/service/watchdog/cleanup budgets remain.
+
+Ordering is original A transfer/stage, independent artifact observation, owned
+config generation/identity verification, bounded pinned `apache2 -t -f` configtest,
+successful command/process and unchanged-config recheck, private Apache reader,
+independent HTTPS/artifact/resource observations, immutable evidence, reader stop,
+process quiescence, original-inventory-bound removal, final original-state check.
+No configtest failure or uncertainty can start the reader. No configtest reloads
+or changes operational Apache. Windows success is explicitly modeled and is
+never native Apache evidence.
+
+Positive controls cover fixed request dispatch, live supervisor binding, the
+original lifecycle, configtest-before-start ordering, hashes-only diagnostics,
+original observer inventory and immutable cleanup/result evidence. Negative
+controls cover direct invocation, cgroup/MainPID/fragment/invocation changes,
+missing service admission/command, stale source, missing/altered handoff,
+expiry/watchdog reserve, repeated/conflicting ownership, missing/malformed/replaced
+config, failed/timed-out/unknown/overflow configtest, post-validation config/command
+mutation, uncertain reader termination, capture failure, cleanup replacement and
+original operational-state mutation. Existing component fault controls continue
+to verify first-failure retention and LIMITED handling. Real private files,
+inodes, PHP/Python processes and original artifact bytes are exercised; Linux
+UID/systemd/Apache/TLS and SQL observations are controlled models.
+
+Executed on Windows with existing Python 3.14.7, PHP 8.4.24 and Git
+2.56.0.windows.2. Each Python row uses `python -I -B` with the external
+`run_tests.py` instrumentation and the named test modules; full commands and
+per-case output are retained in the evidence directory. Assertion-method calls
+include calls made internally by unittest assertion helpers; they are not the
+earlier uninstrumented assertion-count convention. Durations are wall seconds.
+
+| Local campaign | Tests | Subtests | Assertion-method calls | Seconds | Failures / errors |
+| --- | ---: | ---: | ---: | ---: | --- |
+| Final entrypoint/configtest controls | 17 | 32 | 246 | 260.350 | 0 / 0 |
+| Full component regression | 22 | 58 | 1040 | 762.796 | 0 / 0 |
+| Final affected reader/capture rerun | 2 | 5 | 94 | 139.370 | 0 / 0 |
+| Commissioning/bootstrap/serving | 94 | 185 | 1995 | 392.898 | 0 / 0 |
+| Ledger recovery | 14 | 28 | 706 | 42.879 | 0 / 0 |
+
+The full component regression was followed by final-source entrypoint/configtest
+controls and the two affected reader/capture reruns after the cleanup deadline
+and command/process quiescence refinements. These are 147 distinct Python tests
+plus two focused repeats, with no skipped final controls. All negative controls
+must reach their asserted fault boundary; no blocked native case is credited as
+a passing native observation.
+
+PHP bootstrap-fixture controls pass 35 assertions (3.194s), serving-dependency
+controls 90 assertions (4.410s), and the working M6E scope guard 280 assertions
+(8.859s). All exit zero with empty stderr. PHP lint passes for the one changed PHP
+file (the scope inventory). All 37 M6E Python support/control sources parse and
+compile with warnings treated as errors; the final nine changed Python sources
+are rechecked with the exact integrity inventory. Both documents, 27 relative
+links, fenced blocks and `git diff --check` pass. The staged and committed scope
+counts and exact content hashes are recorded in SUMMARY.txt after commit.
+
+Earlier development failures remain separate: the sandbox denied existing
+hard-link publication (the initial accidentally expanded discovery ran 47 tests,
+51 errors in 52.394s; assertion/subtest counts were not instrumented). The explicit
+12-test development run had seven stale-test-ledger errors (104.797s); the initial
+22-test component run had eight failures and one error (560.683s) from the serving
+metadata model ordering. Two lifecycle rechecks exposed that same adapter issue
+and a lost test event recorder when rebinding the ledger. Their logs and counts
+are retained; the corrected final rows above supersede no historical native
+evidence. Local hard-link tests ran with normal Windows filesystem access after
+the sandbox restriction was established. No native service or database operation
+was used to resolve those failures.
+
+Native prerequisites remain an explicitly admitted disposable Linux VM with the
+exact reviewed source and pinned tools/modules, existing bootstrap/handoff,
+original release-A build/manifest/producer rows and immutable storage, actual
+systemd/cgroup identity, private Apache config/TLS/UID observations and independent
+cleanup verification. **Fixture-local MySQL and real SQL require separate explicit
+authorization.** This task executes no SQL, native Linux/Apache/systemd, SSH,
+service installation, host preparation, deployment or activation. Synthetic
+responses are not substitutes for native database readiness.
+
+The six commissioning blockers are unchanged: retained-release Apache static/access
+checks; two-release asset transfer/serving/conflict negatives; supervised runtime
+helper/lock/fence; real checker candidate/active fault/restoration; retained-state
+interruption/unknown-authority recovery; owned uncertain-reload reconciliation.
+Standalone evidence does not promote any of them, issue an operational receipt,
+accept an installed publishing workflow or complete M6E native acceptance.
+M6C/M6D remain FORMALLY CLOSED; M6E PARTIALLY IMPLEMENTED / REVIEW REQUIRED;
+M6F/M6G NOT STARTED; production UNAUTHORIZED.
+
 ## A-only candidate-serving local evidence and native boundary
 
 Starting source HEAD: `18b4900ebad62c511587c4bb4498000460cf5129`, clean reviewed

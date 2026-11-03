@@ -31,6 +31,7 @@ import WebsitePlatformM6ECommissionEvidence as evidence
 class Local(Native):
     serving_enabled=False # The baseline fault campaign remains stage-only.
     execution='controlled-local'
+    def admit(self):pass # Explicit OS/supervisor model; never native evidence.
     def __init__(self,root,fault=''):
         self.root=Path(root);self.fs=PrivateFiles(root);cfg=config()
         for name in (b.CONTROL,b.STORAGE,b.EVIDENCE):self.fs.makedirs(name)
@@ -136,6 +137,17 @@ class Local(Native):
 
 class ServingLocal(Local):
     serving_enabled=True
+    def info(self,fs,path):
+        if path==serving_root(self.plan) or path.startswith(serving_root(self.plan)+'/'):
+            return fs.identity(path)|dict(nlink=fs.path(path).lstat().st_nlink)
+        return super().info(fs,path)
+    def configtest(self,note):
+        # A real bounded private process; Linux Apache/config syntax is modeled.
+        from WebsitePlatformM6EBootstrapHost import NativeHost
+        self.host=NativeHost(self.fs,lambda args,seconds,**kwargs:self.host.owner.capture(
+            [sys.executable,'-I','-B','-c','print("modeled configtest")'],seconds))
+        self.host.ledger=self.ledger;self.host.check_pins=lambda config:None
+        self.events.append('configtest');return super().configtest(note)
     def serving_checks(self,note):
         from WebsitePlatformM6ECommissionServing import CandidateChecks
         CandidateChecks(self.manifest,self.serving_request,lambda value:note('serving',value)).run()
@@ -154,6 +166,7 @@ class ServingLocal(Local):
         if self.fault=='response-and-after-failure':value['fault']='wrong-mime'
         return value
     def reader_start(self):
+        self.reader_admission();self.reader_attempted=True;self.events.append('reader-start')
         child=self.start('reader');self.reader=self.active[-1]
         value=self.receive(child,'reader');need(value['uid']==2104,'modeled_reader_role')
         self.fs.create(self.pid_row['path'],str(child.process.pid).encode()+b'\n',lambda fd:self.ledger.identify(self.pid_row,fd))

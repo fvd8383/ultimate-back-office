@@ -360,7 +360,7 @@ def quiesce(host,ledger):
     prior_readonly=getattr(host,'readonly',False);host.readonly=True
     start=len(host.pre_commands);stopped=[];failures=[];tag=str(time.monotonic_ns())
     try:
-        units=('ubo-m6e-bootstrap.service','ubo-m6e-commission.service')
+        units=('ubo-m6e-bootstrap.service','ubo-m6e-commission.service','ubo-m6e-component-a.service')
         try:ledger.publish('quiesce-intent-'+tag,dict(binding=p.base_identity(ledger.config),units=list(units)))
         except BaseException as error:failures.append(('capture',error))
         for name in units:
@@ -375,6 +375,9 @@ def quiesce(host,ledger):
                 if row.get('invocation') and unit['ActiveState'] in ('active','activating'):need(unit['InvocationID']==row['invocation'],'quiesce_replaced')
                 host.systemctl('stop',name,20);after=host.unit(name)
                 need(after['ActiveState'] in ('inactive','failed') and after.get('MainPID','0')=='0','quiesce_process')
+                if name=='ubo-m6e-component-a.service':
+                    procs=host.fs.path('/sys/fs/cgroup/system.slice/'+name+'/cgroup.procs')
+                    need(not procs.exists() or not procs.read_bytes().strip(),'component_service_children_remain')
                 stopped.append(name)
             except BaseException as error:failures.append(('cleanup',error))
         try:ledger.publish('quiesce-result-'+tag,dict(binding=p.base_identity(ledger.config),commands=host.pre_commands[start:],stopped=stopped))

@@ -9,7 +9,7 @@ import subprocess
 import threading
 import time
 
-from WebsitePlatformM6EAcceptance import ROLES, canonical, decode, digest, need, hash_
+from WebsitePlatformM6EAcceptance import ROLES, canonical, decode, digest, need, hash_, safe_error
 from WebsitePlatformM6EProcess import Failure
 import WebsitePlatformM6EBootstrapPlan as b
 import WebsitePlatformM6EComponent as c
@@ -195,6 +195,26 @@ class Native:
         need(hasattr(os,'pidfd_open') and hasattr(signal,'pidfd_send_signal'),'component_pidfd_required')
         self.deadline=min(host.owner.deadline,time.monotonic()+c.SECONDS)
         self.active=[];self.rows=[];self.manifest=None;self.stopped=False
+    def admit(self):
+        from WebsitePlatformM6EComponentEntry import supervisor
+        from WebsitePlatformM6ECommission import UNIT, budget
+        self.host.namespace(self.ledger.config);self.host.check_pins(self.ledger.config)
+        if 'component_request' in self.ledger.state['observations']:
+            supervisor(self.host,self.ledger)
+            need(self.ledger.state['phase']=='component-running','component_running_admission')
+        else:
+            # Preserve the existing collector route, but never a direct runner bypass.
+            context=self.host.component_context();group='/system.slice/'+UNIT
+            need(context['cgroup']==['0::'+group],'component_supervisor_cgroup')
+            unit=self.host.unit(UNIT);hash_(unit.get('InvocationID'),32)
+            rows=[r for r in self.ledger.state['services'] if r['unit']==UNIT]
+            need(len(rows)==1 and rows[0]['state']=='ACTIVE' and rows[0]['pid']==context['pid']
+                 and rows[0]['invocation']==context['invocation']==unit['InvocationID']
+                 and rows[0]['cgroup']==unit['ControlGroup']==group and int(unit['MainPID'])==context['pid']
+                 and unit['FragmentPath']=='/run/systemd/system/'+UNIT and not unit['DropInPaths']
+                 and self.ledger.state['phase']=='commissioning' and 'commission' in self.ledger.state['observations'],
+                 'component_commission_admission')
+            budget(self.host,self.ledger,c.SECONDS)
     def operational(self):
         f=self.ledger.state['observations']['fixture'];p=b.template_values(f['site_key'])
         root=p['EXACT_SERVED_SITE_ROOT'];journal=p['EXACT_PRIVATE_JOURNAL_ROOT']
@@ -299,7 +319,7 @@ class Native:
         child=self.start('observer');value=self.receive(child,'observer');self.completed(child);return value
     def serving_prepare(self):
         from WebsitePlatformM6ECommissionServing import CANDIDATE_CANARIES
-        self.serving_rows=[];self.reader=None;self.reader_clean=False;self.serving_verified_after=False;root=serving_root(self.plan)
+        self.serving_rows=[];self.reader=None;self.reader_attempted=False;self.reader_clean=False;self.serving_verified_after=False;root=serving_root(self.plan)
         def register(row):
             self.serving_rows.append(row);self.state['resources'].append(row['id']);self.ledger.save()
         directories={root,root+'/runtime',root+'/canaries'}
@@ -312,11 +332,80 @@ class Native:
         for name,raw in sorted(files.items()):
             register(self.ledger.write(name,raw,mode=0o755 if name==root+'/canaries/m6e.cgi' else 0o644))
         self.pid_row=self.ledger.generated(root+'/runtime/apache.pid','component-private-apache');register(self.pid_row)
+        self.serving_prepared=serving_inventory(self.fs,self.plan,self.info)
+    def configuration_identity(self):
+        path=serving_root(self.plan)+'/apache.conf'
+        rows=[r for r in self.serving_rows if r['path']==path]
+        need(len(rows)==1,'component_config_ownership');row=rows[0];self.ledger.verify(row)
+        raw=self.fs.read(path,65536);info=self.info(self.fs,path)
+        need(info['kind']==stat.S_IFREG and info['uid']==info['gid']==0 and info['mode']==0o644
+             and info['nlink']==1 and digest(raw)==row['sha256']
+             and raw==serving_config(self.ledger.config,self.plan),'component_config_identity')
+        return dict(identity=info,sha256=digest(raw))
+    def configtest(self,note):
+        """Fixed pinned executable, exact owned config, durable command before exec."""
+        self.configtest_validated=None;self.configtest_children=[];self.configtest_started=False
+        before=self.configuration_identity();self.host.check_pins(self.ledger.config)
+        need(not any(r['id']=='component-a-configtest' for r in self.ledger.state['commands']),'component_configtest_repeated')
+        need(time.monotonic()<self.deadline,'component_configtest_deadline')
+        owner_deadline=self.host.owner.deadline
+        self.host.owner.deadline=min(owner_deadline,self.deadline)
+        start=len(self.host.owner.context);result=None;primary=None
+        diagnostic=dict(execution='native' if self.execution=='native-component-authored' else 'modeled',
+            configuration=before,classification='UNRESOLVED',stdout_sha256=None,stderr_sha256=None)
+        try:
+            self.configtest_started=True
+            result=self.host.run('component-a-configtest',['/usr/sbin/apache2','-t','-f',serving_root(self.plan)+'/apache.conf'],
+                min(10,max(.001,self.deadline-time.monotonic())),allowed=(0,1,2),return_result=True)
+            diagnostic.update(stdout_sha256=digest(result['stdout']),stderr_sha256=digest(result['stderr']))
+            need(type(result['exit']) is int and result['exit']==0,'component_configtest_failed')
+            need(self.configuration_identity()==before,'component_configtest_changed')
+            rows=[r for r in self.ledger.state['commands'] if r['id']=='component-a-configtest']
+            need(len(rows)==1 and rows[0]['caller']=='operator' and rows[0]['pid']==result['pid']
+                 and type(result['pid']) is int and result['pid']>0 and rows[0]['exit']==0
+                 and type(rows[0]['finished_ns']) is int and rows[0]['finished_ns']>=rows[0]['started_ns'],
+                 'component_configtest_command')
+            self.configtest_validated=dict(configuration=before,command=copy.deepcopy(rows[0]))
+            diagnostic['classification']='VALIDATED'
+        except BaseException as error:
+            primary=error;diagnostic.update(classification='REJECTED',failure=safe_error(error));raise
+        finally:
+            # Restore the preexisting absolute owner deadline for cleanup/readback,
+            # never a fresh timeout or an extension of watchdog/admission expiry.
+            self.host.owner.deadline=owner_deadline
+            self.configtest_children=self.host.owner.context[start:]
+            diagnostic['children']=copy.deepcopy(self.configtest_children)
+            try:note('configtest',diagnostic)
+            except BaseException as error:
+                self.configtest_validated=None
+                if primary is None:raise
+                self.ledger.failure(error,'component-configtest-capture')
+    def configtest_quiescent(self):
+        if not getattr(self,'configtest_started',False):return
+        rows=[r for r in self.ledger.state['commands'] if r['id']=='component-a-configtest']
+        children=self.configtest_children
+        need(len(rows)==len(children)==1 and children[0]['reaped'] and children[0]['exit'] is not None
+             and children[0]['pid']==rows[0]['pid'] and children[0]['exit']==rows[0]['exit'],
+             'component_configtest_not_quiescent')
+    def reader_admission(self):
+        value=getattr(self,'configtest_validated',None)
+        need(value is not None,'component_configtest_required')
+        rows=[r for r in self.ledger.state['commands'] if r['id']=='component-a-configtest']
+        need(rows==[value['command']],'component_configtest_command_changed')
+        children=self.configtest_children
+        need(len(children)==1 and children[0]['pid']==value['command']['pid'] and children[0]['reaped']
+             and children[0]['exit']==0,'component_configtest_process')
+        need(self.configuration_identity()==value['configuration'],'component_configtest_changed')
+        need(time.monotonic()<self.deadline,'component_reader_deadline')
+        self.host.check_pins(self.ledger.config)
+        need(self.configuration_identity()==value['configuration'],'component_configtest_changed')
+        need(time.monotonic()<self.deadline,'component_reader_deadline')
     def reader_start(self):
         # Fixed test process, not an installed service or operational publisher.
         need(time.monotonic()<self.deadline,'component_reader_deadline')
         command=dict(id='component-a-reader',caller='operator',pid=None,exit=None,started_ns=time.monotonic_ns(),finished_ns=None)
         self.ledger.state['commands'].append(command);self.ledger.save()
+        self.reader_admission();self.reader_attempted=True
         process=subprocess.Popen(['/usr/sbin/apache2','-X','-f',serving_root(self.plan)+'/apache.conf'],
             stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.PIPE,bufsize=0,
             start_new_session=True,umask=0o022,env={'PATH':'/usr/bin:/bin','LANG':'C','HOME':'/nonexistent'})
@@ -377,7 +466,7 @@ class Native:
         try:
             need(digest(canonical(snapshot(self.fs,self.plan,self.manifest,self.info)))==self.state['observations']['observer']['inventory_sha256'],
                  'component_serving_original_inventory')
-            self.serving_prepare();self.reader_start()
+            self.serving_prepare();self.configtest(note);self.reader_start()
             before=self.observer();note('serving_before',before);self.serving_verify(before)
             note('serving_execution',dict(http='native' if self.execution=='native-component-authored' else 'modeled',
                 tls='native' if self.execution=='native-component-authored' else 'modeled',apache='native' if self.execution=='native-component-authored' else 'modeled'))
@@ -386,10 +475,11 @@ class Native:
             primary=error;self.ledger.failure(error,'component-serving');raise
         finally:
             try:
-                after=self.observer();note('serving_after',after);found=self.serving_verify(after)
-                before=self.state['observations'].get('serving_before',{}).get('serving_inventory')
-                need(found==before,'component_serving_inventory_changed')
-                self.serving_verified_after=True
+                if getattr(self,'reader',None) is not None:
+                    after=self.observer();note('serving_after',after);found=self.serving_verify(after)
+                    before=self.state['observations'].get('serving_before',{}).get('serving_inventory')
+                    need(found==before,'component_serving_inventory_changed')
+                    self.serving_verified_after=True
             except BaseException as error:
                 self.ledger.failure(error,'component-after-serving')
                 if primary is None:raise
@@ -400,6 +490,13 @@ class Native:
         process.wait(timeout=3);need(process.returncode==0,'component_reader_exit')
         self.reader_clean=True
     def serving_owned(self):
+        self.configtest_quiescent()
+        if self.reader is None:
+            need(not self.reader_attempted,'component_reader_start_uncertain')
+            found=serving_inventory(self.fs,self.plan,self.info)
+            need(found==getattr(self,'serving_prepared',None) and found is not None,'component_unstarted_serving_changed')
+            need(not self.fs.exists(self.pid_row['path']),'component_unstarted_pid')
+            return found
         need(self.reader is not None and self.reader_clean,'component_reader_not_quiescent')
         need(self.serving_verified_after,'component_after_serving_required')
         before=self.state['observations'].get('serving_before',{}).get('serving_inventory')
@@ -459,8 +556,9 @@ class Native:
         self.stopped=False;self.ledger.save();need(not failures,'component_stop_failed');self.stopped=True
     def quiescent(self):
         need(self.stopped and all(x['process'].poll() is not None and x['record']['reaped'] for x in self.active),'component_live_process')
+        self.configtest_quiescent()
         if os.name!='nt':
-            groups={x['process'].pid for x in self.active};count=0
+            groups={x['process'].pid for x in self.active}|{x['pid'] for x in getattr(self,'configtest_children',[])};count=0
             for path in Path('/proc').iterdir():
                 if not path.name.isdecimal():continue
                 count+=1;need(count<65536,'component_process_inventory')

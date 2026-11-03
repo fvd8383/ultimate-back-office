@@ -22,7 +22,7 @@ AUXILIARIES={k:'/usr/'+v for k,v in {
     'groupdel':'sbin/groupdel','userdel':'sbin/userdel','detect-virt':'bin/systemd-detect-virt'}.items()}
 MODULES=('mpm_event','authz_core','authz_host','authn_core','access_compat','unixd','log_config',
          'ssl','socache_shmcb','headers','mime','dir','rewrite','alias')
-UNITS=('ubo-m6e-bootstrap.service','ubo-m6e-commission.service','ubo-m6e-watchdog.timer','ubo-m6e-watchdog.service',
+UNITS=('ubo-m6e-bootstrap.service','ubo-m6e-commission.service','ubo-m6e-component-a.service','ubo-m6e-watchdog.timer','ubo-m6e-watchdog.service',
        'ubo-m6e-mysql.service','ubo-m6e-apache.service','ubo-site-authority@.service',
        'ubo-site-authority.socket','ubo-site-publisher@.service','ubo-site-publisher.socket','ubo-site-worker.service')
 STARTED=('ubo-m6e-mysql.service','ubo-site-authority.socket','ubo-site-publisher.socket','ubo-m6e-apache.service')
@@ -67,6 +67,7 @@ def control_units():
     return {
       'ubo-m6e-bootstrap.service':service('Type=oneshot\nExecStart=/usr/bin/python3 -I -B '+entry+' --prepare-owned\nTimeoutStartSec='+str(PREPARE_SECONDS)),
       'ubo-m6e-commission.service':service('Type=oneshot\nExecStart=/usr/bin/python3 -I -B '+SOURCE+'/tests/support/WebsitePlatformM6ECommission.py --commission-owned\nTimeoutStartSec=420'),
+      'ubo-m6e-component-a.service':service('Type=oneshot\nExecStart=/usr/bin/python3 -I -B '+SOURCE+'/tests/support/WebsitePlatformM6EComponentEntry.py --component-a-owned\nTimeoutStartSec=420'),
       'ubo-m6e-watchdog.service':service('Type=oneshot\nExecStart=/usr/bin/python3 -I -B '+entry+' --watchdog\nTimeoutStartSec='+str(CLEANUP_SECONDS)),
       'ubo-m6e-watchdog.timer':('[Unit]\nDescription=Owned M6E lifetime guard\n[Timer]\nOnActiveSec='+str(LIFETIME_SECONDS)+
           '\nAccuracySec=1\nUnit=ubo-m6e-watchdog.service\nRemainAfterElapse=no\n').encode()}

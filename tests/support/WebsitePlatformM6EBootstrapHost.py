@@ -67,6 +67,10 @@ class NativeHost:
 
     def unit(self,name):return self.parse_unit(self.systemctl('show',name))
 
+    def component_context(self):
+        return dict(pid=os.getpid(),cgroup=Path('/proc/self/cgroup').read_text().splitlines(),
+                    invocation=os.environ.get('INVOCATION_ID',''))
+
     def config(self):return p.admission(decode(protected(BOOTSTRAP)))
 
     def namespace(self,config):

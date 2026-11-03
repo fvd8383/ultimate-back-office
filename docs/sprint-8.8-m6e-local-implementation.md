@@ -15,6 +15,91 @@ second parent; native-tested `7cdbbeef639…` is an ancestor of that reviewed he
 Its native PASS belongs only to `7cdbbeef`, never this implementation or the merge.
 Historical failures and pre-merge reports are not rewritten or rerun.
 
+## Supervised standalone A and required configtest following 71b1839
+
+Starting SHA: `71b1839ee3390ea7e4c4c2bfdba258c6e38ea6d0`, verified on the
+existing clean `codex/sprint-8.8-m6e-apache-publisher` branch. PR #131 was OPEN
+DRAFT; its exact-head automated review completed without findings. The ending
+SHA is the single commit introducing this section. Its full SHA and exact
+tested/working/index/committed hashes are recorded after commit in the external
+`m6e-entry-configtest/SUMMARY.txt` and the exact-head PR review request: a commit
+cannot embed its own resulting SHA.
+
+The fixed public request is `WebsitePlatformM6EPreparation.py --component-a`.
+[ComponentEntry.py](../tests/support/WebsitePlatformM6EComponentEntry.py) dispatches
+only `ubo-m6e-component-a.service`; its protected `--component-a-owned` mode is
+not exposed by Preparation. Bootstrap owns the fixed source-pinned unit, and the
+existing watchdog stops it before acquiring the lifecycle lock. The service uses
+the existing 420-second envelope and control-group termination. The component
+still has 90 seconds, the original watchdog 1,200 seconds and cleanup reserve
+120 seconds. Neither dispatch nor execution restarts the timer or admission.
+
+Both entry functions acquire the original lifecycle lock and reload the original
+ledger. Before dispatch, READY/pristine inspection, original immutable bootstrap
+publication/handoff, source inventories, configuration, tools/modules, VM/boot,
+expiry and original database/target/journal checks must pass. Dispatch records
+intent before systemctl, then binds the observed MainPID, invocation and cgroup
+while the service waits on that lock. Protected execution checks the exact
+fragment bytes/path, absence of drop-ins, cgroup, MainPID, systemd InvocationID
+and process INVOCATION_ID against the admitted request and completed dispatch
+command. The internal component runner also checks supervisor admission before
+creating its component record or resources. Repeated, conflicting and direct
+unsupervised execution rejects. The original commissioning route retains its
+separate supervisor admission and eight-gate policy.
+
+This route calls the existing Component.run lifecycle directly, without collecting
+eight producers. It uses original release A, its PHP/Python transfer and
+Publisher.stage, synthetic stage-only authority, fence 1 and unsettled journal.
+Independent artifact and candidate HTTPS observations, original observer inventory
+binding, immutable capture before stopping the reader, quiescence and exact owned
+cleanup remain required. The original operational target is checked after success
+and failure. Unknown or changed resources remain LIMITED. Historical READY
+publications and commissioning observations are never rewritten.
+
+After creating and verifying the owned private config, ComponentHost executes
+the fixed pinned `/usr/sbin/apache2 -t -f <owned-component-apache.conf>` with an
+argv array. Its command intent is durable before execution. The ten-second
+configtest is subordinate to the absolute component/service/watchdog deadlines;
+stdout is bounded to 2 MiB and stderr to 16 KiB by the existing process owner.
+Evidence retains sanitized classifications, hashes and process metadata, never
+raw diagnostics. Exit zero, a reaped matching command/process and unchanged
+device/inode/type/UID/GID/mode/link-count/content identity are required immediately
+before reader spawn. Missing/changed command ownership, timeout, output overflow,
+unknown exit or config mutation prevents Apache startup. Failed configtest can
+remove only unchanged explicitly owned resources after proven process quiescence;
+uncertain startup or changed identity remains LIMITED.
+
+The immutable `m6e-supervised-component-a-v1` execution result binds the original
+admission and hashes of the component before-cleanup, owned-before-remove and
+result records. Success means **ORIGINAL A VERIFIED AND REMOVED** only. It does
+not award an Apache gate PASS, issue a host receipt, accept an installed workflow,
+activate anything publicly or establish full native acceptance. Windows native
+service/UID/Apache/TLS behavior remains explicitly modeled.
+
+Exact changed files for this increment:
+
+- `tests/support/WebsitePlatformM6EComponentEntry.py` (new fixed entrypoint).
+- `tests/WebsitePlatformM6EComponentEntryTest.py` (new focused controls).
+- `tests/support/WebsitePlatformM6EPreparation.py`,
+  `tests/support/WebsitePlatformM6EBootstrapPlan.py`,
+  `tests/support/WebsitePlatformM6EBootstrapHost.py`,
+  `tests/support/WebsitePlatformM6EBootstrap.py` (routing, owned unit, supervisor
+  observation and watchdog cgroup quiescence).
+- `tests/support/WebsitePlatformM6EComponent.py`,
+  `tests/support/WebsitePlatformM6EComponentHost.py`,
+  `tests/WebsitePlatformM6EComponentTest.py` (admission, configtest and local adapters).
+- `tests/WebsitePlatformM6EScopeTest.php` (two exact new M6E paths only).
+- This document and `docs/sprint-8.8-m6e-isolated-validation.md`.
+
+Production publisher/admission, live Apache templates, deployment services,
+requirements, receipt schema, all migrations and closed M6C/M6D contracts are
+unchanged. The [validation record](sprint-8.8-m6e-isolated-validation.md#standalone-a-and-configtest-local-controls)
+contains executed counts and native prerequisites. All six commissioning blockers
+remain open: apache, assets, runtime, health, recovery and provisioning. Native
+execution requires separately authorized disposable-host preparation and explicit
+fixture-local MySQL/SQL authorization; no synthetic database can satisfy that
+future requirement. No native execution or host preparation was authorized here.
+
 ## A-only private candidate serving following 18b4900
 
 Source HEAD: `18b4900ebad62c511587c4bb4498000460cf5129`; PR #131 was OPEN DRAFT,

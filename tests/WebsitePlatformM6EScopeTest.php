@@ -41,6 +41,7 @@ $allowed=[
     'tests/support/WebsitePlatformM6EComponent.php','tests/support/WebsitePlatformM6EComponentHost.py',
     'tests/support/WebsitePlatformM6EComponentChild.py','tests/support/WebsitePlatformM6EComponentLocal.php',
     'tests/support/WebsitePlatformM6EComponentModel.py',
+    'tests/support/WebsitePlatformM6EComponentEntry.py','tests/WebsitePlatformM6EComponentEntryTest.py',
     'tests/WebsitePlatformM6EServingDependencyTest.php',
     'tests/support/WebsitePlatformM6EBootstrap.py','tests/support/WebsitePlatformM6EBootstrapHost.py',
     'tests/support/WebsitePlatformM6EBootstrapLedger.py','tests/support/WebsitePlatformM6EBootstrapPlan.py',
