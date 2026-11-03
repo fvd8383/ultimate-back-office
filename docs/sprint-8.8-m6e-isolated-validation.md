@@ -5,6 +5,86 @@ installation, server preparation, Linux/Apache execution, SQL, service operation
 working-staging activation or deployment. This document is the bounded later path,
 not a claim that a host contract exists. M6D’s closed native gate is not reopened.
 
+## A-only candidate-serving local evidence and native boundary
+
+Starting source HEAD: `18b4900ebad62c511587c4bb4498000460cf5129`, clean reviewed
+OPEN DRAFT PR #131. The exact introducing commit SHA and post-commit inventory
+are recorded in external `m6e-candidate-https/SUMMARY.txt`, together with the
+exact-head review request. [Implementation responsibilities and binding](sprint-8.8-m6e-local-implementation.md#a-only-private-candidate-serving-following-18b4900)
+are confined to seven M6E Python support/test files and these two documents.
+No production code, PHP, templates, host contract or closed M6C/M6D policy changes.
+
+The controlled-local positive path reads original A's actual staged candidate
+and asset pool through a separate Python reader. The original PHP build/export
+and private transfer, production Python stage and fresh independent observers
+remain in the path. The reader holds a real retained PNG descriptor through
+immutable evidence capture. Evidence precedes shutdown; all children must be
+reaped before identity-bound removal. Original target/database/journal sentinels
+remain unchanged. Identical-byte inode substitution is detected even when all
+HTTP byte checks pass; no later observer becomes a replacement baseline.
+
+Executed response negatives include wrong marker, MIME, digest and security
+headers, handler and authorization bypass. Requests explicitly exercise wrong
+Host/SNI/trust/client certificate, missing client authorization, methods, private
+paths, traversal and actual canary files. Artifact/resource faults include absent
+or corrupt candidate, missing marker, identical-byte replacement, changed/missing
+public files, extra/missing serving objects, malformed/missing inventories before
+and after serving, and replacement between capture and removal. Process/evidence
+faults cover actual reader death, timeout, modeled unknown termination, capture
+failure, incomplete restoration observation and first/secondary failure retention.
+Controlled failures remain INCOMPLETE; uncertain ownership/observation/reader
+state remains LIMITED. The outer local test harness disposes of its synthetic
+temporary fixtures only after asserting those component outcomes and retaining
+bounded diagnostics; this is not native uncertain-resource cleanup evidence.
+
+The full affected component suite passed 22 tests / 58 subtests / 464 top-level
+unittest assertion calls in 500.623 seconds. After the final fixture config and
+executable CGI changes, all five candidate controls passed again: 24 subtests,
+181 assertion calls, 304.711 seconds. Existing serving controls passed 12 tests
+in 15.348 seconds. These counts overlap; they are not unique-case totals. The
+positive path verifies seven original files (9,144 bytes), seven GET and seven
+HEAD file responses, the index route and 40 denials: 55 requests in total. It
+independently binds 20 serving resources and retains the original inventory hash.
+
+Current scope passes 278 assertions, including preserved migrations/definitions
+and closed source. All seven changed Python files pass AST/compile with warnings
+as errors; no PHP changed, so changed-PHP lint is not applicable. The two documents
+pass paired-fence and 24 relative-file-link checks (existing fragment anchors are
+not all verified). Git whitespace and exact working/index/committed object checks
+are retained in the external SUMMARY after commit. Original failed development
+runs remain separately recorded: a restricted loopback launch, a template input
+type error, and three Windows replacement controls whose open index handle blocked
+the intended rename. Those cases were corrected and rerun; no failed run is
+credited as PASS. The final reader holds a retained PNG instead.
+
+The native-only process identity/capability checks and Apache configuration are
+authored and syntax-inspected, with no native execution claim. Local model results
+do not test Apache's configuration merging, pthread mutex implementation or TLS.
+
+Native execution is **AUTHORED / UNEXECUTED** and needs separate authorization.
+Prerequisites are the existing admitted disposable Linux fixture, exact source
+and module/tool pins, protected original A, existing role accounts and CA/server/
+client/wrong-certificate files, an unused loopback `127.0.0.4:8443`, and no conflicting
+resource paths. The fixed Apache `-X -f <owned-config>` process is owned by the
+existing admitted operator; it is not installed as a service or exposed as a new
+privileged publishing interface. The config reuses the candidate template and
+existing certificate paths, combines Location authorization with preceding file
+denials using [AuthMerging And](https://httpd.apache.org/docs/2.4/mod/mod_authz_core.html#authmerging),
+supplies only the separate listener, suppresses log
+bodies and uses `SSLSessionCache none` and `Mutex pthread default`. Native acceptance
+must establish support for that [Apache mutex mechanism](https://httpd.apache.org/docs/2.4/mod/core.html#mutex),
+config validity, exact module/UID confinement, real TLS chain/authentication and
+Host/SNI behavior, actual denied canaries, bounded shutdown, absence of descendants
+and exact resource cleanup. Unrecognized runtime objects fail the closed inventory.
+The PID file must identify the tracked process and retain its original identity
+or disappear only after verified normal shutdown.
+
+No native result is inferred from Windows models or older native runs. All six
+MISSING producers remain unsatisfied. M6C/M6D: FORMALLY CLOSED. M6E: PARTIALLY
+IMPLEMENTED / REVIEW REQUIRED. M6F/M6G: NOT STARTED. Production: UNAUTHORIZED.
+No server/droplet, SSH, SQL, installation, service restart/reload, receipt, activation,
+deployment, migration or merge operation was performed.
+
 ## Component ancestor and observer-inventory correction
 
 Starting head: 8916b25a67f1f15e890cb7b2fc4b3a9eac7a3206. Its automated review completed

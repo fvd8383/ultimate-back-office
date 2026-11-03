@@ -19,9 +19,9 @@ CSP="default-src 'none'; script-src 'none'; style-src 'self'; img-src 'self'; co
 CANARIES=('/private/canary','/metadata/manifest.json','/.m6e-canary','/m6e.php','/m6e.cgi','/m6e.shtml','/empty/','/missing-route','/index')
 
 class Connection(http.client.HTTPSConnection):
-    def __init__(self,ip,host,context): super().__init__(host,443,timeout=5,context=context); self.ip=ip
+    def __init__(self,ip,host,context,port=443): super().__init__(host,port,timeout=5,context=context); self.ip=ip
     def connect(self):
-        raw=socket.create_connection((self.ip,443),timeout=2)
+        raw=socket.create_connection((self.ip,self.port),timeout=2)
         try: self.sock=self._context.wrap_socket(raw,server_hostname=self.host)
         except BaseException: raw.close(); raise
 
@@ -29,6 +29,16 @@ def fetch(binding,phase,path,method='GET',variant='none'):
     need(phase in ('active','candidate') and method in ('GET','HEAD','POST','PUT','DELETE','OPTIONS','TRACE'), 'http_request')
     endpoint=binding[phase]
     need([endpoint['host'],endpoint['ip'],endpoint['port']]==ENDPOINTS[phase], 'http_endpoint')
+    return _fetch(endpoint,path,method,variant)
+
+
+def candidate_fetch(path,method='GET',variant='none'):
+    """Fixed, separate test-only listener; no operational binding override."""
+    return _fetch(dict(host='candidate.m6e.invalid',ip='127.0.0.4',port=8443),path,method,variant)
+
+
+def _fetch(endpoint,path,method,variant):
+    need(method in ('GET','HEAD','POST','PUT','DELETE','OPTIONS','TRACE'),'http_request')
     need(path.startswith('/') and len(path)<=512 and '\n' not in path and '\r' not in path,'http_path')
     need(variant in ('none','unauthorized','bad-host','bad-sni','bad-client','bad-trust'),'tls_variant')
     base=Path('/etc/ubo-site-publisher/tls'); ca=base/('wrong.pem' if variant=='bad-trust' else 'ca.pem')
@@ -36,7 +46,7 @@ def fetch(binding,phase,path,method='GET',variant='none'):
     if variant!='unauthorized':
         cert='wrong' if variant=='bad-client' else 'client'; context.load_cert_chain(str(base/(cert+'.pem')),str(base/(cert+'.key')))
     host='wrong.m6e.invalid' if variant=='bad-sni' else endpoint['host']
-    conn=Connection(endpoint['ip'],host,context); started=time.monotonic(); h=hashlib.sha256(); total=0
+    conn=Connection(endpoint['ip'],host,context,endpoint['port']); started=time.monotonic(); h=hashlib.sha256(); total=0
     try:
         conn.request(method,path,headers={'Host':'wrong.m6e.invalid' if variant=='bad-host' else endpoint['host'],
             'Cache-Control':'no-cache, no-store','Pragma':'no-cache','Accept-Encoding':'identity'})

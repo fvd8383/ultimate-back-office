@@ -21,7 +21,7 @@ from WebsitePlatformM6EBootstrapControlTest import PrivateFiles,config,fixture
 from WebsitePlatformM6EBootstrapLedger import Ledger
 from WebsitePlatformM6EAcceptance import canonical,decode,digest,need,ROLES
 from WebsitePlatformM6EProcess import Owner,Failure
-from WebsitePlatformM6EComponentHost import Native,snapshot
+from WebsitePlatformM6EComponentHost import Native,snapshot,serving_root,serving_config
 from WebsitePlatformM6EComponentModel import Model,Mapped,info
 from WebsitePlatformM6ECoordinator import require_native_ready
 import WebsitePlatformM6EComponent as c
@@ -29,6 +29,7 @@ import WebsitePlatformM6EBootstrapPlan as b
 import WebsitePlatformM6ECommissionEvidence as evidence
 
 class Local(Native):
+    serving_enabled=False # The baseline fault campaign remains stage-only.
     execution='controlled-local'
     def __init__(self,root,fault=''):
         self.root=Path(root);self.fs=PrivateFiles(root);cfg=config()
@@ -133,6 +134,77 @@ class Local(Native):
             path=self.fs.path(self.plan['paths']['served']+'/access-probe');path.rename(path.with_name('replaced-old'));path.write_bytes(b'component access\n')
         super().cleanup(owned)
 
+class ServingLocal(Local):
+    serving_enabled=True
+    def serving_checks(self,note):
+        from WebsitePlatformM6ECommissionServing import CandidateChecks
+        CandidateChecks(self.manifest,self.serving_request,lambda value:note('serving',value)).run()
+    def sync_serving_model(self):
+        data=decode(self.model.read_bytes())
+        for row in self.serving_rows:
+            if row['identity'] is not None:
+                item=self.fs.identity(row['path'])
+                data['meta'][str(self.fs.path(row['path']))]=[item['mode'],item['uid'],item['gid']]
+        self.model.write_bytes(canonical(data))
+    def serving_prepare(self):
+        super().serving_prepare();self.sync_serving_model();self.requests=0
+    def start_value(self,role):
+        value=super().start_value(role)
+        if role=='reader':value['manifest']=self.manifest
+        if self.fault=='response-and-after-failure':value['fault']='wrong-mime'
+        return value
+    def reader_start(self):
+        child=self.start('reader');self.reader=self.active[-1]
+        value=self.receive(child,'reader');need(value['uid']==2104,'modeled_reader_role')
+        self.fs.create(self.pid_row['path'],str(child.process.pid).encode()+b'\n',lambda fd:self.ledger.identify(self.pid_row,fd))
+        self.fs.metadata(self.pid_row['path'],0,0,0o644);self.ledger.identify(self.pid_row);self.sync_serving_model()
+    def serving_request(self,phase,path,method,variant):
+        self.requests+=1
+        if self.requests==1:
+            public=self.plan['paths']['served']+'/releases/'+self.plan['release']['release_key']+'/public/index.html'
+            output=self.fs.path(public)
+            if self.fault in ('serve-same-inode-substitution','serve-corrupt','serve-missing'):
+                raw=output.read_bytes();self.old_public=self.info(self.fs,public)
+                output.rename(self.root/'held-public')
+                if self.fault!='serve-missing':output.write_bytes(raw if self.fault=='serve-same-inode-substitution' else b'corrupt')
+                if output.exists():self.new_public=self.info(self.fs,public)
+            if self.fault=='candidate-absent':self.fs.path(self.plan['paths']['served']+'/candidate').unlink()
+            if self.fault=='marker-missing':output.with_name('_release.json').unlink()
+            if self.fault=='candidate-corrupt':
+                data=decode(self.model.read_bytes());data['links'][str(self.fs.path(self.plan['paths']['served']+'/candidate'))]='wrong';self.model.write_bytes(canonical(data))
+            if self.fault=='serving-extra':(self.fs.path(serving_root(self.plan))/'unknown').write_bytes(b'unknown')
+            if self.fault=='serving-missing':self.fs.path(serving_root(self.plan)+'/canaries/m6e.php').unlink()
+        child=self.reader['child']
+        if self.fault=='reader-timeout':self.deadline=time.monotonic()+.15
+        child.send(dict(command='request',path=path,method=method,variant=variant))
+        return self.receive(child,'http')
+    def observer(self):
+        value=super().observer()
+        if getattr(self,'serving_rows',None):
+            if self.fault=='serving-inventory-missing':value.pop('serving_inventory',None)
+            if self.fault=='serving-inventory-malformed':value['serving_inventory']=[]
+            if 'serving_before' in self.state['observations']:
+                if self.fault=='serving-after-missing':value.pop('serving_inventory',None)
+                if self.fault in ('serving-after-malformed','response-and-after-failure'):value['serving_inventory']=[]
+        return value
+    def stop_reader(self):
+        child=self.reader['child'];need(child.process.poll() is None,'component_reader_unknown_exit')
+        child.send(dict(command='stop'))
+        # Cleanup has its existing bounded reserve, independent of HTTP expiry.
+        value=child.message(time.monotonic()+3);need(value['kind']=='stopped','component_reader_stop_ack')
+        child.process.wait(timeout=3);need(child.process.returncode==0,'component_reader_exit')
+        self.reader_clean=self.fault!='reader-unknown'
+    def cleanup(self,owned):
+        if self.fault=='serving-cleanup-replaced':
+            output=self.fs.path(serving_root(self.plan)+'/apache.conf');raw=output.read_bytes()
+            output.rename(self.root/'held-config');output.write_bytes(raw)
+        super().cleanup(owned)
+    def operational(self):
+        value=super().operational()
+        if getattr(self,'fault','')=='restoration-observation' and 'remove' in getattr(self,'events',[]) and not getattr(self,'restoration_fault',False):
+            self.restoration_fault=True;return value|dict(restoration='incomplete')
+        return value
+
 class ReviewLocal(Local):
     """Inject only AFTER real observation, retaining the old inode outside output."""
     def __init__(self,root,fault):
@@ -211,6 +283,61 @@ class ReviewLocal(Local):
         return value
 
 class ComponentTests(unittest.TestCase):
+    def test_candidate_serving_original_bytes_and_owned_reader(self):
+        def check(backend,state,error):
+            self.assertIsNone(error);self.assertEqual(state['cleanup'],'REMOVED')
+            obs=state['observations'];served=obs['serving']
+            self.assertEqual(served['verified_files'],obs['source']['files'])
+            self.assertEqual(served['verified_heads'],served['verified_files']);self.assertGreater(served['denials'],30)
+            self.assertEqual(obs['observer']['inventory_sha256'],obs['serving_after']['inventory_sha256'])
+            self.assertEqual(obs['serving_before']['serving_inventory'],obs['serving_after']['serving_inventory'])
+            self.assertEqual(obs['serving_execution'],dict(http='modeled',tls='modeled',apache='modeled'))
+            self.assertFalse(backend.fs.exists(serving_root(backend.plan)))
+            self.assertLess(backend.events.index('component-a-before-cleanup'),backend.events.index('stop'))
+            self.assertLess(backend.events.index('stop'),backend.events.index('remove'))
+            reader=next(x for x in backend.captured['children'] if x['role']=='reader')
+            self.assertIsNone(reader['observed_exit']);self.assertTrue(backend.reader_clean)
+            config=serving_config(backend.ledger.config,backend.plan).decode()
+            self.assertEqual(backend.module.transfer_entries(canonical(backend.manifest),backend.plan['release']),backend.manifest)
+            self.assertIn('Listen 127.0.0.4:8443',config);self.assertNotIn('/current',config)
+            self.assertIn(backend.plan['paths']['served']+'/candidate',config)
+            self.assertIn('SSLStrictSNIVHostCheck On',config)
+            self.assertIn('<Location "/">\n        AuthMerging And',config)
+            self.assertIn('Mutex pthread default',config)
+        self.execute(backend_type=ServingLocal,check=check)
+    def test_candidate_serving_response_faults_keep_after_observation(self):
+        for fault in ('wrong-marker','wrong-mime','wrong-digest','security-header','handler-bypass','auth-bypass'):
+            with self.subTest(fault=fault):
+                state,error=self.execute(fault,backend_type=ServingLocal)
+                self.assertIsNotNone(error);self.assertEqual(state['cleanup'],'REMOVED')
+                self.assertEqual(state['result'],'INCOMPLETE');self.assertIn('serving_after',state['observations'])
+                self.assertGreater(state['observations']['serving']['requests'],0)
+    def test_candidate_serving_changed_artifacts_are_retained(self):
+        for fault in ('candidate-absent','candidate-corrupt','marker-missing','serve-same-inode-substitution','serve-corrupt','serve-missing',
+                      'serving-extra','serving-missing','serving-inventory-missing','serving-inventory-malformed',
+                      'serving-after-missing','serving-after-malformed','serving-cleanup-replaced'):
+            with self.subTest(fault=fault):
+                def check(backend,state,error):
+                    self.assertIsNotNone(error);self.assertEqual(state['cleanup'],'LIMITED')
+                    self.assertTrue(backend.fs.exists(backend.plan['paths']['data']))
+                    self.assertTrue(backend.fs.exists(serving_root(backend.plan)))
+                    if fault=='serve-same-inode-substitution':
+                        self.assertNotEqual(backend.old_public['ino'],backend.new_public['ino'])
+                        self.assertEqual(state['observations']['serving']['verified_files'],state['observations']['source']['files'])
+                self.execute(fault,backend_type=ServingLocal,check=check)
+    def test_candidate_serving_reader_capture_and_restoration_failures(self):
+        for fault in ('reader-death','reader-timeout','reader-unknown','capture-failure','restoration-observation'):
+            with self.subTest(fault=fault):
+                state,error=self.execute(fault,backend_type=ServingLocal)
+                self.assertIsNotNone(error);self.assertEqual(state['cleanup'],'LIMITED')
+                self.assertEqual(state['result'],'INCOMPLETE');self.assertIsNotNone(state['first_failure'])
+    def test_candidate_serving_first_failure_is_not_overwritten(self):
+        def check(backend,state,error):
+            self.assertEqual(str(error),'serving_mime');self.assertEqual(state['cleanup'],'LIMITED')
+            self.assertEqual(backend.ledger.state['first_failure']['kind'],'component-serving')
+            self.assertIn('component-after-serving',[x['kind'] for x in backend.ledger.state['secondary']])
+            self.assertIn('component-cleanup',[x['kind'] for x in backend.ledger.state['secondary']])
+        self.execute('response-and-after-failure',backend_type=ServingLocal,check=check)
     def execute(self,fault='',check=None,backend_type=Local):
         root='\\\\?\\'+tempfile.gettempdir() if os.name=='nt' else tempfile.gettempdir()
         with tempfile.TemporaryDirectory(prefix='ubo-ca-',dir=root) as directory:

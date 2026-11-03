@@ -10,12 +10,13 @@ from pathlib import Path
 import socket
 import stat
 import sys
+import time
 from types import SimpleNamespace
 
 if __name__=='__main__':sys.path.insert(0,str(Path(__file__).resolve().parent))
 from WebsitePlatformM6EFilesystem import FilesystemModel
 from WebsitePlatformM6EBootstrapLedger import Files
-from WebsitePlatformM6EAcceptance import canonical,decode,need,safe_error
+from WebsitePlatformM6EAcceptance import canonical,decode,digest,need,safe_error
 from WebsitePlatformM6EComponentChild import helper,observer,emit
 import WebsitePlatformM6EComponent as c
 
@@ -114,10 +115,60 @@ class DamagedSocket:
             return bytes([data[0]^1])+data[1:] if data else data
         return data
 
+def reader(start,fs,ops):
+    """Real separate file reader; HTTP/TLS/Apache policy is explicitly modeled."""
+    from WebsitePlatformM6EApache import SECURITY,CSP
+    from WebsitePlatformM6EComponentHost import serving_root
+    plan=start['plan'];ops.uid=2104;ops.groups={2104};base=plan['paths']['served']
+    target='releases/'+plan['release']['release_key']+'/public'
+    need(ops.links.get(str(fs.path(base+'/candidate')))==target,'modeled_reader_candidate')
+    asset=next(e['relative_path'][7:] for e in start['manifest']['files'] if e['mime_type']=='image/png')
+    held=ops.open(base+'/'+asset,os.O_RDONLY)
+    try:
+        emit('reader',dict(uid=2104,semantics='modeled-http-tls-apache'))
+        while True:
+            command=decode(sys.stdin.buffer.readline(4097))
+            if command==dict(command='stop'):emit('stopped',dict(held_closed=True));return
+            need(set(command)=={'command','path','method','variant'} and command['command']=='request','modeled_reader_request')
+            route=command['path'];method=command['method'];variant=command['variant'];fault=start['fault']
+            if fault=='reader-death':os._exit(19)
+            if fault=='reader-timeout':time.sleep(30)
+            headers={};raw=b'';status=403;tls='verified'
+            if variant in ('bad-client','bad-trust','bad-sni','unauthorized'):
+                status=0;tls='rejected'
+            elif variant!='none' or method not in ('GET','HEAD'):pass
+            elif route.startswith('/__component_denial__/'):
+                relative=route[len('/__component_denial__/'):]
+                # Actual files/directories, not an absent-file denial oracle.
+                status=403 if fs.path(serving_root(plan)+'/canaries/'+relative).exists() else 404
+                if fault=='handler-bypass':status=200;raw=b'M6E-HANDLER-EXECUTED'
+            else:
+                name='public/index.html' if route=='/' else 'public'+route
+                entry=next((x for x in start['manifest']['files'] if x['relative_path']==name),None)
+                if entry is None:status=404
+                else:
+                    ops.links=decode(Path(start['model']).read_bytes())['links']
+                    need(fs.path(base+'/candidate').exists() and ops.links.get(str(fs.path(base+'/candidate')))==target,'modeled_reader_candidate')
+                    file=base+'/'+(name[7:] if name.startswith('public/assets/') else target+'/'+name[7:])
+                    fd=ops.open(file,os.O_RDONLY)
+                    try:raw=os.read(fd,20971521)
+                    finally:ops.close(fd)
+                    need(len(raw)<=20971520,'modeled_reader_bound');status=200
+                    headers=SECURITY|{'content-security-policy':CSP,'content-type':entry['mime_type'],'content-length':str(len(raw))}
+                    if fault=='wrong-marker' and route=='/_release.json':raw=b'{}'
+                    if fault=='wrong-mime':headers['content-type']='text/plain'
+                    if fault=='wrong-digest':raw=b'changed'
+                    if fault=='security-header':headers.pop('x-frame-options')
+                    if method=='HEAD':raw=b''
+            if fault=='auth-bypass' and variant!='none':status=200;tls='verified'
+            emit('http',dict(status=status,bytes=len(raw),sha256=digest(raw),headers=headers,tls=tls,milliseconds=0,pid=os.getpid()))
+    finally:ops.close(held)
+
 def main():
-    need(len(sys.argv)==2 and sys.argv[1] in ('helper','observer'),'local_component_mode')
+    need(len(sys.argv)==2 and sys.argv[1] in ('helper','observer','reader'),'local_component_mode')
     start=decode(sys.stdin.buffer.readline(2097153));plan=start['plan'];ops=Model(start['root'],start['model'])
     fs=Mapped(start['root'],ops);ops.socket_path=fs.path(plan['paths']['socket']);m=c.publisher_module();m.os=ops
+    if sys.argv[1]=='reader':reader(start,fs,ops);return
     m.Tree._rename_noreplace=staticmethod(ops.rename_noreplace)
     sys.modules['fcntl']=SimpleNamespace(flock=ops.flock,LOCK_EX=2,LOCK_NB=4)
     served=ops.tree(m,fs.path(plan['paths']['served']),2104);journal=ops.tree(m,fs.path(plan['paths']['journal']),2102)

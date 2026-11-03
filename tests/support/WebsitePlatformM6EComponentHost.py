@@ -14,6 +14,65 @@ from WebsitePlatformM6EProcess import Failure
 import WebsitePlatformM6EBootstrapPlan as b
 import WebsitePlatformM6EComponent as c
 
+def serving_root(plan):return b.STORAGE+'/component-https-'+plan['binding']['run_id']
+
+def serving_config(config,plan):
+    """Reuse the reviewed candidate policy; own one separate private listener."""
+    raw=(Path(__file__).resolve().parents[2]/'infrastructure/apache/site-static-staging.conf.example').read_text()
+    values=b.template_values(plan['release']['site_key']);root=serving_root(plan)
+    values.update(SITE_ROOT=plan['paths']['served'],PRIVATE_ACCESS_LOG='/dev/null',PRIVATE_ERROR_LOG='/dev/null')
+    rendered=b.render(raw,values).decode();body=rendered[rendered.rfind('<VirtualHost '):]
+    need(body.count('<VirtualHost ')==1 and '/current' not in body,'component_candidate_config')
+    body=body.replace('127.0.0.2:443','127.0.0.4:8443')
+    # Apply the SAME static directory policy to real harmless denial canaries.
+    start=body.index('    <Directory "'+plan['paths']['served']+'">')
+    policy=body[start:body.index('    </Directory>',start)+len('    </Directory>')]
+    policy=policy.replace(plan['paths']['served'],root+'/canaries').replace('Require all denied','Require all granted')
+    extra='\n    Alias "/__component_denial__/" "'+root+'/canaries/"\n'+policy+'\n'
+    body=body.replace('</VirtualHost>',extra+'</VirtualHost>')
+    # Location authorization must not replace earlier directory/FilesMatch
+    # denials. This fixture-only conjunction narrows the rendered access policy.
+    body=body.replace('    <Location "/">','    <Location "/">\n        AuthMerging And')
+    body=body.replace('    RewriteEngine On',
+        '    SSLStrictSNIVHostCheck On\n    RewriteEngine On\n'
+        '    RewriteCond %{HTTP_HOST} !^candidate\\.m6e\\.invalid(?::8443)?$ [NC,OR]\n'
+        '    RewriteCond %{SSL:SSL_TLS_SNI} !^candidate\\.m6e\\.invalid$ [NC]\n'
+        '    RewriteRule ^ - [R=403,END]')
+    loads=['LoadModule '+name+'_module "'+item['path']+'"' for name,item in config['apache_modules'].items() if item['path']!='builtin']
+    head=['ServerRoot "'+root+'"','ServerName candidate.m6e.invalid','PidFile '+root+'/runtime/apache.pid',
+        'DefaultRuntimeDir '+root+'/runtime','User m6e-apache','Group m6e-apache','Listen 127.0.0.4:8443 https',
+        'TypesConfig '+b.CONFIG+'/mime.types','ServerTokens Prod','ServerSignature Off','Timeout 5','KeepAlive Off',
+        'StartServers 1','ServerLimit 1','ThreadLimit 8','ThreadsPerChild 8','MaxRequestWorkers 8',
+        'SSLSessionCache none','Mutex pthread default','ErrorLog /dev/null','<Directory />','AllowOverride None','Require all denied','</Directory>']
+    return ('\n'.join(loads+head)+'\n'+body).encode()
+
+def serving_inventory(fs,plan,info= None):
+    """Independent closed resource walk, including content, inode and link count."""
+    info=info or identity;root=serving_root(plan)
+    if not fs.exists(root):return None
+    from WebsitePlatformM6ECommissionServing import CANDIDATE_CANARIES
+    names={root,root+'/runtime',root+'/apache.conf',root+'/runtime/apache.pid',root+'/canaries'}
+    for relative in CANDIDATE_CANARIES:
+        name=root+'/canaries/'+relative;names.add(name)
+        names.update(str(p) for p in PurePosixPath(name).parents if str(p).startswith(root+'/'))
+    found={}
+    def failed(error):raise error
+    paths=[root]
+    for directory,dirs,files in os.walk(fs.path(root),followlinks=False,onerror=failed):
+        paths.extend(root+'/'+(Path(directory)/n).relative_to(fs.path(root)).as_posix() for n in dirs+files)
+        need(len(paths)<=64,'component_serving_inventory_bound')
+    for name in paths:
+        need(name in names,'component_serving_unknown_path');item=info(fs,name)
+        need(item['kind'] in (stat.S_IFREG,stat.S_IFDIR) and item['uid']==0 and item['gid']==0
+            and item['dev']==info(fs,root)['dev'],'component_serving_metadata')
+        if item['kind']==stat.S_IFREG:
+            expected_mode=0o755 if name==root+'/canaries/m6e.cgi' else 0o644
+            need(item['nlink']==1 and item['mode']==expected_mode,'component_serving_file_metadata')
+            item['sha256']=digest(fs.read(name,65536))
+        else:need(item['mode']==0o755,'component_serving_directory_metadata')
+        found[name]=item
+    return found
+
 def allowed(plan,manifest):
     """Closed output vocabulary. Interrupted random scratch is deliberately uncertain."""
     p=plan['paths'];out={}
@@ -125,6 +184,7 @@ class Child:
         raise Failure('component_child_timeout')
 
 class Native:
+    serving_enabled=True
     execution='native-component-authored'
     info=staticmethod(identity)
     def __init__(self,host,ledger):
@@ -176,16 +236,17 @@ class Native:
             b.CHECKOUT+'/tests/support/WebsitePlatformM6ECommissionChild.php','--component-stage-a']
         return ['/usr/bin/python3','-I','-B',b.CHECKOUT+'/tests/support/WebsitePlatformM6EComponentChild.py','--'+role]
     def spawn_options(self,role):
-        uid=ROLES['worker' if role=='worker' else 'helper']
+        uid=ROLES['worker' if role in ('worker','http') else 'helper']
         return dict(user=uid,group=uid,extra_groups=[ROLES['apache']] if uid==2102 else [],umask=0o077,
                     env={'PATH':'/usr/bin:/bin','LANG':'C','HOME':'/nonexistent'},start_new_session=True)
     def start_value(self,role):
         value=dict(command='inspect' if role=='worker' else role)
         if role=='helper':value['worker_pid']=next(x['process'].pid for x in self.active if x['role']=='worker')
+        if role=='http':value['manifest']=self.manifest
         return value
     def start(self,role):
-        need(role in ('worker','helper','observer') and time.monotonic()<self.deadline,'component_spawn_bound')
-        command=dict(id='component-a-'+role,caller='worker' if role=='worker' else 'helper',pid=None,exit=None,
+        need(role in ('worker','helper','observer','reader','http') and time.monotonic()<self.deadline,'component_spawn_bound')
+        command=dict(id='component-a-'+role,caller='apache' if role=='reader' else 'worker' if role in ('worker','http') else 'helper',pid=None,exit=None,
                      started_ns=time.monotonic_ns(),finished_ns=None)
         self.ledger.state['commands'].append(command);self.ledger.save() # intent precedes spawn
         process=subprocess.Popen(self.command(role),stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.PIPE,bufsize=0,**self.spawn_options(role))
@@ -236,12 +297,132 @@ class Native:
         child.record.update(exit=0,reaped=True,last_barrier='EXITED');child.command.update(exit=0,finished_ns=time.monotonic_ns());self.ledger.save()
     def observer(self):
         child=self.start('observer');value=self.receive(child,'observer');self.completed(child);return value
+    def serving_prepare(self):
+        from WebsitePlatformM6ECommissionServing import CANDIDATE_CANARIES
+        self.serving_rows=[];self.reader=None;self.reader_clean=False;self.serving_verified_after=False;root=serving_root(self.plan)
+        def register(row):
+            self.serving_rows.append(row);self.state['resources'].append(row['id']);self.ledger.save()
+        directories={root,root+'/runtime',root+'/canaries'}
+        files={root+'/apache.conf':serving_config(self.ledger.config,self.plan)}
+        for name,raw in CANDIDATE_CANARIES.items():
+            target=root+'/canaries/'+name;files[target]=raw
+            directories.update(str(p) for p in PurePosixPath(target).parents if str(p).startswith(root+'/'))
+        for name in sorted(directories,key=lambda p:(p.count('/'),p)):
+            register(self.ledger.directory(name))
+        for name,raw in sorted(files.items()):
+            register(self.ledger.write(name,raw,mode=0o755 if name==root+'/canaries/m6e.cgi' else 0o644))
+        self.pid_row=self.ledger.generated(root+'/runtime/apache.pid','component-private-apache');register(self.pid_row)
+    def reader_start(self):
+        # Fixed test process, not an installed service or operational publisher.
+        need(time.monotonic()<self.deadline,'component_reader_deadline')
+        command=dict(id='component-a-reader',caller='operator',pid=None,exit=None,started_ns=time.monotonic_ns(),finished_ns=None)
+        self.ledger.state['commands'].append(command);self.ledger.save()
+        process=subprocess.Popen(['/usr/sbin/apache2','-X','-f',serving_root(self.plan)+'/apache.conf'],
+            stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.PIPE,bufsize=0,
+            start_new_session=True,umask=0o022,env={'PATH':'/usr/bin:/bin','LANG':'C','HOME':'/nonexistent'})
+        record=dict(pid=process.pid,exit=None,signal=0,last_barrier='SPAWNED',reaped=False,termination_requested=False,exit_before_cleanup=None)
+        self.host.owner.children.append(process);self.host.owner.context.append(record)
+        self.reader=dict(process=process,record=record,command=command,child=None,role='reader',pidfd=None)
+        self.active.append(self.reader);self.reader['pidfd']=os.pidfd_open(process.pid)
+        command['pid']=process.pid;self.ledger.save()
+        # Drain bounded diagnostic pipes without storing Apache diagnostics.
+        self.reader['child']=Child(process,record,command)
+        until=min(self.deadline,time.monotonic()+3)
+        while not self.fs.exists(self.pid_row['path']) and process.poll() is None and time.monotonic()<until:time.sleep(.01)
+        need(process.poll() is None and self.fs.exists(self.pid_row['path']),'component_reader_start')
+        need(self.fs.read(self.pid_row['path'],32).strip()==str(process.pid).encode(),'component_reader_pid')
+        self.ledger.identify(self.pid_row)
+    def serving_checks(self,note):
+        # A separate unprivileged HTTP client keeps socket/TLS stalls inside the
+        # existing absolute component deadline, even during a slow header/body.
+        def identity():
+            process=self.reader['process'];need(process.poll() is None,'component_reader_interrupted')
+            raw=Path('/proc',str(process.pid),'status').read_text();need(len(raw)<=16384,'component_reader_status_bound')
+            fields=dict(line.split(':',1) for line in raw.splitlines() if ':' in line)
+            uid=[int(x) for x in fields['Uid'].split()];gid=[int(x) for x in fields['Gid'].split()]
+            groups=[int(x) for x in fields['Groups'].split()]
+            need(uid==[ROLES['apache']]*4 and gid==[ROLES['apache']]*4
+                 and set(groups)<={ROLES['apache']} and int(fields['CapEff'],16)==0
+                 and int(fields['CapPrm'],16)==0 and process.poll() is None,'component_reader_identity')
+            return dict(pid=process.pid,uid=uid,gid=gid,groups_sha256=digest(canonical(groups)),capabilities=0)
+        note('serving_reader_before',identity())
+        child=self.start('http');child.peer=self.reader['process']
+        for _ in range(48002):
+            message=child.message(self.deadline)
+            need(self.reader['process'].poll() is None,'component_reader_interrupted')
+            diagnostic=self.reader['child'];need(not diagnostic.errors,'component_reader_diagnostic')
+            while not diagnostic.queue.empty():need(not diagnostic.queue.get_nowait()[1],'component_reader_diagnostic')
+            if message['kind']=='http-done':
+                need(message['data']==dict(uid=ROLES['worker']),'component_http_identity')
+                observed=self.state['observations'].get('serving',{})
+                need(observed.get('verified_files')==len(self.manifest['files'])
+                     and observed.get('verified_heads')==len(self.manifest['files']),'component_http_completion')
+                self.completed(child);note('serving_reader_after',identity());return
+            need(message['kind']=='http-progress','component_http_child')
+            note('serving',message['data'])
+        raise Failure('component_http_report_bound')
+    def serving_verify(self,value):
+        original=self.state['observations']['observer']
+        need(type(value) is dict and value.get('inventory_sha256')==original.get('inventory_sha256'),'component_serving_original_inventory')
+        found=value.get('serving_inventory');need(type(found) is dict,'component_serving_inventory_required')
+        need(set(found)=={r['path'] for r in self.serving_rows},'component_serving_inventory_missing')
+        for row in self.serving_rows:
+            self.ledger.verify(row);item=found[row['path']]
+            need(all(item.get(k)==v for k,v in row['identity'].items()),'component_serving_identity')
+            if row.get('sha256') is not None:need(item.get('sha256')==row['sha256'],'component_serving_content')
+        need(found[self.pid_row['path']]['sha256']==digest(str(self.reader['process'].pid).encode()+b'\n'),'component_serving_pid_content')
+        return found
+    def serve(self,note):
+        primary=None
+        try:
+            need(digest(canonical(snapshot(self.fs,self.plan,self.manifest,self.info)))==self.state['observations']['observer']['inventory_sha256'],
+                 'component_serving_original_inventory')
+            self.serving_prepare();self.reader_start()
+            before=self.observer();note('serving_before',before);self.serving_verify(before)
+            note('serving_execution',dict(http='native' if self.execution=='native-component-authored' else 'modeled',
+                tls='native' if self.execution=='native-component-authored' else 'modeled',apache='native' if self.execution=='native-component-authored' else 'modeled'))
+            self.serving_checks(note)
+        except BaseException as error:
+            primary=error;self.ledger.failure(error,'component-serving');raise
+        finally:
+            try:
+                after=self.observer();note('serving_after',after);found=self.serving_verify(after)
+                before=self.state['observations'].get('serving_before',{}).get('serving_inventory')
+                need(found==before,'component_serving_inventory_changed')
+                self.serving_verified_after=True
+            except BaseException as error:
+                self.ledger.failure(error,'component-after-serving')
+                if primary is None:raise
+    def stop_reader(self):
+        process=self.reader['process']
+        need(process.poll() is None,'component_reader_unknown_exit')
+        signal.pidfd_send_signal(self.reader['pidfd'],signal.SIGTERM)
+        process.wait(timeout=3);need(process.returncode==0,'component_reader_exit')
+        self.reader_clean=True
+    def serving_owned(self):
+        need(self.reader is not None and self.reader_clean,'component_reader_not_quiescent')
+        need(self.serving_verified_after,'component_after_serving_required')
+        before=self.state['observations'].get('serving_before',{}).get('serving_inventory')
+        need(type(before) is dict,'component_serving_inventory_required')
+        found=serving_inventory(self.fs,self.plan,self.info);expected=copy.deepcopy(before)
+        # Apache removes its own PID file on verified graceful exit. No other
+        # missing or replaced resource is accepted; static rows remain pinned.
+        if self.pid_row['path'] not in (found or {}):expected.pop(self.pid_row['path'])
+        need(found==expected,'component_serving_cleanup_inventory')
+        return found
+    def cleanup_serving(self):
+        found=self.serving_owned();original=self.ledger.fs
+        self.ledger.fs=CleanupFiles(self.fs,{p:{k:v for k,v in x.items() if k!='sha256'} for p,x in found.items()},self.info)
+        try:
+            for row in reversed(self.serving_rows):self.ledger.release(row)
+        finally:self.ledger.fs=original
+        need(not self.fs.exists(serving_root(self.plan)),'component_serving_remaining')
     def children(self):
-        return [dict(role=x['role'],uid=ROLES['worker' if x['role']=='worker' else 'helper'],
+        return [dict(role=x['role'],uid=ROLES['apache' if x['role']=='reader' else 'worker' if x['role'] in ('worker','http') else 'helper'],
             observed_exit=x['process'].poll(),**copy.deepcopy(x['record'])) for x in self.active]
     def capture(self):
         # Fixed ledger names/identities only; live partial trees are not adopted.
-        result=dict(resources=copy.deepcopy(self.rows))
+        result=dict(resources=copy.deepcopy(self.rows),serving_resources=copy.deepcopy(getattr(self,'serving_rows',[])))
         journal=self.plan['paths']['journal']+'/state.json'
         if self.fs.exists(journal):
             raw=self.fs.read(journal,65536);state=decode(raw)
@@ -249,6 +430,10 @@ class Native:
         return result
     def stop(self):
         failures=[]
+        if getattr(self,'reader',None) is not None:
+            try:self.stop_reader()
+            except BaseException:
+                self.reader_clean=False;failures.append(self.reader['process'].pid)
         for item in self.active:
             process,record=item['process'],item['record'];record['exit_before_cleanup']=process.poll()
             try:
@@ -284,6 +469,7 @@ class Native:
                 need(int(fields[2]) not in groups and int(fields[3]) not in groups,'component_descendant_alive')
     def owned(self):
         self.quiescent()
+        if getattr(self,'serving_rows',None):self.serving_owned()
         for row in self.rows:
             if row['identity'] is not None:self.ledger.verify(row)
         found=snapshot(self.fs,self.plan,self.manifest,self.info)
@@ -300,6 +486,7 @@ class Native:
         return found
     def cleanup(self,owned):
         self.quiescent();need(self.owned()==owned,'component_replaced_after_capture')
+        if getattr(self,'serving_rows',None):self.cleanup_serving()
         pointer=self.plan['paths']['served']+'/candidate';trees={}
         # Seed the ledger from the observer-bound snapshot BEFORE capture_tree.
         # That call must verify these identities, never establish a later baseline.

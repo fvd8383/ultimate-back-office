@@ -176,6 +176,7 @@ def run(backend):
         independent=backend.observer();note('observer',independent)
         need(independent['manifest_sha256']==safe['manifest_sha256'] and independent['artifact_sha256']==safe['artifact_sha256']
              and len(independent['files'])==safe['files'],'component_independent_binding')
+        if backend.serving_enabled:backend.serve(note)
         note('bootstrap_after_stage',backend.operational())
         need(state['observations']['bootstrap_after_stage']==state['observations']['bootstrap_before'],'component_operational_changed')
     except BaseException as error:

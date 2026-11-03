@@ -15,6 +15,91 @@ second parent; native-tested `7cdbbeef639…` is an ancestor of that reviewed he
 Its native PASS belongs only to `7cdbbeef`, never this implementation or the merge.
 Historical failures and pre-merge reports are not rewritten or rerun.
 
+## A-only private candidate serving following 18b4900
+
+Source HEAD: `18b4900ebad62c511587c4bb4498000460cf5129`; PR #131 was OPEN DRAFT,
+with its completed exact-head review reporting no major findings. The introducing
+commit is the implementation identity; its full new SHA, exact source/index/commit
+inventories and one review handoff are recorded after commit in the external
+`m6e-candidate-https/SUMMARY.txt`. A commit cannot contain its own resulting SHA.
+
+This bounded increment extends A's existing original PHP-to-Python transfer and
+immutable stage. Fence 1 remains at phase 1, unsettled. There is no release B,
+activation, current pointer, deployment success or settlement. The original
+operational database/target/journal observations must remain unchanged.
+
+[ComponentHost.py](../tests/support/WebsitePlatformM6EComponentHost.py) owns a
+separate `/var/lib/ubo-m6e-fixture/component-https-<run-id>` namespace. Its config,
+canary directories/files, runtime directory and generated PID file have ledger
+intent before creation; process intent precedes spawn. Resources stay outside the
+original component inventory. The original observer hash is never replaced.
+The new fixed listener is `127.0.0.4:8443`, using `candidate.m6e.invalid` and the
+existing admitted certificate paths without copying keys. It points directly to
+A's staged candidate and retained asset pool. The normal fixture bindings remain
+unchanged. There are no operational Apache, service, account or routing changes.
+
+The complete candidate policy is rendered from the unchanged reviewed Apache
+template. Only that candidate vhost is included. The dedicated config pins the
+already admitted module inventory, adds fixture-only AuthMerging And so Location
+authorization also preserves preceding directory/file denials, and requires client
+TLS authentication, exact Host and SNI, and supplies the same static policy to a separate alias containing real
+harmless PHP/CGI/SSI, dotfile, private, metadata, journal, source, proxy and listing
+canaries (the harmless CGI script is 0755). Their independent identities, modes
+and contents are checked. Existing
+canaries require 403; missing-file 404 alone is not handler-disable evidence.
+
+[CommissionServing.py](../tests/support/WebsitePlatformM6ECommissionServing.py)
+adds a single-manifest CandidateChecks adapter using the existing response, file
+and denial predicates. Every original public file is checked by GET and HEAD;
+index, marker, CSS, PNG and PDF must match original length, MIME and SHA-256,
+with no-store/noindex, CSP, frame, referrer, content-type and permissions policies.
+Negative requests cover methods, unauthorized clients, Host/SNI/trust/client-cert
+failures, traversal, private paths, executable handlers, listings, MultiViews and
+fallback routes. Bounded evidence contains counters and hashes, not response bodies,
+private headers, credentials or certificate contents.
+
+[Apache.py](../tests/support/WebsitePlatformM6EApache.py) shares its TLS client
+implementation with a fixed component endpoint; existing operational endpoint
+validation remains exact. [ComponentChild.py](../tests/support/WebsitePlatformM6EComponentChild.py)
+authors a worker-UID HTTP client child supervised within the original absolute
+90-second component budget, plus independent before/after serving resource walks.
+The native path checks the Apache reader's real/effective/saved/filesystem UID and
+GID, supplementary groups and zero effective/permitted capabilities before and
+after HTTP. A slow socket/TLS read cannot outlive the parent's deadline unobserved.
+The existing
+420-second commission bound, higher watchdog and cleanup reserve are unchanged.
+
+[Component.py](../tests/support/WebsitePlatformM6EComponent.py) orders stage, original
+observer, serving, independent after-serving verification and immutable capture
+before reader shutdown. Cleanup requires the original artifact inventory, complete
+matching serving inventories and tracked process quiescence. The existing ledger
+and per-object cleanup checks are reused, including inode/type/owner/mode/link-count
+checks and static content hashes. Only Apache's own PID file may disappear after
+verified normal shutdown. Unknown exits, missing/malformed observations, extra or
+replaced resources and failed capture retain LIMITED/INCOMPLETE. The first serving
+failure remains primary; after-serving, capture and cleanup failures are separate.
+
+[ComponentModel.py](../tests/support/WebsitePlatformM6EComponentModel.py) and
+[component controls](../tests/WebsitePlatformM6EComponentTest.py) use real private
+original files, real processes, the original transfer/staging/observer code and a
+separate reader holding a retained PNG descriptor until shutdown. Windows HTTP,
+TLS, Apache policy, UID/mode, Unix socket and Unix filesystem semantics remain
+explicit models. They do not establish any native acceptance result.
+
+The full component suite passes 22 tests (58 subtests, 464 assertion calls); the
+final five candidate controls pass 24 subtests / 181 assertion calls, and the
+existing serving suite passes 12 tests. The positive case observes 55 requests,
+seven original files and 20 serving resources. [Executed results and limitations](sprint-8.8-m6e-isolated-validation.md#a-only-candidate-serving-local-evidence-and-native-boundary)
+include durations, fault outcomes, scope, syntax and documentation checks.
+
+Native Linux/Apache is **AUTHORED / UNEXECUTED**. M6C/M6D remain **FORMALLY CLOSED**;
+M6E is **PARTIALLY IMPLEMENTED / REVIEW REQUIRED**; M6F/M6G are **NOT STARTED**;
+production is **UNAUTHORIZED**. All six commissioning MISSING entries remain.
+The next increment is separately authorized native execution of this A-only
+boundary on the admitted disposable fixture, including actual config/TLS/identity,
+reader quiescence and cleanup evidence. It does not authorize a second release
+or the next commissioning producer.
+
 ## Component review corrections following 8916b25
 
 The exact-head review of 8916b25 completed **with two P2 findings**:

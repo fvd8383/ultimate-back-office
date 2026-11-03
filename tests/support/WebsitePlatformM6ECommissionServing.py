@@ -153,3 +153,46 @@ class ServingChecks:
                 raw=publisher.served.read(entry['relative_path'][7:],entry['byte_size'])
                 need(len(raw)==entry['byte_size'] and digest(raw)==entry['sha256'],'serving_retained_pool')
         return self.source['retained_sha256']
+
+
+class CandidateChecks(ServingChecks):
+    """One already source-validated component manifest; same response predicates."""
+    def __init__(self,manifest,request,note):
+        self.manifests=[manifest];self.request=request;self.note=note
+        self.observed=dict(requests=0,verified_files=0,verified_heads=0,denials=0,
+            response_sha256=digest(b''),last_status=0,last_bytes=0,last_sha256=digest(b''),
+            headers_sha256=digest(b''),security_matches=0,tls_verified=0)
+    def run(self):
+        self.files(0,'candidate')
+        # '/' is a real DirectoryIndex positive; extensionless /index must deny.
+        entry=next(f for f in self.manifests[0]['files'] if f['relative_path']=='public/index.html')
+        response(self.get('candidate','/'),entry)
+        for method in ('POST','PUT','DELETE','OPTIONS','TRACE'):
+            self.deny('candidate','/',method,statuses=(403,405))
+        for name in (*CANDIDATE_CANARIES,'listing/'):
+            self.deny('candidate','/__component_denial__/'+name,statuses=(403,))
+        for route in (*CANARIES,'/%2e%2e/private/canary','/assets/../metadata/manifest.json',
+                      '/assets/%2e%2e/metadata/manifest.json','/index.html/extra',
+                      '/journal/state.json','/source/metadata/manifest.json','/index','/__component_denial__/m6e'):
+            self.deny('candidate',route,statuses=(400,403,404))
+        for variant in ('unauthorized','bad-host','bad-sni','bad-client','bad-trust'):
+            self.deny('candidate','/',variant=variant,
+                statuses=(0,) if variant in ('bad-sni','bad-trust','bad-client') else (0,400,401,403,421))
+        for route in ('/_release.json','/'+next(f['relative_path'][7:] for f in self.manifests[0]['files'] if f['mime_type']=='application/pdf')):
+            self.deny('candidate',route,variant='unauthorized',statuses=(0,401,403))
+        return dict(self.observed)
+
+# Harmless, REAL files outside the immutable release, exposed only through a denied
+# alias. Their presence is checked independently; a missing-file 404 is not proof.
+CANDIDATE_CANARIES={
+    'm6e.php':b'<?php echo "M6E-HANDLER-EXECUTED"; ?>',
+    'm6e.cgi':b'#!/bin/sh\nprintf "Content-Type: text/plain\\n\\nM6E-HANDLER-EXECUTED"\n',
+    'm6e.shtml':b'<!--#echo var="SERVER_NAME" -->M6E-SSI-CANARY',
+    '.hidden':b'M6E DOTFILE CANARY',
+    'private/canary':b'M6E PRIVATE CANARY',
+    'metadata/manifest.json':b'{"canary":true}',
+    'journal/state.json':b'{"canary":true}',
+    'source/manifest.json':b'{"canary":true}',
+    'listing/entry.txt':b'M6E LISTING CANARY',
+    'proxy':b'M6E PROXY CANARY',
+}
