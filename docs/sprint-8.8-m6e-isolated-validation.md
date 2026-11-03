@@ -5,6 +5,99 @@ installation, server preparation, Linux/Apache execution, SQL, service operation
 working-staging activation or deployment. This document is the bounded later path,
 not a claim that a host contract exists. M6D’s closed native gate is not reopened.
 
+## Apache commissioning local controls following 90d891c
+
+**IMPLEMENTED LOCALLY / NATIVE UNEXECUTED.** Starting source was
+`90d891c8bb99a51d24c26ebf99d8e6a67cbc0a0f`, on the clean existing PR #131 branch;
+the remote PR was verified OPEN DRAFT at the same SHA. The
+[implementation and exact 15-file inventory](sprint-8.8-m6e-local-implementation.md#apache-commissioning-integration-following-90d891c)
+describe the separate Apache ownership boundary and resolved ordering dependency.
+The eight-gate order and all six MISSING classifications remain unchanged.
+
+The new controls run the actual `NativeProbes.probe_apache`, collector, original
+M6C PHP fixture/exporter, transfer receiver, publisher, independent observer and
+identity-bound lifecycle against private files and distinct real PHP/Python children.
+The original two-release fixture is built once before the probe; A is re-observed
+and compared before helper effects. Only A is staged. Unix permissions, process
+credentials, services, database observations, Apache, HTTP and TLS are explicitly
+modeled on Windows. Real bytes, processes, hashes, inodes, hard links and immutable
+evidence files do not turn those models into native evidence.
+
+The positive observation checks seven original public files by GET and HEAD,
+including HTML, marker, CSS, PNG and PDF: 55 requests, 40 denials. Both component
+and gate captures precede reader shutdown; the result record follows verified
+quiescence and removal. The gate remains INCOMPLETE. Negative controls cover
+original source/producer mismatch before helper startup; marker/MIME/digest/security
+and authentication/handler bypass; absent candidate, identical-byte inode replacement,
+missing or replaced serving resources; reader death/uncertain shutdown; component,
+archive and gate capture failures; failed configtest; failed cleanup; original
+environment mutation; and archive/capture/result tampering. Existing component,
+entrypoint, serving and commissioning regressions cover the related boundary cases.
+
+The external `m6e-apache-commission` evidence directory retains command logs,
+instrumented counts/durations, source hashes, development failures and final
+working/index/committed integrity. Assertion counts use the prior runner's
+assertion-method-call convention, including unittest's internal helper calls.
+The WindowsApps python alias was unavailable; the already installed GIMP Python
+3.14.7 executable was used with `-I -B`, alongside PHP 8.4.24. The first sandboxed
+positive test failed in the helper; the same test passed with normal Windows file
+access required by the existing temporary hard-link publication. This is not a
+native Apache failure or PASS.
+
+Executed focused validation (all PASS; zero skipped tests):
+
+| Suite | Tests | Assertion-method calls | Subtests | Seconds |
+| --- | ---: | ---: | ---: | ---: |
+| `WebsitePlatformM6ECommissionApacheTest` | 8 | 403 | 23 | 402.011 |
+| `WebsitePlatformM6EComponentTest` | 22 | 1,040 | 58 | 615.230 |
+| `WebsitePlatformM6ECommissionControlTest` + `WebsitePlatformM6EServingControlTest` | 59 | 923 | 80 | 124.954 |
+| `WebsitePlatformM6EComponentEntryTest` | 17 | 246 | 32 | 259.486 |
+| Total | 106 | 2,612 | 193 | 1,401.681 |
+
+The total is summed suite duration; the four suites ran concurrently. Counts and
+full test names are retained in the external runner JSON and logs. The previously
+passed single positive control took 14.766 seconds; its sandboxed failed attempt
+took 6.124 seconds. Neither is added to the instrumented suite totals above.
+
+PHP bootstrap-fixture controls passed 35 assertions in 1.311 seconds; serving
+dependencies passed 90 in 1.565 seconds; host controls passed 33 in 0.466 seconds.
+The working-tree M6E scope guard passed 286 assertions in 3.466 seconds, preserving
+all 25 migrations and 77 matrix definitions. Scope is rechecked against the final
+index and commit; those counts and durations are retained in the external integrity
+record. Four changed PHP files passed lint (0.354, 0.345, 0.395 and 0.377 seconds
+for ScopeTest, CommissionChild, Component and ComponentLocal respectively).
+All 39 M6E Python files passed syntax compilation with warnings treated as errors.
+Both documents passed relative-link, anchor and paired-fence checks (30 links,
+9 anchors), and `git diff --check` passed (0.514 seconds). Documentation checks
+are repeated after this result table is added. Exact raw tested code hashes and
+Git-normalized working/index/committed bytes and modes are checked before handoff.
+
+The full earlier 147-test campaign was not repeated: the shared component lifecycle
+required its full component and entrypoint regressions, while unchanged bootstrap,
+ledger and unrelated application campaigns remain outside this focused increment.
+Native Unix/Apache/TLS/permission, host preparation, SQL, destructive faults and
+operational acceptance obligations remain unexecuted by authorization and environment
+constraints; no test skip conceals them.
+
+Native requirements remain a separately authorized disposable Linux host with the
+exact reviewed source, original protected bootstrap/handoff and source inventories,
+pinned tools/modules, real systemd/cgroup identities, isolated certificates and
+client credentials, and the fixture's original MySQL 8.4 build/producer rows.
+Fixture-local MySQL/SQL authorization is still required. Run the existing fixed
+commissioning route only after that preparation is authorized; no new public CLI
+or privilege interface was introduced. Observe actual configtest, private TLS,
+Host/SNI/trust/client-authentication, static responses, real canary denial, native
+UID/GID/modes, inode/resource stability, reader termination and owned cleanup.
+Capture original evidence before restoration and verify the operational target,
+database, source artifacts, pointers and journal remain unchanged.
+
+The shared staging droplet does not meet those isolated prerequisites and was not
+accessed. Two-release retention/conflict, supervised helper/lock/fence, real health
+fault/restoration, retained-state recovery and uncertain-reload reconciliation remain
+separate incomplete producers. Native readiness, installed workflow, full acceptance,
+M6G browser behavior and production approval remain outstanding. No native
+commissioning PASS or operational host receipt is claimed or permitted.
+
 ## Standalone A and configtest local controls
 
 This increment starts at `71b1839ee3390ea7e4c4c2bfdba258c6e38ea6d0` on PR #131's

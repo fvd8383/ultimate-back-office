@@ -33,12 +33,14 @@ function m6eComponentSend(mixed $stream,LocalSiteArtifactStore $store,string $ro
         &&preg_match('/^[a-f0-9]{64}$/D',$ack['stage_sha256'])===1,'component_ack');
     return $ack;
 }
-function m6eComponentWorker(array $admission):void {
+function m6eComponentWorker(array $admission,bool $apache=false):void {
     m6eNeed(m6eComponentLine()===['command'=>'inspect'],'component_start');
-    $base='/run/ubo-m6e-fixture/component-a-'.$admission['run_id'];
+    $stem=$apache?'component-apache-a':'component-a';
+    $base='/run/ubo-m6e-fixture/'.$stem.'-'.$admission['run_id'];
     $plan=SiteBuildContract::decode(SitePublisherHostContract::protectedFile($base.'/plan.json',1048576),1048576);
     $fixture=SiteBuildContract::decode(SitePublisherHostContract::protectedFile('/run/ubo-m6e-fixture/fixture.json',1048576),1048576);
     m6eNeed($plan['profile']==='m6e-release-a-component-v1'&&$plan['authority']==='SYNTHETIC COMPONENT ONLY'
+        &&($plan['owner']??null)===($apache?'commission-apache':null)
         &&$plan['binding']['run_id']===$admission['run_id']&&$plan['expires_at']<= $admission['expires_at']&&$plan['expires_at']>time()
         &&$plan['summary']==$fixture['releases'][0]&&$fixture['unpublished']===true,'component_plan');
     $config=m6eBuildConfig($admission);$db=Database::connection();$store=m6eArtifactStore($config);
@@ -51,7 +53,7 @@ function m6eComponentWorker(array $admission):void {
     m6ePristine($db,$fixture['site_id'],$fixture['target_id']);$source=$inspect();
     $denied=[];
     foreach(['served'=>'/access-probe','journal'=>'/target.lock'] as $name=>$leaf) {
-        $path='/var/lib/ubo-m6e-fixture/component-a-'.$admission['run_id'].'/'.$name.$leaf;
+        $path='/var/lib/ubo-m6e-fixture/'.$stem.'-'.$admission['run_id'].'/'.$name.$leaf;
         $fd=@fopen($path,'r+');$denied[$name]=(int)($fd===false);if(is_resource($fd))fclose($fd);
         m6eNeed($denied[$name]===1,'component_worker_write');
     }

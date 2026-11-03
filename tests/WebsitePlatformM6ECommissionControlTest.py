@@ -64,6 +64,31 @@ def data(gate):
     if gate=='provisioning':value.update(candidate_exit=1)
     return value
 
+def modeled_apache_archive(ledger,expected):
+    """Schema-only synthetic evidence, always rejected by native issuance."""
+    import WebsitePlatformM6ECommissionApache as apache
+    from WebsitePlatformM6EComponent import PROFILE
+    source=dict(release_id=1,release_key='modeled',manifest_sha256='a'*64,artifact_sha256='b'*64,files=5)
+    observer=source|dict(files=[dict(mime_type=m) for m in ('text/html','application/json','text/css','image/png','application/pdf')],
+        fence=1,phase=1,current_present=0,candidate_present=1,inventory_sha256='c'*64)
+    served=observer|dict(serving_inventory={'modeled':dict(ino=1)})
+    reader=dict(pid=os.getpid(),uid=[2104]*4,gid=[2104]*4,capabilities=0)
+    children=[dict(role='reader',pid=os.getpid(),observed_exit=None,reaped=False)]
+    state=dict(profile=PROFILE,execution='controlled-local',first_failure=None,cleanup='UNATTEMPTED',children=children,
+        owner='commission-apache',binding={k:expected[k] for k in ('source_sha','run_id','machine_id','boot_id')},plan_sha256='d'*64,
+        observations=dict(source=source,observer=observer,serving_before=served,serving_after=served,
+            serving_reader_before=reader,serving_reader_after=reader,
+            configtest=dict(classification='VALIDATED',children=[dict(exit=0,reaped=True)],execution='modeled'),
+            serving_execution=dict(http='modeled',tls='modeled',apache='modeled'),
+            serving=dict(verified_files=5,verified_heads=5,denials=40,requests=51),
+            bootstrap_before={},bootstrap_after_stage={}))
+    capture=ledger.publish('component-apache-a-before-cleanup',state)
+    publication=ledger.publish(apache.NAME,dict(profile=apache.PROFILE,binding=expected,execution='controlled-local',
+        source_bundle_sha256=data('apache')['source_sha256'],plan_sha256='d'*64,measurements=apache.facts(state),capture=capture))
+    ledger.publish('component-apache-a-result',dict(profile=PROFILE,execution='controlled-local',result='STAGED_AND_REMOVED',
+        cleanup='REMOVED',first_failure=None,children=[dict(reaped=True,exit=0,observed_exit=0)],before_cleanup=capture))
+    return publication['sha256']
+
 class ModelBackend(NativeProbes):
     execution='controlled-local'
     def __init__(self,host,ledger,expected):
@@ -87,7 +112,9 @@ class ModelBackend(NativeProbes):
         if self.fail_gate==gate:raise OSError('SECRET_PRIMARY_CANARY')
         # Actual bounded child parsing, using explicitly synthetic data, never a
         # native producer executable or native mode.
-        out=self.host.owner.capture([sys.executable,'-I','-B','-c','import sys;sys.stdout.buffer.write(sys.stdin.buffer.read())'],3,stdin=canonical(self.values.get(gate,data(gate))))
+        measured=self.values.get(gate,data(gate))
+        if gate=='apache':measured['apache_sha256']=modeled_apache_archive(self.ledger,self.binding)
+        out=self.host.owner.capture([sys.executable,'-I','-B','-c','import sys;sys.stdout.buffer.write(sys.stdin.buffer.read())'],3,stdin=canonical(measured))
         self.participants.append(dict(role='operator',uid=0,pid=out['pid'],exit=out['exit']))
         return decode(out['stdout'])
     def cleanup(self,gate):
@@ -113,6 +140,7 @@ class Controls(unittest.TestCase):
     def row(self,gate='filesystem'):
         observed=dict(pid=os.getpid(),uid=0,data=data(gate),participants=[dict(role='helper',uid=2102,pid=os.getpid(),exit=0)],
             independent=dict(pid=os.getpid(),state_sha256=self.expected['roots_sha256'],roles_sha256=self.expected['roles_sha256']))
+        if gate=='apache':observed['data']['apache_sha256']=modeled_apache_archive(self.ledger,self.expected)
         before=dict(profile=e.PROFILE+'-before-restore',binding=self.expected,gate=gate,execution='controlled-local',observations=observed,first_failure=None)
         capture=self.ledger.publish('commission-'+gate+'-before-restore',before)
         return dict(profile=e.PROFILE,version=1,gate=gate,producer=e.PRODUCERS[gate],execution='controlled-local',binding=self.expected,

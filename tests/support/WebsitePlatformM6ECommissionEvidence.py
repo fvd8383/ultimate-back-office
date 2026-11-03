@@ -22,7 +22,7 @@ MISSING = {
     'provisioning': ('owned-uncertain-reload-reconciliation',),
 }
 FIELDS = {
-    'apache': ('active_status','candidate_status','unauthorized_status','modules_sha256')+SOURCE_FIELDS,
+    'apache': ('active_status','candidate_status','unauthorized_status','modules_sha256','apache_sha256')+SOURCE_FIELDS,
     'filesystem': ('device','journal_device','mount_sha256','read_sha256','replay_sha256',
                    'conflict_rejected','link_rejected','replacement_rejected','reader_pid',
                    'reader_exit','old_observations','new_observations','other_observations','sync_calls'),
@@ -134,6 +134,10 @@ def published_record(read,expected,gate,receipt,now,native=True,complete=True):
     need(before['profile']==PROFILE+'-before-restore' and before['binding']==expected
          and before['gate']==gate and before['execution']==value['execution']
          and before['observations']==value['observations'] and before['first_failure'] is None, 'pre_restore_measurements')
+    if gate=='apache':
+        from WebsitePlatformM6ECommissionApache import validate_final
+        data=value['observations']['data']
+        validate_final(read,expected,data['apache_sha256'],data['source_sha256'],value['execution'])
     if complete:need(not MISSING[gate],'native_producer_incomplete_'+gate)
     return raw
 

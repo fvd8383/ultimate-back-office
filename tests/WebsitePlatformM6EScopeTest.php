@@ -34,6 +34,7 @@ $allowed=[
     'tests/WebsitePlatformM6ECommissionControlTest.py',
     'tests/support/WebsitePlatformM6ECommission.py','tests/support/WebsitePlatformM6ECommissionEvidence.py',
     'tests/support/WebsitePlatformM6ECommissionReceipt.py','tests/support/WebsitePlatformM6ECommissionProbes.py',
+    'tests/support/WebsitePlatformM6ECommissionApache.py','tests/WebsitePlatformM6ECommissionApacheTest.py',
     'tests/support/WebsitePlatformM6ECommissionChild.py','tests/support/WebsitePlatformM6ECommissionChild.php',
     'tests/support/WebsitePlatformM6ECommissionServing.py','tests/support/WebsitePlatformM6ECommissionServing.php',
     'tests/support/WebsitePlatformM6ECommissionFixture.php','tests/WebsitePlatformM6EServingControlTest.py',

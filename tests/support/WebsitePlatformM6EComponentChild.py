@@ -43,10 +43,11 @@ def observer(m,plan,served,journal,fs,info=identity):
     emit('observer',value)
 
 def main():
-    need(len(sys.argv)==2 and sys.argv[1] in ('--helper','--observer','--http'),'component_mode')
-    mode=sys.argv[1][2:];config,_,fixture,m=admission()
+    need(len(sys.argv)==2 and sys.argv[1] in ('--helper','--observer','--http','--apache-helper','--apache-observer','--apache-http'),'component_mode')
+    apache=sys.argv[1].startswith('--apache-');mode=sys.argv[1].removeprefix('--apache-' if apache else '--');config,_,fixture,m=admission()
     need(os.geteuid()==ROLES['worker' if mode=='http' else 'helper'],'component_child_uid')
-    plan=c.validate_plan(decode(protected(c.paths(config['run_id'])['plan'],1048576)),config,fixture)
+    plan=c.validate_plan(decode(protected(c.paths(config['run_id'],apache)['plan'],1048576)),config,fixture)
+    need((plan.get('owner')=='commission-apache')==apache,'component_owner_binding')
     command=decode(sys.stdin.buffer.readline(2097153 if mode=='http' else 1025))
     if mode=='http':
         need(set(command)=={'command','manifest'} and command['command']=='http','component_http_gate')
@@ -63,7 +64,7 @@ def main():
     fs=Files();p=plan['paths'];m.local_mount(p['served']);m.local_mount(p['journal'])
     served=m.Tree(p['served'],2102,True,2104);journal=m.Tree(p['journal'],2102,True,2102)
     try:
-        if sys.argv[1]=='--observer':observer(m,plan,served,journal,fs);return
+        if mode=='observer':observer(m,plan,served,journal,fs);return
         source=b.STORAGE+'/sealed/'+fixture['site_key']+'/'+plan['release']['release_key']+'/metadata/manifest.json'
         try:fd=os.open(source,os.O_RDONLY|os.O_NOFOLLOW)
         except OSError as error:source_errno=error.errno

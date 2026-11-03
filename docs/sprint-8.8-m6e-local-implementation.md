@@ -15,6 +15,102 @@ second parent; native-tested `7cdbbeef639…` is an ancestor of that reviewed he
 Its native PASS belongs only to `7cdbbeef`, never this implementation or the merge.
 Historical failures and pre-merge reports are not rewritten or rerun.
 
+## Apache commissioning integration following 90d891c
+
+**APACHE SERVING/ACCESS — IMPLEMENTED LOCALLY / NATIVE UNEXECUTED.** Starting
+SHA: `90d891c8bb99a51d24c26ebf99d8e6a67cbc0a0f`, verified with the exact existing
+branch and a clean worktree. PR #131 was OPEN DRAFT at that SHA. This section
+supersedes earlier Apache implementation-gap descriptions only; historical test
+results remain attributed to their original sources.
+
+The established order is apache, filesystem, ownership, assets, runtime, health,
+recovery and provisioning. The existing assets producer creates and removes its
+release-A component inside its own later probe. Apache therefore cannot use that
+component, its removed files, or an invented earlier assets result. The bounded
+solution is a **distinct Apache-owned A observation** in the original commission
+service. No gate moves and no artifact ownership is transferred between producers.
+
+[CommissionApache.py](../tests/support/WebsitePlatformM6ECommissionApache.py) uses
+the existing source, transfer, Publisher.stage, observer, private serving and cleanup
+primitives. Its fixed component-apache-a control/data namespaces, command identities,
+plan and immutable evidence names are separate from component-a. Its separate
+component-apache-https resource tree reuses the existing fixed private endpoint
+`127.0.0.4:8443`; it introduces no public listener, installation or public entrypoint.
+The later assets component starts only after Apache cleanup has completed. The
+internal PHP/Python child modes select only these two fixed namespaces, not arbitrary
+roots, releases, commands or deployment targets.
+
+The Apache probe retains its module, unavailable-endpoint and unauthorized-client
+baseline, then independently reads the original two-release source bundle. Before
+starting the helper, the A worker observation must equal that bundle's exact
+original A manifest, artifact and producer. The actual exporter/receiver and publisher
+stage A into its own immutable candidate and asset pool. Authority remains synthetic,
+stage-only and exact-request-bound. Fence 1, phase 1 and the unsettled component
+journal remain until removal of the complete owned namespace; no activation,
+settlement, deployment row, target pointer or original journal mutation is added.
+
+The shared component lifecycle now exposes observation, immutable checkpoint and
+finish boundaries. Standalone A and assets still use the existing immediate runner.
+Apache defers finish until the unchanged collector's cleanup callback, so both its
+own checkpoint and the gate's before-restore checkpoint exist while the reader is
+alive. The existing configtest must succeed before reader startup. GET/HEAD cover
+every original public file, with MIME, length, SHA-256, security headers and CSP;
+existing real PHP/CGI/SSI/private canaries must be denied, alongside method,
+Host/SNI/trust/client-authentication, listing, MultiViews, fallback and route checks.
+The original independent artifact inventory hash and separate before/after serving
+resource identities remain mandatory.
+
+The immutable `m6e-commission-apache-serving-v1` record binds the original commissioning
+identity, source-bundle digest, exact component plan, source/producer measurements,
+configtest, reader, HTTP summaries, resource inventory and original operational state
+to the full before-cleanup capture. The existing Apache gate gains one digest field,
+`apache_sha256`. Offline validation reopens those immutable evidence bytes and checks
+the original capture plus the linked successful termination/cleanup record. It never
+reads a removed candidate or consumes the assets producer's observation. Failed or
+partial diagnostics cannot satisfy these checks. No receipt schema changes.
+
+The original 90-second component deadline also bounds the collector's independent
+inspection while the reader remains alive. Cleanup restores only the original
+absolute supervisor deadline; it does not refresh admission, the 420-second service,
+the 1,200-second watchdog or the 120-second cleanup reserve. Capture failures,
+uncertain reader exits, changed/missing resources, inode substitutions and incomplete
+cleanup preserve the first failure and retain LIMITED/INCOMPLETE outcomes. The final
+original environment observation still checks database state, source artifacts,
+operational pools, pointers and journal.
+
+Exact changed-file inventory for this increment (15 files):
+
+- New: `tests/support/WebsitePlatformM6ECommissionApache.py` and
+  `tests/WebsitePlatformM6ECommissionApacheTest.py`.
+- Commissioning: `tests/support/WebsitePlatformM6ECommissionProbes.py`,
+  `tests/support/WebsitePlatformM6ECommissionEvidence.py`,
+  `tests/support/WebsitePlatformM6ECommissionChild.php`,
+  `tests/WebsitePlatformM6ECommissionControlTest.py`.
+- Shared component boundaries and local fixtures:
+  `tests/support/WebsitePlatformM6EComponent.py`,
+  `tests/support/WebsitePlatformM6EComponentHost.py`,
+  `tests/support/WebsitePlatformM6EComponentChild.py`,
+  `tests/support/WebsitePlatformM6EComponent.php`,
+  `tests/support/WebsitePlatformM6EComponentLocal.php`,
+  `tests/WebsitePlatformM6EComponentTest.py`.
+- Scope: `tests/WebsitePlatformM6EScopeTest.php` (two exact new paths).
+- This document and `docs/sprint-8.8-m6e-isolated-validation.md`.
+
+Production executables/templates, closed M6C/M6D contracts, migrations, all eight
+gate names, native-readiness predicates, host admission and publication policy are
+unchanged. The Apache `retained-release-static-responses` MISSING classification
+is deliberately retained pending native evidence. The other five incomplete
+producers remain unchanged. **No operational receipt may be issued.**
+The [executed local validation and remaining native obligations](sprint-8.8-m6e-isolated-validation.md#apache-commissioning-local-controls-following-90d891c)
+separate Windows models from native proof. Final commit identity, exact tested/index/
+committed hashes and the one review handoff are recorded outside Git in
+`m6e-apache-commission/SUMMARY.txt`; the commit cannot contain its own resulting SHA.
+
+M6C/M6D remain FORMALLY CLOSED; M6E PARTIALLY IMPLEMENTED / REVIEW REQUIRED;
+M6F/M6G NOT STARTED; all six commissioning gates OPEN PENDING NATIVE EVIDENCE;
+production UNAUTHORIZED. No server, SSH, sudo, native bootstrap/Apache/systemd,
+real SQL, deployment, operational receipt, public activation or merge was performed.
+
 ## Supervised standalone A and required configtest following 71b1839
 
 Starting SHA: `71b1839ee3390ea7e4c4c2bfdba258c6e38ea6d0`, verified on the

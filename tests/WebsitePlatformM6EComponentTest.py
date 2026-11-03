@@ -32,12 +32,12 @@ class Local(Native):
     serving_enabled=False # The baseline fault campaign remains stage-only.
     execution='controlled-local'
     def admit(self):pass # Explicit OS/supervisor model; never native evidence.
-    def __init__(self,root,fault=''):
+    def __init__(self,root,fault='',apache=False):
         self.root=Path(root);self.fs=PrivateFiles(root);cfg=config()
         for name in (b.CONTROL,b.STORAGE,b.EVIDENCE):self.fs.makedirs(name)
         self.fs.metadata(b.EVIDENCE,0,0,0o700)
         self.ledger=Ledger.create(self.fs,cfg);self.host=SimpleNamespace(owner=Owner(time.monotonic()+60))
-        self.plan=c.plan(cfg,fixture());self.module=c.publisher_module();self.deadline=time.monotonic()+45
+        self.apache=apache;self.plan=c.plan(cfg,fixture(),apache=apache);self.module=c.publisher_module();self.deadline=time.monotonic()+45
         self.active=[];self.rows=[];self.manifest=None;self.stopped=False;self.fault=fault;self.events=[]
         self.model=self.root/'model.json';self.scratch=self.root/'php';self.scratch.mkdir()
         self.original=self.root/'operational';self.original.mkdir()
@@ -48,7 +48,7 @@ class Local(Native):
         original_publish=self.ledger.publish
         def publish(stem,value):
             self.events.append(stem)
-            if stem=='component-a-before-cleanup':
+            if stem==c.stem(self.plan)+'-before-cleanup':
                 self.captured=copy.deepcopy(value)
                 journal=self.fs.path(self.plan['paths']['journal']+'/state.json')
                 self.journal_before=journal.read_bytes() if journal.exists() else None
@@ -77,7 +77,7 @@ class Local(Native):
     def source(self,worker):
         value=self.receive(worker,'source');self.source_file=value['local_source'];original=value['source']
         local=dict(site_id=original['release']['site_id'],site_key=original['release']['site_key'],target_id=20,releases=[original['summary']])
-        self.plan=c.plan(self.ledger.config,local,self.plan['expires_at'])
+        self.plan=c.plan(self.ledger.config,local,self.plan['expires_at'],apache=self.apache)
         self.write(self.plan['paths']['plan'],canonical(self.plan),0,0,0o644)
         need(value['uid']==2000 and value['write_denied']==dict(served=1,journal=1),'component_worker_permissions')
         self.state['observations']['worker_access']=dict(uid=2000,write_denied=value['write_denied']);self.ledger.save()
@@ -150,7 +150,11 @@ class ServingLocal(Local):
         self.events.append('configtest');return super().configtest(note)
     def serving_checks(self,note):
         from WebsitePlatformM6ECommissionServing import CandidateChecks
+        reader=dict(pid=self.reader['process'].pid,uid=[2104]*4,gid=[2104]*4,
+            groups_sha256=digest(canonical([2104])),capabilities=0)
+        note('serving_reader_before',reader) # Explicit modeled Unix credentials.
         CandidateChecks(self.manifest,self.serving_request,lambda value:note('serving',value)).run()
+        note('serving_reader_after',reader)
     def sync_serving_model(self):
         data=decode(self.model.read_bytes())
         for row in self.serving_rows:

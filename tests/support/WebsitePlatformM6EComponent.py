@@ -22,9 +22,16 @@ def publisher_module(path=None):
     spec=importlib.util.spec_from_file_location('component_publisher',path)
     module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module);return module
 
-def paths(run):
+def stem(plan):
+    return 'component-apache-a' if plan.get('owner')=='commission-apache' else 'component-a'
+
+def producer(plan):
+    return 'component-apache-a' if plan.get('owner')=='commission-apache' else 'component-stage-a'
+
+def paths(run,apache=False):
     b.hash_(run,32)
-    control=b.CONTROL+'/component-a-'+run;data=b.STORAGE+'/component-a-'+run
+    name='component-apache-a' if apache else 'component-a'
+    control=b.CONTROL+'/'+name+'-'+run;data=b.STORAGE+'/'+name+'-'+run
     return dict(control=control,data=data,plan=control+'/plan.json',ipc=control+'/ipc',socket=control+'/ipc/publish.sock',
                 served=data+'/served',journal=data+'/journal')
 
@@ -43,12 +50,13 @@ def request(plan):
         phase_timeout_seconds=30,connect_timeout_seconds=2,request_timeout_seconds=5,correlation_id='component-release-a')
     return dict(version=1,sequence=1,operation='stage',target=target,lease=lease,payload=dict(release=release,context=context))
 
-def plan(config,fixture,expires=None):
+def plan(config,fixture,expires=None,apache=False):
     a=copy.deepcopy(fixture['releases'][0])
     value=dict(profile=PROFILE,binding=b.base_identity(config),expires_at=expires or min(config['expires_at'],int(time.time())+SECONDS),
-        authority='SYNTHETIC COMPONENT ONLY',roles=ROLES,paths=paths(config['run_id']),target_id=fixture['target_id'],summary=a,
+        authority='SYNTHETIC COMPONENT ONLY',roles=ROLES,paths=paths(config['run_id'],apache),target_id=fixture['target_id'],summary=a,
         release=dict(site_id=fixture['site_id'],site_key=fixture['site_key'],release_id=a['release_id'],release_key=a['release_key'],
                      artifact_hash=a['artifact_sha256'],manifest_hash=a['manifest_sha256'],build_profile='static-review-v1'))
+    if apache:value['owner']='commission-apache'
     value['request']=request(value)
     return value
 
@@ -56,7 +64,7 @@ def validate_plan(value,config,fixture):
     b.validate_fixture(fixture,config['run_id'])
     need(type(value) is dict and type(value.get('expires_at')) is int
          and time.time()<value['expires_at']<=config['expires_at'],'component_expiry')
-    need(value==plan(config,fixture,value['expires_at']),'component_fixed_plan')
+    need(value==plan(config,fixture,value['expires_at'],value.get('owner')=='commission-apache'),'component_fixed_plan')
     need(value['paths']['served']!=b.template_values(fixture['site_key'])['EXACT_SERVED_SITE_ROOT'],'component_isolation')
     return value
 
@@ -153,67 +161,100 @@ def observe(m,plan,served,journal,metadata):
         except BaseException:
             if primary is None:raise
 
-def run(backend):
-    """Same bounded lifecycle in native and controlled-local adapters. No retries."""
-    backend.admit() # Internal calls do not bypass fixed supervisor admission.
-    ledger=backend.ledger
-    need('component_a' not in ledger.state['observations'],'component_already_attempted')
-    state=dict(profile=PROFILE,execution=backend.execution,resources=[],children=[],observations={},first_failure=None,cleanup='UNATTEMPTED')
-    ledger.state['observations']['component_a']=state;ledger.save()
-    primary=None;capture=None;owned=None
-    def note(name,value):
+class Observation:
+    """One owned observation, kept alive until its collector has captured evidence.
+
+    The standalone runner immediately calls finish. Apache commissioning defers
+    finish to the collector's cleanup boundary; neither path lends live resources
+    or measurements to the later assets producer.
+    """
+    def __init__(self,backend):
+        backend.admit() # Internal calls do not bypass fixed supervisor admission.
+        self.backend=backend;self.ledger=backend.ledger;self.stem=stem(backend.plan)
+        key=self.stem.replace('-','_')
+        need(key not in self.ledger.state['observations'],'component_already_attempted')
+        self.state=dict(profile=PROFILE,execution=backend.execution,resources=[],children=[],observations={},first_failure=None,cleanup='UNATTEMPTED')
+        if self.stem=='component-apache-a':
+            self.state.update(owner='commission-apache',binding=copy.deepcopy(backend.plan['binding']),plan_sha256=digest(canonical(backend.plan)))
+        self.ledger.state['observations'][key]=self.state;self.ledger.save()
+        self.primary=None;self.capture=None;self.capture_attempted=False;self.finished=False;self.measured=False
+
+    def fail(self,error,kind='component'):
+        self.primary=self.primary or error
+        if self.state['first_failure'] is None:self.state['first_failure']=safe_error(error)
+        self.ledger.failure(error,kind)
+
+    def note(self,name,value):
         # Values have fixed producers below; native child parsing validates their
         # shape before admission. Never record raw stdout/stderr/SQL/tokens.
-        state['observations'][name]=copy.deepcopy(value);ledger.save()
-    try:
-        note('bootstrap_before',backend.operational())
-        backend.prepare(state)
-        worker=backend.start('worker');original=backend.source(worker)
-        manifest,safe=source(backend.plan,original,backend.module);note('source',safe)
-        backend.manifest=manifest
-        helper=backend.start('helper');ready=backend.ready(helper);note('helper_ready',ready)
-        backend.identify_socket(ready)
-        transferred=backend.transfer(worker,helper,note);note('transfer',transferred)
-        independent=backend.observer();note('observer',independent)
-        need(independent['manifest_sha256']==safe['manifest_sha256'] and independent['artifact_sha256']==safe['artifact_sha256']
-             and len(independent['files'])==safe['files'],'component_independent_binding')
-        if backend.serving_enabled:backend.serve(note)
-        note('bootstrap_after_stage',backend.operational())
-        need(state['observations']['bootstrap_after_stage']==state['observations']['bootstrap_before'],'component_operational_changed')
-    except BaseException as error:
-        primary=error;state['first_failure']=safe_error(error);ledger.failure(error,'component')
-    finally:
+        self.state['observations'][name]=copy.deepcopy(value);self.ledger.save()
+
+    def measure(self):
+        need(not self.measured and not self.finished,'component_measure_once');self.measured=True
+        backend=self.backend;state=self.state;note=self.note
+        try:
+            note('bootstrap_before',backend.operational())
+            backend.prepare(state)
+            worker=backend.start('worker');original=backend.source(worker)
+            manifest,safe=source(backend.plan,original,backend.module);note('source',safe)
+            backend.manifest=manifest
+            helper=backend.start('helper');ready=backend.ready(helper);note('helper_ready',ready)
+            backend.identify_socket(ready)
+            transferred=backend.transfer(worker,helper,note);note('transfer',transferred)
+            independent=backend.observer();note('observer',independent)
+            need(independent['manifest_sha256']==safe['manifest_sha256'] and independent['artifact_sha256']==safe['artifact_sha256']
+                 and len(independent['files'])==safe['files'],'component_independent_binding')
+            if backend.serving_enabled:backend.serve(note)
+            note('bootstrap_after_stage',backend.operational())
+            need(state['observations']['bootstrap_after_stage']==state['observations']['bootstrap_before'],'component_operational_changed')
+        except BaseException as error:self.fail(error);raise
+
+    def checkpoint(self):
+        need(not self.capture_attempted and not self.finished,'component_capture_once')
+        self.capture_attempted=True;backend=self.backend
         # First immutable capture is BEFORE stopping any live child or removing
         # resources. A second capture records quiescent inode ownership below.
         try:
-            state['children']=backend.children()
-            state['held']=backend.capture()
-            capture=ledger.publish('component-a-before-cleanup',copy.deepcopy(state))
-        except BaseException as error:
-            ledger.failure(error,'component-capture');primary=primary or error
+            self.state['children']=backend.children()
+            self.state['held']=backend.capture()
+            self.capture=self.ledger.publish(self.stem+'-before-cleanup',copy.deepcopy(self.state))
+            return copy.deepcopy(self.capture)
+        except BaseException as error:self.fail(error,'component-capture');raise
+
+    def finish(self):
+        need(not self.finished,'component_cleanup_once')
+        backend=self.backend;state=self.state;ledger=self.ledger;owned=None
+        if not self.capture_attempted:
+            try:self.checkpoint()
+            except BaseException:pass # Recorded above; never retry or authorize removal.
+        self.finished=True
         try:backend.stop()
-        except BaseException as error:
-            ledger.failure(error,'component-stop');primary=primary or error
+        except BaseException as error:self.fail(error,'component-stop')
         try:
             backend.quiescent()
             owned=backend.owned()
-            ledger.publish('component-a-owned-before-remove',dict(profile=PROFILE,execution=backend.execution,
+            ledger.publish(self.stem+'-owned-before-remove',dict(profile=PROFILE,execution=backend.execution,
                 objects=owned,children=backend.children(),first_failure=state['first_failure']))
-            need(capture is not None,'component_capture_required')
+            need(self.capture is not None,'component_capture_required')
             backend.cleanup(owned)
-            after=backend.operational();note('bootstrap_after_cleanup',after)
+            after=backend.operational();self.note('bootstrap_after_cleanup',after)
             need(after==state['observations']['bootstrap_before'],'component_pristine_restoration')
             state['cleanup']='REMOVED'
         except BaseException as error:
-            ledger.failure(error,'component-cleanup');primary=primary or error;state['cleanup']='LIMITED'
+            self.fail(error,'component-cleanup');state['cleanup']='LIMITED'
         state['children']=backend.children()
-        state['result']='STAGED_AND_REMOVED' if primary is None else 'INCOMPLETE'
-        if state['first_failure'] is None and primary is not None:state['first_failure']=safe_error(primary)
+        state['result']='STAGED_AND_REMOVED' if self.primary is None else 'INCOMPLETE'
         try:
             ledger.save()
-            ledger.publish('component-a-result',dict(profile=PROFILE,execution=backend.execution,result=state['result'],
-                cleanup=state['cleanup'],first_failure=state['first_failure'],children=state['children'],before_cleanup=capture))
-        except BaseException as error:
-            ledger.failure(error,'component-result');primary=primary or error
-    if primary is not None:raise primary
-    return dict(profile=PROFILE,execution=backend.execution,result=state['result'],cleanup=state['cleanup'])
+            ledger.publish(self.stem+'-result',dict(profile=PROFILE,execution=backend.execution,result=state['result'],
+                cleanup=state['cleanup'],first_failure=state['first_failure'],children=state['children'],before_cleanup=self.capture))
+        except BaseException as error:self.fail(error,'component-result')
+        if self.primary is not None:raise self.primary
+        return dict(profile=PROFILE,execution=backend.execution,result=state['result'],cleanup=state['cleanup'])
+
+def run(backend):
+    """Same bounded lifecycle in native and controlled-local adapters. No retries."""
+    observation=Observation(backend)
+    try:observation.measure()
+    except BaseException:pass # finish preserves and raises the original failure.
+    return observation.finish()

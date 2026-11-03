@@ -4,8 +4,17 @@ declare(strict_types=1);
 require_once __DIR__.'/WebsitePlatformM6ECommissionFixture.php';
 require_once __DIR__.'/WebsitePlatformM6EComponent.php';
 function m6eLocalComponent():void {
-    $start=m6eComponentLine();m6eNeed($start['command']==='inspect','local_component_start');
-    [$f,$built]=m6eLocalServingFixture(true);$r=$built[0];$root=realpath($f->root.'/sealed');$uid=lstat($f->root)['uid'];
+    $start=m6eComponentLine();$bootstrap=$start===['command'=>'bootstrap'];
+    m6eNeed($bootstrap||$start['command']==='inspect','local_component_start');
+    [$f,$built]=m6eLocalServingFixture(!$bootstrap);$r=$built[0];$root=realpath($f->root.'/sealed');$uid=lstat($f->root)['uid'];
+    if($bootstrap) {
+        $sources=[];foreach($built as $item)$sources[]=m6eServingSource($f->store,$root,$item['release'],$item['summary'],$uid,static function():void{});
+        $fixture=['version'=>1,'run_id'=>str_repeat('b',32),'site_id'=>10,'site_key'=>$r['release']['site_key'],
+            'target_id'=>20,'requester_id'=>1,'releases'=>array_column($built,'summary')]+m6eAssetSets(array_column($built,'summary'))+
+            ['foreign_asset'=>['site_id'=>11,'asset_id'=>3,'sha256'=>hash_file('sha256',$f->root.'/uploads/approved.png')],'unpublished'=>true];
+        m6eComponentEmit('bootstrap',['fixture'=>$fixture,'sources'=>$sources]);
+        $start=m6eComponentLine();m6eNeed($start['command']==='inspect','local_component_start');
+    }
     $read=static fn()=>m6eServingSource($f->store,$root,$r['release'],$r['summary'],$uid,static function():void{});
     $source=$read();$releasePath=$f->releasePath($r['job']);
     // Explicit Unix ACL model: the controller supplies only measured modes of

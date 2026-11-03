@@ -27,12 +27,12 @@ try {
         echo "{\"result\":\"FORMAT VALID\"}\n";exit(0);
     }
     $a=commissionAdmission($authority?2103:2000);
-    if(in_array($mode,['--inventory-worker','--admit-receipt','--serving-source','--component-stage-a'],true)) {
+    if(in_array($mode,['--inventory-worker','--admit-receipt','--serving-source','--component-stage-a','--component-apache-a'],true)) {
         require_once $classes.'/SiteDeploymentService.php';
         require_once __DIR__.'/WebsitePlatformM6ECommissionServing.php';
         require_once __DIR__.'/WebsitePlatformM6EComponent.php';
         commissionNeed(Database::config('APP_ENV')==='staging');
-        if($mode==='--component-stage-a') {m6eComponentWorker($a);exit(0);}
+        if(in_array($mode,['--component-stage-a','--component-apache-a'],true)) {m6eComponentWorker($a,$mode==='--component-apache-a');exit(0);}
         if($mode==='--serving-source') {
             echo CanonicalJson::encode(m6eServingSources($a))."\n";exit(0);
         }

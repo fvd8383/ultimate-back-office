@@ -232,6 +232,8 @@ class NativeProbes:
             finally:self.gate=None
 
     def cleanup(self,gate):
+        if gate=='apache' and getattr(self,'apache_component',None) is not None:
+            self.apache_component.finish()
         cleanup_owned(self.host,self.ledger,gate)
         resources=self.ledger.state['observations']['commission']['resources']
         return dict(remaining=sum(self.ledger.state['entries'][r['entry']]['state']!='RELEASED' for r in resources if r['gate']==gate),
@@ -265,6 +267,7 @@ class NativeProbes:
         if hasattr(self,'serving_source_sha256'):
             self.step('serving-source-retained',lambda:need(data['source_sha256']==self.serving_source_sha256,'serving_source_changed'))
         self.serving_source_sha256=data['source_sha256']
+        self.original_serving_sources=copy.deepcopy(observed)
         return data
 
     def probe_apache(self):
@@ -283,7 +286,17 @@ class NativeProbes:
             measured[field]=self.step('apache-'+mode+'-'+variant,request)['status'];self.remember({field:measured[field]})
         self.step('apache-boundary',lambda:need(measured['active_status']==measured['candidate_status']==503
             and measured['unauthorized_status'] in (0,400,401,403),'bootstrap_http_boundary'))
-        measured.update(self.serving_sources());return measured
+        measured.update(self.serving_sources())
+        from WebsitePlatformM6ECommission import budget
+        from WebsitePlatformM6EComponent import SECONDS
+        from WebsitePlatformM6EComponentHost import Native
+        from WebsitePlatformM6ECommissionApache import ApacheObservation
+        budget(self.host,self.ledger,SECONDS)
+        self.apache_component=ApacheObservation(Native(self.host,self.ledger,apache=True),self.binding,
+            self.original_serving_sources[0],measured['source_sha256'])
+        measured['apache_sha256']=self.step('apache-component',self.apache_component.measure)
+        self.remember({'apache_sha256':measured['apache_sha256']})
+        return measured
 
     def probe_assets(self):
         measured={}
@@ -379,4 +392,6 @@ class NativeProbes:
         need(self.child('helper','--admit-receipt')['data']=={'result':'HELPER RECEIPT ADMITTED'},'python_receipt_admission')
 
     def finish(self):
+        component=getattr(self,'apache_component',None)
+        if component is not None and not component.component.finished:component.finish()
         self.host.owner.cleanup();cleanup_owned(self.host,self.ledger)

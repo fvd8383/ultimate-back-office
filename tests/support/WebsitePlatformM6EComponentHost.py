@@ -14,7 +14,9 @@ from WebsitePlatformM6EProcess import Failure
 import WebsitePlatformM6EBootstrapPlan as b
 import WebsitePlatformM6EComponent as c
 
-def serving_root(plan):return b.STORAGE+'/component-https-'+plan['binding']['run_id']
+def serving_root(plan):
+    prefix='component-apache-https-' if plan.get('owner')=='commission-apache' else 'component-https-'
+    return b.STORAGE+'/'+prefix+plan['binding']['run_id']
 
 def serving_config(config,plan):
     """Reuse the reviewed candidate policy; own one separate private listener."""
@@ -187,9 +189,9 @@ class Native:
     serving_enabled=True
     execution='native-component-authored'
     info=staticmethod(identity)
-    def __init__(self,host,ledger):
+    def __init__(self,host,ledger,apache=False):
         self.host,self.ledger,self.fs=host,ledger,host.fs
-        self.plan=c.plan(ledger.config,ledger.state['observations']['fixture']);self.module=c.publisher_module()
+        self.plan=c.plan(ledger.config,ledger.state['observations']['fixture'],apache=apache);self.module=c.publisher_module()
         c.validate_plan(self.plan,ledger.config,ledger.state['observations']['fixture'])
         need(os.geteuid()==0,'component_operator')
         need(hasattr(os,'pidfd_open') and hasattr(signal,'pidfd_send_signal'),'component_pidfd_required')
@@ -200,6 +202,7 @@ class Native:
         from WebsitePlatformM6ECommission import UNIT, budget
         self.host.namespace(self.ledger.config);self.host.check_pins(self.ledger.config)
         if 'component_request' in self.ledger.state['observations']:
+            need(self.plan.get('owner') is None,'component_apache_commission_only')
             supervisor(self.host,self.ledger)
             need(self.ledger.state['phase']=='component-running','component_running_admission')
         else:
@@ -230,10 +233,10 @@ class Native:
     def register(self,row):
         self.rows.append(row);self.state['resources'].append(row['id']);self.ledger.save();return row
     def directory(self,path,uid,gid,mode,tree=False):
-        row=self.register(self.ledger.intent(path,'tree' if tree else 'directory','component-stage-a'))
+        row=self.register(self.ledger.intent(path,'tree' if tree else 'directory',c.producer(self.plan)))
         self.fs.mkdir(path,0o700);self.ledger.identify(row);self.fs.metadata(path,uid,gid,mode);self.ledger.identify(row)
     def write(self,path,raw,uid,gid,mode):
-        row=self.register(self.ledger.intent(path,'file','component-stage-a'))
+        row=self.register(self.ledger.intent(path,'file',c.producer(self.plan)))
         self.fs.create(path,raw,lambda fd:self.ledger.identify(row,fd));self.fs.metadata(path,uid,gid,mode);self.ledger.identify(row)
         row['sha256']=digest(raw);self.ledger.save()
     def prepare(self,state):
@@ -248,13 +251,14 @@ class Native:
         self.write(p['served']+'/access-probe',b'component access\n',2102,2102,0o600)
         self.write(p['journal']+'/target.lock',b'',2102,2102,0o600)
         self.write_plan()
-        self.socket_row=self.register(self.ledger.generated(p['socket'],'component-stage-a'))
-        self.pointer_row=self.register(self.ledger.generated(p['served']+'/candidate','component-stage-a'))
+        self.socket_row=self.register(self.ledger.generated(p['socket'],c.producer(self.plan)))
+        self.pointer_row=self.register(self.ledger.generated(p['served']+'/candidate',c.producer(self.plan)))
     def write_plan(self):self.write(self.plan['paths']['plan'],canonical(self.plan),0,0,0o644)
     def command(self,role):
+        apache=self.plan.get('owner')=='commission-apache'
         if role=='worker':return ['/usr/bin/php','-d','display_errors=0','-d','log_errors=0','-d','memory_limit=256M',
-            b.CHECKOUT+'/tests/support/WebsitePlatformM6ECommissionChild.php','--component-stage-a']
-        return ['/usr/bin/python3','-I','-B',b.CHECKOUT+'/tests/support/WebsitePlatformM6EComponentChild.py','--'+role]
+            b.CHECKOUT+'/tests/support/WebsitePlatformM6ECommissionChild.php','--component-apache-a' if apache else '--component-stage-a']
+        return ['/usr/bin/python3','-I','-B',b.CHECKOUT+'/tests/support/WebsitePlatformM6EComponentChild.py','--'+('apache-' if apache else '')+role]
     def spawn_options(self,role):
         uid=ROLES['worker' if role in ('worker','http') else 'helper']
         return dict(user=uid,group=uid,extra_groups=[ROLES['apache']] if uid==2102 else [],umask=0o077,
@@ -266,7 +270,7 @@ class Native:
         return value
     def start(self,role):
         need(role in ('worker','helper','observer','reader','http') and time.monotonic()<self.deadline,'component_spawn_bound')
-        command=dict(id='component-a-'+role,caller='apache' if role=='reader' else 'worker' if role in ('worker','http') else 'helper',pid=None,exit=None,
+        command=dict(id=c.stem(self.plan)+'-'+role,caller='apache' if role=='reader' else 'worker' if role in ('worker','http') else 'helper',pid=None,exit=None,
                      started_ns=time.monotonic_ns(),finished_ns=None)
         self.ledger.state['commands'].append(command);self.ledger.save() # intent precedes spawn
         process=subprocess.Popen(self.command(role),stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.PIPE,bufsize=0,**self.spawn_options(role))
@@ -346,7 +350,8 @@ class Native:
         """Fixed pinned executable, exact owned config, durable command before exec."""
         self.configtest_validated=None;self.configtest_children=[];self.configtest_started=False
         before=self.configuration_identity();self.host.check_pins(self.ledger.config)
-        need(not any(r['id']=='component-a-configtest' for r in self.ledger.state['commands']),'component_configtest_repeated')
+        name=c.stem(self.plan)+'-configtest'
+        need(not any(r['id']==name for r in self.ledger.state['commands']),'component_configtest_repeated')
         need(time.monotonic()<self.deadline,'component_configtest_deadline')
         owner_deadline=self.host.owner.deadline
         self.host.owner.deadline=min(owner_deadline,self.deadline)
@@ -355,12 +360,12 @@ class Native:
             configuration=before,classification='UNRESOLVED',stdout_sha256=None,stderr_sha256=None)
         try:
             self.configtest_started=True
-            result=self.host.run('component-a-configtest',['/usr/sbin/apache2','-t','-f',serving_root(self.plan)+'/apache.conf'],
+            result=self.host.run(name,['/usr/sbin/apache2','-t','-f',serving_root(self.plan)+'/apache.conf'],
                 min(10,max(.001,self.deadline-time.monotonic())),allowed=(0,1,2),return_result=True)
             diagnostic.update(stdout_sha256=digest(result['stdout']),stderr_sha256=digest(result['stderr']))
             need(type(result['exit']) is int and result['exit']==0,'component_configtest_failed')
             need(self.configuration_identity()==before,'component_configtest_changed')
-            rows=[r for r in self.ledger.state['commands'] if r['id']=='component-a-configtest']
+            rows=[r for r in self.ledger.state['commands'] if r['id']==name]
             need(len(rows)==1 and rows[0]['caller']=='operator' and rows[0]['pid']==result['pid']
                  and type(result['pid']) is int and result['pid']>0 and rows[0]['exit']==0
                  and type(rows[0]['finished_ns']) is int and rows[0]['finished_ns']>=rows[0]['started_ns'],
@@ -382,7 +387,7 @@ class Native:
                 self.ledger.failure(error,'component-configtest-capture')
     def configtest_quiescent(self):
         if not getattr(self,'configtest_started',False):return
-        rows=[r for r in self.ledger.state['commands'] if r['id']=='component-a-configtest']
+        rows=[r for r in self.ledger.state['commands'] if r['id']==c.stem(self.plan)+'-configtest']
         children=self.configtest_children
         need(len(rows)==len(children)==1 and children[0]['reaped'] and children[0]['exit'] is not None
              and children[0]['pid']==rows[0]['pid'] and children[0]['exit']==rows[0]['exit'],
@@ -390,7 +395,7 @@ class Native:
     def reader_admission(self):
         value=getattr(self,'configtest_validated',None)
         need(value is not None,'component_configtest_required')
-        rows=[r for r in self.ledger.state['commands'] if r['id']=='component-a-configtest']
+        rows=[r for r in self.ledger.state['commands'] if r['id']==c.stem(self.plan)+'-configtest']
         need(rows==[value['command']],'component_configtest_command_changed')
         children=self.configtest_children
         need(len(children)==1 and children[0]['pid']==value['command']['pid'] and children[0]['reaped']
@@ -403,7 +408,7 @@ class Native:
     def reader_start(self):
         # Fixed test process, not an installed service or operational publisher.
         need(time.monotonic()<self.deadline,'component_reader_deadline')
-        command=dict(id='component-a-reader',caller='operator',pid=None,exit=None,started_ns=time.monotonic_ns(),finished_ns=None)
+        command=dict(id=c.stem(self.plan)+'-reader',caller='operator',pid=None,exit=None,started_ns=time.monotonic_ns(),finished_ns=None)
         self.ledger.state['commands'].append(command);self.ledger.save()
         self.reader_admission();self.reader_attempted=True
         process=subprocess.Popen(['/usr/sbin/apache2','-X','-f',serving_root(self.plan)+'/apache.conf'],
