@@ -18,6 +18,7 @@ import WebsitePlatformM6EBootstrapPlan as p
 import WebsitePlatformM6ECheckpoint as checkpoint
 import WebsitePlatformM6ESnapshot as snapshot
 import WebsitePlatformM6ERestoration as restoration
+import WebsitePlatformM6EEligibility as eligibility
 
 TERMINAL='FIXTURE BOOTSTRAP READY'
 
@@ -145,6 +146,7 @@ def prepare_owned(host,ledger,plan):
         checkpoint.archive(host,ledger,plan,fixture)
         snapshot.archive(host,ledger,plan,fixture)
         restoration.restore(host,ledger,plan,fixture)
+        eligibility.preflight(host,ledger,plan,fixture)
         ledger.write(p.CONTROL+'/fixture.json',canonical(fixture))
         ledger.state['observations']['fixture']=fixture;ledger.save()
         ledger.phase('configuration')
@@ -230,6 +232,7 @@ def inspect_base(host,ledger,plan):
       pre_b_source_sha256=checkpoint.verify(host,ledger,plan,fixture),
       pre_b_database_sha256=snapshot.verify(host,ledger,plan,fixture),
       pre_b_restoration_sha256=restoration.checked(host,ledger,plan),
+      pre_b_eligibility_sha256=eligibility.checked(host,ledger,plan),
       source_sha256=digest(canonical(plan['source'])),host_receipt='ABSENT',activation='ABSENT',publisher_operations=0)
 
 def inspect_record(host,ledger,plan):
@@ -258,6 +261,8 @@ def teardown(host,ledger,inside_prepare=False):
     host.namespace(ledger.config);host.ledger=ledger;errors=[]
     controls={'/run/systemd/system/'+name for name in p.control_units()}
     # Evidence export is already outside every removable root and is never in the resource list.
+    try:eligibility.before_cleanup(host,ledger)
+    except BaseException as error:ledger.failure(error,'capture');errors.append(error)
     try:restoration.before_cleanup(host,ledger)
     except BaseException as error:ledger.failure(error,'capture');errors.append(error)
     try:ledger.publish('before-teardown-'+str(ledger.state['sequence']),ledger.public())
@@ -313,6 +318,8 @@ def teardown(host,ledger,inside_prepare=False):
             if row['unit']=='ubo-m6e-bootstrap.service':row['state']='SELF_EXIT_PENDING'
         ledger.save()
     try:restoration.cleanup_result(host,ledger)
+    except BaseException as error:ledger.failure(error,'cleanup');errors.append(error)
+    try:eligibility.cleanup_result(host,ledger)
     except BaseException as error:ledger.failure(error,'cleanup');errors.append(error)
     result=dict(profile=p.PROFILE+'-teardown',binding=p.base_identity(ledger.config),result='LIMITED' if errors else 'REMOVED',
                 watchdog=ledger.state['watchdog'],diagnostic=ledger.public())

@@ -5,6 +5,88 @@ installation, server preparation, Linux/Apache execution, SQL, service operation
 working-staging activation or deployment. This document is the bounded later path,
 not a claim that a host contract exists. M6D’s closed native gate is not reopened.
 
+## Eligibility preflight controls following 2e1f19a
+
+**AUTHORED LOCALLY / MODELED ELIGIBILITY EXECUTED / NATIVE SQL UNEXECUTED.**
+Operational lifecycle admission is **NOT AUTHORIZED**. Deployment request/claim
+and publisher activation are **NOT EXECUTED**. The
+[implementation and privilege decision](sprint-8.8-m6e-local-implementation.md#independent-eligibility-preflight-following-2e1f19a)
+identify the exact unchanged service call, destination-only non-DML SQL privileges,
+READ WRITE transaction with ROLLBACK, protected evidence and independent observers.
+Starting Git/PR/main/review prerequisites were verified before edits.
+
+The new PHP controls call the real unchanged source-eligibility owner through an
+explicit behavioral PDO adapter. A separate copy of the faithful pre-B service
+model supplies original data; the original M6C builder/store supplies real sealed
+artifact bytes. They verify A eligibility, original source/approval/business/build/
+producer/release identities, retained locking SQL, table SELECT scope, READ WRITE
+access and confirmed ROLLBACK without mutations. Negatives cover a SELECT-only or
+READ ONLY session, broad/wrong grants, wrong schema/server/account, an already-open
+unowned transaction, changed source hash, missing/revoked approvals, foreign business,
+missing producer/release, newer material B, deployment/target rows, expired execution,
+lost rollback acknowledgement, SQL/rollback failures and corrupt original files.
+The original completed A+B fixture still rejects A. No descriptor replaces the
+actual gate invocation. PDO, MySQL grants/locks and transaction outcomes are modeled.
+
+The Python controls independently compare complete observer data and validate
+transaction, process, account-seal, original-input and publication bindings. They
+reject open/unknown/committed outcomes, reused/stale invocation evidence, wrong
+owner/session identities, cleanup ambiguity, added deployment/fence/B rows, source
+drift, changed artifact hashes, false native labels and authority promotion. Real
+temporary files exercise protected publication, same-byte replacement, retained
+history and cleanup; Linux UID/GID, SQL and services are modeled. The single-use
+orchestration controls reject unknown child completion even when its private output
+claims successful rollback, and reject independent after-state drift despite gate
+success. They retain first failure and secondary teardown errors.
+
+Executed locally on 2026-11-04 with PHP 8.4.24 and Python 3.14.7:
+
+| Control | Result |
+| --- | --- |
+| New `WebsitePlatformM6EEligibilityTest.php` | **41 assertions PASS**; actual unchanged gate, modeled SQL, real sealed bytes |
+| New `WebsitePlatformM6EEligibilityTest.py` | **18 tests PASS**; 11 integrity and 7 ownership/orchestration controls |
+| `WebsitePlatformM6EBootstrapControlTest.py`, complete invocation without a test selector | **35/35 PASS**, 355.981 seconds; includes the previous writer-fault correction |
+| Restoration PHP / Python | **42 assertions / 16 tests PASS** |
+| Snapshot PHP / Python | **43 assertions / 23 tests PASS** |
+| Checkpoint PHP / Python | **46 assertions / 13 tests PASS** |
+| Bootstrap fixture PHP | **37 assertions PASS** |
+| M6D authority / transaction / execution / request / recovery | **96 / 97 / 63 / 70 / 60 assertions PASS** |
+| M6E authority | **18 assertions PASS** |
+| Closed M6D scope-policy controls | **27 assertions / 21 controls PASS** |
+| Current M6E source scope, working diff | **340 assertions PASS** |
+| Selected existing commission integration controls | **5 tests PASS**; controlled evidence, blocked native promotion/override, postinspection and full controlled attempt |
+| Selected existing component integration controls | **2 tests PASS**; admitted dispatch/supervisor and distinct commissioning admission |
+| Syntax and repository integrity | **PASS**: 3 PHP lints, 6 Python AST parses, document links/fences, exact 11-file scope, `git diff --check` and `git fsck --no-reflogs` |
+
+The 35-test result above is the **complete bootstrap rerun**, not the earlier
+single-control rerun and not the selected commission/component checks. The last
+PHP eligibility run includes the native process-inventory fail-closed guard;
+native process enumeration itself is not executed by the local models.
+
+Batched regression output and command/digest records are retained outside Git under
+`m6e-eligibility-validation` in the desktop visualization workspace. PHP uses
+`php -d memory_limit=256M tests/<File>`; Python uses the existing Python 3.14.7
+with `-I -B tests/<File>`. Windows temporary-file hard-link controls require the
+same local sandbox exception used by previous ownership runs. This grants no
+native fixture, service, staging, production or network-database execution.
+
+Native MySQL 8.4 eligibility remains **UNEXECUTED**. Later isolated validation must
+prove the full prior capture/restoration contract, actual 24-table SELECT and exact-
+schema LOCK TABLES privileges, DML/global/foreign-schema denials, READ WRITE locking
+semantics, unchanged gate behavior, real ROLLBACK/error outcomes, writer/account
+quiescence, independent sessions, sealed artifacts, before/after data equality,
+process/file identity, durability and teardown under interruption. There is no native
+admission override: the authored evidence stays `native_admission=BLOCKED` and
+`admission=UNIMPLEMENTED`, even if an individual preflight later succeeds.
+
+SQL-account sealing and confirmed rollback/child reaping are recorded before the
+later whole-fixture teardown. Uncertain SQL or cleanup outcomes remain INCOMPLETE;
+historical evidence cannot be replayed as live readiness after teardown or expiry.
+No real A failure, operational lease/fence, target reservation, journal settlement,
+host receipt, publisher activation, deployment request/claim or PR merge occurred.
+All six commissioning MISSING classifications and historical M6C/M6D acceptance
+evidence remain unchanged.
+
 ## Isolated restoration controls following ccaa23b
 
 **LOCAL MODELS ONLY / NATIVE MYSQL RESTORATION UNEXECUTED / NO LIFECYCLE ADMISSION.**

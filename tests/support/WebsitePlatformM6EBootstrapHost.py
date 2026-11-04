@@ -84,6 +84,9 @@ class NativeHost:
     def preparer_context(self):
         need('0::/system.slice/ubo-m6e-bootstrap.service' in Path('/proc/self/cgroup').read_text().splitlines(),'fixed_bootstrap_supervisor')
 
+    def eligibility_context(self):
+        self.preparer_context();return self.component_context()
+
     def source(self,root,sha):
         args=['/usr/bin/git','--no-optional-locks','-c','core.fsmonitor=false','-c','safe.directory='+root,'-C',root]
         need(self.run('source-head',args+['rev-parse','HEAD']).decode().strip()==sha,'base_source_head')
@@ -143,10 +146,11 @@ class NativeHost:
         source=self.source(p.SOURCE,config['source_sha'])
         required=['tests/support/WebsitePlatformM6E'+name for name in ('Bootstrap.py','BootstrapHost.py','BootstrapLedger.py','BootstrapPlan.py',
                     'Preparation.py','NativeSetup.php','Process.py','Acceptance.py','Checkpoint.php','Checkpoint.py',
-                    'Snapshot.php','Snapshot.py','SnapshotProfile.json','Restoration.php','Restoration.py')]
+                    'Snapshot.php','Snapshot.py','SnapshotProfile.json','Restoration.php','Restoration.py','Eligibility.php','Eligibility.py')]
         need(all(name in source for name in required),'bootstrap_source_complete')
         self.run('setup-syntax',['/usr/bin/php','-l',p.SOURCE+'/tests/support/WebsitePlatformM6ENativeSetup.php'])
         self.run('restore-syntax',['/usr/bin/php','-l',p.SOURCE+'/tests/support/WebsitePlatformM6ERestoration.php'])
+        self.run('eligibility-syntax',['/usr/bin/php','-l',p.SOURCE+'/tests/support/WebsitePlatformM6EEligibility.php'])
         self.run('bootstrap-syntax',['/usr/bin/python3','-I','-B','-c',
             'import ast,pathlib; [ast.parse(pathlib.Path(p).read_bytes()) for p in '+repr([p.SOURCE+'/'+name for name in required if name.endswith('.py')])+']'])
         templates=p.templates(lambda name:protected(p.SOURCE+'/'+name,262144))

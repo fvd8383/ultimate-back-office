@@ -15,6 +15,107 @@ second parent; native-tested `7cdbbeef639…` is an ancestor of that reviewed he
 Its native PASS belongs only to `7cdbbeef`, never this implementation or the merge.
 Historical failures and pre-merge reports are not rewritten or rerun.
 
+## Independent eligibility preflight following 2e1f19a
+
+**PREFLIGHT AUTHORED LOCALLY / MODELED EXECUTION ONLY / NATIVE SQL UNEXECUTED.**
+Operational lifecycle admission is **NOT AUTHORIZED**. Deployment request/claim,
+publisher activation, genuine A failure and publisher settlement are **NOT EXECUTED**.
+The increment started at clean `2e1f19aabaac646ba510b456e08a4c718d0aa13c` on the
+expected M6E branch. GitHub confirmed the completed exact-head review with no
+findings, no unresolved threads, PR #131 OPEN DRAFT, and main still at
+`303b073658d7eb08e6086237a70dd4d285dc121c`.
+
+The supported boundary is the unchanged
+`SiteRevisionManager::lockDeploymentEligibility($connection, $release, false)`.
+It accepts the explicitly supplied destination connection, requires its owning
+transaction, and invokes the existing site/revision/business/module, asset,
+composition and approval owners. The `false` argument keeps ordinary publish
+freshness and approval requirements; it does not select the historical-restore
+bypass. `SiteDeploymentService::subject` uses this same source gate, but its
+surrounding target, runtime and grant behavior is not invoked by this preflight.
+No deployment runtime is booted or application connection factory substituted.
+
+This gate retains its original `FOR UPDATE` and `FOR SHARE` reads. MySQL 8.4
+[requires SELECT plus UPDATE, DELETE or LOCK TABLES for FOR UPDATE](https://dev.mysql.com/doc/refman/8.4/en/innodb-locking-reads.html).
+The new fixed `m6e_lifecycle_eligibility@127.0.0.1` identity therefore receives
+SELECT on exactly the 24 audited source/identity/absence tables listed in
+`WebsitePlatformM6EEligibility.php`, and LOCK TABLES on only
+`ubo_m6e_lifecycle_<original_run_id>`. MySQL defines
+[LOCK TABLES at database scope](https://dev.mysql.com/doc/refman/8.4/en/privileges-provided.html),
+so there is no table-scoped version of that non-DML privilege. There are no
+INSERT/UPDATE/DELETE, DDL, global, role, GRANT OPTION or application grants.
+The account requires TLS and permits at most one concurrent connection. Exact
+SHOW GRANTS comparisons reject extra rights or a broader schema pattern. Native
+grant formatting, effective permissions and denial probes remain unexecuted.
+
+The transaction is explicitly REPEATABLE READ and READ WRITE. SELECT-only and
+READ ONLY sessions are not treated as adequate locking-gate boundaries. It
+performs no application DML and always ends through a confirmed ROLLBACK; there
+is no eligibility COMMIT path. An already-open caller transaction is rejected
+without rolling it back. Open, failed or unknown rollback outcomes are INCOMPLETE,
+including a lost acknowledgement after a modeled rollback actually occurred.
+LOCK TABLES itself could block reads in this disposable schema; the fixed entry
+does not execute explicit table-lock statements, and its process/deadline bounds
+remain necessary. Native locking/access-mode behavior still requires validation.
+
+`WebsitePlatformM6EEligibility.py` runs once inside the existing bootstrap
+supervisor after independent restoration verification, before bootstrap READY.
+It rechecks source/run/machine/boot binding, the original checkpoint/snapshot,
+owned private inputs and the restoration publication. Root verifies that the
+restoration SQL worker remains locked with zero connections and that no UID 2107
+restoration process remains. The existing restorer Unix identity runs the new
+bounded child using only its separate eligibility SQL credentials. No new service,
+OS identity, database target, lease, fence or operational capability is introduced.
+
+A fresh SELECT-only observer first compares all 90 restored tables and definitions
+against the protected snapshot and checks the original sealed M6C artifacts.
+The eligibility child then reads the original release, invokes the real unchanged
+gate and compares its full source/approval result, completed build job, producer
+and release to the original checkpoint. It rejects every newer revision, requires
+the original null publication pointer, and requires all five deployment tables
+to be empty. Zero targets, together with the unchanged independently compared
+schema, satisfies the existing single-target-per-site/environment constraint.
+No target is reserved to make this check pass.
+
+After confirmed rollback and child exit, root locks the eligibility account,
+checks its exact grants/TLS/connection limit, zero SQL sessions and absence of
+restorer processes. A second fresh SELECT-only observer rereads the entire
+restored database and revalidates the same original sealed artifacts. The before,
+eligibility and after connection IDs must differ. Original-database digests,
+protected capture inputs, restoration verification and pinned source are checked
+again before evidence publication. Worker or descriptor success alone is never
+accepted as a substitute for the gate and independent observations.
+
+Protected preflight evidence binds the exact source commit and audited source
+file digests, original fixture identity, destination schema/server, checkpoint,
+snapshot/schema and restoration-verification/observation digests, unique invocation,
+expiry, supervisor PID/cgroup/invocation, child PID/UID/GID, SQL session/grants,
+confirmed rollback, original A/business/association/approval/build/producer/release
+identities, independent observer hashes, zero effects and cleanup. Private observation
+files hold complete row comparisons; new retained records contain bounded
+identities/counts/hashes and safe diagnostics. The invocation is one-use: an existing
+preflight record rejects a second run, even after failure. Replaced files, stale
+bindings, changed source, forged publications or uncertain cleanup reject inspection.
+
+The phase has a 120-second budget within the unchanged 600-second bootstrap and
+existing watchdog lifetime. Transaction/observer children have 65-second supervision,
+60-second checked execution deadlines and five-second SQL waits. Private observation
+files retain the 4 MiB limit. Insufficient remaining lifetime or partial output is
+an error, never a ready result. First failure and secondary cleanup diagnostics
+survive. Preparation, transaction and observer evidence are preserved before the
+existing whole-owned-fixture teardown; cleanup never converts INCOMPLETE into success.
+Eligibility-account sealing and transaction/process cleanup are distinct from the
+later recorded removal of the owned disposable MySQL instance and private namespace.
+
+Successful evidence says `ELIGIBILITY PREFLIGHT VERIFIED`, `deployment_authority=NONE`,
+`admission=UNIMPLEMENTED` and `native_admission=BLOCKED`. It cannot satisfy a deployment
+request or lease contract. Historical checkpoint/snapshot/restoration admission fields
+are not rewritten. All six commissioning MISSING classifications remain unchanged.
+See the [executed local controls and remaining native obligations](sprint-8.8-m6e-isolated-validation.md#eligibility-preflight-controls-following-2e1f19a).
+Genuine A failure and settlement still require separately authorized native proof,
+an independent operational-admission contract and the existing protected deployment,
+failure-commit and publisher-settlement boundaries; none is authorized here.
+
 ## Isolated pre-B restoration following ccaa23b
 
 **RESTORATION IMPLEMENTED LOCALLY / NATIVE MYSQL UNEXECUTED / LIFECYCLE ADMISSION

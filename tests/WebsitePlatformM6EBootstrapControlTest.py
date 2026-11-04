@@ -165,6 +165,8 @@ class ModelHost(NativeHost):
         names+=list(SOURCE_FILES)+[path.relative_to(ROOT).as_posix() for path in sorted((ROOT/'database/migrations').glob('*.sql'))]
         from WebsitePlatformM6ERestoration import SOURCE_FILES as RESTORATION_SOURCE_FILES
         names+=list(RESTORATION_SOURCE_FILES)
+        from WebsitePlatformM6EEligibility import SOURCE_FILES as ELIGIBILITY_SOURCE_FILES
+        names+=list(ELIGIBILITY_SOURCE_FILES)
         self.source_files={name:(ROOT/name).read_bytes() for name in names}
         self.source_files['private/config/env.example.php']=b'<?php return [];\n'
         self.inventory={name:dict(mode='100755' if name.endswith('ubo-site-publish') else '100644',sha256=a.digest(raw)) for name,raw in self.source_files.items()}
@@ -175,6 +177,7 @@ class ModelHost(NativeHost):
             authority='m6e_observer',credentials_sha256=a.digest(b'SECRET_AUTHORITY_CANARY'),migrations=list(range(1,26)),seed_247sp=1)
         self.built=fixture()
     def namespace(self,c):a.need(p.base_identity(c)==self.expected_namespace,'base_namespace')
+    def eligibility_context(self):return dict(pid=800,cgroup=['0::/system.slice/ubo-m6e-bootstrap.service'],invocation='e'*32)
     def preflight(self):
         p.admission(self.cfg);self.namespace(self.cfg)
         a.need(self.cfg['tool_sha256']==config()['tool_sha256'],'tools')
@@ -222,7 +225,10 @@ class ModelHost(NativeHost):
             self.put(p.STORAGE+'/mysql/auto.cnf',b'CONTROLLED_UUID',2105,2105)
         elif command.endswith('/php'):
             mode=args[-1]
-            if any(x.endswith('/WebsitePlatformM6ERestoration.php') for x in args):
+            if any(x.endswith('/WebsitePlatformM6EEligibility.php') for x in args):
+                import WebsitePlatformM6EEligibilityModel as eligibility_model
+                out=a.canonical(eligibility_model.execute(self,mode))
+            elif any(x.endswith('/WebsitePlatformM6ERestoration.php') for x in args):
                 import WebsitePlatformM6ERestorationModel as restoration_model
                 out=a.canonical(restoration_model.execute(self,mode))
             elif mode=='--schema':
