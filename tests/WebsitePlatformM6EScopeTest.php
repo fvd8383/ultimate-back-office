@@ -4,6 +4,9 @@ require_once __DIR__.'/support/WebsitePlatformM6CNativeProcess.php';
 /** Current M6E guard; closed M6C/M6D policies are never broadened. */
 $base='303b073658d7eb08e6086237a70dd4d285dc121c';$assertions=0;
 $allowed=[
+    'tests/support/WebsitePlatformM6ESnapshot.php','tests/support/WebsitePlatformM6ESnapshot.py',
+    'tests/support/WebsitePlatformM6ESnapshotProfile.json','tests/WebsitePlatformM6ESnapshotTest.php',
+    'tests/WebsitePlatformM6ESnapshotTest.py','tests/support/WebsitePlatformM6ESnapshotModel.py',
     'private/classes/ApacheDigitalOceanSitePublisher.php','private/classes/SiteHttpHealthChecker.php',
     'private/classes/SitePublisherAuthority.php','private/classes/SitePublisherHostContract.php','private/classes/SitePublisherSession.php',
     'private/classes/SitePublisherFactory.php','private/classes/SiteDeploymentRuntime.php',

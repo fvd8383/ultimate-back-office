@@ -161,6 +161,8 @@ class ModelHost(NativeHost):
         names=['infrastructure/deployment/ubo-site-publish','infrastructure/deployment/ubo_site_publish.py',
                'infrastructure/deployment/ubo-site-authority.php','private/classes/SitePublisherHostContract.php',
                'tests/support/WebsitePlatformM6ENativeSetup.php','tests/support/WebsitePlatformM6ECheckpoint.php']
+        from WebsitePlatformM6ESnapshot import SOURCE_FILES
+        names+=list(SOURCE_FILES)+[path.relative_to(ROOT).as_posix() for path in sorted((ROOT/'database/migrations').glob('*.sql'))]
         self.source_files={name:(ROOT/name).read_bytes() for name in names}
         self.source_files['private/config/env.example.php']=b'<?php return [];\n'
         self.inventory={name:dict(mode='100755' if name.endswith('ubo-site-publish') else '100644',sha256=a.digest(raw)) for name,raw in self.source_files.items()}
@@ -223,12 +225,19 @@ class ModelHost(NativeHost):
                   (p.CONFIG+'/authority-credentials.json',b'SECRET_AUTHORITY_CANARY'),(p.CONFIG+'/application.php',b'SECRET_WORKER_CANARY'),
                   (p.CHECKOUT+'/private/config/env.php',b'<?php return require "/etc/ubo-site-publisher/application.php";'),
                   (p.CONTROL+'/database-identity.json',a.canonical(self.db))):self.put(path,raw)
+                import WebsitePlatformM6ESnapshotModel as sm
+                cp=modeled_checkpoint(self.cfg,self.db,self.built,self.inventory)
+                baseline,_=sm.fixture(cp,self.cfg,self.inventory)
+                self.put(sm.s.CREDENTIALS,b'SECRET_SNAPSHOT_CANARY');self.put(sm.s.SCHEMA,a.canonical(baseline))
                 out=a.canonical(self.db)
             elif mode=='--build-two':
                 for i in (1,2):self.put(p.STORAGE+'/sealed/release-'+str(i),a.canonical(self.built['releases'][i-1]),2000,2000)
                 self.put(p.STORAGE+'/work/build-proof',b'WORKER_PRIVATE',2000,2000)
                 self.put(p.STORAGE+'/uploads/shared.png',b'SOURCE_PRIVATE',2000,2000)
                 self.put(p.CONTROL+'/worker/pre-b-source.json',a.canonical(modeled_checkpoint(self.cfg,self.db,self.built,self.inventory)),2000,2000)
+                import WebsitePlatformM6ESnapshotModel as sm
+                a.need(self.fs.exists(p.CONTROL+'/worker/pre-b-source.json'),'checkpoint_missing')
+                sm.write(self,a.decode(self.fs.read(p.CONTROL+'/worker/pre-b-source.json')))
                 out=a.canonical(self.built)
             elif mode=='--inspect':
                 value=copy.deepcopy(self.built)

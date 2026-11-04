@@ -42,7 +42,12 @@ try {
     $check(count($observer)===1&&!str_contains($observer[0],'_foreign'),'foreign schema not granted');
     $check(str_contains($commands,"GRANT SELECT, INSERT, UPDATE, DELETE ON $schema.* TO 'm6e_worker'"),'separate worker rights');
     $check(str_contains($commands,"GRANT PROCESS ON *.* TO 'm6e_writer'"),'fixture writer observation right');
-    $check(count($written)===6,'all generated files accounted');
+    $check(count($written)===7,'all generated files accounted (schema baseline measured separately by native wrapper)');
+    $snapshot=array_values(array_filter($db->commands,static fn($s)=>str_starts_with($s,'GRANT ')&&str_contains($s,'m6e_snapshot')));
+    $check(count($snapshot)===2&&str_contains($snapshot[0],'GRANT SELECT ON `ubo\\_m6e\\_')
+        &&str_starts_with($snapshot[1],'GRANT FLUSH_TABLES ON *.*'),'snapshot schema-only read and isolated global read lock');
+    $check($written['/run/ubo-m6e-fixture/snapshot-reader.json']['gid']===2000
+        &&$written['/run/ubo-m6e-fixture/snapshot-reader.json']['mode']===0640,'snapshot reader credential ownership');
     foreach(['/run/ubo-m6e-fixture/writer.json'=>2106,'/etc/ubo-site-publisher/authority-credentials.json'=>2103,
              '/etc/ubo-site-publisher/application.php'=>2000] as $path=>$gid)
         $check($written[$path]['gid']===$gid&&$written[$path]['mode']===0640,'separate secret role');

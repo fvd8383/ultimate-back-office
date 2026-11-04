@@ -5,6 +5,97 @@ installation, server preparation, Linux/Apache execution, SQL, service operation
 working-staging activation or deployment. This document is the bounded later path,
 not a claim that a host contract exists. M6D’s closed native gate is not reopened.
 
+## Pre-B snapshot controls following 891f26a
+
+**LOCAL CONTROLS ONLY / NATIVE SQL CAPTURE UNEXECUTED / RESTORATION AND LIFECYCLE
+ADMISSION UNIMPLEMENTED.** Starting branch/HEAD, clean worktree, OPEN DRAFT PR
+#131, completed no-findings exact-head review, resolved review threads and
+unchanged GitHub main were verified. The
+[snapshot design](sprint-8.8-m6e-local-implementation.md#pre-b-database-snapshot-following-891f26a)
+defines the exact 90-table scope, separate reader, global DDL exclusion,
+consistent transaction and protected evidence. The original source checkpoint
+and its `database_snapshot=UNIMPLEMENTED`/lifecycle fields are preserved.
+
+New PHP controls execute the actual capture orchestration against an explicitly
+modeled PDO reader, while the existing local two-release fixture builds and
+verifies real original M6C artifact bytes. They check synchronous pre-B ordering,
+one read boundary, nonlocking reader SQL, no data mutations, original row and
+approval/producer identities, empty/populated tables, missing/duplicate rows,
+wrong schema/server/account/version/TLS/grants/session/isolation, schema drift,
+row/cell bounds, changed source, uncommitted A, B before completion, expired
+capture, deployment/lease denial and commit/rollback/unlock error preservation.
+The Python verifier independently consumes that private child output, validates
+PK/FK closure and schema/migration binding, and checks binary/Unicode/decimal/
+null/empty values, corruption, truncation, malformed inventory, stale/incomplete
+records and false native/authority claims. The metadata/SQL model is deliberately
+not the live MySQL catalog or a native transaction oracle.
+
+The ownership controls exercise real private files and the existing ledger with
+modeled Unix identities/services. They cover identical-byte inode replacement,
+missing/corrupt/unverified leaves, interrupted writes, failed outcomes, lost
+publication acknowledgement, secondary cleanup failure, redacted diagnostics,
+unchanged A+B output and teardown removal of all private row data. Only bounded
+verification metadata remains in protected historical evidence. The final
+teardown diagnostic records resource cleanup against the same snapshot receipt.
+
+| Selected local validation | Result |
+| --- | --- |
+| New PHP snapshot controls | 43 assertions PASS |
+| New Python snapshot integrity/ownership | 23 tests PASS; 3 affected controls rechecked after final outcome binding |
+| Existing PHP checkpoint controls | 46 assertions PASS |
+| Existing Python checkpoint controls | 13 tests PASS |
+| Existing bootstrap controls | 35 tests PASS; 5 affected controls rechecked after final command diagnostics |
+| PHP original bootstrap/artifact fixture | 37 assertions PASS |
+| M6D authority / transaction / execution | 96 / 97 / 63 assertions PASS |
+| Unchanged M6D scope policy, private Git clone | 27 assertions / 21 controls PASS |
+| M6E independent authority | 18 assertions PASS |
+| Current M6E scope | 308 working assertions PASS; final staged/committed count recorded in review handoff |
+| PHP lint / Python syntax / documentation links | 6 / 6 / 35 checks PASS |
+| Git diff / object integrity | PASS; existing dangling objects retained, no corruption or pruning |
+
+Commands: `php -d display_errors=0 -d log_errors=0 tests/WebsitePlatformM6ESnapshotTest.php`,
+`python -I -B tests/WebsitePlatformM6ESnapshotTest.py`, matching checkpoint and
+bootstrap programs, `WebsitePlatformM6DAuthorityTest.php`,
+`WebsitePlatformM6DTransactionTest.php`, `WebsitePlatformM6DExecutionTest.php`,
+`WebsitePlatformM6DScopePolicyTest.php`, `WebsitePlatformM6EAuthorityTest.php` and
+`WebsitePlatformM6EScopeTest.php`. Python is the installed 3.14.7 GIMP runtime;
+PHP is 8.4.24. No broad unrelated M6E campaign was repeated.
+
+Development failures were retained as failures: Windows sandbox denial of the
+existing hard-link publication primitive required rerunning those local tests
+outside the sandbox; no filesystem model was weakened. The first new model
+duplicated assets selected for several composition usages; it was corrected to
+represent unique table rows, and the integrity tests then passed. The existing
+missing-checkpoint control also exposed a model exception-type mismatch; the
+model now explicitly rejects that missing input before attempting snapshot
+construction. None of these runs is native SQL evidence.
+
+A separately authorized disposable Linux/MySQL 8.4 environment must still prove:
+
+1. Exact instance/schema/account/TLS/grant admission and source/migration identity.
+2. Real `REPEATABLE READ` consistent-snapshot behavior, including independent
+   concurrent-writer controls, and that the retained global read lock excludes
+   DDL and survives transaction start without an implicit unlock.
+3. Complete actual catalog/row capture for all 90 InnoDB tables, original PK/FK,
+   generated and approval/source/producer values, and exact logical-value encoding.
+4. Independent captured-data integrity and schema-definition verification;
+   real syscall no-follow/inode/durability behavior; bounded interruption and
+   cleanup with the first failure and all secondary errors retained.
+5. Unchanged original A+B fixture behavior and no effect on the working staging
+   application. The global read lock is permitted only on this new isolated
+   fixture instance, never the working staging database.
+
+No such environment was accessed or provisioned by this task. No native SQL,
+Linux bootstrap, schema migration, SSH/droplet operation, operational publisher,
+deployment, lifecycle schema, restoration or host acceptance receipt was run.
+The next prerequisite is a separate reviewed restoration/admission contract that
+checks destination schema and all restored identities/data/artifact bytes, then
+reruns unchanged source eligibility before any genuine M6D request/claim.
+All six MISSING classifications remain: `retained-release-static-responses`,
+`two-release-transfer-retention-conflict`, `supervised-helper-lock-fence`,
+`candidate-active-fault-restoration`, `retained-state-interruption-authority-recovery`
+and `owned-uncertain-reload-reconciliation`. Historical M6C/M6D acceptance is unchanged.
+
 ## Pre-B checkpoint local controls following 8b38ace
 
 **LOCAL MODELS AND REAL ARTIFACT BYTES ONLY. NATIVE CAPTURE UNEXECUTED;

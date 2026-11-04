@@ -49,6 +49,7 @@ final class M6ECheckpointDatabase extends PDO {
         return $this->inner->executeSql($sql,$params)[0];
     }
 }
+if(defined('M6E_CHECKPOINT_CLASSES_ONLY'))return;
 $assertions=0;
 $check=static function(bool $yes,string $why)use(&$assertions):void{$assertions++;if(!$yes)throw new RuntimeException($why);};
 $reject=static function(Closure $f,string $why)use($check):void{$thrown=false;try{$f();}catch(Throwable){$thrown=true;}$check($thrown,$why);};

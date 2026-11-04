@@ -15,6 +15,124 @@ second parent; native-tested `7cdbbeef639…` is an ancestor of that reviewed he
 Its native PASS belongs only to `7cdbbeef`, never this implementation or the merge.
 Historical failures and pre-merge reports are not rewritten or rerun.
 
+## Pre-B database snapshot following 891f26a
+
+**CAPTURE CONTRACT IMPLEMENTED LOCALLY / NATIVE SQL UNEXECUTED / RESTORE AND
+LIFECYCLE ADMISSION UNIMPLEMENTED.** The increment starts from clean
+`891f26a3d195150791ba053f83aefa7eedfcd320` on the expected branch. GitHub main was
+`303b073658d7eb08e6086237a70dd4d285dc121c`; PR #131 was OPEN DRAFT. Its exact-head
+Codex summary was completed with no findings, and all 13 review threads were
+resolved. The historical source-checkpoint section below records the preceding
+increment; its descriptor remains unchanged and still says
+`database_snapshot=UNIMPLEMENTED`. The new separate contract does not promote that
+descriptor, a commissioning gate, or host admission to native PASS.
+
+The existing MySQL 8.4/PDO tools support the design without a new dependency or
+closed-service change. `WebsitePlatformM6ESnapshot.php` runs synchronously after
+`m6eNativeCheckpoint` and before the existing B `createRevision` call. A must have
+committed its completed M6C build. The builder pauses until capture, durable
+file readback, independent Python verification, a final unchanged source check,
+and the outcome record complete. A failed step throws and prevents this builder
+from creating B. The original A+B output, IDs, approvals, source/artifact hashes,
+single staging target (created after both builds), and final A denial remain.
+
+The scope is **every row in every one of the 90 base tables** of exactly
+`ubo_m6e_<original-run>`, including empty deployment/target/attempt/health/approval
+tables. The reviewed [profile inventory](../tests/support/WebsitePlatformM6ESnapshotProfile.json)
+is exhaustive: application identity/business/module and seeded registry tables;
+site, association, brief, revision, page/section/theme and asset rows; approvals
+and events; jobs, execution producers, releases and validations; plus all other
+tables from immutable migrations 001–025. Full-schema capture avoids omitting
+ancestor approvals, requester/owner relations, composite references or cyclic
+build references. The foreign canary schema, MySQL grant/system tables, other
+schemas, artifact files and an operational lifecycle schema are outside the SQL
+data scope. Original sealed files continue to be verified by the source checkpoint.
+
+Schema preparation additionally creates a dedicated `m6e_snapshot@127.0.0.1`
+account with SELECT on the escaped exact fixture schema and only the global
+`FLUSH_TABLES` privilege needed to hold this **disposable instance's** read lock.
+It has no DML/DDL, FILE, PROCESS, inherited role or cross-schema SELECT authority.
+Its separate root-owned 0640 worker-readable credential file is never a report.
+Reader admission requires exact schema/server UUID/account, a distinct connection
+ID from the builder, TLS, MySQL 8.4 and the exact permitted grants. There is no
+credential, schema or host fallback.
+
+The unchanged locking eligibility gate runs on the ordinary builder session,
+before and after SQL capture, and again after independent file verification.
+It never runs in the read-only reader transaction. The observations must equal
+the original checkpoint. The reader obtains `FLUSH TABLES WITH READ LOCK`, checks
+the schema against the protected post-migration/pre-DML baseline, then starts
+**one** `START TRANSACTION WITH CONSISTENT SNAPSHOT, READ ONLY` at explicit session
+`REPEATABLE READ`. It verifies isolation/read-only settings, transaction presence
+and absence of start warnings. All row counts, size measurements and row reads
+use that same transaction and nonlocking SELECTs. The existing nonlocking
+composition validator also binds the captured source to the original composition
+hash. Original site/revision/approval/job/producer/release rows are crosschecked.
+The read lock remains held until successful transaction closure, excluding DDL
+and concurrent table writes; rollback/unlock failures fail closed. The reader
+connection closes before file verification and on failure. The final builder
+observation rejects B/source changes during file verification.
+
+These choices follow the MySQL 8.4 contracts for
+[consistent transactions](https://dev.mysql.com/doc/refman/8.4/en/commit.html),
+[InnoDB consistent reads](https://dev.mysql.com/doc/refman/8.4/en/innodb-consistent-read.html)
+and [global read locks](https://dev.mysql.com/doc/refman/8.4/en/flush.html).
+They are an authored mechanism, not desktop proof of native isolation.
+
+The logical encoding is SQL `HEX(CAST(column AS BINARY))` with JSON null retained
+as null, ordered by the original primary key. No ID remapping, value coercion,
+approval rewriting, generated-column omission or artifact rebuilding occurs.
+Full `SHOW CREATE TABLE` definitions are retained. The protected baseline binds
+column order, PK/FK metadata, schema definitions and SHA-256 identities of all 25
+source migrations to source SHA/run/machine/boot/server/schema. Definition equality
+excludes only the changing table AUTO_INCREMENT option; the capture retains the
+full original definition including that counter. Future restoration must verify
+the same definitions and generated values; these files contain no restore API.
+
+Limits: 2,048 rows/table, 8,192 rows total, 256 KiB/cell, 1 MiB of logical values,
+4 MiB serialized snapshot, 1 MiB schema baseline, 45-second checked capture
+deadline, five-second SQL execution/metadata-lock limits, 15-second verifier
+child and the existing 180-second builder/600-second preparation supervision.
+The fixture expiry/watchdog still bounds the entire lifetime. Exceeding a bound
+rejects; there is no partial-dump fallback.
+
+The private payload, verification and outcome leaves are
+`worker/pre-b-database.json`, `worker/pre-b-database-verification.json` and
+`worker/pre-b-database-outcome.json` under the existing fixture control root.
+The ledger registers every leaf before starting the builder, including partial
+outputs. Creation is exclusive; file/directory synchronization, readback,
+no-follow reads, exact device/inode checks and subsequent root 0600 protection
+bind the files to their sole producer. The independent Python verifier checks
+complete inventory, schema/migration identity, PK uniqueness, FK closure, row
+counts/digests, original checkpoint/relational bindings, expiry and closed
+authority fields. Its record binds the payload's device/inode as well as digest.
+Bootstrap verifies it again and archives **only the verification metadata**;
+snapshot row bytes never enter command output, public diagnostics, Git or review
+comments. SQL first-failure and rollback/unlock secondary outcomes are retained
+in protected diagnostics. Ordinary ledger teardown removes payload, records,
+schema baseline and credentials; the retained teardown receipt binds cleanup
+resource states to the verification receipt. Failed cleanup remains unresolved.
+
+Local results and limitations are in the
+[snapshot validation record](sprint-8.8-m6e-isolated-validation.md#pre-b-snapshot-controls-following-891f26a).
+Only 15 fixture/test/document files change. No migration, closed M6C/M6D service,
+approval/fence/lease predicate, publisher journal policy or historical acceptance
+record changes. Native execution, working-staging SQL, SSH, restoration,
+deployment requests/execution, host receipts and PR merge were not authorized or
+performed. Restoration into the separately bound lifecycle fixture, independent
+destination verification and lifecycle admission remain the next prerequisite.
+
+All six commissioning blockers remain unchanged:
+
+| Gate | MISSING classification |
+| --- | --- |
+| Apache | `retained-release-static-responses` |
+| Assets | `two-release-transfer-retention-conflict` |
+| Runtime | `supervised-helper-lock-fence` |
+| Health | `candidate-active-fault-restoration` |
+| Recovery | `retained-state-interruption-authority-recovery` |
+| Provisioning | `owned-uncertain-reload-reconciliation` |
+
 ## Pre-B source checkpoint following 8b38ace
 
 **CHECKPOINT IMPLEMENTED LOCALLY / NATIVE SQL UNEXECUTED / DATABASE SNAPSHOT,

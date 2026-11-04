@@ -142,7 +142,8 @@ class NativeHost:
         need(memory>=1024*1024 and Path('/sys/fs/cgroup/cgroup.controllers').exists(),'base_resource_policy')
         source=self.source(p.SOURCE,config['source_sha'])
         required=['tests/support/WebsitePlatformM6E'+name for name in ('Bootstrap.py','BootstrapHost.py','BootstrapLedger.py','BootstrapPlan.py',
-                    'Preparation.py','NativeSetup.php','Process.py','Acceptance.py')]
+                    'Preparation.py','NativeSetup.php','Process.py','Acceptance.py','Checkpoint.php','Checkpoint.py',
+                    'Snapshot.php','Snapshot.py','SnapshotProfile.json')]
         need(all(name in source for name in required),'bootstrap_source_complete')
         self.run('setup-syntax',['/usr/bin/php','-l',p.SOURCE+'/tests/support/WebsitePlatformM6ENativeSetup.php'])
         self.run('bootstrap-syntax',['/usr/bin/python3','-I','-B','-c',
@@ -284,9 +285,19 @@ class NativeHost:
 
     def setup(self,mode,role='operator'):
         need(mode in ('schema','build-two','inspect'),'setup_mode')
-        raw=self.run('fixture-'+mode,['/usr/bin/php','-d','display_errors=0','-d','log_errors=0','-d','zend.exception_ignore_args=1',
-            '-d','memory_limit=256M',p.CHECKOUT+'/tests/support/WebsitePlatformM6ENativeSetup.php','--'+mode],180,role)
-        value=decode(raw);need(type(value) is dict,'setup_result');return value
+        result=self.run('fixture-'+mode,['/usr/bin/php','-d','display_errors=0','-d','log_errors=0','-d','zend.exception_ignore_args=1',
+            '-d','memory_limit=256M',p.CHECKOUT+'/tests/support/WebsitePlatformM6ENativeSetup.php','--'+mode],180,role,allowed=(0,1),return_result=True)
+        if result['exit']!=0:
+            primary=Failure('base_command_failed');prefix=b'm6e_snapshot_outcome:'
+            if mode=='build-two' and result['stderr'].startswith(prefix) and self.ledger is not None:
+                try:
+                    from WebsitePlatformM6ESnapshot import outcome_value
+                    self.ledger.state['observations']['pre_b_database_outcome']=outcome_value(result['stderr'][len(prefix):])
+                    self.ledger.save()
+                except BaseException as error:
+                    self.ledger.failure(primary,'command');self.ledger.failure(error,'snapshot-diagnostic')
+            raise primary
+        value=decode(result['stdout']);need(type(value) is dict,'setup_result');return value
 
     def protect_checkout(self,source):
         root=self.fs.path(p.CHECKOUT)
@@ -337,6 +348,7 @@ class NativeHost:
                 need(child['uid']==ROLES['worker'] and child['gid']==ROLES['worker'] and
                      child['mode']==(0o700 if child['kind']==stat.S_IFDIR else 0o600),'private_artifact_object')
         expected={p.CONFIG+'/authority-credentials.json':(ROLES['authority'],0o640),p.CONTROL+'/writer.json':(ROLES['writer'],0o640),
+          p.CONTROL+'/snapshot-reader.json':(ROLES['worker'],0o640),p.CONTROL+'/snapshot-schema.json':(ROLES['worker'],0o640),
           p.CONTROL+'/admin.json':(0,0o600),p.CONFIG+'/application.php':(ROLES['worker'],0o640),
           p.CHECKOUT+'/private/config/env.php':(ROLES['worker'],0o640),p.CONFIG+'/tls/ca.key':(0,0o600),
           p.CONFIG+'/tls/client.key':(ROLES['worker'],0o640),p.CONFIG+'/tls/server.key':(ROLES['mysql'],0o640)}

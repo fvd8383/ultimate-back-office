@@ -30,6 +30,8 @@ function m6eSchema(array $a):void {
     $result=m6eSchemaData($db,$a,Closure::fromCallable('m6eWrite'),static function(PDO $db):void {
         ob_start();try{m6mysqlMigrate($db,1,25);}finally{ob_end_clean();}
     });
+    require_once __DIR__.'/WebsitePlatformM6ESnapshot.php';
+    m6eSnapshotBaseline($db,$a);
     echo json_encode($result,JSON_THROW_ON_ERROR)."\n";
 }
 /** Actual schema orchestration, with explicit test-only I/O seams; never a production admission path. */
@@ -45,11 +47,14 @@ function m6eSchemaData(PDO $db,array $a,callable $write,callable $migrate):array
     $migrate($db);
     m6eNeed((int)$db->query("SELECT COUNT(*) FROM modules WHERE module_key='247sp'")->fetchColumn()===1,'canonical_seed');
     $accounts=[];
-    foreach(['writer','worker','observer'] as $role){
+    foreach(['writer','worker','observer','snapshot'] as $role){
         $user='m6e_'.$role;$password=bin2hex(random_bytes(32));$account=$db->quote($user)."@'127.0.0.1'";
         $db->exec('CREATE USER '.$account.' IDENTIFIED BY '.$db->quote($password).' REQUIRE SSL');
-        $rights=match($role){'writer'=>'ALL PRIVILEGES','worker'=>'SELECT, INSERT, UPDATE, DELETE','observer'=>'SELECT'};
-        $db->exec('GRANT '.$rights.' ON `'.$name.'`.* TO '.$account);
+        $rights=match($role){'writer'=>'ALL PRIVILEGES','worker'=>'SELECT, INSERT, UPDATE, DELETE','observer','snapshot'=>'SELECT'};
+        $grantSchema=$role==='snapshot'?str_replace('_','\\_',$name):$name;
+        $db->exec('GRANT '.$rights.' ON `'.$grantSchema.'`.* TO '.$account);
+        // Only this isolated instance may be quiesced. No DML/DDL, FILE, PROCESS or cross-schema SELECT.
+        if($role==='snapshot')$db->exec('GRANT FLUSH_TABLES ON *.* TO '.$account);
         // Fixture writer observes actual in-flight worker transactions. The
         // independent authority account retains SELECT on this schema only.
         if($role==='writer')$db->exec('GRANT PROCESS ON *.* TO '.$account);
@@ -58,6 +63,7 @@ function m6eSchemaData(PDO $db,array $a,callable $write,callable $migrate):array
     $admin=bin2hex(random_bytes(32));$db->exec("ALTER USER 'root'@'localhost' IDENTIFIED BY ".$db->quote($admin));
     $write('/run/ubo-m6e-fixture/admin.json',json_encode(['password'=>$admin],JSON_THROW_ON_ERROR),0,0600);
     $write('/run/ubo-m6e-fixture/writer.json',json_encode($accounts['writer'],JSON_THROW_ON_ERROR),2106,0640);
+    $write('/run/ubo-m6e-fixture/snapshot-reader.json',json_encode($accounts['snapshot'],JSON_THROW_ON_ERROR),2000,0640);
     $secret=json_encode($accounts['observer'],JSON_THROW_ON_ERROR);
     $write('/etc/ubo-site-publisher/authority-credentials.json',$secret,2103,0640);
     $config=['DB_HOST'=>'127.0.0.1','DB_PORT'=>3306,'DB_NAME'=>$name,'DB_USER'=>$accounts['worker']['username'],
@@ -142,6 +148,8 @@ function m6eBuild(array $a):void {
     $first=m6eFinishBuild($db,$f['job_id']);
     require_once __DIR__.'/WebsitePlatformM6ECheckpoint.php';
     m6eNativeCheckpoint($db,$config,$a,$first);
+    require_once __DIR__.'/WebsitePlatformM6ESnapshot.php';
+    m6eNativeSnapshot($db,$a,$first);
     $original=SiteBuildStore::one($db,'SELECT * FROM site_revisions WHERE id=:id',['id'=>$f['revision_id']]);
     $next=SiteRevisionManager::createRevision($f['requester'],['site_id'=>$f['site_id'],'based_on_revision_id'=>$f['revision_id'],
         'snapshot_schema_version'=>1,'facts_snapshot_json'=>$original['facts_snapshot_json'],
@@ -196,5 +204,8 @@ function m6eInspect(array $a):void {
 if(realpath($_SERVER['SCRIPT_FILENAME']??'')===__FILE__){
     try{$a=m6eBootstrap();m6eNeed(count($argv)===2,'arguments');
         match($argv[1]){'--schema'=>m6eSchema($a),'--build-two'=>m6eBuild($a),'--inspect'=>m6eInspect($a),default=>throw new RuntimeException('mode')};
-    }catch(Throwable){fwrite(STDERR,"m6e_fixture_setup_unresolved\n");exit(1);}
+    }catch(Throwable $error){
+        if($error instanceof M6ESnapshotFailure)fwrite(STDERR,'m6e_snapshot_outcome:'.CanonicalJson::encode($error->outcome)."\n");
+        else fwrite(STDERR,"m6e_fixture_setup_unresolved\n");exit(1);
+    }
 }
