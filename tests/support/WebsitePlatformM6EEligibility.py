@@ -56,9 +56,57 @@ def verify_gate(raw,req,cp_raw,pid,seal,now):
         transaction=dict(access='READ WRITE',isolation='REPEATABLE READ',outcome='ROLLED_BACK',closed=True),
         gate=dict(method='SiteRevisionManager::lockDeploymentEligibility',restore=False,returned=True),absence=v['absence'])
 
-def verify_observer(raw,phase,req,cp_raw,snapshot_raw,schema_raw,config,source,execution,accounts,now):
-    need(len(raw)<=4194304,'eligibility_observation_bound');v=decode(raw);keys(v,('request_sha256','phase','observation'))
+def observer_diagnostic(v,phase,req,cp_raw,snapshot_raw,schema_raw):
+    """Recompute measurements from owned bytes; never trust the producer's digest assertions."""
+    need(len(canonical(v))<=4194304,'eligibility_observation_bound')
+    keys(v,('request_sha256','phase','process','progress','observation','diagnostic'))
     need(v['request_sha256']==digest(canonical(req)) and v['phase']==phase,'eligibility_observer_binding')
+    process=v['process'];keys(process,('pid','uid','gid','owner_pid'));integer(process['pid'],1)
+    need(process['uid']==process['gid']==0 and type(process['uid']) is int and type(process['gid']) is int
+         and process['owner_pid']==req['owner']['pid'],'eligibility_observer_process')
+    progress=v['progress'];keys(progress,('identity','read','artifact'));blocked=False
+    for kind in ('identity','read','artifact'):
+        status=progress[kind];need(status in ('COMPLETED','FAILED','NOT_REACHED'),'eligibility_observer_progress')
+        need(not blocked or status=='NOT_REACHED','eligibility_observer_order');blocked=blocked or status!='COMPLETED'
+    o=v['observation'];keys(o,('profile','binding','request_sha256','database','read','artifact','deployment_authority','admission'))
+    need(o['binding']==req['binding'] and o['deployment_authority']=='NONE' and o['admission']=='UNIMPLEMENTED','eligibility_observer_binding')
+    for kind,key in (('identity','database'),('read','read'),('artifact','artifact')):
+        need((o[key] is not None)==(progress[kind]=='COMPLETED'),'eligibility_observer_measurement_missing')
+    db=o['database']
+    if db is not None:
+        keys(db,('schema','server_uuid','account','connection_id','grants_sha256'));integer(db['connection_id'],1)
+        need(db['schema']==req['schema'] and db['server_uuid']==req['server_uuid'] and db['account']=='m6e_lifecycle_observer@127.0.0.1'
+             and type(db['grants_sha256']) is str and re.fullmatch('[a-f0-9]{64}',db['grants_sha256']),'eligibility_observer_identity')
+    expected_schema=decode(schema_raw)['tables'];expected_data=decode(snapshot_raw)['tables'];expected_artifact=decode(cp_raw)['summary']
+    names=s.PROFILE['tables'];need(sorted(expected_schema)==sorted(expected_data)==names,'eligibility_diagnostic_inventory')
+    read=o['read']
+    if read is not None:
+        keys(read,('definitions','tables','collation'))
+        need(type(read['definitions']) is dict and type(read['tables']) is dict
+             and sorted(read['definitions'])==sorted(read['tables'])==names,'eligibility_diagnostic_inventory')
+        need(all(type(read['tables'][n]) is dict and type(read['tables'][n].get('rows')) is list
+             and len(read['tables'][n]['rows'])<=2048 for n in names)
+             and sum(len(read['tables'][n]['rows']) for n in names)<=8192,'eligibility_diagnostic_rows')
+    pairs={k:dict(expected=digest(canonical(x)),observed=None if y is None else digest(canonical(y))) for k,x,y in (
+        ('schema',expected_schema,None if read is None else read['definitions']),
+        ('data',expected_data,None if read is None else read['tables']),('artifact',expected_artifact,o['artifact']))}
+    tables={}
+    for n in names:
+        tables[n]=dict(schema_expected=digest(canonical(expected_schema[n])),schema_observed=None if read is None else digest(canonical(read['definitions'][n])),
+            data_expected=digest(canonical(expected_data[n])),data_observed=None if read is None else digest(canonical(read['tables'][n])),
+            rows_expected=len(expected_data[n]['rows']),rows_observed=None if read is None else len(read['tables'][n]['rows']))
+    affected=[n for n,t in tables.items() if read is not None and (t['schema_expected']!=t['schema_observed'] or t['data_expected']!=t['data_observed'])]
+    categories=[k for k,pair in pairs.items() if pair['observed'] is not None and pair['observed']!=pair['expected']]
+    classification=next((k+'_failed' for k in ('identity','read','artifact') if progress[k]=='FAILED'),'drift' if categories else 'unchanged')
+    value=dict(profile='m6e-eligibility-observer-diagnostic-v1',phase=phase,binding=req['binding'],request_sha256=digest(canonical(req)),
+        invocation_id=req['invocation_id'],process=process,database=db,progress=progress,measurements=pairs,tables=tables,
+        affected_tables=affected,categories=categories,classification=classification,result='DIAGNOSTIC_ONLY',
+        admission='UNIMPLEMENTED',native_admission='BLOCKED',deployment_authority='NONE')
+    need(len(canonical(value))<=65536,'eligibility_diagnostic_bound');return value
+
+def verify_observer(raw,phase,req,cp_raw,snapshot_raw,schema_raw,config,source,execution,accounts,now):
+    need(len(raw)<=4194304,'eligibility_observation_bound');v=decode(raw)
+    observer_diagnostic(v,phase,req,cp_raw,snapshot_raw,schema_raw)
     return r.verify_observation(canonical(v['observation']),r.request(config,cp_raw,snapshot_raw,schema_raw),
         snapshot_raw,schema_raw,cp_raw,config,source,execution,now,accounts)
 
@@ -105,9 +153,41 @@ def preflight(host,ledger,plan,fixture):
         accounts=created['restoration_accounts'];execution='native-pre-b' if getattr(host,'lane','native-bootstrap')=='native-bootstrap' else 'controlled-local'
         def observe(phase):
             state['stage']=phase;ledger.save()
-            r.generated(host,[(storage+'/'+phase+'.json',0,0,0o600)],lambda:command(host,phase))
-            return verify_observer(host.fs.read(storage+'/'+phase+'.json'),phase,req,cp_raw,snapshot_raw,schema_raw,
-                config,plan['source'],execution,accounts,int(time.time()))
+            path=storage+'/'+phase+'.json';primary=None;capture_error=None;diagnostic=None;raw=None;verified=None;pid=None
+            try:(_,pid)=r.generated(host,[(path,0,0,0o600)],lambda:command(host,phase))
+            except BaseException as error:primary=error
+            try:
+                row=next(x for x in ledger.state['entries'] if x['path']==path)
+                ledger.verify(row);raw=host.fs.read(path,4194304);ledger.verify(row);v=decode(raw)
+                child=next(x for x in reversed(ledger.state['commands']) if x['id']=='eligibility-'+phase)
+                integer(child['pid'],1);need(v['process']['pid']==child['pid'],'eligibility_observer_pid')
+                diagnostic=observer_diagnostic(v,phase,req,cp_raw,snapshot_raw,schema_raw)
+                try:verified=verify_observer(raw,phase,req,cp_raw,snapshot_raw,schema_raw,config,plan['source'],execution,accounts,int(time.time()))
+                except BaseException as error:primary=primary or error
+                need(type(v['diagnostic']) is dict and len(canonical(v['diagnostic']))<=65536
+                     and v['diagnostic']==diagnostic,'eligibility_diagnostic_protocol')
+                ledger.verify(row)  # Never re-identify a replaced producer output.
+            except BaseException as error:
+                capture_error=error;primary=primary or error
+            if primary is not None:ledger.failure(primary,'eligibility')
+            if capture_error is not None:
+                state['secondary'].append(dict(kind='observer-capture',**safe_error(capture_error)))
+                ledger.failure(capture_error,'eligibility-observer-capture')
+            try:
+                # Only sanitized measurements or a fixed unavailable marker reach retained evidence.
+                value=dict(profile='m6e-eligibility-observer-evidence-v1',binding=req['binding'],request_sha256=digest(canonical(req)),
+                    invocation_id=req['invocation_id'],phase=phase,diagnostic=diagnostic,
+                    capture='COMPLETE' if capture_error is None else 'INCOMPLETE',
+                    observation_sha256=None if raw is None else digest(raw),result='DIAGNOSTIC_ONLY',
+                    admission='UNIMPLEMENTED',native_admission='BLOCKED',deployment_authority='NONE')
+                receipt=ledger.publish('eligibility-observer-'+phase,value)
+                state.setdefault('observer_evidence',{})[phase]=receipt;ledger.save()
+            except BaseException as error:
+                if primary is None:primary=error;ledger.failure(primary,'eligibility')
+                state['secondary'].append(dict(kind='observer-publication',**safe_error(error)))
+                ledger.failure(error,'eligibility-observer-publication')
+            if primary is not None:raise primary
+            return verified
         before=observe('before');state['stage']='transaction';ledger.save()
         (_,pid)=r.generated(host,[(control+'/worker/outcome.json',r.RESTORER,r.RESTORER,0o600)],lambda:command(host,'run'))
         state['stage']='seal';ledger.save();seal,_=command(host,'seal');sealed=True
@@ -135,7 +215,7 @@ def preflight(host,ledger,plan,fixture):
         if prepared and not sealed:
             try:state['seal'],_=command(host,'seal');state['cleanup']='ACCOUNT_LOCKED_OUTCOME_UNCONFIRMED'
             except BaseException as secondary:
-                state['cleanup']='INCOMPLETE';state['secondary'].append(safe_error(secondary));ledger.failure(secondary,'eligibility-cleanup')
+                state['cleanup']='INCOMPLETE';state['secondary'].append(dict(kind='account-seal',**safe_error(secondary)));ledger.failure(secondary,'eligibility-cleanup')
         try:
             rows=[x for x in ledger.state['entries'] if x['path']==control+'/worker/outcome.json' and x['state']=='CREATED']
             if rows:
@@ -163,6 +243,11 @@ def checked(host,ledger,plan):
     need(state['verification']==dict(file='eligibility-verification.json',bytes=len(raw),sha256=digest(raw))
          and v['request_sha256']==state['request_sha256'] and v['invocation_id']==state['invocation_id']
          and time.time()<v['expires_at']==plan['config']['expires_at'],'eligibility_publication')
+    need(set(state.get('observer_evidence',{}))=={'before','after'},'eligibility_observer_publications')
+    for phase,receipt in state['observer_evidence'].items():
+        evidence=host.fs.read(ledger.root+'/eligibility-observer-'+phase+'.json',70000)
+        need(receipt==dict(file='eligibility-observer-'+phase+'.json',bytes=len(evidence),sha256=digest(evidence)),
+             'eligibility_observer_publication_changed')
     need(decode(host.fs.read(ledger.root+'/eligibility-result.json'))==state,'eligibility_result_changed');return digest(raw)
 
 def before_cleanup(host,ledger):

@@ -31,5 +31,10 @@ def execute(host,mode):
         database=dict(schema=req['schema'],server_uuid=req['server_uuid'],account=accounts['observer']['account'],
             connection_id=80 if mode=='--before' else 82,grants_sha256=accounts['observer']['grants_sha256']),
         read=copy.deepcopy(host.restored),artifact=cp['summary'],deployment_authority='NONE',admission='UNIMPLEMENTED')
-    host.put(storage+'/'+mode[2:]+'.json',canonical(dict(request_sha256=digest(canonical(req)),phase=mode[2:],observation=observation)))
+    v=dict(request_sha256=digest(canonical(req)),phase=mode[2:],observation=observation,
+        process=dict(pid=900,uid=0,gid=0,owner_pid=req['owner']['pid']),
+        progress=dict(identity='COMPLETED',read='COMPLETED',artifact='COMPLETED'),diagnostic=None)
+    v['diagnostic']=e.observer_diagnostic(v,mode[2:],req,host.fs.read(d['control_root']+'/checkpoint.json'),
+        host.fs.read(d['control_root']+'/snapshot.json'),host.fs.read(d['control_root']+'/schema.json'))
+    host.put(storage+'/'+mode[2:]+'.json',canonical(v))
     return dict(result='OBSERVED')

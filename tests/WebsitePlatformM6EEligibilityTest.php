@@ -122,5 +122,42 @@ try {
     });
     $final=new M6ECheckpointDatabase($fixture->db);$before=$fixture->db->snapshot();m6eFinalAIneligible($final,(int)$built[0]['row']['id']);
     $check($fixture->db->snapshot()===$before,'completed A+B still rejects A without effects');
-    echo "M6E eligibility: $checks assertions PASS (actual unchanged source gate; SQL/lock/privilege MODEL; real M6C bytes; native UNEXECUTED).\n";
+    // Execute the production observer orchestration through bounded readers and real file capture.
+    $names=m6eSnapshotProfile()['tables'];$schema=$tables=[];
+    foreach($names as $name){$schema[$name]=['definition'=>'PRIVATE_SCHEMA_CANARY'];$tables[$name]=['rows'=>[['PRIVATE_ROW_CANARY']]];}
+    $inputs=['eligibility'=>['binding'=>array_intersect_key($a,array_flip(['run_id','source_sha','machine_id','boot_id'])),
+        'invocation_id'=>str_repeat('d',32)],'request'=>['profile'=>'MODEL'],'schema'=>['tables'=>$schema],
+        'snapshot'=>['tables'=>$tables],'checkpoint'=>['summary'=>['hash'=>str_repeat('a',64)]]];
+    $process=['pid'=>900,'uid'=>0,'gid'=>0,'owner_pid'=>800];
+    foreach(['before','after'] as $phase)foreach(['unchanged','schema','rows','artifact','artifact-failure','read-failure','identity-failure','capture-failure'] as $case){
+        $read=['definitions'=>$schema,'tables'=>$tables,'collation'=>'utf8mb4_unicode_ci'];$artifact=$inputs['checkpoint']['summary'];
+        if($case==='schema')$read['definitions']['notes']['definition']='CHANGED_PRIVATE_SCHEMA';
+        if(in_array($case,['rows','capture-failure'],true))$read['tables']['notes']['rows']=[];
+        if($case==='artifact')$artifact['hash']=str_repeat('b',64);
+        $realAsset=$fixture->root.'/sealed/'.$built[0]['row']['storage_key'].'/public/index.html';$realBytes=file_get_contents($realAsset);
+        if($case==='artifact-failure')file_put_contents($realAsset,$realBytes.'corrupt');
+        $path=$fixture->root.'/observer-'.$phase.'-'.$case.'.json';$failure=null;
+        try{m6eEligibilityObserve($inputs,$phase,$process,
+            static function()use($case):array{if($case==='identity-failure')throw new RuntimeException('SECRET_CONNECTION');return ['connection_id'=>81];},
+            static function()use($case,$read):array{if($case==='read-failure')throw new RuntimeException('SECRET_SQL');return $read;},
+            static function()use($case,$artifact,$fixture,$built):array{if($case==='artifact-failure')
+                m6eReleaseSummary($built[0]['row'],$built[0]['job'],$built[0]['producer'],$fixture->store->verifyRelease($built[0]['job'],$built[0]['producer']));return $artifact;},
+            static function($v)use($case,$path):void{if($case==='capture-failure')throw new RuntimeException('SECRET_CAPTURE');
+                $h=fopen($path,'xb');fwrite($h,CanonicalJson::encode($v['diagnostic']));fclose($h);});
+        }catch(M6EEligibilityFailure $error){$failure=$error->diagnostic;}
+        finally{if($case==='artifact-failure')file_put_contents($realAsset,$realBytes);}
+        $check(($failure===null)===($case==='unchanged'),$phase.' '.$case.' rejection unchanged');
+        if($case==='capture-failure'){
+            $check($failure['first_failure']==='eligibility_observer_drift'&&$failure['secondary']===['eligibility_observer_capture'],'mismatch primary survives capture failure');continue;
+        }
+        $raw=file_get_contents($path);$v=json_decode($raw,true);
+        $check(strlen($raw)<=65536&&!str_contains($raw,'PRIVATE_')&&!str_contains($raw,'SECRET_'),'bounded private-free diagnostic');
+        $check($v['phase']===$phase&&$v['result']==='DIAGNOSTIC_ONLY'&&$v['native_admission']==='BLOCKED','phase and no authority');
+        if(in_array($case,['schema','rows','artifact'],true))$check($v['classification']==='drift'&&$v['categories']!==[],'actual differing digests captured');
+        if($case==='rows')$check($v['tables']['notes']['rows_expected']===1&&$v['tables']['notes']['rows_observed']===0,'actual row counts');
+        if($case==='artifact-failure')$check($v['measurements']['data']['observed']!==null&&$v['measurements']['artifact']['observed']===null
+            &&$v['progress']['artifact']==='FAILED','read survives later failed artifact verification');
+        if($case==='read-failure')$check($v['measurements']['data']['observed']===null&&$v['progress']['artifact']==='NOT_REACHED','no invented read digest');
+    }
+    echo "M6E eligibility: $checks assertions PASS (actual unchanged source gate and observer logic; SQL/lock/privilege MODEL; real files; native UNEXECUTED).\n";
 } finally {WebsitePlatformM6CFixture::cleanup();}

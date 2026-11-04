@@ -168,6 +168,59 @@ function m6eEligibilityAccounts(PDO $admin,array $inputs):array {
     m6eNeed((int)m6eSnapshotScalar($admin,"SELECT COUNT(*) FROM information_schema.PROCESSLIST WHERE USER='m6e_lifecycle_worker'")===0,'eligibility_restoration_session');
     return $result;
 }
+/** Only digests/counts and fixed identities leave the private observation. No rows or exception text. */
+function m6eEligibilityObservationDiagnostic(array $inputs,array $v):array {
+    $r=$inputs['eligibility'];$read=$v['observation']['read'];$artifact=$v['observation']['artifact'];$tables=[];$affected=[];
+    foreach(m6eSnapshotProfile()['tables'] as $name){
+        $expected=$inputs['snapshot']['tables'][$name];$observed=$read['tables'][$name]??null;
+        $row=['schema_expected'=>CanonicalJson::hash($inputs['schema']['tables'][$name]),
+            'schema_observed'=>isset($read['definitions'][$name])?CanonicalJson::hash($read['definitions'][$name]):null,
+            'data_expected'=>CanonicalJson::hash($expected),'data_observed'=>$observed===null?null:CanonicalJson::hash($observed),
+            'rows_expected'=>count($expected['rows']),'rows_observed'=>$observed===null?null:count($observed['rows'])];
+        $tables[$name]=$row;
+        if($read!==null&&($row['schema_expected']!==$row['schema_observed']||$row['data_expected']!==$row['data_observed']))$affected[]=$name;
+    }
+    $pairs=[];foreach(['schema','data','artifact'] as $kind){
+        $expected=match($kind){'schema'=>$inputs['schema']['tables'],'data'=>$inputs['snapshot']['tables'],'artifact'=>$inputs['checkpoint']['summary']};
+        $observed=match($kind){'schema'=>$read['definitions']??null,'data'=>$read['tables']??null,'artifact'=>$artifact};
+        $pairs[$kind]=['expected'=>CanonicalJson::hash($expected),'observed'=>$observed===null?null:CanonicalJson::hash($observed)];
+    }
+    $categories=[];foreach($pairs as $kind=>$pair)if($pair['observed']!==null&&$pair['expected']!==$pair['observed'])$categories[]=$kind;
+    $failure=null;foreach($v['progress'] as $kind=>$status)if($status==='FAILED'){$failure=$kind.'_failed';break;}
+    $result=['profile'=>'m6e-eligibility-observer-diagnostic-v1','phase'=>$v['phase'],'binding'=>$r['binding'],
+        'request_sha256'=>CanonicalJson::hash($r),'invocation_id'=>$r['invocation_id'],'process'=>$v['process'],
+        'database'=>$v['observation']['database'],'progress'=>$v['progress'],'measurements'=>$pairs,'tables'=>$tables,
+        'affected_tables'=>$affected,'categories'=>$categories,'classification'=>$failure??($categories!==[]?'drift':'unchanged'),
+        'result'=>'DIAGNOSTIC_ONLY','admission'=>'UNIMPLEMENTED','native_admission'=>'BLOCKED','deployment_authority'=>'NONE'];
+    m6eNeed(strlen(CanonicalJson::encode($result))<=65536,'eligibility_diagnostic_bound');return $result;
+}
+/** Narrow local seam: production supplies the unchanged readers and protected exclusive writer. */
+function m6eEligibilityObserve(array $inputs,string $phase,array $process,callable $identify,callable $readDatabase,callable $readArtifact,callable $capture):array {
+    $r=$inputs['eligibility'];$identity=null;$read=null;$artifact=null;$primary=null;$secondary=[];
+    $progress=['identity'=>'NOT_REACHED','read'=>'NOT_REACHED','artifact'=>'NOT_REACHED'];$stage='identity';
+    try{
+        $progress[$stage]='FAILED';$identity=$identify();$progress[$stage]='COMPLETED';
+        $stage='read';$progress[$stage]='FAILED';$read=$readDatabase();$progress[$stage]='COMPLETED';
+        $stage='artifact';$progress[$stage]='FAILED';$artifact=$readArtifact();$progress[$stage]='COMPLETED';
+        $stage='drift';
+        $matches=CanonicalJson::encode($read['definitions'])===CanonicalJson::encode($inputs['schema']['tables'])
+            &&CanonicalJson::encode($read['tables'])===CanonicalJson::encode($inputs['snapshot']['tables'])
+            &&CanonicalJson::encode($artifact)===CanonicalJson::encode($inputs['checkpoint']['summary']);
+        // Record the pending mismatch, then capture before raising it to the CLI/coordinator.
+        if(!$matches)$primary=new RuntimeException('eligibility_observer_drift');
+    }catch(Throwable $error){$primary=$error;
+        if($error instanceof M6ERestorationFailure&&($error->diagnostic['secondary']??[])!==[])$secondary[]='eligibility_observer_read_cleanup';}
+    $observation=['profile'=>'m6e-pre-b-restoration-observation-v1','binding'=>$r['binding'],
+        'request_sha256'=>CanonicalJson::hash($inputs['request']),'database'=>$identity,'read'=>$read,'artifact'=>$artifact,
+        'deployment_authority'=>'NONE','admission'=>'UNIMPLEMENTED'];
+    try{
+        $v=['request_sha256'=>CanonicalJson::hash($r),'phase'=>$phase,'process'=>$process,'progress'=>$progress,'observation'=>$observation];
+        $v['diagnostic']=m6eEligibilityObservationDiagnostic($inputs,$v);$capture($v);
+    }catch(Throwable $error){$secondary[]='eligibility_observer_capture';if($primary===null){$primary=$error;$stage='capture';}}
+    if($primary!==null)throw new M6EEligibilityFailure(['phase'=>'observer-'.$stage,
+        'first_failure'=>'eligibility_observer_'.$stage,'secondary'=>$secondary]);
+    return ['result'=>'OBSERVED'];
+}
 function m6eEligibilityNative(string $mode):array {
     $a=m6eBootstrap();m6eNeed(posix_geteuid()===($mode==='--run'?M6E_RESTORE_UID:0),'eligibility_native_uid');
     $inputs=m6eEligibilityInputs($a);$r=$inputs['eligibility'];$d=$inputs['request']['destination'];
@@ -216,18 +269,14 @@ function m6eEligibilityNative(string $mode):array {
         if($error!==null)throw new M6EEligibilityFailure($outcome);return ['result'=>'AWAITING_INDEPENDENT_OBSERVER'];
     }
     m6eNeed(in_array($mode,['--before','--after'],true),'eligibility_mode');
-    $db=m6eRestoreConnect($a,$inputs,'observer');
-    $identity=m6eRestoreAdmit($db,['schema'=>$d['schema'],'server_uuid'=>$r['server_uuid'],'account'=>$d['observer'].'@127.0.0.1'],false);
-    $read=m6eRestoreRead($db,$d['schema'],$pulse);$cp=$inputs['checkpoint'];$store=m6eArtifactStore(m6eBuildConfig($a));
-    $artifact=m6eReleaseSummary($cp['observed']['release'],$cp['observed']['job'],$cp['observed']['producer'],
-        $store->verifyRelease($cp['observed']['job'],$cp['observed']['producer'],$pulse));
-    m6eNeed(CanonicalJson::encode($read['definitions'])===CanonicalJson::encode($inputs['schema']['tables'])
-        &&CanonicalJson::encode($read['tables'])===CanonicalJson::encode($inputs['snapshot']['tables'])
-        &&CanonicalJson::encode($artifact)===CanonicalJson::encode($cp['summary']),'eligibility_observer_drift');
-    $observation=['profile'=>'m6e-pre-b-restoration-observation-v1','binding'=>$r['binding'],'request_sha256'=>CanonicalJson::hash($inputs['request']),
-        'database'=>$identity,'read'=>$read,'artifact'=>$artifact,'deployment_authority'=>'NONE','admission'=>'UNIMPLEMENTED'];
-    m6eEligibilityWrite($a,substr($mode,2).'.json',['request_sha256'=>CanonicalJson::hash($r),'phase'=>substr($mode,2),'observation'=>$observation]);
-    return ['result'=>'OBSERVED'];
+    $db=null;$cp=$inputs['checkpoint'];
+    return m6eEligibilityObserve($inputs,substr($mode,2),['pid'=>getmypid(),'uid'=>posix_geteuid(),'gid'=>posix_getegid(),'owner_pid'=>posix_getppid()],
+        static function()use(&$db,$a,$inputs,$d,$r):array{$db=m6eRestoreConnect($a,$inputs,'observer');
+            return m6eRestoreAdmit($db,['schema'=>$d['schema'],'server_uuid'=>$r['server_uuid'],'account'=>$d['observer'].'@127.0.0.1'],false);},
+        static function()use(&$db,$d,$pulse):array{return m6eRestoreRead($db,$d['schema'],$pulse);},
+        static function()use($a,$cp,$pulse):array{$store=m6eArtifactStore(m6eBuildConfig($a));return m6eReleaseSummary(
+            $cp['observed']['release'],$cp['observed']['job'],$cp['observed']['producer'],$store->verifyRelease($cp['observed']['job'],$cp['observed']['producer'],$pulse));},
+        static function(array $v)use($a,$mode):void{m6eEligibilityWrite($a,substr($mode,2).'.json',$v);});
 }
 if(realpath($_SERVER['SCRIPT_FILENAME']??'')===__FILE__){
     try{m6eNeed(count($argv)===2&&in_array($argv[1],['--prepare','--run','--seal','--before','--after'],true),'eligibility_usage');

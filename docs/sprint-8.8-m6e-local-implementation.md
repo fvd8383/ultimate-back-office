@@ -15,6 +15,60 @@ second parent; native-tested `7cdbbeef639…` is an ancestor of that reviewed he
 Its native PASS belongs only to `7cdbbeef`, never this implementation or the merge.
 Historical failures and pre-merge reports are not rewritten or rerun.
 
+## Failed-observer evidence correction following a996c96
+
+Review thread `PRRT_kwDOS02IKM6z2qay` identified an evidence-ordering defect, not an
+eligibility-policy defect. At clean `a996c96c637b475ed6ec336dbdf777e6d4f4a3c8`, the
+PHP observer had obtained schema, table and artifact measurements but rejected
+drift before writing them. A local execution of its extracted predicate confirmed
+that no observation was retained. The actual Python controlled bootstrap, with
+the after-observer's `notes` rows changed from one to zero, rejected with
+`restore_exact_database`, then removed its private observation. The retained
+eligibility failure records contained neither expected nor observed table digests;
+they contained only the generic safe error classification. These reproductions
+used local models, not native MySQL.
+
+The PHP observer now collects the unchanged readers' results through a narrow
+callable seam used by both its production entry and local tests. It holds a pending
+drift/read failure while capturing a private observation envelope and a bounded
+diagnostic, then propagates rejection. Schema/data results already returned by the
+read helper survive a later artifact-verification failure. Failed or unreached
+readers have null observed measurements and explicit progress states; values are
+never inferred from expected inputs. The existing atomic database-read helper's
+unreturned partial state is not claimed as a completed observation.
+
+The Python coordinator verifies the producer file's recorded identity and digest,
+current request/phase, observer PID/owner and database identity. It independently
+recomputes expected/observed measurements using protected checkpoint, snapshot and
+schema inputs. It publishes separate immutable `eligibility-observer-before` and
+`eligibility-observer-after` evidence before allowing rejection to propagate into
+bootstrap teardown. Receipts containing the publication name, byte count and digest
+remain in the eligibility result and pre-cleanup record. Readiness inspection also
+checks these retained bytes. It never re-identifies a substituted observation.
+
+Each diagnostic contains fixed binding/process/progress fields, whole-schema/data/
+artifact digest pairs, and per-table schema/data digests and actual row counts for
+the fixed 90-table inventory. Affected tables and categories are allowlisted. The
+summary limit is 64 KiB; the existing private observation limit is 4 MiB and row
+limits remain 2,048 per table / 8,192 total. Raw rows, DDL, artifact contents,
+credentials, connection strings and exception messages are not retained in the
+diagnostic. Malformed, missing, oversized or wrongly bound output produces an
+INCOMPLETE capture marker, never fabricated measurements or successful evidence.
+
+The original failure is recorded before diagnostic publication. Capture/publication,
+account-sealing and teardown errors remain secondary and distinguishable. If evidence
+publication fails, required safe cleanup still runs; uncertain resource identities
+remain subject to the existing preservation rules. Before/after records are never
+overwritten. Every diagnostic says `DIAGNOSTIC_ONLY`, `admission=UNIMPLEMENTED`,
+`native_admission=BLOCKED`, and `deployment_authority=NONE`.
+
+No grant, source gate, transaction/rollback, writer sealing, commissioning order,
+deadline/watchdog, closed service, migration or native readiness policy changes.
+All six commissioning MISSING classifications remain unchanged. Native execution,
+deployment request/claim, lease allocation, activation, failure commit, settlement
+and host receipts remain unperformed and unauthorized. See the
+[correction validation record](sprint-8.8-m6e-isolated-validation.md#failed-observer-evidence-controls-following-a996c96).
+
 ## Independent eligibility preflight following 2e1f19a
 
 **PREFLIGHT AUTHORED LOCALLY / MODELED EXECUTION ONLY / NATIVE SQL UNEXECUTED.**

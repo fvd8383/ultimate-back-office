@@ -5,6 +5,60 @@ installation, server preparation, Linux/Apache execution, SQL, service operation
 working-staging activation or deployment. This document is the bounded later path,
 not a claim that a host contract exists. M6D’s closed native gate is not reopened.
 
+## Failed-observer evidence controls following a996c96
+
+**LOCAL CORRECTION / NATIVE MYSQL UNEXECUTED / NO ADMISSION.** The starting branch,
+clean HEAD and OPEN DRAFT PR #131 matched the task; the exact-head P2 comment
+`4474721638` described both reproduced losses. Original reproduction records remain
+separate from corrected results in the desktop `observer-fix` evidence directory.
+The PHP reproduction executed the original extracted drift predicate with completed
+modeled observations. The Python reproduction ran the actual modeled bootstrap and
+teardown: `notes` expected one row, observed zero; its private after-observation was
+deleted and neither table digest remained in retained eligibility diagnostics.
+The already protected original snapshot remained available; it did not explain the
+actual mismatching observation.
+
+The [corrected contract](sprint-8.8-m6e-local-implementation.md#failed-observer-evidence-correction-following-a996c96)
+retains bounded measurements before outward rejection and teardown. PHP tests execute
+the production observer orchestration through bounded reader/writer seams, including
+real file capture and failed verification of deliberately corrupted real M6C bytes.
+Python tests execute the actual preflight, immutable ledger publication and modeled
+teardown. They compare publication bytes before and after teardown, not mocked
+completed receipts. Both phases cover schema/data/artifact drift, artifact failure,
+missing/partial output, malformed/oversized diagnostics, missing measurements,
+publication failure, combined capture/cleanup failure, same-byte substitution,
+changed request/phase binding and unchanged success.
+
+Principal drift controls require the original mismatch, useful digest/count pairs,
+identical retained bytes after removal, no raw fixture/secret contents, no eligibility
+verification receipt and BLOCKED admission. Missing observations remain null; later
+artifact failures preserve completed database measurements. Capture failures cannot
+replace the original mismatch, and teardown does not depend on declaring capture
+complete. Uncertain substituted resources remain preserved by existing ownership rules.
+
+Final corrected-source runs on 2026-11-04 (PHP 8.4.24 / Python 3.14.7):
+
+| Complete suite | Result | Suite duration / subprocess wall time |
+| --- | --- | --- |
+| `WebsitePlatformM6EEligibilityTest.php` | **99 assertions PASS** | 1.275 s wall |
+| `WebsitePlatformM6EEligibilityTest.py` | **25 tests PASS**, including 28 before/after failure scenarios | 420.320 s / 422.188 s |
+| `WebsitePlatformM6EBootstrapControlTest.py` | **35/35 PASS**, full invocation on corrected source | 398.605 s / 400.427 s |
+| `WebsitePlatformM6ELedgerRecoveryTest.py` | **14 tests PASS** | 52.393 s / 54.640 s |
+
+M6E source scope passed **350 assertions**. Two PHP lints, three Python AST parses,
+both documents' local links/fences, exact seven-file scope, whitespace and Git
+integrity checks passed. Tested source hashes are compared with staged and committed
+bytes after Git's line-ending normalization. Full suite output, command/duration/digest
+records and the original reproduction records are retained outside Git in
+`observer-fix`; the earlier three-test focused pass (70.300 s) is not counted as a
+complete suite. No unrelated native or application campaign was rerun.
+
+Native MySQL, native Linux file/process ownership and installed service execution
+remain unperformed. These results establish local producer/coordinator ordering and
+failure semantics only. All six commissioning MISSING classifications remain unchanged.
+No deployment, publisher activation, live settlement, staging/production access or
+PR merge is part of this correction.
+
 ## Eligibility preflight controls following 2e1f19a
 
 **AUTHORED LOCALLY / MODELED ELIGIBILITY EXECUTED / NATIVE SQL UNEXECUTED.**
