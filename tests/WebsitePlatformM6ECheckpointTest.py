@@ -116,11 +116,21 @@ class Ownership(unittest.TestCase):
         path.write_bytes(raw+b' ')
         with self.assertRaises(ValueError):self.verify(host,ledger,plan)
         path.write_bytes(raw);self.verify(host,ledger,plan)
+        original=host.fs.identity(c.PATH)
+        replacement=c.PATH+'.replacement'
+        host.put(replacement,raw)
+        allocated=host.fs.identity(replacement)
+        self.assertNotEqual((original['dev'],original['ino']),(allocated['dev'],allocated['ino']))
+        self.assertEqual({k:v for k,v in original.items() if k not in ('dev','ino')},
+            {k:v for k,v in allocated.items() if k not in ('dev','ino')})
         host.fs.unlink(c.PATH)
-        with self.assertRaises((ValueError,FileNotFoundError)):self.verify(host,ledger,plan)
-        host.put(c.PATH,raw)
-        # Identity changes are rejected even when bytes match.
-        with self.assertRaises(ValueError):self.verify(host,ledger,plan)
+        with self.assertRaises(FileNotFoundError):self.verify(host,ledger,plan)
+        host.fs.path(replacement).replace(path)
+        installed=host.fs.identity(c.PATH)
+        self.assertEqual((installed['dev'],installed['ino']),(allocated['dev'],allocated['ino']))
+        self.assertNotEqual((installed['dev'],installed['ino']),(original['dev'],original['ino']))
+        self.assertEqual(path.read_bytes(),raw)
+        with self.assertRaisesRegex(ValueError,'owned_resource_replaced'):self.verify(host,ledger,plan)
 
     def test_archive_tampering_and_incomplete_publication_reject(self):
         host,ledger,plan,_=self.ready();path=host.fs.path(ledger.root+'/pre-b-source.json');raw=path.read_bytes()
