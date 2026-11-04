@@ -91,6 +91,7 @@ final class M6ESnapshotDatabase extends PDO {
         return $this->observer->inner->executeSql($sql,$params)[0];
     }
 }
+if(defined('M6E_SNAPSHOT_CLASSES_ONLY'))return;
 $checks=0;$bundle=null;
 $check=static function(bool $ok,string $why)use(&$checks):void{$checks++;if(!$ok)throw new RuntimeException($why);};
 $reject=static function(callable $f,string $why)use($check):void{try{$f();}catch(Throwable){$check(true,$why);return;}throw new RuntimeException('not rejected: '.$why);};

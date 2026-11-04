@@ -5,6 +5,96 @@ installation, server preparation, Linux/Apache execution, SQL, service operation
 working-staging activation or deployment. This document is the bounded later path,
 not a claim that a host contract exists. M6D’s closed native gate is not reopened.
 
+## Isolated restoration controls following ccaa23b
+
+**LOCAL MODELS ONLY / NATIVE MYSQL RESTORATION UNEXECUTED / NO LIFECYCLE ADMISSION.**
+The architecture and ownership contract are described in the
+[local implementation record](sprint-8.8-m6e-local-implementation.md#isolated-pre-b-restoration-following-ccaa23b).
+The expected branch/clean HEAD, OPEN DRAFT PR #131, resolved review threads and
+unchanged main were checked against local Git and live GitHub before edits.
+
+The local SQL adapter exercises the actual restoration algorithm against explicit
+PDO/catalog/transaction models. It covers seed deletion before original PK import,
+90-table inventory, schema mismatch, exact binary/text/decimal/JSON/temporal values,
+generated-column exclusion/recomputation, original AUTO_INCREMENT, composite FK
+cycles, duplicate keys, wrong schema/server/account/grants, corrupt bindings,
+interrupted DDL/DML, rollback failure and uncertain COMMIT. The actual M6C builder/
+store supplies original sealed bytes; corrupting a real sealed file is rejected.
+Canonical JSON round-trip inputs exercise the persisted PHP/Python boundary.
+Neither the synthetic column metadata nor fake transaction behavior proves MySQL.
+
+Python independently checks full observer data against the protected snapshot and
+checkpoint. Negatives cover missing/extra/altered tables and rows, changed values/
+PKs, approvals/producers/releases, B or deployment rows, corrupt inputs/artifact
+hashes, account/binding/expiry changes, worker-success substitution and attempted
+authority promotion. Real temporary files exercise ownership, no-replace publication,
+same-byte inode replacement, preserved failure evidence and cleanup. Linux UID/GID,
+services, SQL catalog/privileges and all database observations remain modeled.
+Orchestration negatives include successful writer output followed by partial
+observer data, original-database mutation, unknown child completion and cleanup
+failure with the first failure/watchdog retained.
+
+Executed local validation results follow. PHP commands use
+`php -d memory_limit=256M tests/<File>`. Python uses the existing GIMP Python 3.14.7
+with `-I -B tests/<File>`. Batched test stdout/stderr, command arrays, elapsed times and
+digests are retained outside Git in the desktop visualization workspace under
+`m6e-restoration-validation`; they contain no native snapshot rows or credentials.
+
+| Selected local validation | Result |
+| --- | --- |
+| Restoration PHP SQL/identity/transaction model; real sealed artifact bytes | 42 assertions PASS |
+| Restoration Python integrity/ownership/orchestration | 16 tests PASS, including final live-state guards |
+| PHP snapshot / checkpoint / original bootstrap artifact fixture | 43 / 46 / 37 assertions PASS |
+| Python snapshot / checkpoint regressions | 23 / 13 tests PASS |
+| Bootstrap controls | 34 of 35 passed initially; corrected account-removal control passed its focused rerun |
+| Ledger recovery / selected commissioning authority controls | 14 / 5 tests PASS |
+| M6D authority / transaction / execution | 96 / 97 / 63 assertions PASS |
+| M6D request / recovery; M6E authority | 70 / 60 / 18 assertions PASS |
+| Unchanged M6D scope policy in a private local Git clone | 27 assertions / 21 controls PASS |
+| Current M6E scope | PASS; exact baseline, working/index/HEAD, 25 migrations and 77 definitions preserved |
+| Changed PHP lint / Python AST syntax | 4 / 8 files PASS |
+| Documentation links/fences, Git diff and object integrity | PASS; no Git corruption or whitespace errors |
+
+No local SQL model result is native acceptance. M6D's expected redacted PDO failure
+messages are negative-control diagnostics. No native restoration, deployment,
+host receipt or operational commissioning result was produced.
+
+Development observations: the first sandboxed bootstrap control could not create
+its temporary hard link (Windows sandbox access denial), so local controls were
+rerun outside that sandbox. An initial PHP model lacked the PDOStatement
+`fetchColumn` method; the model was corrected. The first 16-test Python run had
+15 successes and one post-teardown missing-file error; explicit live-state denial
+now rejects before reading removed paths. Review also caught PHP associative-array
+key-order assumptions at the canonical input boundary; canonical comparisons and
+the persisted-input control correct them. The broader bootstrap run passed 34 of
+35 controls; its account-removal fault assumed the writer was the last-created
+account. The fault now targets the writer explicitly and its focused rerun passes.
+These failures are not native results.
+
+Native validation is still **UNEXECUTED**, and is not authorized by this code
+increment. It must prove genuine source snapshot consistency, all canonical
+migrations and seeds, destination reconstruction, exact full schema/counters/row
+values, generated/default/JSON/temporal behavior, actual FK and unique enforcement,
+TLS/account/grant separation, writer locking and process closure, source preservation,
+Linux file/directory durability and cleanup under interruption. Use only the
+separately authorized isolated MySQL 8.4 fixture, never working staging or
+production. No new droplet, staging SSH, operational publisher or host receipt is
+authorized. Restoration's resource/phase limits can reject a run; no model result
+or worker success bypasses those limits or independent verification.
+
+Failure cleanup is whole-owned-fixture teardown, not a generic database DROP or
+resume facility. It removes the original disposable fixture as well as the
+destination only after recorded processes and inode ownership are checked;
+uncertainty/cleanup evidence is retained outside those roots. Unknown outcomes
+remain INCOMPLETE even when cleanup succeeds. Failure to stop or identify resources
+leaves cleanup incomplete. Native power-loss guarantees remain unproven.
+
+Independent lifecycle admission is still UNIMPLEMENTED. The restored schema has
+zero staging targets and no operational leases, deployments, attempts or health
+records. The application DSN and host configurations still identify the original
+fixture. All six commissioning MISSING classifications and historical M6C/M6D
+acceptance evidence remain unchanged.
+
 ## Pre-B snapshot controls following 891f26a
 
 **LOCAL CONTROLS ONLY / NATIVE SQL CAPTURE UNEXECUTED / RESTORATION AND LIFECYCLE

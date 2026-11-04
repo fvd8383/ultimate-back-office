@@ -16,7 +16,7 @@ CONTROL='/run/ubo-m6e-fixture'
 CONFIG='/etc/ubo-site-publisher'
 STORAGE='/var/lib/ubo-m6e-fixture'
 LAUNCHER='/usr/local/sbin/ubo-site-publish'
-ROOTS=tuple(x.replace('\\','/') for x in PREPARATION_ROOTS)
+ROOTS=tuple(x.replace('\\','/') for x in PREPARATION_ROOTS)+('/run/ubo-m6e-lifecycle','/var/lib/ubo-m6e-lifecycle')
 AUXILIARIES={k:'/usr/'+v for k,v in {
     'getent':'bin/getent','groupadd':'sbin/groupadd','useradd':'sbin/useradd',
     'groupdel':'sbin/groupdel','userdel':'sbin/userdel','detect-virt':'bin/systemd-detect-virt'}.items()}

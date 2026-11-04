@@ -163,6 +163,8 @@ class ModelHost(NativeHost):
                'tests/support/WebsitePlatformM6ENativeSetup.php','tests/support/WebsitePlatformM6ECheckpoint.php']
         from WebsitePlatformM6ESnapshot import SOURCE_FILES
         names+=list(SOURCE_FILES)+[path.relative_to(ROOT).as_posix() for path in sorted((ROOT/'database/migrations').glob('*.sql'))]
+        from WebsitePlatformM6ERestoration import SOURCE_FILES as RESTORATION_SOURCE_FILES
+        names+=list(RESTORATION_SOURCE_FILES)
         self.source_files={name:(ROOT/name).read_bytes() for name in names}
         self.source_files['private/config/env.example.php']=b'<?php return [];\n'
         self.inventory={name:dict(mode='100755' if name.endswith('ubo-site-publish') else '100644',sha256=a.digest(raw)) for name,raw in self.source_files.items()}
@@ -220,7 +222,10 @@ class ModelHost(NativeHost):
             self.put(p.STORAGE+'/mysql/auto.cnf',b'CONTROLLED_UUID',2105,2105)
         elif command.endswith('/php'):
             mode=args[-1]
-            if mode=='--schema':
+            if any(x.endswith('/WebsitePlatformM6ERestoration.php') for x in args):
+                import WebsitePlatformM6ERestorationModel as restoration_model
+                out=a.canonical(restoration_model.execute(self,mode))
+            elif mode=='--schema':
                 for path,raw in ((p.CONTROL+'/admin.json',b'SECRET_ADMIN_CANARY'),(p.CONTROL+'/writer.json',b'SECRET_WRITER_CANARY'),
                   (p.CONFIG+'/authority-credentials.json',b'SECRET_AUTHORITY_CANARY'),(p.CONFIG+'/application.php',b'SECRET_WORKER_CANARY'),
                   (p.CHECKOUT+'/private/config/env.php',b'<?php return require "/etc/ubo-site-publisher/application.php";'),
@@ -625,7 +630,7 @@ class Controls(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,'unowned_new_child'):ledger.capture_tree(row,{2000},final=True)
 
     def test_partial_account_removal_is_persisted_and_retry_skips_removed_account(self):
-        host,ledger,_,_=self.ready();host.failure=lambda args:args[0].endswith('userdel')
+        host,ledger,_,_=self.ready();host.failure=lambda args:args[0].endswith('userdel') and args[-1]=='m6e-writer'
         with self.assertRaises(Failure):b.teardown(host,ledger)
         row=next(x for x in ledger.state['accounts'] if x['role']=='writer')
         self.assertIsNone(row['identity']['user']);self.assertIsNotNone(row['identity']['group'])

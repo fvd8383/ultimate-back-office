@@ -9,7 +9,7 @@ PARENTS = ('stage_replay_retention', 'link_hardlink_special_path_rejection', 'fe
            'kill_after_intent', 'kill_after_rename', 'stage_storage_fault', 'journal_fsync_fault',
            'apache_private_health_headers', 'config_failure_preservation', 'worker_helper_authority_integration')
 GATES = ('apache', 'filesystem', 'ownership', 'assets', 'runtime', 'health', 'recovery', 'provisioning')
-ROLES = {'operator': 0, 'coordinator': 2100, 'worker': 2000, 'helper': 2102, 'authority': 2103, 'apache': 2104, 'mysql': 2105, 'writer': 2106}
+ROLES = {'operator': 0, 'coordinator': 2100, 'worker': 2000, 'helper': 2102, 'authority': 2103, 'apache': 2104, 'mysql': 2105, 'writer': 2106, 'restorer': 2107}
 ENDPOINTS = {'active': ['active.m6e.invalid', '127.0.0.2', 443],
              'candidate': ['candidate.m6e.invalid', '127.0.0.3', 443], 'mysql': ['127.0.0.1', 3306]}
 TOOLS = ('php', 'python', 'apache', 'mysql', 'openssl', 'systemd', 'git')

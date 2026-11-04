@@ -15,6 +15,120 @@ second parent; native-tested `7cdbbeef639…` is an ancestor of that reviewed he
 Its native PASS belongs only to `7cdbbeef`, never this implementation or the merge.
 Historical failures and pre-merge reports are not rewritten or rerun.
 
+## Isolated pre-B restoration following ccaa23b
+
+**RESTORATION IMPLEMENTED LOCALLY / NATIVE MYSQL UNEXECUTED / LIFECYCLE ADMISSION
+UNIMPLEMENTED.** Work started at clean `ccaa23b6c6aaa1ab2177e60f988d3a2d1d8cb22a`.
+GitHub confirmed the expected branch, PR #131 OPEN DRAFT, all 13 review threads
+resolved, a completed exact-head review without findings, and main still at
+`303b073658d7eb08e6086237a70dd4d285dc121c`. Historical checkpoint/snapshot descriptors
+and their serialized `UNIMPLEMENTED` fields are not rewritten.
+
+Architecture review found a fixture-only approach without changing migrations
+001–025, snapshot identities or closed M6C/M6D services. The captured 90 tables
+include column values, original PK/FK relationships and full `SHOW CREATE TABLE`
+text, including AUTO_INCREMENT counters. Restoration executes only the pinned
+canonical migrations through the existing migration helper. Captured DDL is
+compared, never executed. The migrations' fixed database-scoped repair SQL is
+unchanged; there is no caller-supplied SQL or schema argument.
+
+`WebsitePlatformM6ERestoration.py` runs inside the existing 600-second bootstrap
+supervisor after the original A+B builder and protected pre-B snapshot publication,
+before bootstrap READY. It imports the captured pre-B rows, not later original
+database rows. No deployment is executed and no original artifact is rebuilt.
+The original application/authority configuration remains bound to its original
+fixture. Bootstrap readiness is not lifecycle admission or host commissioning.
+
+The exact destination `ubo_m6e_lifecycle_<original_run_id>` and its private roots,
+`/run/ubo-m6e-lifecycle/<run>` and `/var/lib/ubo-m6e-lifecycle/<run>`, come from the
+admitted original checkpoint. The schema and both restoration SQL accounts must
+be absent before creation. There is no overwrite, adoption, fallback or resumed
+import. Preparation uses only the owned MySQL socket and exact server UUID; all
+steps retain source/run/machine/boot binding. The original fixed database default
+`utf8mb4_unicode_ci` is checked by fresh source and destination observations.
+
+A separate Unix `m6e-restorer` UID/GID 2107 receives protected restoration inputs
+and credentials. Its SQL identity `m6e_lifecycle_worker@127.0.0.1` has only
+destination-scoped SELECT/INSERT/UPDATE/DELETE/CREATE/DROP/REFERENCES/INDEX/ALTER,
+with escaped schema underscores. There are no global privileges, inherited roles,
+general application credentials or production connection in this worker. The
+independent SQL identity `m6e_lifecycle_observer@127.0.0.1` has only SELECT on that
+destination. Both require the exact schema/server/account, MySQL 8.4 and TLS.
+After the bounded writer exits, root checks its grants, locks its account, and
+checks that no writer connection remains. The root coordinator then runs a
+separate verification process using the SELECT-only observer SQL credentials.
+This is SQL privilege separation; native installed-identity proof is outstanding.
+
+Restoration separates schema DDL, transactional data import, counter DDL and
+verification. Canonical migrations create the schema; all 90 definitions must
+match the protected baseline before data work. One transaction deletes every
+destination seed row and checks every table is empty before insertion. This
+explicitly reconciles migration seeds such as modules, roles, plans, pricing
+cohorts and component registries instead of inserting over their initial IDs.
+
+Prepared INSERTs retain original IDs and every stored column. Hex values become
+binary data or explicitly converted utf8mb4/ascii strings; NULL stays NULL.
+UTC, explicit temporal/decimal values and `NO_AUTO_VALUE_ON_ZERO` prevent default
+or ID substitution. Generated columns are excluded from INSERT and independently
+compared after recomputation. Warnings, duplicates, lost transactions and exceeded
+bounds reject. After confirmed COMMIT, original AUTO_INCREMENT counters are set
+as separate DDL, including the implicit initial counter. DDL failure never claims
+a data rollback or a ready schema.
+
+The cyclic graph requires destination-session foreign-key checks to be relaxed
+for seed deletion/import. Re-enabling this setting does **not** validate rows:
+the independent observer runs anti-joins for every FK, including composite tuples
+and nullable cycles. It rereads all 90 tables under a fresh read-only transaction,
+checks exact definitions/full DDL/counters, ordered rows, column values, PKs and
+counts, and compares the complete result against the original protected snapshot.
+Python separately validates original checkpoint/snapshot integrity and compares
+the observer's data; writer success is never independent proof. Exact comparison
+preserves original associations, approvals, source hashes, producer and release
+references, absence of B and zero targets/deployments/attempts/health records.
+The unchanged M6C store separately verifies A's original sealed files, producer
+journal, manifest and artifact hashes. Complete read-only original-database
+observations before and after restoration detect changes outside the destination.
+
+The transaction design follows MySQL 8.4's
+[foreign-key rules](https://dev.mysql.com/doc/refman/8.4/en/create-table-foreign-keys.html)
+and [implicit DDL commits](https://dev.mysql.com/doc/refman/8.4/en/implicit-commit.html).
+Actual engine enforcement, defaults/generated expressions, temporal/JSON/binary
+round trips, schema/catalog identity and privilege separation remain native tests.
+
+Original snapshot limits remain: 2,048 rows/table, 8,192 rows total, 256 KiB/cell,
+1 MiB logical values and 4 MiB snapshot files. Restoration has a 240-second phase
+budget inside the unchanged bootstrap/watchdog limits; reader/writer children
+have 125-second supervision and a 120-second checked deadline, with five-second
+SQL lock/read limits and a 4 MiB private observation bound. Insufficient remaining
+lifetime or any exceeded bound fails closed without partial-success fallback.
+
+The existing ledger records preparation before destination creation and owns all
+fixed input, credential and partial-output paths. Writes/readback bind owner,
+mode, device/inode and digest; writer output and its directory become root-private
+after exit. Private row bytes stay in removable private files; retained verification
+contains identities, counts and hashes. Safe native diagnostics preserve primary
+and secondary failures. Unknown COMMIT, interrupted DDL/DML, missing observations
+or uncertain evidence publication leave restoration INCOMPLETE and block READY.
+
+There is no standalone DROP/resume/retry path. Failed bootstrap uses existing
+supervised teardown: preserve restoration evidence, stop recorded processes,
+then remove the inode-bound owned resources, including the whole disposable
+MySQL datadir and restoration namespaces. This also ends the original disposable
+fixture; original-data preservation is checked before teardown. Uncertain
+destination state is recorded rather than adopted or silently retried. Process,
+ownership or cleanup errors retain unresolved resources and watchdog coverage.
+Cleanup cannot convert failed restoration into success. Expiry, any fixture failure,
+changed bindings or removed/replaced resources cannot satisfy live verification.
+Historical evidence remains outside removed roots.
+
+See the [local restoration results](sprint-8.8-m6e-isolated-validation.md#isolated-restoration-controls-following-ccaa23b).
+Independent lifecycle admission remains the next implementation prerequisite,
+following separately authorized isolated MySQL validation. No deployment request,
+claim, operational lease/fence, activation, A failure commit, publisher settlement,
+release-B execution, host receipt or publisher enablement is added. All six MISSING
+classifications below remain unchanged. No native SQL, staging SSH/droplet or
+production access, new droplet, operational deployment or PR merge occurred.
+
 ## Pre-B database snapshot following 891f26a
 
 **CAPTURE CONTRACT IMPLEMENTED LOCALLY / NATIVE SQL UNEXECUTED / RESTORE AND
