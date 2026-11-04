@@ -1,5 +1,6 @@
 """Real bootstrap/ledger/render/parser controls; all Linux/SQL/service/UID boundaries modeled."""
 import ast
+import base64
 import copy
 import json
 import os
@@ -39,9 +40,47 @@ def fixture():
             manifest_sha256=a.digest(('manifest'+str(i)).encode()),artifact_sha256=a.digest(('artifact'+str(i)).encode()),file_count=5,
             assets=[dict(sha256=shared,mime_type='image/png',bytes=20),dict(sha256=pdf,mime_type='application/pdf',bytes=30),
                     dict(sha256=a.digest(('css'+str(i)).encode()),mime_type='text/css',bytes=40)]))
-    return dict(version=1,run_id='b'*32,site_id=1,site_key='11111111-1111-4111-8111-111111111111',target_id=2,requester_id=3,
+    value=dict(version=1,run_id='b'*32,site_id=1,site_key='11111111-1111-4111-8111-111111111111',target_id=2,requester_id=3,
        releases=releases,shared_assets=sorted([shared,pdf]),changed_assets=sorted([r['assets'][-1]['sha256'] for r in releases]),
        pdf_assets=[pdf],foreign_asset=dict(site_id=9,asset_id=11,sha256=shared),unpublished=True)
+    for r in releases:
+        m=modeled_manifest(value,r);r.update(manifest_sha256=a.digest(a.canonical(m)),artifact_sha256=m['artifact_hash'])
+    return value
+
+def modeled_manifest(fixture,r):
+    """Coherent metadata for bootstrap orchestration only; no claim of real artifact bytes."""
+    ext={'image/png':'png','application/pdf':'pdf','text/css':'css'}
+    files=[dict(relative_path='public/assets/'+f['sha256']+'.'+ext[f['mime_type']],sha256=f['sha256'],
+        mime_type=f['mime_type'],byte_size=f['bytes']) for f in r['assets']]
+    files.extend(dict(relative_path=name,sha256=a.digest(name.encode()),mime_type=mime,byte_size=10)
+        for name,mime in (('public/index.html','text/html'),('public/_release.json','application/json')))
+    return dict(site_key=fixture['site_key'],release_key=r['release_key'],files=files,file_count=len(files),artifact_hash=a.digest(a.canonical(files)),
+        contract_version='ubo-static-site-v1',schema_version=1,source_revision_id=100,revision_number=1,source_snapshot_hash='f'*64,
+        builder_code_sha='a'*40,build_input_hash='e'*64,build_profile='static-review-v1')
+
+def modeled_checkpoint(cfg,database,fixture,source):
+    from WebsitePlatformM6ECheckpoint import lifecycle,TABLES,SOURCE_FILES
+    r=fixture['releases'][0];site=fixture['site_id'];hash_='f'*64
+    approvals={kind+'_approval_id':dict(id=id_,site_id=site,revision_id=100,approval_type=kind,state='approved',revoked_at=None)
+        for kind,id_ in (('internal',7),('customer',8))}
+    observed=dict(database=dict(schema=database['schema'],server_uuid=database['server_uuid'],account='m6e_worker@127.0.0.1'),
+        source=dict(site=dict(id=site,site_key=fixture['site_key'],lifecycle_status='approved',current_published_revision_id=None),
+            revision=dict(id=100,site_id=site,revision_number=1,snapshot_hash=hash_,lifecycle_status='internally_approved',materiality='material',
+                review_ready_at='2026-09-19 00:00:00',source_references_json='{"business":{"business_id":50}}',facts_snapshot_json='{}'),
+            business_id=50,association_id=9,approvals={k:v['id'] for k,v in approvals.items()},composition={},asset_metadata=[]),
+        approvals=approvals,release=dict(id=r['release_id'],site_id=site,source_revision_id=100,source_snapshot_hash=hash_,
+            release_key=r['release_key'],build_job_id=r['build_job_id'],manifest_hash=r['manifest_sha256'],artifact_hash=r['artifact_sha256']),
+        job=dict(id=r['build_job_id'],site_id=site,revision_id=100,snapshot_hash=hash_,status='succeeded',completed_at='2026-09-19 00:00:00',
+            business_id=50,association_id=9,build_input_hash='e'*64,build_profile='static-review-v1',
+            builder_code_sha=cfg['source_sha'],current_attempt_id=r['producer_attempt_id']),
+        producer=dict(id=r['producer_attempt_id'],site_id=site,build_job_id=r['build_job_id'],attempt_kind='execution',status='succeeded',completed_at='2026-09-19 00:00:00'),
+        absence=dict.fromkeys(TABLES,0),newer_revisions=[])
+    manifest=modeled_manifest(fixture,r)
+    return dict(profile='m6e-pre-b-source-v1',execution='controlled-local',creation_point='after-A-completeBuildSuccess-before-B-createRevision',
+        binding=p.base_identity(cfg),started_at=int(time.time()),captured_at=int(time.time()),expires_at=cfg['expires_at'],
+        source_files={name:source[name]['sha256'] for name in SOURCE_FILES},observed=observed,observed_sha256=a.digest(a.canonical(observed)),
+        summary=r,manifest_base64=base64.b64encode(a.canonical(manifest)).decode(),files=manifest['files'],database_snapshot='UNIMPLEMENTED',
+        deployment_authority='NONE',lifecycle=lifecycle(cfg['run_id']))
 
 class PrivateFiles(Files):
     """Real private bytes/inodes; Linux owner/mode/socket types explicitly modeled on Windows."""
@@ -120,7 +159,8 @@ class ModelHost(NativeHost):
         for path in ('/var/lib','/var/www','/etc','/run/systemd/system','/opt','/usr/local/lib','/usr/local/sbin'):
             fs.makedirs(path)
         names=['infrastructure/deployment/ubo-site-publish','infrastructure/deployment/ubo_site_publish.py',
-               'infrastructure/deployment/ubo-site-authority.php','private/classes/SitePublisherHostContract.php']
+               'infrastructure/deployment/ubo-site-authority.php','private/classes/SitePublisherHostContract.php',
+               'tests/support/WebsitePlatformM6ENativeSetup.php','tests/support/WebsitePlatformM6ECheckpoint.php']
         self.source_files={name:(ROOT/name).read_bytes() for name in names}
         self.source_files['private/config/env.example.php']=b'<?php return [];\n'
         self.inventory={name:dict(mode='100755' if name.endswith('ubo-site-publish') else '100644',sha256=a.digest(raw)) for name,raw in self.source_files.items()}
@@ -188,6 +228,7 @@ class ModelHost(NativeHost):
                 for i in (1,2):self.put(p.STORAGE+'/sealed/release-'+str(i),a.canonical(self.built['releases'][i-1]),2000,2000)
                 self.put(p.STORAGE+'/work/build-proof',b'WORKER_PRIVATE',2000,2000)
                 self.put(p.STORAGE+'/uploads/shared.png',b'SOURCE_PRIVATE',2000,2000)
+                self.put(p.CONTROL+'/worker/pre-b-source.json',a.canonical(modeled_checkpoint(self.cfg,self.db,self.built,self.inventory)),2000,2000)
                 out=a.canonical(self.built)
             elif mode=='--inspect':
                 value=copy.deepcopy(self.built)

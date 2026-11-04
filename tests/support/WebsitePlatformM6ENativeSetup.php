@@ -140,6 +140,8 @@ function m6eBuild(array $a):void {
         $db->prepare("UPDATE site_revisions SET lifecycle_status='internally_approved' WHERE id=?")->execute([$f['revision_id']]);
     });
     $first=m6eFinishBuild($db,$f['job_id']);
+    require_once __DIR__.'/WebsitePlatformM6ECheckpoint.php';
+    m6eNativeCheckpoint($db,$config,$a,$first);
     $original=SiteBuildStore::one($db,'SELECT * FROM site_revisions WHERE id=:id',['id'=>$f['revision_id']]);
     $next=SiteRevisionManager::createRevision($f['requester'],['site_id'=>$f['site_id'],'based_on_revision_id'=>$f['revision_id'],
         'snapshot_schema_version'=>1,'facts_snapshot_json'=>$original['facts_snapshot_json'],
@@ -179,12 +181,14 @@ function m6eBuild(array $a):void {
 function m6eInspect(array $a):void {
     m6eNeed(posix_geteuid()===2000,'inspect_worker');
     require_once __DIR__.'/WebsitePlatformM6CNativeFixture.php';
+    require_once __DIR__.'/WebsitePlatformM6ECheckpoint.php';
     $db=Database::connection();$f=json_decode(SitePublisherHostContract::protectedFile('/run/ubo-m6e-fixture/fixture.json',1048576),true,64,JSON_THROW_ON_ERROR);
     $identity=json_decode(SitePublisherHostContract::protectedFile('/run/ubo-m6e-fixture/database-identity.json',8192),true,32,JSON_THROW_ON_ERROR);
     m6eNeed($db->query('SELECT DATABASE()')->fetchColumn()===$identity['schema']&&$db->query('SELECT @@server_uuid')->fetchColumn()===$identity['server_uuid']
         &&$db->query('SELECT CURRENT_USER()')->fetchColumn()==='m6e_worker@127.0.0.1','inspection_database');
     foreach($f['releases'] as $i=>$release)$f['releases'][$i]=m6eObserveRelease($db,m6eBuildConfig($a),$release['release_id']);
     $f=array_replace($f,m6eAssetSets($f['releases']));m6ePristine($db,$f['site_id'],$f['target_id']);
+    m6eFinalAIneligible($db,$f['releases'][0]['release_id']);
     $foreign=SiteBuildStore::one($db,'SELECT * FROM site_assets WHERE id=:id',['id'=>$f['foreign_asset']['asset_id']]);
     m6eNeed((int)$foreign['site_id']===$f['foreign_asset']['site_id']&&$foreign['checksum_sha256']===$f['foreign_asset']['sha256'],'foreign_asset_binding');
     echo json_encode(['fixture'=>$f,'database'=>$identity],JSON_THROW_ON_ERROR)."\n";

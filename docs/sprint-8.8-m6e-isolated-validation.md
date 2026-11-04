@@ -5,6 +5,101 @@ installation, server preparation, Linux/Apache execution, SQL, service operation
 working-staging activation or deployment. This document is the bounded later path,
 not a claim that a host contract exists. M6D’s closed native gate is not reopened.
 
+## Pre-B checkpoint local controls following 8b38ace
+
+**LOCAL MODELS AND REAL ARTIFACT BYTES ONLY. NATIVE CAPTURE UNEXECUTED;
+CONSISTENT DATABASE SNAPSHOT, RESTORE AND LIFECYCLE ADMISSION UNIMPLEMENTED.**
+Starting HEAD was `8b38aceedff338a108aedfed544f81b78c7c2e50`; the worktree was
+clean, PR #131 OPEN DRAFT, and remote main matched
+`303b073658d7eb08e6086237a70dd4d285dc121c`. This is new evidence, not a revision
+of any historical M6C/M6D/M6E closeout.
+
+The [implementation record](sprint-8.8-m6e-local-implementation.md#pre-b-source-checkpoint-following-8b38ace)
+defines the fixed boundary after A's completed build and before native B revision
+creation. Native setup now authors a separate-session committed read, exact
+schema/server/account/TLS checks, two unchanged source-eligibility observations
+around real immutable artifact verification, exclusive private descriptor capture,
+bootstrap ownership/publication binding and final-fixture A denial. These native
+paths have **not** run here. No SQL instance, Linux UID/service boundary, restored
+database, Apache listener or operational publisher is implied by desktop PASS.
+
+Local coverage establishes the following:
+
+- Original A passes unchanged source eligibility before B. The original local
+  completed A+B fixture rejects a new A request because its source hash changed;
+  a distinct newer material B revision model also rejects through the same gate
+  and actual `SiteDeploymentService` request owner. Both denials create no rows.
+- The captured A revision/source hash, effective approval lineage, association,
+  completed job, execution producer and sealed manifest/files retain their
+  original identity. Both original releases and shared/changed/PDF sets remain
+  verifiable after capture and B completion.
+- Schema/server/account/site/source/approval/association substitutions, duplicate
+  approvals/associations, newer revisions, unfinished transactions, nonzero
+  deployment state, actual artifact corruption, changed observations, expiry and
+  manifest/producer substitution reject. Rewriting every SQL revision reference
+  together still fails against the original sealed manifest.
+- Checkpoint capture issues SELECTs only and leaves the modeled source/database
+  state unchanged. It cannot parse as a deployment request or lease. Native
+  include controls establish dependencies without opening SQL/configuration or
+  constructing a publisher runtime.
+- A descriptor cannot assert snapshot completion, restored admission or publisher
+  authority. Protected-file identity, bytes, source provenance, immutable archive,
+  bootstrap publication and live ownership are independently checked. Absent,
+  stale, malformed, duplicate-key, replaced and incomplete checkpoints fail closed.
+- Interrupted worker capture, uncertain archive acknowledgement and failed cleanup
+  cannot report completed ready evidence. Successful cleanup retains historical
+  archive bytes while invalidating live readiness.
+
+Focused local validation:
+
+| Control | Executed result |
+| --- | --- |
+| New PHP checkpoint/temporal controls | 46 assertions PASS |
+| New Python checkpoint integrity/ownership controls | 13 tests PASS, including a cold native-helper include |
+| Original bootstrap controls | 35 tests PASS |
+| Original two-release serving controls | 12 tests PASS |
+| Original PHP bootstrap/artifact fixture | 35 assertions PASS |
+| M6D transaction / execution controls | 97 / 63 assertions PASS |
+| M6E read-only authority controls | 18 assertions PASS |
+| Selected component authority/native-admission controls | 2 tests PASS |
+| Original serving dependency controls | 90 assertions PASS |
+| M6E scope, before staging this change | 294 assertions PASS; 25 migrations and 77 definitions preserved |
+| Changed PHP / Python sources | 5 lint checks / 4 syntax parses PASS |
+| Git | Diff check PASS; full fsck found no corruption (existing dangling objects retained) |
+
+The combined first run passed all 35 bootstrap tests and exposed one new test
+assertion that confused the existing publisher socket startup with a publication
+operation. The assertion now checks the unchanged pristine journal; all 13 new
+checkpoint tests pass on the corrected run. PHP tests use sequential fake PDO;
+Python bootstrap tests model SQL, Linux ownership and
+services. The cross-language integrity tests use the real PHP M6C builder,
+sealed files and verifier/exporter, with only Unix modes modeled on Windows.
+Filesystem evidence publication uses real private bytes, inodes and hard links;
+the Windows sandbox's hard-link denial required an approved local test retry.
+No weakened publication primitive is used.
+
+Native acceptance still requires, in an explicitly isolated disposable fixture:
+
+1. Observe actual committed pre-B source eligibility through the separate fixed
+   MySQL session, check its exact schema/server/account and original approval and
+   build/producer identities, and verify original sealed artifacts.
+2. Implement a consistent snapshot/restoration contract at this boundary. Preserve
+   the complete relational closure and its original IDs; copying release rows or
+   replaying the descriptor does not establish eligibility. Independently read
+   back the distinct lifecycle schema and artifact namespace, with exclusive
+   ownership and no cross-schema authority fallback.
+3. Admit only the restored lifecycle fixture after unchanged eligibility succeeds.
+   Preserve migration 025's one staging target per site/schema. No target is
+   created during checkpoint capture.
+4. Only a later authorized increment may request/claim A, exercise its real failure
+   and prove terminal M6D authority plus same-operation helper settlement before B
+   admission. The prior A-only synthetic stage authority does not qualify.
+
+The unchanged gate order is apache, filesystem, ownership, assets, runtime,
+health, recovery, provisioning. All six commissioning MISSING classifications
+remain unchanged. No native receipt, activation, settlement, B deployment,
+working-staging/production access, migration or merge occurred.
+
 ## Apache commissioning local controls following 90d891c
 
 **IMPLEMENTED LOCALLY / NATIVE UNEXECUTED.** Starting source was

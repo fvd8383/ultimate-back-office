@@ -5,7 +5,7 @@ require_once __DIR__.'/WebsitePlatformM6CFixture.php';
 require_once __DIR__.'/WebsitePlatformM6CSupplementPdf.php';
 require_once __DIR__.'/WebsitePlatformM6ECommissionServing.php';
 
-function m6eLocalServingFixture(bool $onlyA=false):array {
+function m6eLocalServingFixture(bool $onlyA=false,?Closure $afterA=null):array {
     $f=new WebsitePlatformM6CFixture();$base=$f->db->read->base;$pdf=M6CSupplementPdf::bytes();
     file_put_contents($f->root.'/uploads/approved.pdf',$pdf);chmod($f->root.'/uploads/approved.pdf',0600);
     $base->siteAssets[2]=array_replace($base->siteAssets[1],['id'=>2,'asset_type'=>'document','storage_key'=>'/uploads/approved.pdf',
@@ -28,6 +28,7 @@ function m6eLocalServingFixture(bool $onlyA=false):array {
         $built[]=['row'=>$row,'job'=>$job,'producer'=>$producer,'verified'=>$verified,
             'release'=>SiteDeploymentContract::release($row,$base->sites[10]),
             'summary'=>m6eReleaseSummary($row,$job,$producer,$verified)];
+        if(count($built)===1&&$afterA!==null)$afterA($f,$built[0]);
     }
     return [$f,$built,$pdf];
 }

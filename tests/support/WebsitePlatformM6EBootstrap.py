@@ -15,6 +15,7 @@ from WebsitePlatformM6EProcess import Failure
 from WebsitePlatformM6EBootstrapLedger import Ledger
 from WebsitePlatformM6EBootstrapHost import NativeHost
 import WebsitePlatformM6EBootstrapPlan as p
+import WebsitePlatformM6ECheckpoint as checkpoint
 
 TERMINAL='FIXTURE BOOTSTRAP READY'
 
@@ -137,7 +138,8 @@ def prepare_owned(host,ledger,plan):
         ledger.state['observations']['database']=database;ledger.save()
         ledger.phase('artifacts')
         fixture=p.validate_fixture(trees(host,[p.STORAGE+'/'+x for x in ('work','sealed','uploads')],
-            lambda:host.setup('build-two','worker')),config['run_id'])
+            lambda:checkpoint.capture(host,lambda:host.setup('build-two','worker'))),config['run_id'])
+        checkpoint.archive(host,ledger,plan,fixture)
         ledger.write(p.CONTROL+'/fixture.json',canonical(fixture))
         ledger.state['observations']['fixture']=fixture;ledger.save()
         ledger.phase('configuration')
@@ -220,6 +222,7 @@ def inspect_base(host,ledger,plan):
     return dict(configuration_sha256=digest(canonical(configs)),configurations=configs,units=units,
       services=services,listeners=[{k:x[k] for k in ('protocol','ip','port','uid')} for x in listeners],
       database_sha256=digest(canonical(database)),fixture_sha256=digest(canonical(fixture)),
+      pre_b_source_sha256=checkpoint.verify(host,ledger,plan,fixture),
       source_sha256=digest(canonical(plan['source'])),host_receipt='ABSENT',activation='ABSENT',publisher_operations=0)
 
 def inspect_record(host,ledger,plan):

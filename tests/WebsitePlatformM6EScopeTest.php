@@ -44,6 +44,8 @@ $allowed=[
     'tests/support/WebsitePlatformM6EComponentModel.py',
     'tests/support/WebsitePlatformM6EComponentEntry.py','tests/WebsitePlatformM6EComponentEntryTest.py',
     'tests/WebsitePlatformM6EServingDependencyTest.php',
+    'tests/WebsitePlatformM6ECheckpointTest.php','tests/WebsitePlatformM6ECheckpointTest.py',
+    'tests/support/WebsitePlatformM6ECheckpoint.php','tests/support/WebsitePlatformM6ECheckpoint.py',
     'tests/support/WebsitePlatformM6EBootstrap.py','tests/support/WebsitePlatformM6EBootstrapHost.py',
     'tests/support/WebsitePlatformM6EBootstrapLedger.py','tests/support/WebsitePlatformM6EBootstrapPlan.py',
     'docs/sprint-8.8-m6e-local-implementation.md','docs/sprint-8.8-m6e-isolated-validation.md',

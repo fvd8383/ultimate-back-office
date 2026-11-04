@@ -15,6 +15,98 @@ second parent; native-tested `7cdbbeef639…` is an ancestor of that reviewed he
 Its native PASS belongs only to `7cdbbeef`, never this implementation or the merge.
 Historical failures and pre-merge reports are not rewritten or rerun.
 
+## Pre-B source checkpoint following 8b38ace
+
+**CHECKPOINT IMPLEMENTED LOCALLY / NATIVE SQL UNEXECUTED / DATABASE SNAPSHOT,
+RESTORE AND LIFECYCLE ADMISSION UNIMPLEMENTED.** This increment starts at
+`8b38aceedff338a108aedfed544f81b78c7c2e50` on the existing clean branch and OPEN
+DRAFT PR #131. Remote main was verified at `303b073658d7eb08e6086237a70dd4d285dc121c`.
+The evidence below supplements, without reattributing, the historical results.
+
+The exact native capture point is in `m6eBuild`, immediately after
+`m6eFinishBuild($db, $f['job_id'])` returns from A's committed
+`SiteBuildService::completeBuildSuccess`, before the call to
+`SiteRevisionManager::createRevision` for B. No staging target exists at that
+point: the original builder creates its single target after both builds.
+The completed native fixture contains a newer material, internally approved B
+revision. The unchanged `SiteRevisionManager::lockDeploymentEligibility(...,
+false)` therefore rejects a fresh A deployment. The existing local two-release
+helper instead changes revision 100 between builds; its final A denial is source
+hash drift. Controls cover both cases, including the actual request owner against
+fake PDO, without treating those models as native SQL.
+
+`WebsitePlatformM6ECheckpoint.php` opens a separate fixed TLS MySQL session using
+the original worker account and verifies distinct connection IDs, exact server
+UUID, account and `ubo_m6e_<run>` schema. It requires the builder to be outside a
+transaction, so its second session must observe committed A rows. Two committed,
+locked observations bracket the original M6C verifier/exporter. Each invokes the
+unchanged M6D source gate with `restore=false`, including current customer and
+internal approvals, association/business eligibility, rights, composition and
+newer-revision checks. Artifact I/O occurs outside SQL transactions. The complete
+observed values must match; no SQL mutation occurs in capture.
+
+The private descriptor retains the original site/revision/source references,
+snapshot hash, business and association, effective approval IDs and rows (including
+an inherited customer approval where applicable), completed job and original
+execution producer, release ID/key, manifest bytes, every verified public-file
+digest/size/MIME and source asset metadata. It binds these to run/source/machine/
+boot identity, expiry, capture point, source-file hashes and schema/server/account.
+The original job's business/association and the sealed manifest's revision/hash/
+build identity are crosschecked. It requires no newer revisions, a null published
+pointer and zero rows across all deployment target, operation, attempt, approval
+and health-check tables. Zero targets also rules out active pointers and fences.
+This is observed source evidence, not an eligibility grant or authority receipt.
+
+Bootstrap registers ownership of the fixed worker leaf
+`/run/ubo-m6e-fixture/worker/pre-b-source.json` before starting the builder. The
+worker exclusively writes, synchronizes and reads it back before B creation.
+After the original two-build command succeeds, bootstrap identifies and protects
+the leaf, checks its content against the original A summary and measured source,
+then publishes `pre-b-source.json` in the existing private evidence directory.
+The immutable bootstrap observation binds that archive's hash. Missing, stale,
+duplicate-key, changed, ambiguous or incomplete inputs reject; a file alone is
+insufficient. Ready verification also requires the owned leaf, archive,
+bootstrap publication, unfailed ready phase and armed watchdog. An interrupted
+write or uncertain archive acknowledgement cannot reach ready. Teardown retains
+historical evidence but invalidates live checkpoint readiness; normal ownership
+cleanup also covers partial capture files.
+
+The original native two-release output schema, A/B identities, artifact bytes,
+asset comparisons, single staging target, gate order and cleanup remain intact.
+Native inspection additionally runs the unchanged source gate and requires A's
+final rejection. No original revision, approval, hash or artifact is rewritten to
+make A eligible after B. The local helper's optional after-A callback leaves its
+default two-build behavior unchanged.
+
+The descriptor defines a **future**, distinct `ubo_m6e_lifecycle_<run>` schema,
+`/run/ubo-m6e-lifecycle/<run>` control root, `/var/lib/ubo-m6e-lifecycle/<run>`
+storage root and separate `m6e_lifecycle_worker`/`m6e_lifecycle_observer` identities.
+None is created by this increment. A consistent pre-B database snapshot and
+restore/reconstruction contract is **unimplemented**. The descriptor cannot
+restore relational state and is not a substitute for a transactionally consistent
+snapshot. The future contract must preserve the full FK/approval/source closure,
+original A IDs and artifact bytes, independently verify its destination schema
+and read back artifacts, admit only that schema with no fallback to the original
+or any other schema, and rerun unchanged eligibility before requesting deployment.
+Migration 025's unique `(site_id, environment)` target contract is unchanged;
+the separate schema may create its single target only after verified restoration.
+
+Only 11 files change: the two M6E documents; native setup, bootstrap and local
+commissioning fixture helpers; the two new checkpoint helpers and two checkpoint
+test files; bootstrap model controls; and the M6E exact-path scope test. No closed
+M6C/M6D source, migration, public entrypoint, component authority or receipt policy
+changes. See the [current validation record](sprint-8.8-m6e-isolated-validation.md#pre-b-checkpoint-local-controls-following-8b38ace)
+for executed counts and the remaining native boundary.
+
+All six commissioning MISSING classifications remain: Apache, assets, runtime,
+health, recovery and provisioning. No host receipt or deployment was issued.
+Before genuine A failure/settlement, implement and natively verify consistent
+pre-B restoration and lifecycle admission, then obtain genuine M6D request/claim
+authority in that separate fixture. A must reach an authoritative terminal
+failure and verified helper settlement with the same operation/attempt/fence
+before any later B admission. The existing synthetic A-only stage component
+cannot supply that prerequisite.
+
 ## Apache commissioning integration following 90d891c
 
 **APACHE SERVING/ACCESS — IMPLEMENTED LOCALLY / NATIVE UNEXECUTED.** Starting
