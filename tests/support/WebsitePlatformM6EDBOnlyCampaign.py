@@ -74,7 +74,15 @@ class Background:
         return v,r['pid'],r['exit']
 
     def cleanup(self):
-        self.owner.cleanup();self.thread.join(5);need(not self.thread.is_alive(),'db_only_background_unreaped')
+        primary=None
+        try:self.owner.cleanup()
+        except BaseException as e:primary=e;self.rt.failure(e,'background-owned-cleanup')
+        # Still attempt the bounded diagnostic-thread join when owned reaping fails.
+        try:self.thread.join(5);need(not self.thread.is_alive(),'db_only_background_unreaped')
+        except BaseException as e:
+            if primary is None:raise
+            self.rt.failure(e,'background-reap')
+        if primary is not None:raise primary
 
 
 def capture_snapshot(rt):
@@ -94,7 +102,8 @@ def capture_snapshot(rt):
         (rt.root/'barriers/writer-release').touch(exist_ok=False)
         written,_,_=writer.join();rt.publish('snapshot-writer-commit',written['value'])
         v,_,_=reader.join();return v['value']
-    except BaseException as e:primary=e;raise
+    except BaseException as e:
+        primary=e;rt.failure(e,'snapshot-concurrency');raise
     finally:
         # A failed barrier/writer must still reap the owned reader and collect its available outcome.
         if reader.thread.is_alive():

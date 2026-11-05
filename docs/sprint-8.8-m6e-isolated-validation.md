@@ -5,6 +5,91 @@ installation, server preparation, Linux/Apache execution, SQL, service operation
 working-staging activation or deployment. This document is the bounded later path,
 not a claim that a host contract exists. M6D’s closed native gate is not reopened.
 
+## Snapshot concurrency ordering controls following 0cb0087
+
+**LOCAL CONTROLLED VALIDATION ONLY / NATIVE UNEXECUTED.** Baseline repository,
+branch, clean worktree and exact head
+`0cb008778efaecfeb3bef960b5b3624f8eeff6e1` were verified. GitHub confirmed PR #131
+OPEN DRAFT and unresolved comment
+[4475770993](https://github.com/fvd8383/ultimate-back-office/pull/131#discussion_r4475770993)
+in review `5778838773`, thread `PRRT_kwDOS02IKM6z5Fh-`.
+
+Both principal reproductions used the actual concurrency function, both background
+objects, runtime failure/diagnostic paths and campaign finalization. Native PHP/SQL
+execution was replaced only at the child/SQL boundary. The reader was a real owned
+local Python child; its pipe-read event established liveness before the barrier or
+writer-join failure. Bounded event waits are watchdogs, not timing assumptions. The
+writer-join control raised its original exception from the actual background
+capture/join path. No completed failure record was substituted for these paths.
+
+| Boundary | Propagated before correction | First retained before correction | First retained after correction |
+| --- | --- | --- | --- |
+| Snapshot-session barrier | Same initiating ValueError object | `db_only_snapshot_unconfirmed` | `snapshot-concurrency`, ValueError / `validation_failed` |
+| Writer join | Same initiating Failure object | `db_only_snapshot_unconfirmed` | `snapshot-concurrency`, Failure / `control_failure` |
+
+Before correction, the first slot was empty at cleanup entry and the initiating
+failure appeared only as a campaign secondary. After correction, its sanitized
+record exists before cleanup and diagnostic collection begin, remains unchanged
+through before-cleanup/report publication, and survives modeled export/removal.
+`db_only_snapshot_unconfirmed` and capture/protocol issues remain secondary.
+When a genuinely earlier failure exists, it stays primary and the initiating
+concurrency failure is also retained as secondary. The reader's own modeled
+`snapshot_commit` failure remains primary without a preceding concurrency failure,
+including when it is recorded before a later barrier failure. Its original
+rollback/unlock secondary outcomes and UNRESOLVED SQL cleanup remain intact.
+
+A third pre-fix regression held the actual diagnostic thread on an event after
+real owned-child termination, while the owned cleanup API raised a controlled
+error. The old cleanup skipped joining; immutable campaign evidence contained a
+null snapshot diagnostic. The corrected cleanup attempts its unchanged bounded
+join even on error. The control releases the pending diagnostic when that join is
+attempted and proves collection precedes immutable publication. Combined cleanup
+and join-observation failures are separately retained while the initiating
+exception still propagates. These API failures are modeled, not claims of an
+actual kernel reaping fault.
+
+Ten new focused controls cover the two reported paths, adjacent writer-commit
+publication, an earlier primary, reader-only failure, reader failure preceding a
+barrier, diagnostic publication failure, owned cleanup failure, combined
+cleanup/join failure and successful concurrency. Every scenario exercises real
+protected file publication, operator export, fixed retained-archive round-trip,
+modeled exact container removal and a foreign sentinel. Canonical bytes and
+digests are unchanged after temporary evidence/output removal. Failure scenarios
+remain INCOMPLETE with no expected-fault result. Missing SQL outcomes remain null;
+process exit/reaping/interruption facts are the actually observed local values.
+
+Validation used existing Python 3.14.7 and PHP 8.4.24:
+
+| Local control | Result |
+| --- | --- |
+| Complete DB-only Python suite | 42 tests PASS, including all ten new ordering controls and ordinary snapshot coverage |
+| Existing DB-only PHP suite | 145 assertions PASS; 13 snapshot-wrapper scenarios and session ownership |
+| Focused ordering and retained export/removal | 10 tests PASS separately, then included in the complete Python suite |
+| M6E scope | 374 assertions PASS; closed sources, 25 migrations and 77 definitions preserved |
+| Changed Python syntax | 3 AST parses PASS; no PHP source changed |
+| Documentation links, whitespace, Git integrity | PASS |
+| Tested/index/committed identity | Exact five-path Git blob equality checked against the saved tested manifest |
+
+The first restricted Windows-sandbox attempt could not publish protected files; the bounded local
+controls were then executed with the existing approved host interpreter. No
+package installation, SSH, engine/container/service execution, image acquisition,
+real SQL, native fixture, operational action or merge was performed.
+
+Shared bootstrap, snapshot algorithms, process ownership and publication
+primitives are unchanged. Their prior bootstrap 35-test, snapshot 23-test / 43-assertion,
+publication 8-test and ledger-recovery 14-test results were **not rerun** for this
+correction and are not new executions. The complete DB-only suite covers both
+ordinary and background snapshot paths, including actual modeled PHP outcomes,
+failed diagnostic publication, retained export and cleanup.
+
+Reproduction output, local logs and tested/index/committed identity records are
+retained outside Git in the current desktop visualization workspace under
+`snapshot-ordering`. Current reviewed-source, operator, host/image availability
+and resource checks still need a separately authorized staging readiness
+inspection; the future execution/authorization package below is unchanged.
+Native execution remains **UNEXECUTED**, and all six commissioning classifications
+remain **MISSING**.
+
 ## Failed snapshot outcome correction following 22183a2
 
 **LOCAL CONTROLLED VALIDATION ONLY — NATIVE UNEXECUTED.** The baseline was clean

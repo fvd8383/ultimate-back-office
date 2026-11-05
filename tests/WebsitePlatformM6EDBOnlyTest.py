@@ -8,6 +8,7 @@ from pathlib import Path
 import sys
 import subprocess
 import tempfile
+import threading
 import time
 import unittest
 from types import SimpleNamespace
@@ -681,6 +682,169 @@ class SnapshotDiagnostics(unittest.TestCase):
                     if row['kind']=='component-evidence':self.assertEqual(canonical(row['value']),before[row['name']])
                 report=next(x['value'] for x in records if x.get('name')=='report')
                 self.assertEqual(report['first_failure']['code'],'snapshot_commit')
+
+
+class SnapshotOrdering(unittest.TestCase):
+    """Real campaign/background/owner ordering; SQL outcomes and namespace identities are modeled."""
+    lane=SnapshotDiagnostics.lane
+    capture=SnapshotDiagnostics.capture
+    export_cleanup=SnapshotDiagnostics.export_cleanup
+    setUpClass=classmethod(SnapshotDiagnostics.setUpClass.__func__)
+
+    def exercise(self,boundary,earlier=False,publish_fail=False,cleanup_fail=False,reap_fail=False,reader_case=None):
+        with self.lane(case='snapshot-concurrency',publish_fail=publish_fail) as (rt,base,evidence):
+            ready=threading.Event();reader_release=threading.Event();diagnostic_started=threading.Event();diagnostic_release=threading.Event()
+            backgrounds={};events=[];propagated=[];observed=[];test=self
+            initiating=Failure('PRIVATE_WRITER') if boundary=='writer-join' else ValueError('PRIVATE_INITIATING')
+            prior=None
+            if earlier:
+                rt.failure(TimeoutError('PRIVATE_EARLIER'),'earlier-phase');prior=copy.deepcopy(rt.first)
+            original_capture=Owner.capture;original_popen=subprocess.Popen;original_background=campaign.Background
+            original_cleanup=campaign.Background.cleanup;original_join=campaign.Background.join
+            original_diagnostic=rt.snapshot_diagnostic;original_publish=rt.publish;original_failure=rt.failure
+            child_code='import sys,time;sys.stdout.buffer.write(b"ready");sys.stdout.buffer.flush();time.sleep(20)'
+
+            class ReadyPipe:
+                def __init__(self,stream):self.stream=stream
+                def read(self,size):
+                    value=self.stream.read(size)
+                    if value==b'ready':ready.set()
+                    return value
+                def close(self):self.stream.close()
+
+            def popen(command,**kwargs):
+                child=original_popen(command,**kwargs)
+                if command[-1]==child_code:child.stdout=ReadyPipe(child.stdout)
+                return child
+
+            modeled_capture=self.capture(rt,reader_case) if reader_case else None
+            def capture(owner,command,*args,**kwargs):
+                if command[-1]=='competing-writer':
+                    result=original_capture(owner,[sys.executable,'-I','-B','-c',
+                        'print(\'{"result":"COMPLETED","value":{"transaction":"COMMITTED"}}\')'],10)
+                    if boundary=='writer-join':
+                        test.assertTrue(ready.wait(5));raise initiating
+                    return result
+                if modeled_capture:
+                    ready.set();test.assertTrue(reader_release.wait(5))
+                    return modeled_capture(owner,command,*args,**kwargs)
+                return original_capture(owner,[sys.executable,'-I','-B','-c',child_code],15)
+
+            def diagnostic(*args):
+                diagnostic_started.set()
+                if cleanup_fail:test.assertTrue(diagnostic_release.wait(5))
+                events.append(('diagnostic-start',copy.deepcopy(rt.first)))
+                return original_diagnostic(*args)
+
+            def background(value,mode,uid,seconds):
+                obj=original_background(value,mode,uid,seconds);backgrounds[mode]=obj
+                if mode=='snapshot' and cleanup_fail:
+                    owned_cleanup=obj.owner.cleanup;thread_join=obj.thread.join
+                    def failed_cleanup():
+                        owned_cleanup();test.assertTrue(diagnostic_started.wait(5))
+                        raise Failure('PRIVATE_OWNED_CLEANUP')
+                    def join_thread(timeout):
+                        diagnostic_release.set();thread_join(timeout)
+                        if reap_fail:raise RuntimeError('PRIVATE_REAP_OBSERVATION')
+                    obj.owner.cleanup=failed_cleanup;obj.thread.join=join_thread
+                return obj
+
+            def barrier(value,name,uid):
+                if name=='snapshot-session':
+                    test.assertTrue(ready.wait(5));reader=backgrounds['snapshot']
+                    test.assertTrue(reader.thread.is_alive())
+                    if not reader_case:test.assertIsNone(reader.owner.children[0].poll())
+                    if boundary=='reader-before-barrier':
+                        reader_release.set();reader.thread.join(5);test.assertFalse(reader.thread.is_alive())
+                    if boundary in ('barrier','reader-before-barrier'):raise initiating
+                return b'{}'
+
+            def join(obj,*args,**kwargs):
+                if obj.mode=='snapshot':reader_release.set()
+                return original_join(obj,*args,**kwargs)
+
+            def cleanup(obj):
+                if obj.mode=='snapshot':events.append(('cleanup-start',copy.deepcopy(rt.first)))
+                return original_cleanup(obj)
+
+            def failure(error,kind):
+                original_failure(error,kind);events.append(('failure-'+kind,copy.deepcopy(rt.first)))
+
+            def publish(name,value):
+                if name=='snapshot-writer-commit' and boundary=='writer-publication':raise initiating
+                return original_publish(name,value)
+
+            def chain(value):
+                try:
+                    result=campaign.capture_snapshot(value);observed.append(result);return result
+                except BaseException as error:propagated.append(error);raise
+
+            with mock.patch.object(Owner,'capture',new=capture),mock.patch.object(subprocess,'Popen',side_effect=popen),\
+                 mock.patch.object(campaign,'Background',side_effect=background),mock.patch.object(original_background,'join',new=join),\
+                 mock.patch.object(original_background,'cleanup',new=cleanup),mock.patch.object(campaign,'wait_file',side_effect=barrier),\
+                 mock.patch.object(rt,'command',return_value=(dict(value=dict(writer_transaction='OPEN')),12343,0)),\
+                 mock.patch.object(rt,'snapshot_diagnostic',side_effect=diagnostic),mock.patch.object(rt,'failure',side_effect=failure),\
+                 mock.patch.object(rt,'publish',side_effect=publish),mock.patch.object(campaign,'Runtime',return_value=rt),\
+                 mock.patch.object(campaign,'run_chain',side_effect=chain),contextlib.redirect_stdout(io.StringIO()):
+                try:exit_=campaign.campaign({})
+                finally:
+                    reader_release.set();diagnostic_release.set()
+                    # Always reap this test's actual children even when an assertion fails.
+                    for obj in backgrounds.values():
+                        Owner.cleanup(obj.owner);threading.Thread.join(obj.thread,5)
+                        self.assertFalse(obj.thread.is_alive())
+            before=decode((evidence/'before-cleanup.json').read_bytes());report=decode((evidence/'report.json').read_bytes())
+            self.assertIsNotNone(report['snapshot_diagnostic'])
+            expected=prior or (dict(phase='snapshot',kind='snapshot',code='snapshot_commit') if reader_case=='combined' else
+                dict(phase='snapshot',kind='snapshot-concurrency',type=type(initiating).__name__,
+                     code='control_failure' if boundary=='writer-join' else 'validation_failed'))
+            if reader_case=='success':
+                self.assertEqual(exit_,0);self.assertEqual(observed,[self.bundle['success']['record']['outcome']])
+                self.assertEqual(report['result'],'DB-ONLY COMPONENT VALIDATION PASS');self.assertIsNone(report['first_failure'])
+                self.assertEqual(report['secondary'],[]);self.assertEqual(propagated,[])
+            else:
+                self.assertEqual(exit_,1);self.assertEqual(report['result'],'INCOMPLETE');self.assertIsNone(report['injected'])
+                self.assertEqual(report['first_failure'],expected);self.assertEqual(before['first_failure'],expected)
+                self.assertEqual(len(propagated),1)
+                self.assertIs(propagated[0],backgrounds['snapshot'].error if boundary=='reader' else initiating)
+                if not reader_case:
+                    self.assertTrue(any(name=='cleanup-start' for name,first in events))
+                    for name,first in events:
+                        if name in ('cleanup-start','diagnostic-start'):self.assertEqual(first,expected)
+                    failure_index=next(i for i,(name,_) in enumerate(events) if name=='failure-snapshot-concurrency')
+                    cleanup_index=next(i for i,(name,_) in enumerate(events) if name=='cleanup-start')
+                    self.assertLess(failure_index,cleanup_index)
+                    self.assertTrue(any(x.get('code')=='db_only_snapshot_unconfirmed' for x in report['secondary']))
+                if earlier:self.assertTrue(any(x['kind']=='snapshot-concurrency' for x in report['secondary']))
+            diagnostic_value=report['snapshot_diagnostic'];self.assertIsNotNone(diagnostic_value)
+            self.assertEqual(before['snapshot_diagnostic'],diagnostic_value)
+            if reader_case:self.assertEqual(diagnostic_value['record']['outcome'],self.bundle[reader_case]['record']['outcome'])
+            else:
+                self.assertEqual(diagnostic_value['capture'],'UNAVAILABLE');self.assertIsNone(diagnostic_value['record'])
+                self.assertTrue(diagnostic_value['process']['reaped']);self.assertTrue(diagnostic_value['process']['termination_requested'])
+                self.assertIsNotNone(diagnostic_value['process']['exit']);self.assertEqual(len(diagnostic_value['capture_errors']),2)
+            kinds={x['kind'] for x in report['secondary']}
+            if publish_fail:
+                self.assertIn('snapshot-diagnostic-publication',kinds);self.assertNotIn('snapshot-diagnostic',rt.receipts)
+            if cleanup_fail:
+                self.assertIn('snapshot-owned-cleanup',kinds);self.assertIn('owned-cleanup',kinds)
+                self.assertEqual(next(r['state'] for r in report['context']['resources'] if r['id']=='child-snapshot'),'UNRESOLVED')
+            if reap_fail:self.assertIn('background-reap',kinds)
+            for private in (b'PRIVATE_',b'SELECT ',b'password',b'private-fixture'):self.assertNotIn(private,canonical(report))
+            records=self.export_cleanup(rt,base,evidence)
+            self.assertEqual(next(x['value'] for x in records if x.get('name')=='report'),report)
+            self.assertEqual(report['deployment_authority'],'NONE');self.assertEqual(report['native_admission'],'BLOCKED')
+
+    def test_barrier_failure_precedes_real_reader_cleanup_and_export(self):self.exercise('barrier')
+    def test_writer_join_failure_precedes_real_reader_cleanup_and_export(self):self.exercise('writer-join')
+    def test_writer_publication_failure_precedes_real_reader_cleanup(self):self.exercise('writer-publication')
+    def test_earlier_recorded_failure_remains_primary(self):self.exercise('barrier',earlier=True)
+    def test_reader_own_failure_remains_primary(self):self.exercise('reader',reader_case='combined')
+    def test_reader_failure_recorded_before_barrier_remains_primary(self):self.exercise('reader-before-barrier',reader_case='combined')
+    def test_cleanup_diagnostic_publication_failure_is_secondary(self):self.exercise('barrier',publish_fail=True)
+    def test_cleanup_error_still_joins_diagnostic_before_immutable_capture(self):self.exercise('barrier',cleanup_fail=True)
+    def test_cleanup_and_reap_errors_both_survive(self):self.exercise('writer-join',cleanup_fail=True,reap_fail=True)
+    def test_successful_concurrent_snapshot(self):self.exercise('success',reader_case='success')
 
 
 if __name__=='__main__':unittest.main()

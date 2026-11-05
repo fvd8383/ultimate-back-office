@@ -212,8 +212,9 @@ class Runtime:
             failed=failed or record['first_failure'] is not None or bool(record['secondary']) or record['attempt']!='RETURNED' or record['outcome']!=dict(
                 capture='CAPTURED',verification='UNREACHED',transaction_cleanup='RELEASED',first_failure=None,secondary=[])
         if failed:
-            if self.first is None:
-                self.first=dict(phase='snapshot',kind='snapshot',code=record['first_failure'] if record and record['first_failure'] else 'db_only_snapshot_unconfirmed')
+            failure=dict(phase='snapshot',kind='snapshot',code=record['first_failure'] if record and record['first_failure'] else 'db_only_snapshot_unconfirmed')
+            if self.first is None:self.first=failure
+            else:self.secondary.append(failure)
             self.secondary.extend(issues)
         # Always retain the sanitized value itself; no pointer into subsequently removed tmpfs.
         try:self.publish('snapshot-diagnostic',self.snapshot_evidence)

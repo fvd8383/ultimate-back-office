@@ -15,6 +15,57 @@ second parent; native-tested `7cdbbeef639…` is an ancestor of that reviewed he
 Its native PASS belongs only to `7cdbbeef`, never this implementation or the merge.
 Historical failures and pre-merge reports are not rewritten or rerun.
 
+## Snapshot concurrency failure ordering following 0cb0087
+
+**LOCAL CORRECTION / NATIVE UNEXECUTED / NO ADMISSION.** The clean starting head was
+`0cb008778efaecfeb3bef960b5b3624f8eeff6e1` on the existing M6E branch. PR #131 was
+OPEN DRAFT with unresolved review
+[4475770993](https://github.com/fvd8383/ultimate-back-office/pull/131#discussion_r4475770993).
+Both the snapshot-session barrier and writer-join cases reproduced against the
+unchanged implementation using actual `capture_snapshot()`, `Background`, process
+ownership, runtime failure/diagnostic collection, campaign finalization and retained
+export. A pipe-read event established that the real bounded local reader child was
+alive before the controlled failure; synchronization did not depend on sleeps or
+allocator timing. SQL and container/namespace identities remained modeled.
+
+Before correction, cleanup began with `rt.first=None`. The initiating exception
+propagated unchanged, but reader interruption populated the first-failure slot with
+`db_only_snapshot_unconfirmed`; the outer campaign recorded the initiating failure
+as secondary. The same incorrect ordering survived immutable publication, modeled
+container removal and readback from the real retained archive.
+
+`capture_snapshot()` now records its caught exception through `Runtime.failure()`
+as `snapshot-concurrency` before reader cleanup starts, then uses a bare rethrow.
+The existing mechanism preserves a genuinely earlier recorded failure. The catch
+also covers writer-release marker creation, writer-commit evidence publication and
+reader join; a reader failure already recorded by its own diagnostic stays primary.
+`snapshot_diagnostic()` now appends its bounded snapshot failure classification when
+the first slot is occupied. Missing output therefore remains explicitly
+`db_only_snapshot_unconfirmed` as secondary, alongside capture/protocol issues and
+actual interruption observations. Available SQL outcomes and cleanup status remain
+unchanged; missing outcomes stay `UNAVAILABLE` with a null record.
+
+A separate deterministic control exposed an adjacent cleanup race: an owned-reap
+exception skipped the existing thread join, permitting immutable reports without
+the pending diagnostic. `Background.cleanup()` now records that cleanup exception,
+attempts the same five-second join even after the exception, retains any join error
+separately as `background-reap`, and rethrows the original cleanup exception. The
+concurrency catch retains the initiating exception through both consequences. No
+new thread, supervisor, retry or deadline extension is introduced; failure to join
+still fails closed and does not imply successful cleanup.
+
+The protected diagnostic, before-cleanup record and final report preserve first and
+secondary failures through the existing export/removal path. Publication failures
+still leave the bounded diagnostic embedded in campaign evidence; resource cleanup
+failures remain UNRESOLVED. No immutable evidence is rewritten. Foreign-resource
+sentinels and the existing exact-identity cleanup policy are preserved.
+
+Only DB-only campaign/runtime code, its direct Python controls and these two M6E
+documents change. Shared bootstrap/snapshot/process code, SQL algorithms/grants,
+launcher interfaces, resource limits and operational authority remain unchanged.
+All six commissioning MISSING classifications remain unchanged. See the
+[executed controls and limitations](sprint-8.8-m6e-isolated-validation.md#snapshot-concurrency-ordering-controls-following-0cb0087).
+
 ## Failed DB-only snapshot outcomes following 22183a2
 
 **LOCAL CORRECTION / NATIVE UNEXECUTED / NO ADMISSION.** Review thread
