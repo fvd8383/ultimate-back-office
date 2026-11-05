@@ -2,6 +2,7 @@
 import os
 from pathlib import Path
 import re
+import secrets
 import signal
 import stat
 import sys
@@ -149,27 +150,102 @@ class Runtime:
         receipt=publish_bytes('/evidence',name,canonical(value));self.receipts[name]=receipt
         return receipt
 
-    def read_output(self,name,uid,promote=False):
+    def read_output(self,name,uid,promote=False,max_bytes=4194304):
         p=self.root/'outputs'/str(uid)/(name+'.json');before=file_identity(p)
-        need(before[2:5]==(uid,uid,0o600) and before[5]<=4194304,'db_only_output_owner')
-        raw=p.read_bytes();need(file_identity(p)==before,'db_only_output_changed')
+        need(before[2:5]==(uid,uid,0o600) and before[5]<=max_bytes,'db_only_output_owner')
+        fd=os.open(p,os.O_RDONLY|getattr(os,'O_NOFOLLOW',0)|getattr(os,'O_BINARY',0))
+        try:
+            s=os.fstat(fd);opened=(s.st_dev,s.st_ino,s.st_uid,s.st_gid,stat.S_IMODE(s.st_mode),s.st_size)
+            need(opened==before and s.st_nlink==1,'db_only_output_opened_identity')
+            with os.fdopen(fd,'rb',closefd=False) as f:raw=f.read(max_bytes+1)
+            need(len(raw)==before[5] and file_identity(p)==before,'db_only_output_changed')
+        finally:os.close(fd)
         prior=self.outputs.get(str(p));need(prior is None or prior==(before,digest(raw)), 'db_only_output_replaced')
         value=decode(raw);self.outputs[str(p)]=(before,digest(raw))
         if promote:self.put(name,value)
         return raw
 
+    def start_snapshot(self):
+        need(not hasattr(self,'snapshot_invocation'),'db_only_snapshot_single_use')
+        self.snapshot_invocation=dict(profile='m6e-db-only-snapshot-invocation-v1',
+            binding={k:self.a[k] for k in ('run_id','source_sha','machine_id','boot_id')},case=self.req['case'],mode='snapshot',
+            invocation_id=secrets.token_hex(16),owner_pid=self.a['owner_pid'],namespaces=self.a['namespaces'],
+            started_at=int(time.time()),expires_at=self.a['expires_at'])
+        self.put('snapshot-invocation',self.snapshot_invocation)
+
+    def snapshot_diagnostic(self,owner,start,result,error):
+        from WebsitePlatformM6EAcceptance import validate_context
+        process=None;file_record=None;protocol_record=None;issues=[];protocol_ok=False
+        context=owner.context[start:];validate_context(dict(children=context,resources=[]))
+        need(len(context)<=1,'db_only_snapshot_process_inventory')
+        if context:process=context[0].copy()
+        pid=None if process is None else process['pid']
+        try:
+            raw=self.read_output('snapshot-outcome',2001,max_bytes=8192)
+            file_record=c.snapshot_record(raw,self.snapshot_invocation,pid)
+        except BaseException as e:issues.append(dict(kind='outcome-capture',**safe_error(e)))
+        try:
+            need(result is not None and not result['stderr'] and result['pid']==pid,'db_only_snapshot_protocol_missing')
+            value=decode(result['stdout'])
+            if result['exit']==0:
+                need(set(value)=={'result','value'} and value['result']=='COMPLETED' and file_record is not None
+                     and value['value']==file_record['outcome'],'db_only_snapshot_success_protocol')
+            else:
+                need(set(value)=={'result','diagnostic'} and value['result']=='INCOMPLETE','db_only_snapshot_failure_protocol')
+                diagnostic=value['diagnostic'];need(set(diagnostic)=={'phase','first_failure','secondary','snapshot'}
+                     and diagnostic['phase']=='snapshot','db_only_snapshot_failure_fields')
+                protocol_record=c.snapshot_record(canonical(diagnostic['snapshot']),self.snapshot_invocation,pid)
+                need(diagnostic['first_failure']==protocol_record['first_failure'] and diagnostic['secondary']==protocol_record['secondary'],
+                     'db_only_snapshot_failure_consistency')
+            protocol_ok=True
+        except BaseException as e:issues.append(dict(kind='outcome-protocol',**safe_error(e)))
+        record=protocol_record or file_record
+        if file_record and protocol_record:
+            # Publication can fail after installing a file. Preserve both immutable observations.
+            if file_record['outcome']!=protocol_record['outcome']:
+                record=None;issues.append(dict(kind='outcome-substitution',type='ValueError',code='validation_failed'))
+        self.snapshot_evidence=dict(profile='m6e-db-only-snapshot-diagnostic-v1',invocation=self.snapshot_invocation,
+            process=process,command_error=None if error is None else safe_error(error),capture='AVAILABLE' if record else 'UNAVAILABLE',
+            record=record,file_record=file_record,protocol_record=protocol_record,capture_errors=issues,result='DIAGNOSTIC_ONLY',**c.AUTHORITY)
+        failed=error is not None or not protocol_ok or bool(issues) or result is None or result['exit']!=0 or record is None
+        if record:
+            failed=failed or record['first_failure'] is not None or bool(record['secondary']) or record['attempt']!='RETURNED' or record['outcome']!=dict(
+                capture='CAPTURED',verification='UNREACHED',transaction_cleanup='RELEASED',first_failure=None,secondary=[])
+        if failed:
+            if self.first is None:
+                self.first=dict(phase='snapshot',kind='snapshot',code=record['first_failure'] if record and record['first_failure'] else 'db_only_snapshot_unconfirmed')
+            self.secondary.extend(issues)
+        # Always retain the sanitized value itself; no pointer into subsequently removed tmpfs.
+        try:self.publish('snapshot-diagnostic',self.snapshot_evidence)
+        except BaseException as e:self.failure(e,'snapshot-diagnostic-publication');raise
+        return failed
+
     def command(self,mode,seconds=60,allowed=(0,),limit=None):
+        if mode!='snapshot':return self._command(mode,seconds,allowed,limit)
+        self.start_snapshot();self.snapshot_result=None;start=len(self.owner.context);primary=None
+        try:return self._command(mode,seconds,allowed,limit)
+        except BaseException as e:primary=e;raise
+        finally:
+            try:failed=self.snapshot_diagnostic(self.owner,start,self.snapshot_result,primary)
+            except BaseException as e:
+                if primary is None:raise
+                self.failure(e,'snapshot-diagnostic')
+            else:
+                if primary is None:need(not failed,'db_only_snapshot_failed')
+
+    def _command(self,mode,seconds=60,allowed=(0,),limit=None):
         need(mode in CHILD_ROLES,'db_only_child_mode');uid=CHILD_ROLES[mode]
         self.trace.append(mode);self.phase=mode
         result=self.owner.capture(['/usr/bin/php','-d','memory_limit=256M','-d','display_errors=0','-d','log_errors=0',
             c.SOURCE+'/tests/support/WebsitePlatformM6EDBOnlyChild.php',mode],seconds,
             limit=limit or 65536,identity=(uid,uid,[]))
+        if mode=='snapshot':self.snapshot_result=result
         record=dict(mode=mode,pid=result['pid'],exit=result['exit']);self.commands.append(record)
         need(not result['stderr'],'db_only_child_stderr');v=decode(result['stdout'])
         if result['exit']==0:need(set(v)=={'result','value'} and v['result']=='COMPLETED','db_only_child_protocol')
         else:
             need(set(v)=={'result','diagnostic'} and v['result']=='INCOMPLETE','db_only_child_protocol')
-            record['diagnostic']=v['diagnostic']
+            if mode!='snapshot':record['diagnostic']=v['diagnostic']
         need(result['exit'] in allowed,'db_only_child_failed')
         return v,result['pid'],result['exit']
 

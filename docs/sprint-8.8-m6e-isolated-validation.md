@@ -5,6 +5,86 @@ installation, server preparation, Linux/Apache execution, SQL, service operation
 working-staging activation or deployment. This document is the bounded later path,
 not a claim that a host contract exists. M6D’s closed native gate is not reopened.
 
+## Failed snapshot outcome correction following 22183a2
+
+**LOCAL CONTROLLED VALIDATION ONLY — NATIVE UNEXECUTED.** The baseline was clean
+`22183a237340e8f267e8c5e6189edcbd67a5bf0a` on the existing M6E branch; PR #131 was
+OPEN DRAFT with unresolved review finding
+[4475503041](https://github.com/fvd8383/ultimate-back-office/pull/131#discussion_r4475503041).
+No SSH, engine/container/service call, real SQL, image acquisition or installation
+was used for this correction.
+
+The baseline reproduction executes the original committed snapshot wrapper branch
+and exception formatter, replacing only native connections/fixed output paths with
+local boundaries. The existing snapshot PDO model first needed its source
+connection-ID query completed; the final reproduction asserts that every intended
+commit/rollback/unlock fault was actually reached. The resulting actual outcome
+was `FAILED / UNREACHED / UNRESOLVED`, first `snapshot_commit`, secondary
+`snapshot_rollback` and `snapshot_unlock`. The old child reduced this to
+`db_only_child` with no secondary fields. Frozen baseline supervisor/campaign
+code retained neither the actual stage nor cleanup status after modeled cleanup.
+The separate lock failure reproduced the loss of `snapshot_lock / RELEASED`.
+
+The corrected tests execute the actual PHP wrapper and shared snapshot algorithm,
+with real M6C artifacts and protected local output bytes. SQL and namespace
+UID/GID/mode facts remain explicitly modeled. Cases include success, unavailable
+source connection, lock/start/read/commit failures, lost commit acknowledgement,
+rollback/unlock secondaries, combined failures, and outcome publication failure
+both before and after file installation. Python consumes these actual sanitized
+PHP outcomes in both ordinary and background supervisor paths, then exercises
+the real operator export, fixed 32 MiB retained archive, and exact owned cleanup
+against modeled containers. Canonical diagnostic bytes and their digests remain
+identical after owned temporary files are removed; a foreign sentinel survives.
+
+Additional controls cover malformed/missing/oversized/stale output, wrong
+invocation/case/mode/process/file metadata, replacement and hardlinks, strict
+field/enum/item bounds, malformed child protocol, capture exceptions, a real
+interrupted local subprocess, an early concurrency barrier failure, separate
+supervisor-publication/export failures and combined primary/capture/cleanup
+failures. The actual operator `execute()` control verifies export precedes both
+removals and cleanup still runs after export failure. No successful snapshot or
+authority receipt is inferred from failed capture or container removal.
+
+An outcome is at most 8 KiB. The exact five shared fields are retained:
+`capture`, `verification`, `transaction_cleanup`, `first_failure`, `secondary`.
+Algorithm secondary errors are restricted to two rollback/unlock entries;
+wrapper secondary errors to four fixed classifications. Raw exceptions, SQL,
+credentials, TLS material and row data are excluded. An unavailable outcome is
+null, not a fabricated FAILED/RELEASED result. File/protocol validation errors and
+actual available process observations are retained separately. Collection after
+expiry is diagnostic-only and binds the original expiry; it never renews a run.
+
+The full bootstrap suite was **not rerun** in this correction. Its prior 35/35
+result remains applicable to the unchanged shared bootstrap, build, snapshot,
+process/publication and full-host admission code. This increment changes only
+DB-only adapter orchestration, its direct tests and these two documents. Complete
+DB-only and affected snapshot/publication/ledger regressions are run for the new
+code. Executed with the existing PHP 8.4.24 and Python 3.14.7:
+
+| Local control | Result |
+| --- | --- |
+| Complete DB-only PHP suite | 145 assertions PASS; 13 snapshot-wrapper scenarios and exception-trace/session ownership |
+| Complete DB-only Python suite | 32 tests PASS; ordinary/background outcomes and real retained/export/cleanup paths |
+| Affected snapshot PHP / Python suites | 43 assertions / 23 tests PASS |
+| Publication / ledger recovery suites | 8 / 14 tests PASS |
+| M6E source scope | 374 assertions PASS; closed sources, 25 migrations and 77 definitions preserved |
+| Changed-file PHP lint / Python syntax | 2 lints / 4 AST parses PASS |
+| Documentation links, whitespace, Git integrity | PASS |
+| Tested/index/committed bytes | Exact eight-path blob equality checked at commit |
+
+The first expanded archive test run exposed Windows text-mode interpretation of
+binary header bytes. Explicit binary descriptors corrected those local readback
+failures; the final full suite passed. This is not a native storage observation.
+
+Logs, baseline
+reproduction and tested/index/commit identity records are retained outside Git
+in the desktop visualization workspace's `snapshot-outcome` directory.
+
+The future launcher commands, hard limits, native case inventory and separate
+authorization package below are unchanged. Current reviewed-source, operator,
+host and image checks still require their own authorized staging inspection.
+All six commissioning classifications remain MISSING.
+
 ## DB-only adapter validation and future execution package
 
 **FUTURE STAGING EXECUTION PACKAGE — NOT EXECUTED.** The adapter was authored

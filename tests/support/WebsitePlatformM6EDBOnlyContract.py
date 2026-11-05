@@ -55,6 +55,39 @@ def names(req):
     return {role: 'ubo-m6e-db-' + req['run_id'] + '-' + role for role in ('runtime', 'mysql')}
 
 
+SNAPSHOT_FAILURES = tuple('snapshot_'+s for s in ('admission','before','lock','schema','transaction','rows','commit','unlock','after'))
+SNAPSHOT_WRAPPER_FAILURES = tuple('db_only_snapshot_'+s for s in ('connection','session_publication','capture','data_publication',
+    'db_close','source_close','outcome_invalid','outcome_publication'))
+
+
+def snapshot_record(raw, invocation, pid):
+    """Diagnostic only, including after expiry; exact original invocation never renews authority."""
+    import WebsitePlatformM6ESnapshot as snapshot
+    need(len(raw)<=8192,'db_only_snapshot_record_bound');v=decode(raw)
+    keys(v,('profile','invocation','process','attempt','outcome','first_failure','secondary',*AUTHORITY))
+    need(v['profile']=='m6e-db-only-snapshot-outcome-v1' and v['invocation']==invocation,'db_only_snapshot_record_binding')
+    need(type(pid) is int and 0<pid<2**31 and v['process']==dict(pid=pid,uid=2001,gid=2001,owner_pid=invocation['owner_pid'])
+         and all(type(n) is int for n in v['process'].values()),'db_only_snapshot_record_process')
+    need(all(v[k]==value for k,value in AUTHORITY.items()),'db_only_snapshot_record_authority')
+    need(v['attempt'] in ('UNREACHED','THREW','RETURNED') and v['first_failure'] in (None,*SNAPSHOT_FAILURES,*SNAPSHOT_WRAPPER_FAILURES)
+         and type(v['secondary']) is list and len(v['secondary'])<=4
+         and all(s in SNAPSHOT_WRAPPER_FAILURES for s in v['secondary']),'db_only_snapshot_record_fields')
+    if v['outcome'] is not None:
+        outcome=snapshot.outcome_value(canonical(v['outcome']))  # Existing shared bounded outcome validator.
+        need(outcome['verification']=='UNREACHED' and outcome['first_failure'] in (None,*SNAPSHOT_FAILURES)
+             and len(outcome['secondary'])<=2 and all(x in ('snapshot_rollback','snapshot_unlock') for x in outcome['secondary']),
+             'db_only_snapshot_outcome_vocabulary')
+        need(v['attempt']!='UNREACHED' and (outcome['first_failure'] is None or v['first_failure']==outcome['first_failure']),
+             'db_only_snapshot_original_failure')
+        if outcome['capture']=='CAPTURED':
+            need(v['attempt']=='RETURNED' and outcome['first_failure'] is None and not outcome['secondary']
+                 and outcome['transaction_cleanup']=='RELEASED','db_only_snapshot_returned_outcome')
+        else:need(v['attempt']=='THREW' and outcome['first_failure'] in SNAPSHOT_FAILURES,'db_only_snapshot_failed_outcome')
+    else:need(v['attempt']!='RETURNED','db_only_snapshot_missing_return')
+    need(v['first_failure'] is not None or v['attempt']=='RETURNED' and not v['secondary'],'db_only_snapshot_failure_state')
+    return v
+
+
 def mount_limits(role):
     if role == 'runtime':
         return {ROOT: LIMITS['control'], '/work': LIMITS['work'], '/evidence': LIMITS['evidence'], '/tmp': LIMITS['tmp']}
@@ -172,7 +205,7 @@ class Retained:
     def __init__(self, path, create=False, readonly=False):
         self.path = Path(path)
         need(not(create and readonly),'db_only_retained_mode');self.readonly=readonly
-        flags = (os.O_RDONLY if readonly else os.O_RDWR) | getattr(os, 'O_NOFOLLOW', 0)
+        flags = (os.O_RDONLY if readonly else os.O_RDWR) | getattr(os, 'O_NOFOLLOW', 0) | getattr(os, 'O_BINARY', 0)
         if create: flags |= os.O_CREAT | os.O_EXCL
         self.fd = os.open(self.path, flags, 0o600)
         try:

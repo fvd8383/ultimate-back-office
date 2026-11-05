@@ -6,6 +6,7 @@ import importlib.util
 import os
 from pathlib import Path
 import sys
+import subprocess
 import tempfile
 import time
 import unittest
@@ -395,6 +396,291 @@ class Ownership(unittest.TestCase):
         self.assertEqual(campaign.competing_rows(notes(['M6E bounded competing writer','M6E same transaction'])),'AFTER_WRITER_COMMIT')
         for values in ([],['M6E bounded competing writer'],['M6E DB-only baseline','M6E same transaction']):
             with self.assertRaisesRegex(ValueError,'db_only_competing_atomic_values'):campaign.competing_rows(notes(values))
+
+
+class SnapshotDiagnostics(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        p=subprocess.run(['php',str(Path(__file__).with_suffix('.php')),'--snapshot-bundle'],capture_output=True,timeout=30)
+        if p.returncode:raise AssertionError(p.stderr.decode(errors='replace')+p.stdout.decode(errors='replace'))
+        cls.bundle=decode(p.stdout)
+
+    @contextlib.contextmanager
+    def lane(self,case='positive',publish_fail=False,metadata=(2001,2001,0o600)):
+        with tempfile.TemporaryDirectory(prefix='m6e-snapshot-diagnostic-') as directory:
+            base=Path(directory);root=base/'runtime';root.mkdir();evidence=root/'evidence';evidence.mkdir()
+            for name in ('inputs','outputs/2001','barriers'):(root/name).mkdir(parents=True)
+            rt=runtime.Runtime.__new__(runtime.Runtime);rt.root=root;rt.req=request()|dict(case=case)
+            rt.a=dict(run_id=rt.req['run_id'],source_sha=rt.req['source_sha'],machine_id='c'*32,boot_id='1'*36,
+                namespaces=HOST_NS,owner_pid=os.getpid(),expires_at=int(time.time())+60)
+            rt.owner=Owner(time.monotonic()+30);rt.overall=rt.owner.deadline;rt.started=time.monotonic()
+            rt.outputs={};rt.receipts={};rt.trace=[];rt.commands=[];rt.first=None;rt.secondary=[];rt.phase='snapshot'
+            original_identity=runtime.file_identity;original_fstat=os.fstat
+            def identity(path):
+                value=original_identity(path);return (*value[:2],*metadata,value[5])
+            def fstat(fd):
+                s=original_fstat(fd);return SimpleNamespace(st_dev=s.st_dev,st_ino=s.st_ino,st_uid=2001,st_gid=2001,
+                    st_mode=(s.st_mode&~0o777)|0o600,st_size=s.st_size,st_nlink=s.st_nlink)
+            def read(name,uid,promote=False,max_bytes=4194304):
+                # Only unavailable namespace UID/GID/mode facts are modeled. Bytes, fd identity, links and bounds are real.
+                with mock.patch.object(runtime,'file_identity',side_effect=identity),mock.patch.object(runtime.os,'fstat',side_effect=fstat):
+                    return runtime.Runtime.read_output(rt,name,uid,promote,max_bytes)
+            rt.read_output=read
+            def publish(directory,name,raw):
+                if publish_fail and name=='snapshot-diagnostic':raise OSError('PRIVATE_PUBLICATION_PASSWORD')
+                return publish_bytes(evidence,name,raw)
+            with mock.patch.object(runtime,'publish_bytes',side_effect=publish):yield rt,base,evidence
+
+    def capture(self,rt,case='combined',file_mutator=None,protocol_bad=False,interrupted=False):
+        item=copy.deepcopy(self.bundle[case]);test=self
+        def action(owner,command,*args,**kwargs):
+            pid=12345
+            record=item['record'];record['invocation']=copy.deepcopy(rt.snapshot_invocation)
+            record['process']=dict(pid=pid,uid=2001,gid=2001,owner_pid=os.getpid())
+            output=rt.root/'outputs/2001/snapshot-outcome.json'
+            if item['file'] is not None:
+                file_record=copy.deepcopy(item['file']);file_record['invocation']=record['invocation'];file_record['process']=record['process']
+                output.write_bytes(canonical(file_record))
+            if file_mutator:file_mutator(output,record)
+            exit_=0 if case=='success' else 1
+            owner.context.append(dict(pid=pid,exit=-9 if interrupted else exit_,signal=9 if interrupted else 0,last_barrier='SPAWNED' if interrupted else 'EXITED',
+                reaped=True,termination_requested=interrupted,exit_before_cleanup=None if interrupted else exit_))
+            if interrupted:raise Failure('child_timeout')
+            protocol=dict(result='COMPLETED',value=record['outcome']) if exit_==0 else dict(result='INCOMPLETE',
+                diagnostic=dict(phase='snapshot',first_failure=record['first_failure'],secondary=record['secondary'],snapshot=record))
+            return dict(pid=pid,exit=exit_,stderr=b'',stdout=b'PRIVATE_MALFORMED_SQL' if protocol_bad else canonical(protocol))
+        return action
+
+    def invoke(self,rt,background):
+        if background:return campaign.Background(rt,'snapshot',2001,15).join()[0]['value']
+        return rt.value('snapshot',15)
+
+    def export_cleanup(self,rt,base,evidence,export_fail=False):
+        path=base/'retained';foreign=base/'foreign';foreign.write_bytes(b'untouched');removed=[]
+        with mock.patch.object(c.stat,'S_IMODE',return_value=0o600):
+            store=c.Retained(path,create=True);op=operator.Operator(rt.req,store,Owner(time.monotonic()+20))
+            op.ids={'runtime':'1'*64,'mysql':'2'*64};op.intents=set(op.ids)
+            before={p.stem:p.read_bytes() for p in evidence.glob('*.json')}
+            def engine(owner,args,**kwargs):
+                if args[0]=='inspect':return dict(exit=0,stdout=canonical([container(rt.req,'mysql' if args[1]=='2'*64 else 'runtime')]))
+                if args[0]=='rm':
+                    # Real operator ownership/config checks ran before this modeled container removal.
+                    if not export_fail:self.assertTrue(any(r.get('kind')=='component-evidence' for r in store.records))
+                    removed.append(args[-1])
+                    if args[-1]=='1'*64:
+                        for p in evidence.glob('*.json'):p.unlink()
+                        for p in (rt.root/'outputs/2001').glob('*.json'):p.unlink()
+                return dict(exit=0,stdout=b'')
+            def read(args,**kwargs):
+                if args==['--evidence-index']:return dict(exit=0,stdout=canonical(sorted(before)))
+                if export_fail:raise OSError('PRIVATE_EXPORT_TOKEN')
+                return dict(exit=0,stdout=(evidence/(args[1]+'.json')).read_bytes())
+            try:
+                with mock.patch.object(operator,'engine',side_effect=engine),mock.patch.object(op,'runtime',side_effect=read):
+                    if export_fail:
+                        with self.assertRaises(OSError):op.evidence()
+                        op.record('export-failed',kind_code='component-capture')
+                    else:op.evidence()
+                    op.cleanup()
+                records=store.read()
+                if not export_fail:
+                    for row in records:
+                        if row['kind']=='component-evidence':
+                            self.assertEqual(canonical(row['value']),before[row['name']]);self.assertEqual(row['sha256'],digest(before[row['name']]))
+                self.assertEqual(removed,['2'*64,'1'*64]);self.assertEqual(foreign.read_bytes(),b'untouched')
+                self.assertFalse(list(evidence.glob('*.json')))
+            finally:store.close()
+            with_store=c.Retained(path,readonly=True)
+            try:self.assertEqual(with_store.records,records)
+            finally:with_store.close()
+        return records
+
+    def test_actual_php_outcomes_survive_both_paths_export_and_teardown(self):
+        for background in (False,True):
+            for case,item in self.bundle.items():
+                with self.subTest(background=background,case=case),self.lane('snapshot-concurrency' if background else 'positive') as (rt,base,evidence):
+                    with mock.patch.object(Owner,'capture',new=self.capture(rt,case)):
+                        if case=='success':self.invoke(rt,background)
+                        else:
+                            with self.assertRaises((ValueError,Failure)):self.invoke(rt,background)
+                    raw=(evidence/'snapshot-diagnostic.json').read_bytes();value=decode(raw)
+                    self.assertEqual(value['record']['outcome'],item['record']['outcome'])
+                    self.assertEqual(value['record']['first_failure'],item['record']['first_failure'])
+                    self.assertEqual(value['record']['secondary'],item['record']['secondary'])
+                    self.assertEqual(value['result'],'DIAGNOSTIC_ONLY');self.assertEqual(value['deployment_authority'],'NONE')
+                    for private in (b'PRIVATE_',b'SELECT ',b'password',b'private-fixture'):self.assertNotIn(private,raw)
+                    if case!='success':self.assertEqual(rt.first['code'],item['record']['first_failure'])
+                    if case=='combined':self.assertEqual(rt.secondary,[])  # A failed snapshot is not a failed diagnostic collection.
+                    self.assertIn('snapshot-diagnostic',rt.receipts)
+                    self.export_cleanup(rt,base,evidence)
+                    rt.owner.cleanup()
+
+    def test_missing_malformed_oversized_stale_and_wrong_process_outputs_reject(self):
+        def change(key,value):
+            def mutate(path,record):
+                copy_=copy.deepcopy(record)
+                if key in copy_['invocation']:copy_['invocation'][key]=value
+                else:copy_['process'][key]=value
+                path.write_bytes(canonical(copy_))
+            return mutate
+        cases={'missing':lambda p,r:p.unlink(),'malformed':lambda p,r:p.write_bytes(b'PRIVATE_INVALID'),
+            'oversized':lambda p,r:p.write_bytes(b'x'*8193),'stale':change('invocation_id','f'*32),
+            'case':change('case','after-notes'),'mode':change('mode','eligibility'),'pid':change('pid',999),'uid':change('uid',0)}
+        for background in (False,True):
+            for name,mutate in cases.items():
+                with self.subTest(background=background,fault=name),self.lane() as (rt,base,evidence):
+                    with mock.patch.object(Owner,'capture',new=self.capture(rt,file_mutator=mutate,protocol_bad=True)),self.assertRaises(ValueError):self.invoke(rt,background)
+                    v=decode((evidence/'snapshot-diagnostic.json').read_bytes())
+                    self.assertEqual(v['capture'],'UNAVAILABLE');self.assertIsNone(v['record']);self.assertEqual(len(v['capture_errors']),2)
+                    self.assertNotIn(b'PRIVATE_',canonical(v));rt.owner.cleanup()
+
+    def test_replaced_and_multilink_owned_outputs_reject(self):
+        for kind in ('replaced','hardlink'):
+            with self.subTest(kind=kind),self.lane() as (rt,base,evidence):
+                def mutate(path,record):
+                    if kind=='hardlink':os.link(path,base/'foreign-link')
+                    else:
+                        rt.read_output('snapshot-outcome',2001,max_bytes=8192)
+                        path.rename(path.with_suffix('.original'));path.write_bytes(canonical(record))
+                with mock.patch.object(Owner,'capture',new=self.capture(rt,file_mutator=mutate,protocol_bad=True)),self.assertRaises(ValueError):self.invoke(rt,False)
+                self.assertIsNone(rt.snapshot_evidence['record'])
+
+    def test_valid_outcome_is_collected_despite_malformed_command_protocol(self):
+        for background in (False,True):
+            with self.lane() as (rt,base,evidence):
+                with mock.patch.object(Owner,'capture',new=self.capture(rt,protocol_bad=True)),self.assertRaises(ValueError):self.invoke(rt,background)
+                self.assertEqual(rt.snapshot_evidence['record']['outcome']['first_failure'],'snapshot_commit')
+                self.assertEqual(rt.snapshot_evidence['record']['outcome']['transaction_cleanup'],'UNRESOLVED')
+
+    def test_real_child_interruption_records_unavailable_without_inventing_sql_cleanup(self):
+        original=Owner.capture
+        for background in (False,True):
+            with self.lane() as (rt,base,evidence):
+                def capture(owner,*args,**kwargs):return original(owner,[sys.executable,'-I','-B','-c','import time;time.sleep(5)'],.1)
+                with mock.patch.object(Owner,'capture',new=capture),self.assertRaises(Failure):self.invoke(rt,background)
+                v=rt.snapshot_evidence;self.assertIsNone(v['record']);self.assertEqual(v['capture'],'UNAVAILABLE')
+                self.assertTrue(v['process']['reaped']);self.assertTrue(v['process']['termination_requested']);self.assertIsNotNone(v['process']['exit'])
+                self.export_cleanup(rt,base,evidence);rt.owner.cleanup()
+
+    def test_existing_outcome_survives_capture_exception_after_process_exit(self):
+        for background in (False,True):
+            with self.lane() as (rt,base,evidence):
+                action=self.capture(rt)
+                def capture(*args,**kwargs):action(*args,**kwargs);raise Failure('child_output_bound')
+                with mock.patch.object(Owner,'capture',new=capture),self.assertRaises(Failure):self.invoke(rt,background)
+                self.assertEqual(rt.snapshot_evidence['record']['outcome'],self.bundle['combined']['record']['outcome'])
+
+    def test_diagnostic_publication_and_owned_cleanup_failures_preserve_original(self):
+        for background in (False,True):
+            with self.lane(publish_fail=True) as (rt,base,evidence):
+                foreign=base/'foreign';foreign.write_bytes(b'preserve')
+                def cleanup():raise RuntimeError('PRIVATE_CLEANUP_SECRET')
+                rt.owner.track('owned-probe','file',b'owned-only',cleanup)
+                with mock.patch.object(Owner,'capture',new=self.capture(rt)),mock.patch.object(campaign,'Runtime',return_value=rt),\
+                     mock.patch.object(campaign,'run_chain',side_effect=lambda value:self.invoke(value,background)),contextlib.redirect_stdout(io.StringIO()):
+                    self.assertEqual(campaign.campaign({}),1)
+                before=decode((evidence/'before-cleanup.json').read_bytes());report=decode((evidence/'report.json').read_bytes())
+                self.assertEqual(before['first_failure']['code'],'snapshot_commit');self.assertEqual(report['first_failure'],before['first_failure'])
+                self.assertEqual(report['snapshot_diagnostic']['record']['outcome'],self.bundle['combined']['record']['outcome'])
+                self.assertTrue(any(x['kind']=='snapshot-diagnostic-publication' for x in report['secondary']))
+                self.assertTrue(any(x['kind']=='owned-cleanup' for x in report['secondary']))
+                self.assertEqual(foreign.read_bytes(),b'preserve');self.assertEqual(report['result'],'INCOMPLETE')
+                self.export_cleanup(rt,base,evidence)
+
+    def test_export_failure_does_not_change_owned_cleanup_policy(self):
+        with self.lane() as (rt,base,evidence):
+            with mock.patch.object(Owner,'capture',new=self.capture(rt)),self.assertRaises(ValueError):self.invoke(rt,False)
+            original=copy.deepcopy(rt.snapshot_evidence);self.export_cleanup(rt,base,evidence,export_fail=True)
+            self.assertEqual(original['record']['outcome'],self.bundle['combined']['record']['outcome'])
+
+    def test_outcome_file_owner_group_and_mode_are_required(self):
+        for metadata in ((0,2001,0o600),(2001,0,0o600),(2001,2001,0o644)):
+            with self.subTest(metadata=metadata),self.lane(metadata=metadata) as (rt,base,evidence):
+                with mock.patch.object(Owner,'capture',new=self.capture(rt,protocol_bad=True)),self.assertRaises(ValueError):self.invoke(rt,False)
+                self.assertIsNone(rt.snapshot_evidence['record'])
+
+    def test_outcome_record_vocabulary_bounds_and_privacy_are_strict(self):
+        original=copy.deepcopy(self.bundle['combined']['record']);inv=original['invocation'];pid=original['process']['pid']
+        self.assertEqual(c.snapshot_record(canonical(original),inv,pid),original)
+        mutations=[lambda v:v.update(password='PRIVATE_CANARY'),lambda v:v.update(profile='m6e-bootstrap-v1'),
+            lambda v:v.update(first_failure='snapshot_PRIVATE_PASSWORD'),lambda v:v.update(secondary=['db_only_snapshot_outcome_publication']*5),
+            lambda v:v['outcome'].update(rows=['PRIVATE_ROW']),lambda v:v['outcome'].update(secondary=['snapshot_PRIVATE_TOKEN']),
+            lambda v:v.update(admission='READY'),lambda v:v['invocation']['binding'].update(source_sha='f'*40)]
+        for mutate in mutations:
+            v=copy.deepcopy(original);mutate(v)
+            with self.assertRaises((ValueError,TypeError)):c.snapshot_record(canonical(v),inv,pid)
+
+    def test_concurrency_barrier_failure_still_collects_background_snapshot(self):
+        with self.lane(case='snapshot-concurrency') as (rt,base,evidence):
+            background=campaign.Background
+            class Writer:
+                def join(self):return dict(value=dict(transaction='COMMITTED')),12344,0
+            def launch(value,mode,uid,seconds):
+                return Writer() if mode=='competing-writer' else background(value,mode,uid,seconds)
+            def barrier(value,name,uid):
+                if name=='snapshot-session':raise ValueError('modeled_barrier_failure')
+                return b'{}'
+            real_command=rt.command
+            def command(mode,*args,**kwargs):
+                if mode=='waiter':return dict(value=dict(writer_transaction='OPEN')),12343,0
+                return real_command(mode,*args,**kwargs)
+            with mock.patch.object(Owner,'capture',new=self.capture(rt)),mock.patch.object(campaign,'Background',side_effect=launch),\
+                 mock.patch.object(campaign,'wait_file',side_effect=barrier),mock.patch.object(rt,'command',side_effect=command),self.assertRaises(ValueError):
+                campaign.capture_snapshot(rt)
+            self.assertEqual(rt.snapshot_evidence['record']['outcome'],self.bundle['combined']['record']['outcome'])
+            self.export_cleanup(rt,base,evidence);rt.owner.cleanup()
+
+    def test_actual_operator_execute_exports_before_cleanup_even_when_export_fails(self):
+        for export_fail in (False,True):
+            with self.subTest(export_fail=export_fail),self.lane() as (rt,base,evidence):
+                protocol=io.StringIO()
+                with mock.patch.object(Owner,'capture',new=self.capture(rt)),mock.patch.object(campaign,'Runtime',return_value=rt),\
+                     mock.patch.object(campaign,'run_chain',side_effect=lambda value:self.invoke(value,False)),contextlib.redirect_stdout(protocol):
+                    self.assertEqual(campaign.campaign({}),1)
+                before={p.stem:p.read_bytes() for p in evidence.glob('*.json')};containers={};removed=[];exported=[]
+                host=base/'host-evidence';host.mkdir();foreign=base/'foreign';foreign.write_bytes(b'keep')
+                mysql=measurement('mysql');mysql['namespaces']['pid']='pid:[21]'
+                def engine(owner,args,**kwargs):
+                    if args[0]=='create':
+                        role='runtime' if rt.req['runtime_image'] in args else 'mysql';v=container(rt.req,role)
+                        v['Config']['Cmd']=args[args.index(rt.req[role+'_image'])+1:];containers[v['Id']]=v
+                        return dict(exit=0,stdout=v['Id'].encode())
+                    if args[0]=='inspect':return dict(exit=0,stdout=canonical([containers[args[1]]]))
+                    if args[0]=='exec':
+                        for mode in ('--measure','--tls','--campaign','--evidence-index','--evidence-read'):
+                            if mode not in args:continue
+                            if mode=='--measure':value=measurement('runtime')
+                            elif mode=='--tls':value={n:'PRIVATE_SYNTHETIC_TLS' for n in ('ca.pem','server.pem','server-key.pem')}
+                            elif mode=='--campaign':return dict(exit=1,stdout=protocol.getvalue().encode())
+                            elif mode=='--evidence-index':value=sorted(before)
+                            else:
+                                name=args[-1]
+                                if export_fail and name=='snapshot-diagnostic':raise OSError('PRIVATE_EXPORT_ERROR')
+                                exported.append(name);return dict(exit=0,stdout=before[name])
+                            return dict(exit=0,stdout=canonical(value))
+                        if '-Nse' in args:return dict(exit=0,stdout=b'22222222-2222-4222-8222-222222222222')
+                    if args[0]=='rm':
+                        self.assertIn('before-cleanup',exported);self.assertIn('report',exported)
+                        if not export_fail:self.assertIn('snapshot-diagnostic',exported)
+                        removed.append(args[-1])
+                        if args[-1]=='1'*64:
+                            for p in evidence.glob('*.json'):p.unlink()
+                    return dict(exit=0,stdout=b'')
+                resource=SimpleNamespace(RLIMIT_FSIZE=1,setrlimit=lambda key,value:self.assertEqual(value,(c.LIMITS['retained'],)*2))
+                with mock.patch.dict(sys.modules,{'resource':resource}),mock.patch.object(c,'EVIDENCE',str(host)),\
+                     mock.patch.object(c.stat,'S_IMODE',return_value=0o600),mock.patch.object(operator,'host_readiness',return_value=dict(images={},host_namespaces=HOST_NS)),\
+                     mock.patch.object(operator,'mysql_probe',return_value=mysql),mock.patch.object(operator,'engine',side_effect=engine),contextlib.redirect_stdout(io.StringIO()):
+                    self.assertEqual(operator.execute(rt.req),1)
+                    saved=c.Retained(host/('m6e-db-only-'+rt.req['run_id']+'.evidence'),readonly=True)
+                    try:records=saved.records
+                    finally:saved.close()
+                self.assertEqual(removed,['2'*64,'1'*64]);self.assertEqual(foreign.read_bytes(),b'keep')
+                final=records[-1];self.assertEqual(final['result'],'INCOMPLETE')
+                self.assertEqual(any(x['kind']=='component-capture' for x in final['secondary']),export_fail)
+                for row in records:
+                    if row['kind']=='component-evidence':self.assertEqual(canonical(row['value']),before[row['name']])
+                report=next(x['value'] for x in records if x.get('name')=='report')
+                self.assertEqual(report['first_failure']['code'],'snapshot_commit')
 
 
 if __name__=='__main__':unittest.main()

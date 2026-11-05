@@ -3,6 +3,33 @@ declare(strict_types=1);
 /** Local only: actual builder/store and shared account constructors; PDO/privileges are MODELS. */
 require_once __DIR__.'/support/WebsitePlatformM6EDBOnlyChild.php';
 require_once __DIR__.'/support/WebsitePlatformM6CFixture.php';
+define('M6E_SNAPSHOT_CLASSES_ONLY',true);
+require_once __DIR__.'/WebsitePlatformM6ESnapshotTest.php';
+
+/** Only the unavailable SQL commit acknowledgement is modeled; production capture/wrapper remain real. */
+final class DbOnlyLostAck extends PDO {
+    public function __construct(private M6ESnapshotDatabase $inner){}
+    public function prepare(string $q,array $options=[]):PDOStatement|false{return $this->inner->prepare($q,$options);}
+    public function exec(string $q):int|false{return $this->inner->exec($q);}
+    public function inTransaction():bool{return $this->inner->inTransaction();}
+    public function commit():bool{$this->inner->commit();throw new RuntimeException('PRIVATE_ACK_TOKEN');}
+    public function rollBack():bool{return $this->inner->rollBack();}
+}
+final class DbOnlySnapshotSource extends PDO {
+    public function __construct(private M6ECheckpointDatabase $inner){}
+    public function beginTransaction():bool{return $this->inner->beginTransaction();}
+    public function commit():bool{return $this->inner->commit();}
+    public function rollBack():bool{return $this->inner->rollBack();}
+    public function prepare(string $q,array $options=[]):PDOStatement|false{
+        if($q!=='SELECT CONNECTION_ID()')return $this->inner->prepare($q,$options);
+        return new class extends PDOStatement {
+            public function execute(?array $params=null):bool{return true;}
+            public function fetchAll(int $mode=PDO::FETCH_DEFAULT,mixed ...$args):array{return [['connection_id'=>1]];}
+            public function closeCursor():bool{return true;}
+        };
+    }
+    public function inTransaction():bool{return $this->inner->inTransaction();}
+}
 
 final class DbOnlyStatement extends PDOStatement {
     private array $rows=[];
@@ -45,7 +72,7 @@ final class DbOnlyDatabase extends PDO {
         throw new RuntimeException('unmodeled_query');
     }
 }
-$assertions=0;
+$assertions=0;$snapshotBundle=[];
 $check=static function(bool $v,string $why)use(&$assertions):void{$assertions++;if(!$v)throw new RuntimeException($why);};
 $reject=static function(callable $f,string $why)use($check):void{$denied=false;try{$f();}catch(Throwable){$denied=true;}$check($denied,$why);};
 try {
@@ -83,5 +110,78 @@ try {
     $reject(static fn()=>SiteDeploymentContract::request($evidence,'publish'),'DB-only evidence cannot become deployment request');
     $reject(static fn()=>SiteDeploymentContract::lease($evidence),'DB-only evidence cannot become operational lease');
     $reject(static fn()=>SiteBuildRuntime::fromTrustedCli(),'test driver cannot become installed build-worker admission');
-    echo "M6E DB-only adapter: $assertions assertions PASS (PDO/privilege MODEL, real builder/store; native UNEXECUTED).\n";
+    $a=['run_id'=>str_repeat('b',32),'source_sha'=>str_repeat('a',40),'machine_id'=>str_repeat('c',32),
+        'boot_id'=>'11111111-1111-4111-8111-111111111111','expires_at'=>time()+300,'case'=>'positive',
+        'namespaces'=>['user'=>'user:[20]','mnt'=>'mnt:[20]','pid'=>'pid:[20]','net'=>'net:[20]']];
+    m6eLocalServingFixture(false,static function($fixture,$first)use($a,$check,&$snapshotBundle):void{
+        $observer=new M6ECheckpointDatabase($fixture->db);$id=(int)$first['row']['id'];
+        $cp=m6eCaptureCheckpoint($observer,$fixture->store,realpath($fixture->root.'/sealed'),lstat($fixture->root)['uid'],$id,$observer->identity,$a,'controlled-local');
+        $cases=['success'=>[],'connection'=>[], 'lock'=>['FLUSH TABLES WITH READ LOCK'],
+            'transaction'=>['START TRANSACTION WITH CONSISTENT SNAPSHOT, READ ONLY'],'rows'=>[],
+            'commit'=>['COMMIT'],'lost-ack'=>[],'rollback'=>['COMMIT','ROLLBACK'],'unlock'=>['COMMIT','UNLOCK TABLES'],
+            'combined'=>['COMMIT','ROLLBACK','UNLOCK TABLES'],'publication'=>['COMMIT','ROLLBACK'],'success-publication'=>[],
+            'installed-publication'=>['COMMIT','ROLLBACK']];
+        foreach($cases as $name=>$faults){
+            $reader=new M6ESnapshotDatabase($observer,$cp);$reader->fail=$faults;
+            if($name==='rows')$reader->onRows=static function():void{throw new RuntimeException('PRIVATE_ROW_SELECT_PASSWORD');};
+            $connection=$name==='lost-ack'?new DbOnlyLostAck($reader):$reader;
+            $schema=['profile'=>'m6e-pre-b-schema-v1','binding'=>$cp['binding'],'schema'=>$observer->identity['schema'],
+                'server_uuid'=>$observer->identity['server_uuid'],'migrations'=>m6eSnapshotMigrations(),'tables'=>$reader->schema];
+            $invocation=['profile'=>'m6e-db-only-snapshot-invocation-v1','binding'=>$cp['binding'],'case'=>'positive','mode'=>'snapshot',
+                'invocation_id'=>str_repeat('e',32),'owner_pid'=>314,'namespaces'=>$a['namespaces'],'started_at'=>time(),'expires_at'=>$a['expires_at']];
+            $process=['pid'=>getmypid(),'uid'=>2001,'gid'=>2001,'owner_pid'=>314];$writes=[];$record=null;$caught=null;
+            $directory=$fixture->root.'/outcome-'.$name;mkdir($directory,0700);
+            $write=static function(string $leaf,array $value)use(&$writes,$name,$directory):void{
+                if($leaf==='snapshot-outcome'&&in_array($name,['publication','success-publication'],true))throw new RuntimeException('PRIVATE_OUTPUT_CREDENTIAL');
+                $raw=CanonicalJson::encode($value);$h=fopen($directory.'/'.$leaf.'.json','xb');
+                try{chmod($directory.'/'.$leaf.'.json',0600);fwrite($h,$raw);fflush($h);fsync($h);}finally{fclose($h);}
+                $writes[$leaf]=$value;
+                if($leaf==='snapshot-outcome'&&$name==='installed-publication')throw new RuntimeException('PRIVATE_POST_INSTALL_ERROR');
+            };
+            $connect=static function($role)use($name,$connection,$observer){
+                if($name==='connection'&&$role==='builder')throw new RuntimeException('PRIVATE_DSN_TOKEN');
+                return $role==='snapshot'?$connection:new DbOnlySnapshotSource($observer);
+            };
+            try{$out=m6eDbSnapshot($a,['schema'=>$schema,'checkpoint'=>$cp],['first'=>$id],$invocation,
+                $connect,$write,$process);
+                $protocol=['result'=>'COMPLETED','value'=>$out];
+            }catch(Throwable $error){$caught=$error;$protocol=['result'=>'INCOMPLETE','diagnostic'=>m6eDbDiagnostic($error)];}
+            $record=$caught?->record??$writes['snapshot-outcome'];
+            $check(is_array($record)&&$record['invocation']===$invocation&&$record['process']===$process,'actual invocation/process bound '.$name);
+            $check(($caught===null)===($name==='success'),'nonzero failure protocol '.$name);
+            $expected=match($name){'success','success-publication','connection'=>null,'lock'=>'snapshot_lock','transaction'=>'snapshot_transaction','rows'=>'snapshot_rows',default=>'snapshot_commit'};
+            $check(($record['outcome']['first_failure']??null)===$expected,'actual capture stage '.$name);
+            $secondary=array_values(array_filter(['snapshot_rollback','snapshot_unlock'],static fn($s)=>in_array($s==='snapshot_rollback'?'ROLLBACK':'UNLOCK TABLES',$faults,true)));
+            $check(($record['outcome']['secondary']??[])===$secondary,'actual SQL cleanup errors '.$name);
+            $check($name==='connection'?($record['outcome']===null&&$record['attempt']==='UNREACHED'):
+                $record['outcome']['transaction_cleanup']===($secondary===[]?'RELEASED':'UNRESOLVED'),'cleanup observation not inferred from close '.$name);
+            $check(isset($writes['snapshot-outcome'])===!in_array($name,['publication','success-publication'],true),'outcome finally publication attempted '.$name);
+            $check(!str_contains(CanonicalJson::encode($record),'PRIVATE_')&&!str_contains(CanonicalJson::encode($record),'SELECT '),'privacy '.$name);
+            if(str_contains($name,'publication')){
+                $check($record['secondary']===['db_only_snapshot_outcome_publication'],'separate publication error '.$name);
+                $check($record['first_failure']===($expected??'db_only_snapshot_outcome_publication'),'publication preserves original failure '.$name);
+            }
+            $snapshotBundle[$name]=['record'=>$record,'protocol'=>$protocol,'file'=>$writes['snapshot-outcome']??null];
+        }
+        // Trace arguments must not keep either owned session alive through diagnostic publication.
+        $old=ini_set('zend.exception_ignore_args','0');$weak=[];$retained=null;
+        try{
+            $connect=static function($role)use($observer,$cp,&$weak):PDO{
+                if($role==='snapshot'){$db=new M6ESnapshotDatabase($observer,$cp);$db->fail=['COMMIT'];}
+                else $db=new DbOnlySnapshotSource($observer);
+                $weak[$role]=WeakReference::create($db);return $db;
+            };
+            try{m6eDbSnapshot($a,['schema'=>$schema,'checkpoint'=>$cp],['first'=>$id],$invocation,$connect,
+                static function($name,$value)use(&$weak,&$retained,$check):void{
+                    if($name==='snapshot-outcome'){
+                        $check($weak['snapshot']->get()===null&&$weak['builder']->get()===null,'owned PDO references closed before outcome publication, including exception traces');
+                        $retained=$value;
+                    }
+                },$process);
+            }catch(M6EDBOnlySnapshotFailure $e){$check($e->getPrevious()===null,'raw original exception/connection arguments not retained');}
+            $check($retained['outcome']['first_failure']==='snapshot_commit','original sanitized failure survives session close');
+        }finally{ini_set('zend.exception_ignore_args',$old);}
+    });
+    if(($argv[1]??'')==='--snapshot-bundle')echo CanonicalJson::encode($snapshotBundle)."\n";
+    else echo "M6E DB-only adapter: $assertions assertions PASS (PDO/privilege MODEL, real builder/store and snapshot outcome orchestration; native UNEXECUTED).\n";
 } finally {WebsitePlatformM6CFixture::cleanup();}

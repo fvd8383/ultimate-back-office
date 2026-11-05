@@ -107,6 +107,68 @@ function m6eDbAdmit(array $a,string $mode):void {
         m6eNeed(preg_match('/^'.$cap.':\s+0+$/m',$status)===1,'db_only_worker_capabilities');
     M6CNativeGitSource::verify(dirname(__DIR__,2),$a['source_sha'],mode:'m6e-db-only');
 }
+final class M6EDBOnlySnapshotFailure extends RuntimeException {
+    public function __construct(public array $record){parent::__construct('db_only_snapshot_failed');}
+}
+/** Only the shared algorithm's fixed diagnostic vocabulary may cross the private child boundary. */
+function m6eDbSnapshotOutcome(array $v):array {
+    $keys=array_keys($v);sort($keys);
+    m6eNeed($keys===['capture','first_failure','secondary','transaction_cleanup','verification']
+        &&in_array($v['capture'],['FAILED','CAPTURED'],true)&&$v['verification']==='UNREACHED'
+        &&in_array($v['transaction_cleanup'],['UNREACHED','RELEASED','UNRESOLVED'],true)
+        &&in_array($v['first_failure'],[null,'snapshot_admission','snapshot_before','snapshot_lock','snapshot_schema',
+            'snapshot_transaction','snapshot_rows','snapshot_commit','snapshot_unlock','snapshot_after'],true)
+        &&is_array($v['secondary'])&&array_is_list($v['secondary'])&&count($v['secondary'])<=2
+        &&array_diff($v['secondary'],['snapshot_rollback','snapshot_unlock'])===[],'db_only_snapshot_outcome_shape');
+    return $v;
+}
+/** Actual wrapper, with explicit local-only connection/output/process seams; shared capture is unchanged. */
+function m6eDbSnapshot(array $a,array $inputs,array $built,array $invocation,?callable $connect=null,?callable $write=null,?array $process=null):array {
+    $connect??=static fn(string $role,bool $strings=true)=>m6eDbConnect($a,$role,$strings);
+    $write??=Closure::fromCallable('m6eDbWrite');
+    $process??=['pid'=>getmypid(),'uid'=>posix_geteuid(),'gid'=>posix_getegid(),'owner_pid'=>posix_getppid()];
+    $binding=array_intersect_key($a,array_flip(['run_id','source_sha','machine_id','boot_id']));
+    m6eNeed($invocation['profile']==='m6e-db-only-snapshot-invocation-v1'&&$invocation['mode']==='snapshot'
+        &&CanonicalJson::encode($invocation['binding'])===CanonicalJson::encode($binding)&&$invocation['case']===$a['case']
+        &&preg_match('/^[a-f0-9]{32}$/D',$invocation['invocation_id'])===1&&$invocation['owner_pid']===$process['owner_pid']
+        &&$invocation['namespaces']===$a['namespaces']&&$invocation['started_at']<=time()
+        &&$invocation['expires_at']===$a['expires_at']&&time()<$a['expires_at'],'db_only_snapshot_invocation');
+    $record=['profile'=>'m6e-db-only-snapshot-outcome-v1','invocation'=>$invocation,'process'=>$process,'attempt'=>'UNREACHED',
+        'outcome'=>null,'first_failure'=>null,'secondary'=>[],'admission'=>'UNIMPLEMENTED','native_admission'=>'BLOCKED','deployment_authority'=>'NONE'];
+    $db=null;$source=null;$outcome=[];$primary=false;$stage='connection';
+    try {
+        $db=$connect('snapshot');$source=$connect('builder',false);$cp=$inputs['checkpoint'];
+        $stage='session_publication';$write('snapshot-session',['connection_id'=>(int)m6eSnapshotScalar($db,'SELECT CONNECTION_ID()')]);
+        $stage='capture';$record['attempt']='THREW';
+        $v=m6eCaptureSnapshot($db,$a,$inputs['schema'],$cp,static fn()=>m6eCheckpointObserve($source,$built['first'],$cp['observed']['database']),
+            (int)m6eSnapshotScalar($source,'SELECT CONNECTION_ID()'),$outcome);
+        $record['attempt']='RETURNED';$stage='data_publication';$write('snapshot',$v);
+    }catch(Throwable $error){$primary=true;$record['first_failure']='db_only_snapshot_'.$stage;
+        // Exception trace arguments can retain PDO sessions. Keep only the sanitized outcome, never the original throwable.
+        unset($error);}
+    finally {
+        // Closing references is bounded by the existing owned child deadline. It is NOT a SQL cleanup acknowledgement.
+        foreach(['db','source'] as $name)try{$$name=null;}catch(Throwable $error){
+            $code='db_only_snapshot_'.$name.'_close';$record['secondary'][]=$code;
+            if(!$primary){$primary=true;$record['first_failure']=$code;}unset($error);
+        }
+        try{$record['outcome']=$outcome===[]?null:m6eDbSnapshotOutcome($outcome);
+            if(($record['outcome']['first_failure']??null)!==null)$record['first_failure']=$record['outcome']['first_failure'];
+        }catch(Throwable $error){$record['secondary'][]='db_only_snapshot_outcome_invalid';
+            if(!$primary){$primary=true;$record['first_failure']='db_only_snapshot_outcome_invalid';}unset($error);}
+        try{m6eNeed(strlen(CanonicalJson::encode($record))<=8192,'db_only_snapshot_record_bound');$write('snapshot-outcome',$record);}
+        catch(Throwable $error){$record['secondary'][]='db_only_snapshot_outcome_publication';
+            if(!$primary){$primary=true;$record['first_failure']='db_only_snapshot_outcome_publication';}unset($error);}
+    }
+    if($primary)throw new M6EDBOnlySnapshotFailure($record);
+    return $outcome;
+}
+function m6eDbDiagnostic(Throwable $error):array {
+    if($error instanceof M6EDBOnlySnapshotFailure)return ['phase'=>'snapshot','first_failure'=>$error->record['first_failure'],
+        'secondary'=>$error->record['secondary'],'snapshot'=>$error->record];
+    $diagnostic=$error instanceof M6EEligibilityFailure?$error->diagnostic:($error instanceof M6ERestorationFailure?$error->diagnostic:[]);
+    return ['phase'=>$diagnostic['phase']??'child','first_failure'=>$diagnostic['first_failure']??'db_only_child','secondary'=>$diagnostic['secondary']??[]];
+}
 function m6eDbRun(string $mode,array $a):array {
     $deadline=hrtime(true)+($mode==='restore'?230:($mode==='snapshot'?45:60))*1000000000;
     $pulse=static function()use($a,$deadline):void{m6eNeed(time()<$a['expires_at']&&hrtime(true)<$deadline,'db_only_deadline');};$pulse();
@@ -144,11 +206,7 @@ function m6eDbRun(string $mode,array $a):array {
         m6eDbWrite('checkpoint',$cp);return ['connection_id'=>(int)m6eSnapshotScalar($db,'SELECT CONNECTION_ID()')];
     }
     if($mode==='snapshot'){
-        $db=m6eDbConnect($a,'snapshot');$source=m6eDbConnect($a,'builder',false);$cp=$inputs['checkpoint'];$outcome=[];
-        m6eDbWrite('snapshot-session',['connection_id'=>(int)m6eSnapshotScalar($db,'SELECT CONNECTION_ID()')]);
-        $v=m6eCaptureSnapshot($db,$a,$inputs['schema'],$cp,static fn()=>m6eCheckpointObserve($source,$built['first'],$cp['observed']['database']),
-            (int)m6eSnapshotScalar($source,'SELECT CONNECTION_ID()'),$outcome);
-        $db=null;$source=null;m6eDbWrite('snapshot',$v);return $outcome;
+        return m6eDbSnapshot($a,$inputs,$built,m6eDbRead('snapshot-invocation'));
     }
     if($mode==='build-b'){
         $db=m6eDbConnect($a,'builder',false);m6eDbWire($db,$a,$built);m6eSnapshotFinalBoundary($db,$built['first'],$inputs['checkpoint']);
@@ -216,8 +274,6 @@ if(realpath($_SERVER['SCRIPT_FILENAME']??'')===__FILE__){
         m6eNeed(count($argv)===2,'db_only_arguments');$a=m6eDbRead('admission');$mode=$argv[1];m6eDbAdmit($a,$mode);
         $result=m6eDbRun($mode,$a);echo CanonicalJson::encode(['result'=>'COMPLETED','value'=>$result])."\n";
     }catch(Throwable $error){
-        $diagnostic=$error instanceof M6EEligibilityFailure?$error->diagnostic:($error instanceof M6ERestorationFailure?$error->diagnostic:[]);
-        echo CanonicalJson::encode(['result'=>'INCOMPLETE','diagnostic'=>['phase'=>$diagnostic['phase']??'child',
-            'first_failure'=>$diagnostic['first_failure']??'db_only_child','secondary'=>$diagnostic['secondary']??[]]])."\n";exit(1);
+        echo CanonicalJson::encode(['result'=>'INCOMPLETE','diagnostic'=>m6eDbDiagnostic($error)])."\n";exit(1);
     }
 }

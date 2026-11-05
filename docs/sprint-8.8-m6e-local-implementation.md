@@ -15,6 +15,66 @@ second parent; native-tested `7cdbbeef639…` is an ancestor of that reviewed he
 Its native PASS belongs only to `7cdbbeef`, never this implementation or the merge.
 Historical failures and pre-merge reports are not rewritten or rerun.
 
+## Failed DB-only snapshot outcomes following 22183a2
+
+**LOCAL CORRECTION / NATIVE UNEXECUTED / NO ADMISSION.** Review thread
+`PRRT_kwDOS02IKM6z4d3I` reported that the DB-only child discarded a failed
+`m6eCaptureSnapshot()` outcome. At exact baseline
+`22183a237340e8f267e8c5e6189edcbd67a5bf0a`, the actual wrapper branch was exercised
+with the existing modeled PDO and genuine A artifacts. Injected commit, rollback
+and unlock failures reached their intended calls. The shared algorithm produced
+`first_failure=snapshot_commit`, secondary `snapshot_rollback`/`snapshot_unlock`,
+and `transaction_cleanup=UNRESOLVED`. The old child returned only `db_only_child`
+and an empty secondary list; its only published file was `snapshot-session`.
+The actual old supervisor/campaign retained generic failure evidence after modeled
+cleanup, losing all three diagnostic fields. Lock failure similarly lost the
+algorithm's actual `snapshot_lock`/`RELEASED` outcome.
+
+`m6eDbSnapshot()` now contains the actual DB-only wrapper with narrow connection,
+output and process seams for local controls. It begins with an unreached attempt
+and null outcome, calls the unchanged capture algorithm, closes its owned reader
+and source references, and attempts protected `snapshot-outcome.json` publication
+on success and ordinary exception paths. Closing references never changes the
+SQL cleanup status. Raw throwables are discarded so exception trace arguments
+cannot retain either PDO session through publication; a WeakReference control
+verifies this with trace arguments explicitly enabled. The original algorithm outcome is retained verbatim after
+fixed-field validation; wrapper output/close failures are separately classified.
+A publication failure preserves the primary and carries the same sanitized
+record in the nonzero child protocol, including failure after file installation.
+Neither raw exceptions nor snapshot rows enter that record.
+
+Each attempt has one exclusive, source/run/case-bound snapshot invocation. Its
+record also binds the original expiry, actual namespaces, supervisor PID and
+actual child PID/UID/GID. The supervisor reads only the fixed UID2001 outcome
+path, with no-follow open, lstat/fstat/readback identity, single-link, mode0600
+and 8 KiB limits. It reuses `snapshot.outcome_value()` and adds exact DB-only
+invocation/process checks, finite failure enums and bounded secondary lists.
+Stale, malformed, oversized, substituted and incorrectly owned output cannot
+authorize success. Available validated file and protocol records are kept
+separately when post-install publication failure makes their wrapper fields differ.
+
+Both ordinary command completion and the background snapshot child's finally
+path collect diagnostics before propagating capture, protocol or exit failures.
+An early concurrency barrier/writer failure also reaps the owned reader and
+collects its available outcome. Missing output produces `capture=UNAVAILABLE`,
+a null record and actual available process/exit/interruption observations, without
+inventing a SQL failure stage or rollback/unlock acknowledgement.
+
+The protected `snapshot-diagnostic` publication contains the sanitized outcome
+itself. Its receipt is retained; campaign before-cleanup/report evidence also
+contains the bounded diagnostic, preserving it when that separate publication
+fails. The unchanged operator exports component evidence before exact container
+removal. Export/capture/cleanup errors remain separate and non-authorizing; the
+existing uncertain-resource preservation policy is unchanged. Real archive
+round-trip controls additionally required explicit `O_BINARY` on Windows file
+descriptors; this flag is zero on Linux and changes no native storage policy.
+
+The shared snapshot algorithm/validator, full-host wrappers, process owner,
+publication primitive, bootstrap admission, SQL grants, storage ceilings and
+deadlines are unchanged. No new native case or operational capability is added.
+All six commissioning MISSING classifications remain unchanged. See the
+[executed controls and limits](sprint-8.8-m6e-isolated-validation.md#failed-snapshot-outcome-correction-following-22183a2).
+
 ## DB-only native adapter following 7235797
 
 **IMPLEMENTED LOCALLY / NATIVE EXECUTION UNEXECUTED / DB-ONLY COMPONENT VALIDATION.**

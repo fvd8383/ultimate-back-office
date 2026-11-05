@@ -48,10 +48,19 @@ def wait_file(rt, name, uid, seconds=10):
 class Background:
     def __init__(self,rt,mode,uid,seconds):
         self.owner=Owner(min(rt.owner.deadline,time.monotonic()+seconds));self.result=None;self.error=None;self.rt=rt;self.mode=mode
+        if mode=='snapshot':rt.start_snapshot()
         def run():
             try:self.result=self.owner.capture(['/usr/bin/php','-d','memory_limit=256M','-d','display_errors=0','-d','log_errors=0',
                 c.SOURCE+'/tests/support/WebsitePlatformM6EDBOnlyChild.php',mode],seconds,limit=65536,identity=(uid,uid,[]))
             except BaseException as e:self.error=e
+            finally:
+                if mode=='snapshot':
+                    try:
+                        failed=rt.snapshot_diagnostic(self.owner,0,self.result,self.error)
+                        if failed and self.error is None:self.error=ValueError('db_only_snapshot_failed')
+                    except BaseException as e:
+                        if self.error is None:self.error=e
+                        else:rt.failure(e,'snapshot-diagnostic')
         rt.owner.track('child-'+mode,'process',canonical(dict(mode=mode)),self.cleanup)
         self.thread=threading.Thread(target=run,daemon=True);self.thread.start()
 
@@ -79,10 +88,20 @@ def capture_snapshot(rt):
         if exit_==0:observed=v['value'];break
         time.sleep(.05)
     need(observed is not None,'db_only_writer_transaction_unobserved');rt.publish('snapshot-competing-writer',observed)
-    reader=Background(rt,'snapshot',2001,45);wait_file(rt,'snapshot-session',2001)
-    (rt.root/'barriers/writer-release').touch(exist_ok=False)
-    written,_,_=writer.join();rt.publish('snapshot-writer-commit',written['value'])
-    v,_,_=reader.join();return v['value']
+    reader=Background(rt,'snapshot',2001,45);primary=None
+    try:
+        wait_file(rt,'snapshot-session',2001)
+        (rt.root/'barriers/writer-release').touch(exist_ok=False)
+        written,_,_=writer.join();rt.publish('snapshot-writer-commit',written['value'])
+        v,_,_=reader.join();return v['value']
+    except BaseException as e:primary=e;raise
+    finally:
+        # A failed barrier/writer must still reap the owned reader and collect its available outcome.
+        if reader.thread.is_alive():
+            try:reader.cleanup()
+            except BaseException as e:
+                rt.failure(e,'snapshot-owned-cleanup')
+                if primary is None:raise
 
 
 def competing_rows(notes):
@@ -309,7 +328,7 @@ def campaign(config):
             # Capture the first failure BEFORE any child/resource cleanup, including injection failures.
             try:rt.publish('before-cleanup',dict(profile=c.PROFILE,result=result,injected=injected,first_failure=rt.first,
                 secondary=rt.secondary,trace=rt.trace,commands=rt.commands,receipts=rt.receipts.copy(),
-                files=output_measurements(getattr(rt,'outputs',{})),**c.AUTHORITY))
+                files=output_measurements(getattr(rt,'outputs',{})),snapshot_diagnostic=getattr(rt,'snapshot_evidence',None),**c.AUTHORITY))
             except BaseException as e:rt.failure(e,'before-cleanup-capture');result='INCOMPLETE'
             rt.owner.deadline=min(rt.overall,time.monotonic()+c.LIMITS['cleanup_seconds'])
             try:rt.owner.cleanup()
@@ -320,6 +339,7 @@ def campaign(config):
                 if injected=='capture-cleanup-failure':need(any(x['kind']=='owned-cleanup' for x in rt.secondary),'db_only_cleanup_fault_unreached')
                 report=dict(profile=c.PROFILE,purpose='DB-ONLY COMPONENT VALIDATION',request=rt.req,result=result,injected=injected,
                     first_failure=rt.first,secondary=rt.secondary,summary=summary,context=rt.owner.snapshot(),receipts=rt.receipts.copy(),
+                    snapshot_diagnostic=getattr(rt,'snapshot_evidence',None),
                     component_seconds=time.monotonic()-rt.started,host_cleanup='PENDING_EXACT_CONTAINER_REMOVAL',**c.AUTHORITY)
                 rt.publish('report',report)
                 print(canonical(dict(profile=c.PROFILE,result=result,receipts=rt.receipts,**c.AUTHORITY)).decode())
