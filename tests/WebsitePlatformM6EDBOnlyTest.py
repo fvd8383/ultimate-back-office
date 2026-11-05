@@ -1,0 +1,400 @@
+"""Local controls only. Engine/Linux/SQL facts are MODELS; bounded files and subprocesses are real."""
+import copy
+import contextlib
+import io
+import importlib.util
+import os
+from pathlib import Path
+import sys
+import tempfile
+import time
+import unittest
+from types import SimpleNamespace
+from unittest import mock
+
+sys.path.insert(0,str(Path(__file__).resolve().parent/'support'))
+sys.path.insert(0,str(Path(__file__).resolve().parent))
+from WebsitePlatformM6EAcceptance import canonical,decode,digest
+import WebsitePlatformM6EDBOnlyContract as c
+import WebsitePlatformM6EDBOnlyCampaign as campaign
+import WebsitePlatformM6EDBOnlyRuntime as runtime
+import WebsitePlatformM6EBootstrapPlan as full_plan
+import WebsitePlatformM6EAcceptance as full_acceptance
+import WebsitePlatformM6EPreparation as preparation
+import WebsitePlatformM6EEligibility as eligibility
+import WebsitePlatformM6EEligibilityTest as existing
+from WebsitePlatformM6EProcess import Owner,Failure,publish_bytes
+import WebsitePlatformM6EDBOnly as operator
+
+
+def request():
+    return dict(profile=c.PROFILE,source_sha='a'*40,source_inventory_sha256='b'*64,runtime_image='sha256:'+'c'*64,
+        mysql_image='sha256:'+'d'*64,run_id='e'*32,case='positive',review_receipt_sha256='f'*64,limits=copy.deepcopy(c.LIMITS))
+
+
+def container(req,role):
+    uid='0:0' if role=='runtime' else '999:999';mounts=[]
+    if role=='runtime':mounts=[dict(Type='bind',Source=c.EXPORTS+'/'+req['source_sha'],Destination=c.SOURCE,RW=False)]
+    argv=c.create_args(req,role,'1'*64);idx=argv.index(req[role+'_image'])
+    return dict(Id=('1' if role=='runtime' else '2')*64,Name='/'+c.names(req)[role],Image=req[role+'_image'],
+        Config=dict(Labels={c.LABEL:req['run_id'],c.LABEL+'.request':digest(canonical(req))},User=uid,
+            Entrypoint=[argv[argv.index('--entrypoint')+1]],Cmd=argv[idx+1:]),Mounts=mounts,
+        HostConfig=dict(ReadonlyRootfs=True,Privileged=False,NetworkMode='none' if role=='runtime' else 'container:'+'1'*64,
+            Memory=c.LIMITS[role+'_memory'],MemorySwap=c.LIMITS[role+'_memory'],NanoCpus=c.LIMITS['cpu'],PidsLimit=c.LIMITS[role+'_pids'],
+            CapDrop=['ALL'],CapAdd=['CHOWN','DAC_OVERRIDE','SETUID','SETGID','KILL'] if role=='runtime' else [],
+            SecurityOpt=['no-new-privileges'],PortBindings={},Devices=[],VolumesFrom=None,Binds=None,PidMode='',UsernsMode='',
+            RestartPolicy=dict(Name='no'),LogConfig=dict(Type='none'),
+            Tmpfs={p:'rw,nosuid,nodev,noexec,size='+str(size) for p,size in c.mount_limits(role).items()}))
+
+
+HOST_NS={n:n+':[10]' for n in ('user','net','pid','mnt')}
+def measurement(role):
+    return dict(uid=0 if role=='runtime' else 999,gid=0 if role=='runtime' else 999,
+        memory_max=c.LIMITS[role+'_memory'],swap_max=0,pids_max=c.LIMITS[role+'_pids'],cpu_max=[100000,100000],
+        uid_map=[[0,1000,1],[1,100000,65536]],gid_map=[[0,1000,1],[1,100000,65536]],no_new_privs=1,
+        capabilities=227 if role=='runtime' else 0,interfaces=['lo'],
+        source_root=dict(dev=123,ino=456,uid=0,gid=0,mode=0o555) if role=='runtime' else None,
+        namespaces={n:n+':[20]' for n in HOST_NS},source_readonly=True,storage={p:dict(type='tmpfs',bytes=size,size_option=size,
+        options=['rw','nosuid','nodev','noexec']) for p,size in c.mount_limits(role).items()})
+
+
+class Contract(unittest.TestCase):
+    def test_exact_source_image_run_and_version_bindings(self):
+        req=request();self.assertEqual(c.request(req),req)
+        for key,bad in [('source_sha','main'),('runtime_image','php:latest'),('mysql_image',req['runtime_image']),
+            ('run_id','../working'),('profile','m6e-bootstrap-v1'),('source_inventory_sha256',''),('review_receipt_sha256',''),('case','deployment')]:
+            value=copy.deepcopy(req);value[key]=bad
+            with self.subTest(key=key),self.assertRaises(ValueError):c.request(value)
+        value=copy.deepcopy(req);value['database']='working_staging'
+        with self.assertRaises(ValueError):c.request(value)
+
+    def test_every_limit_is_fixed_and_not_boolean(self):
+        for key in c.LIMITS:
+            value=request();value['limits'][key]+=1
+            with self.subTest(key=key),self.assertRaises(ValueError):c.request(value)
+        value=request();value['limits']['snapshot_seconds']=True
+        with self.assertRaises(ValueError):c.request(value)
+        self.assertEqual((c.LIMITS['snapshot_seconds'],c.LIMITS['restoration_seconds'],c.LIMITS['eligibility_seconds']),(45,240,120))
+
+    def test_only_private_loopback_topology_and_bounded_tmpfs(self):
+        req=request();a=c.create_args(req,'runtime');b=c.create_args(req,'mysql','1'*64)
+        self.assertEqual(a[a.index('--network')+1],'none');self.assertEqual(b[b.index('--network')+1],'container:'+'1'*64)
+        for args in (a,b):
+            for forbidden in ('--privileged','--publish','--volume','--volumes-from','--pid','--userns'):self.assertNotIn(forbidden,args)
+            self.assertNotIn('/var/run/docker.sock',' '.join(args));self.assertNotIn('/var/www/ubo-repo',' '.join(args))
+            self.assertEqual(args[args.index('--memory')+1],args[args.index('--memory-swap')+1])
+        self.assertNotIn('--hostname',b)
+        with self.assertRaises(ValueError):c.create_args(req,'mysql','host')
+
+    def test_container_config_and_foreign_resource_rejection(self):
+        req=request()
+        for role in ('runtime','mysql'):
+            value=container(req,role);self.assertEqual(c.container(value,req,role,'1'*64),value['Id'])
+            for key,bad in [('NetworkMode','host'),('Privileged',True),('ReadonlyRootfs',False),('Memory',0),('MemorySwap',-1),
+                ('PidsLimit',0),('CapAdd',['SYS_ADMIN']),('PidMode','host'),('VolumesFrom',['foreign']),('LogConfig',dict(Type='json-file'))]:
+                v=copy.deepcopy(value);v['HostConfig'][key]=bad
+                with self.subTest(role=role,key=key),self.assertRaises(ValueError):c.container(v,req,role,'1'*64)
+            for key in ('Id','Name','Image'):
+                v=copy.deepcopy(value);v[key]='foreign'
+                with self.subTest(role=role,key=key),self.assertRaises(ValueError):c.container(v,req,role,'1'*64)
+            v=copy.deepcopy(value);v['Config']['Labels'][c.LABEL]='a'*32
+            with self.assertRaises(ValueError):c.container(v,req,role,'1'*64)
+            v=copy.deepcopy(value);v['Mounts'].append(dict(Type='volume'))
+            with self.assertRaises(ValueError):c.container(v,req,role,'1'*64)
+
+    def test_actual_limits_and_namespace_maps_required(self):
+        for role in ('runtime','mysql'):
+            value=measurement(role);self.assertEqual(c.measurements(value,role,HOST_NS),value)
+            for key,bad in [('memory_max',2**63),('swap_max',1024),('pids_max',999),('cpu_max',[200000,100000]),
+                ('uid_map',[[0,0,4294967295]]),('gid_map',[[0,0,4294967295]]),('no_new_privs',0),('uid',1000)]:
+                v=copy.deepcopy(value);v[key]=bad
+                with self.subTest(role=role,key=key),self.assertRaises(ValueError):c.measurements(v,role,HOST_NS)
+            for ns in HOST_NS:
+                v=copy.deepcopy(value);v['namespaces'][ns]=HOST_NS[ns]
+                with self.assertRaises(ValueError):c.measurements(v,role,HOST_NS)
+            for path in value['storage']:
+                for key,bad in [('type','overlay'),('bytes',2**40),('size_option',2**40),('options',['rw'])]:
+                    v=copy.deepcopy(value);v['storage'][path][key]=bad
+                    with self.subTest(path=path,key=key),self.assertRaises(ValueError):c.measurements(v,role,HOST_NS)
+
+    def test_db_only_does_not_satisfy_full_host_contracts(self):
+        for value in (request(),dict(profile=c.PROFILE,result='DB-ONLY COMPONENT VALIDATION PASS',**c.AUTHORITY)):
+            with self.assertRaises((ValueError,KeyError)):full_plan.admission(value)
+            with self.assertRaises((ValueError,KeyError)):full_acceptance.validate(value,{},native=True)
+        config=dict(version=1,run_id='a'*32,source_sha='b'*40,machine_id='c'*32,
+            boot_id='11111111-1111-4111-8111-111111111111',tool_sha256={k:'d'*64 for k in preparation.BINARIES},expires_at=int(time.time())+900)
+        with self.assertRaisesRegex(ValueError,'vm_root_only'):
+            preparation.admit_facts(config,dict(platform='linux',uid=0,container='docker'))
+
+
+class Retention(unittest.TestCase):
+    def setUp(self):
+        self.temp=tempfile.TemporaryDirectory(prefix='m6e-db-only-control-');self.path=Path(self.temp.name)/'evidence'
+        # Windows does not expose POSIX 0600; only that metadata predicate is modeled here.
+        self.mode=mock.patch.object(c.stat,'S_IMODE',lambda value:0o600) if os.name=='nt' else mock.patch.object(c.stat,'S_IMODE',c.stat.S_IMODE)
+        self.mode.start()
+    def tearDown(self):self.mode.stop();self.temp.cleanup()
+
+    def test_fixed_capacity_immutable_records_and_readonly_status(self):
+        store=c.Retained(self.path,create=True)
+        try:
+            for i in range(3):store.append(dict(sequence=i,digest='a'*64))
+            self.assertEqual(self.path.stat().st_size,c.LIMITS['retained'])
+            self.assertEqual(len(store.read()),3)
+            with self.assertRaises(FileExistsError):c.Retained(self.path,create=True)
+        finally:store.close()
+        before=self.path.read_bytes();store=c.Retained(self.path,readonly=True)
+        try:
+            with self.assertRaises(ValueError):store.append(dict(foreign=True))
+        finally:store.close()
+        self.assertEqual(self.path.read_bytes(),before)
+
+    def test_oversized_write_and_partial_unknown_record_reject(self):
+        store=c.Retained(self.path,create=True)
+        try:
+            store.append(dict(original=True));before=self.path.read_bytes()
+            with self.assertRaises(ValueError):store.append(dict(payload='x'*c.SLOT))
+            self.assertEqual(self.path.read_bytes(),before)
+            with self.path.open('r+b') as f:f.seek(c.SLOT);f.write(b'torn')
+            with self.assertRaises(ValueError):store.read()
+        finally:store.close()
+
+    def test_replaced_retained_file_is_not_adopted(self):
+        store=c.Retained(self.path,create=True)
+        try:
+            if os.name=='nt':
+                # Windows prevents rename of an open fd; real in-place truncation still rejects.
+                with self.path.open('r+b') as f:f.truncate(20)
+            else:
+                self.path.rename(self.path.with_suffix('.original'));self.path.write_bytes(b'foreign')
+            with self.assertRaises(ValueError):store.append(dict(should_not_write=True))
+        finally:store.close()
+
+
+class Evidence(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        existing.Integrity.setUpClass();cls.base=existing.Integrity
+
+    def test_honest_db_owner_reuses_comparison_but_not_full_host_owner(self):
+        b=self.base
+        rt=type('Model',(),dict(a=b.config|dict(namespaces=HOST_NS),source=b.source))()
+        with mock.patch.object(campaign.Path,'read_text',return_value='0::/docker/model\n'):
+            req=campaign.eligibility_request(rt,b.cp_raw,b.snapshot_raw,b.schema_raw,decode(b.restoration_raw))
+        self.assertEqual(req['profile'],c.PROFILE+'-eligibility');self.assertEqual(req['owner']['cgroup'],['0::/docker/model'])
+        with self.assertRaises(ValueError):eligibility.request(b.config,b.source,b.cp_raw,b.snapshot_raw,b.schema_raw,b.restoration_raw,req['owner'],'d'*32,int(time.time()))
+
+    def test_full_orchestration_model_orders_capture_before_B_and_preserves_original(self):
+        b=self.base;test=self
+        for drift in (False,True):
+            with self.subTest(original_drift=drift),tempfile.TemporaryDirectory(prefix='m6e-db-chain-') as directory:
+                class Model:
+                    def __init__(self):
+                        self.req=request();self.a=b.config|dict(namespaces=HOST_NS);self.source=b.source
+                        self.owner=Owner(time.monotonic()+600);self.receipts={};self.inputs={};self.outputs={}
+                        self.trace=[];self.secondary=[];self.first=None;self.phase='model';self.source_reads=0
+                    def put(self,name,value):self.inputs[name]=copy.deepcopy(value)
+                    def credential(self,*args):pass  # Explicitly modeled role transport; no native credentials.
+                    def read_output(self,name,uid,promote=False):
+                        value=self.outputs[name]
+                        if promote:self.put(name,value)
+                        return canonical(value)
+                    def publish(self,name,value):self.receipts[name]=publish_bytes(directory,name,canonical(value))
+                    def verify_outputs(self):pass
+                    def failure(self,error,kind):
+                        if self.first is None:self.first=dict(kind=kind)
+                        else:self.secondary.append(dict(kind=kind))
+                    def value(self,mode,seconds=60):return self.command(mode,seconds)[0]['value']
+                    def command(self,mode,seconds=60,**kwargs):
+                        self.trace.append(mode);self.phase=mode;value={}
+                        if mode=='schema':
+                            self.outputs['schema']=decode(b.schema_raw)
+                            self.outputs['credentials']={n:dict(username=n,password='0'*64) for n in ('builder','snapshot','source','writer')}
+                        elif mode=='build-a':self.outputs['built']=dict(modeled=True)
+                        elif mode=='checkpoint':self.outputs['checkpoint']=decode(b.cp_raw)
+                        elif mode=='snapshot':
+                            test.assertIn('checkpoint',self.inputs);self.outputs['snapshot']=decode(b.snapshot_raw)
+                            value=dict(capture='CAPTURED',transaction_cleanup='RELEASED')
+                        elif mode=='build-b':
+                            test.assertIn('snapshot-verification',self.receipts);self.outputs['completed']=dict(modeled=True)
+                        elif mode=='source':
+                            self.source_reads+=1;value=dict(sha256=('changed' if drift and self.source_reads>1 else 'original'))
+                        elif mode=='restore-create':
+                            for role in ('restorer','observer'):self.outputs['credential-'+role]=dict(username=role,password='0'*64)
+                        elif mode=='restore':self.outputs['restoration-outcome']=dict(result='AWAITING_INDEPENDENT_VERIFICATION',transaction='COMMITTED',secondary=[])
+                        elif mode=='restore-seal':value=b.accounts
+                        elif mode=='restore-observe':self.outputs['restoration-observation']=copy.deepcopy(b.observation['observation'])
+                        elif mode=='eligibility-create':self.outputs['credential-eligibility']=dict(username='modeled',password='0'*64)
+                        elif mode=='eligibility-seal':value=b.seal
+                        elif mode in ('before','after'):
+                            req=self.inputs['eligibility'];v=copy.deepcopy(b.observation);v['phase']=mode
+                            v['request_sha256']=digest(canonical(req));v['process']['owner_pid']=req['owner']['pid']
+                            v['observation']['database']['connection_id']=80 if mode=='before' else 82
+                            v['diagnostic']=eligibility.observer_diagnostic(v,mode,req,b.cp_raw,b.snapshot_raw,b.schema_raw);self.outputs[mode]=v
+                        elif mode=='eligibility':
+                            req=self.inputs['eligibility'];v=copy.deepcopy(b.gate);v['request_sha256']=digest(canonical(req));v['invocation_id']=req['invocation_id']
+                            v['process']['owner_pid']=req['owner']['pid'];self.outputs['gate-outcome']=v
+                        else:raise AssertionError('unmodeled phase '+mode)
+                        return dict(result='COMPLETED',value=value),900,0
+                rt=Model();real_validate=campaign.snapshot.validate;real_request=campaign.eligibility_request
+                def local_validate(raw,schema,cp,config,source,execution,now):
+                    return real_validate(raw,schema,cp,config,source,'controlled-local',now)
+                def local_request(*args):
+                    with mock.patch.object(campaign.Path,'read_text',return_value='0::/docker/model\n'):return real_request(*args)
+                with mock.patch.object(campaign.snapshot,'validate',side_effect=local_validate),mock.patch.object(campaign,'eligibility_request',side_effect=local_request),mock.patch.object(campaign,'source_inventory_equal',return_value=True):
+                    if drift:
+                        with self.assertRaises(ValueError):campaign.run_chain(rt)
+                        self.assertEqual(rt.first['kind'],'final-integrity')
+                    else:
+                        value=campaign.run_chain(rt);self.assertTrue(value['original_preserved']);self.assertEqual(value['deployment_operations'],0)
+                ordered=['build-a','checkpoint','snapshot','build-b','source','restore-create','restore','restore-seal','restore-observe',
+                         'eligibility-create','before','eligibility','eligibility-seal','after']
+                self.assertEqual([rt.trace.index(n) for n in ordered],sorted(rt.trace.index(n) for n in ordered))
+                self.assertIn('observer-before',rt.receipts);self.assertIn('observer-after',rt.receipts)
+
+    def test_actual_observer_recomputation_and_publication_precedes_failure(self):
+        b=self.base
+        for phase in ('before','after'):
+            for case in ('unchanged','schema','notes','artifact','missing','publication-failure','capture-cleanup-failure'):
+                with self.subTest(phase=phase,case=case),tempfile.TemporaryDirectory(prefix='m6e-db-observer-') as directory:
+                    value=copy.deepcopy(b.observation);value['phase']=phase
+                    if case=='schema':value['observation']['read']['definitions']['notes']['definition']+=' /* drift */'
+                    if case in ('notes','capture-cleanup-failure'):value['observation']['read']['tables']['notes']['rows']=[]
+                    if case=='artifact':
+                        value['observation']['artifact']=None;value['progress']['artifact']='FAILED'
+                    value['diagnostic']=eligibility.observer_diagnostic(value,phase,b.req,b.cp_raw,b.snapshot_raw,b.schema_raw)
+                    writes=[]
+                    class Model:
+                        req=dict(case=case)
+                        a=b.config;source=b.source;receipts={};secondary=[];first=None
+                        def command(self,*args,**kwargs):return {'result':'COMPLETED'},900,0
+                        def read_output(self,*args,**kwargs):
+                            if case in ('missing','capture-cleanup-failure'):raise FileNotFoundError('PRIVATE_PATH')
+                            return canonical(value)
+                        def verify_outputs(self):pass
+                        def failure(self,error,kind):self.first=self.first or dict(kind=kind)
+                        def publish(self,name,body):
+                            writes.append((name,body));self.receipts[name]=publish_bytes(directory,name,canonical(body))
+                    rt=Model()
+                    # Execution discriminator is explicitly modeled; use real independent comparison.
+                    real=eligibility.verify_observer
+                    def local(raw,phase,req,cp,snap,schema,config,source,execution,accounts,now):
+                        return real(raw,phase,req,cp,snap,schema,config,source,'controlled-local',accounts,now)
+                    should_fail=case!='unchanged' and not(case=='publication-failure' and phase=='before')
+                    with mock.patch.object(eligibility,'verify_observer',side_effect=local):
+                        if should_fail:
+                            with self.assertRaises(Exception):campaign.observe(rt,phase,b.req,b.cp_raw,b.snapshot_raw,b.schema_raw,b.accounts)
+                        else:campaign.observe(rt,phase,b.req,b.cp_raw,b.snapshot_raw,b.schema_raw,b.accounts)
+                    self.assertTrue(writes);raw=canonical(writes[0][1]);self.assertNotIn(b'PRIVATE_PATH',raw)
+                    diagnostic=writes[0][1].get('diagnostic') or writes[0][1].get('evidence',{}).get('diagnostic')
+                    if case in ('schema','notes'):self.assertIn('notes',diagnostic['affected_tables'])
+                    if case=='notes':self.assertEqual(diagnostic['tables']['notes']['rows_observed'],0)
+                    if case=='artifact':self.assertIsNotNone(diagnostic['measurements']['data']['observed'])
+                    if case in ('missing','capture-cleanup-failure'):self.assertEqual(writes[0][1]['capture'],'INCOMPLETE')
+
+
+class Ownership(unittest.TestCase):
+    def test_active_socket_activation_unit_rejects_before_engine_contact(self):
+        replies=[dict(stdout=b'ActiveState=active\nSubState=running\nMainPID=123\nDelegate=yes\n'),
+                 dict(stdout=b'LoadState=loaded\nActiveState=active\n')]
+        with mock.patch.object(operator,'run',side_effect=replies),self.assertRaisesRegex(ValueError,'db_only_socket_activation'):
+            operator.engine_active(None)
+
+    def test_readonly_inspection_never_contacts_inactive_engine_or_creates_state(self):
+        class PathModel:
+            def __init__(self,value):self.value=str(value)
+            def lstat(self):return SimpleNamespace(st_mode=0o40700,st_uid=1000,st_dev=1 if self.value=='/' else 2)
+            stat=lstat
+            def resolve(self):return self
+            def __eq__(self,other):return isinstance(other,PathModel) and self.value==other.value
+            def read_text(self):
+                self_check=self.value=='/proc/meminfo'
+                if not self_check:raise AssertionError('unexpected read')
+                return 'MemAvailable: 8000000 kB\n'
+            def mkdir(self,*args,**kwargs):raise AssertionError('inspection created state')
+        with contextlib.ExitStack() as stack:
+            stack.enter_context(mock.patch.dict(sys.modules,{'pwd':SimpleNamespace(getpwuid=lambda uid:SimpleNamespace(pw_name='codex-validation'))}))
+            stack.enter_context(mock.patch.object(operator.sys,'platform','linux'))
+            stack.enter_context(mock.patch.object(operator,'Path',PathModel))
+            for name,value in [('getuid',lambda:1000),('geteuid',lambda:1000),('uname',lambda:SimpleNamespace(nodename='ubo-stage-app')),
+                ('sched_getaffinity',lambda pid:{0,1,2,3}),('statvfs',lambda p:SimpleNamespace(f_bavail=20*1024**3,f_frsize=1)),
+                ('readlink',lambda p:p.rsplit('/',1)[1]+':[10]')]:
+                stack.enter_context(mock.patch.object(operator.os,name,value,create=True))
+            stack.enter_context(mock.patch.object(operator,'engine_active',return_value=(False,dict(ActiveState='inactive'))))
+            api=stack.enter_context(mock.patch.object(operator,'engine',side_effect=AssertionError('socket activation risk')))
+            value=operator.host_readiness(None,None,source=False)
+            self.assertEqual(value['images'],'UNVERIFIED');api.assert_not_called()
+
+    def test_export_rejects_ignored_credentials_and_unreviewed_git_config(self):
+        sha='a'*40
+        class GitModel:
+            def capture(self,argv,*args,**kwargs):
+                output=sha.encode() if argv[-1]=='HEAD' else (b'a.php\0' if argv[-1]=='-z' else b'')
+                return dict(exit=0,stderr=b'',stdout=output)
+        with tempfile.TemporaryDirectory(prefix='m6e-db-export-') as directory:
+            root=Path(directory);(root/'.git').mkdir();(root/'a.php').write_bytes(b'<?php // reviewed fixture')
+            (root/'.git/HEAD').write_bytes((sha+'\n').encode())
+            (root/'.git/config').write_bytes(b'[core]\n\trepositoryformatversion = 0\n\tfilemode = true\n\tbare = false\n\tlogallrefupdates = false\n')
+            rows=runtime.source_inventory(root,sha,GitModel());self.assertEqual(set(rows),{'a.php'})
+            (root/'.env').write_bytes(b'PRIVATE_CANARY')
+            with self.assertRaisesRegex(ValueError,'db_only_export_no_ignored_files'):runtime.source_inventory(root,sha,GitModel())
+            (root/'.env').unlink();(root/'.git/config').write_bytes(b'[include]\npath=/foreign/config\n')
+            with self.assertRaisesRegex(ValueError,'db_only_export_git_config'):runtime.source_inventory(root,sha,GitModel())
+
+    def test_capture_and_owned_cleanup_failures_retain_first_failure(self):
+        with tempfile.TemporaryDirectory(prefix='m6e-db-fault-') as directory:
+            class Model:
+                req=request()|dict(case='capture-cleanup-failure');root=Path(directory)
+                owner=Owner(time.monotonic()+30);overall=time.monotonic()+30;started=time.monotonic()
+                receipts={};first=None;secondary=[];trace=[];commands=[];phase='observer-after'
+                def failure(self,error,kind):
+                    if self.first is None:self.first=dict(kind=kind,code='original_capture_failure')
+                    else:self.secondary.append(dict(kind=kind))
+                def publish(self,name,value):self.receipts[name]=publish_bytes(directory,name,canonical(value))
+            rt=Model()
+            def failed_chain(value):
+                value.failure(ValueError('original_capture_failure'),'observer-capture');raise campaign.ExpectedFault('capture-cleanup-failure')
+            with mock.patch.object(campaign,'Runtime',return_value=rt),mock.patch.object(campaign,'run_chain',side_effect=failed_chain),contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(campaign.campaign({}),0)
+            before=decode((Path(directory)/'before-cleanup.json').read_bytes());after=decode((Path(directory)/'report.json').read_bytes())
+            self.assertEqual(before['first_failure'],after['first_failure']);self.assertEqual(after['first_failure']['code'],'original_capture_failure')
+            self.assertTrue(any(x['kind']=='owned-cleanup' for x in after['secondary']))
+            self.assertEqual(after['context']['resources'][0]['state'],'UNRESOLVED');self.assertTrue((Path(directory)/'case-cleanup-probe').exists())
+
+    def test_interrupted_real_child_is_reaped_and_unknown_output_not_accepted(self):
+        owner=Owner(time.monotonic()+5)
+        try:
+            with self.assertRaises(Failure):owner.capture([sys.executable,'-I','-B','-c','import time;time.sleep(5)'],.1)
+            self.assertTrue(owner.context[0]['reaped']);self.assertIsNotNone(owner.context[0]['exit'])
+        finally:owner.cleanup()
+
+    def test_exact_cleanup_foreign_resource_preservation(self):
+        req=request();records=[];store=type('Store',(),dict(append=lambda self,value:records.append(value)))()
+        op=operator.Operator(req,store,Owner(time.monotonic()+20));op.ids={'runtime':'1'*64,'mysql':'2'*64};op.intents={'runtime','mysql'}
+        commands=[]
+        def engine(owner,args,**kwargs):
+            commands.append(args)
+            if args[0]=='inspect':
+                role='mysql' if args[1]=='2'*64 else 'runtime';v=container(req,role)
+                if role=='mysql':v['Config']['Labels'][c.LABEL]='f'*32
+                return dict(stdout=canonical([v]),exit=0)
+            return dict(stdout=b'',exit=0)
+        with mock.patch.object(operator,'engine',side_effect=engine),self.assertRaises(ValueError):op.cleanup()
+        self.assertNotIn(['rm','--force','2'*64],commands);self.assertIn(['rm','--force','1'*64],commands)
+        self.assertEqual(records[-1]['kind'],'cleanup-incomplete')
+
+    def test_deadline_scope_restores_outer_budget_without_renewing_it(self):
+        rt=type('Model',(),dict(owner=Owner(time.monotonic()+10)))();original=rt.owner.deadline
+        def action():self.assertLess(rt.owner.deadline,original);raise ValueError('injected')
+        with self.assertRaises(ValueError):campaign.bounded_phase(rt,1,action)
+        self.assertEqual(rt.owner.deadline,original)
+
+    def test_competing_snapshot_allows_either_atomic_commit_order_but_never_partial_rows(self):
+        def notes(values):return dict(columns=['note_body'],rows=[[v.encode().hex()] for v in values],row_count=len(values))
+        self.assertEqual(campaign.competing_rows(notes(['M6E DB-only baseline'])),'BEFORE_WRITER_COMMIT')
+        self.assertEqual(campaign.competing_rows(notes(['M6E bounded competing writer','M6E same transaction'])),'AFTER_WRITER_COMMIT')
+        for values in ([],['M6E bounded competing writer'],['M6E DB-only baseline','M6E same transaction']):
+            with self.assertRaisesRegex(ValueError,'db_only_competing_atomic_values'):campaign.competing_rows(notes(values))
+
+
+if __name__=='__main__':unittest.main()

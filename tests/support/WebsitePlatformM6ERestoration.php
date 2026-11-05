@@ -224,7 +224,8 @@ function m6eRestoreConnect(array $a,array $inputs,string $role):PDO {
     m6eNeed(m6eSnapshotScalar($db,'SELECT @@server_uuid')===$inputs['request']['server_uuid']
         &&str_starts_with((string)m6eSnapshotScalar($db,'SELECT VERSION()'),'8.4.'),'restore_instance');return $db;
 }
-function m6eRestoreCreate(PDO $db,array $a,array $inputs):array {
+function m6eRestoreCreate(PDO $db,array $a,array $inputs,?callable $write=null):array {
+    $write??=static fn(string $leaf,array $value)=>m6eRestoreWrite($a,$leaf,$value);
     $d=$inputs['request']['destination'];
     m6eNeed(m6eSnapshotRows($db,'SELECT SCHEMA_NAME FROM information_schema.SCHEMATA WHERE SCHEMA_NAME=?',[$d['schema']])===[],'restore_destination_exists');
     m6eNeed(m6eSnapshotRows($db,'SELECT User FROM mysql.user WHERE User IN (?,?)',[$d['worker'],$d['observer']])===[],'restore_account_exists');
@@ -234,7 +235,7 @@ function m6eRestoreCreate(PDO $db,array $a,array $inputs):array {
         $db->exec('CREATE USER '.$account.' IDENTIFIED BY '.$db->quote($secret).' REQUIRE SSL');
         $rights=$role==='worker'?implode(', ',M6E_RESTORE_RIGHTS):'SELECT';
         $db->exec('GRANT '.$rights.' ON `'.str_replace('_','\\_',$d['schema']).'`.* TO '.$account);
-        m6eRestoreWrite($a,$role.'-credentials.json',['username'=>$user,'password'=>$secret]);
+        $write($role.'-credentials.json',['username'=>$user,'password'=>$secret]);
     }
     return ['schema'=>$d['schema'],'server_uuid'=>$inputs['request']['server_uuid'],'created'=>'EXCLUSIVE'];
 }

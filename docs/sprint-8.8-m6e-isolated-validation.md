@@ -5,6 +5,245 @@ installation, server preparation, Linux/Apache execution, SQL, service operation
 working-staging activation or deployment. This document is the bounded later path,
 not a claim that a host contract exists. M6D’s closed native gate is not reopened.
 
+## DB-only adapter validation and future execution package
+
+**FUTURE STAGING EXECUTION PACKAGE — NOT EXECUTED.** The adapter was authored
+locally from exact `72357971d57b8f74b1b9cb8a9dfa28edc37fec27`. Its
+[architecture, shared seams and hard limits](sprint-8.8-m6e-local-implementation.md#db-only-native-adapter-following-7235797)
+are separate from all full-host recipes below. No desktop command in this increment
+used SSH, Docker, a real SQL server, image/package acquisition or service control.
+
+### Authored native case inventory
+
+Each selection requires a fresh 32-hex run ID, new isolated instance, new positive
+captures and separate retained file. No case resumes or renews a prior capture.
+The `positive` run is retained separately from all mutated cases. There is no batch
+switch that silently reuses its evidence. These are authored paths, not native PASS.
+
+| Case | Intended real boundary / explicitly injected control |
+| --- | --- |
+| `positive` | Entire genuine A/checkpoint/snapshot/B/restoration/rollback/before-after chain |
+| `snapshot-concurrency` | Measured separate open writer transaction; release commit after the snapshot session barrier; accept only the complete pre-commit or complete post-commit row set, independently verify writer commit |
+| `identity-grants` | Measured-session wrong schema/server/account expectations; real extra snapshot/eligibility grants rejected then revoked |
+| `denied-dml` | Actual INSERT/UPDATE/DELETE denial code1142 for snapshot, source observer, destination observer and eligibility accounts; zero-row probes |
+| `source-hash`, `approval` | Fixed destination mutations rejected by unchanged gate, confirmed rollback and independent retained after-diagnostics |
+| `snapshot-corrupt`, `snapshot-incomplete` | Corrupt/incomplete serialized copies of the genuine capture rejected by the independent validator; original capture retained |
+| `restoration-corrupt` | Actual destination notes-row mutation independently rejected after writer sealing |
+| `transaction-interrupt` | KILL CONNECTION of the measured owned eligibility session after its gate barrier; no broad process or daemon fault; unknown rollback acknowledgement retained, fresh state comparison |
+| `before-schema`, `before-notes`, `before-artifact` | Actual destination schema/row mutation or corrupt owned artifact copy; diagnostic publication before failure and teardown |
+| `after-schema`, `after-notes`, `after-artifact` | Same faults after the successful gate/rollback, with separate before and after evidence |
+| `publication-failure` | Named case-scoped publication API exception; separate immutable failure diagnostic, never claimed as kernel/fsync failure |
+| `capture-cleanup-failure` | Named observer-capture exception plus failure to remove one recorded case-owned probe; original failure, incomplete marker and separate cleanup failure retained |
+
+The completed original fixture's newer material B rejection is mandatory in every
+chain through `m6eFinalAIneligible()`. No deployment call is used as that control.
+Negative cases report `EXPECTED INJECTED FAILURE OBSERVED` only after their required
+observation; unrelated failure remains INCOMPLETE. Native fault records explicitly
+identify injected SQL/API/connection actions. None is a spontaneous MySQL failure,
+kernel fault, disk-exhaustion experiment, host daemon crash or power-loss proof.
+
+The concurrency case does not assume that an idle InnoDB transaction blocks the
+global snapshot read lock. It records the actual owned writer transaction, starts
+the reader, releases the writer at the reader's session barrier and checks atomic
+row visibility in either serialization order. MySQL documents the distinction
+between [global read locks and transaction/table locks](https://dev.mysql.com/doc/refman/8.4/en/lock-tables.html).
+Actual scheduling and lock behavior remain unexecuted native observations.
+
+### Local validation
+
+The new PHP control runs the actual shared `m6eFinishBuild()` with the genuine
+renderer/validator/store and a modeled lifecycle connection. It checks real sealed
+files, the extracted restoration/eligibility account operations, exact grant scope,
+denial-code discrimination and rejection by installed-worker/host/deployment
+contracts. The Python controls exercise fixed source/image/run bindings, exact
+container plans, measured-limit/namespace predicates, ignored-secret/export
+rejection, inactive-engine read-only inspection, the actual orchestration and
+independent comparisons against explicit modeled SQL responses, independent
+diagnostic recomputation/publication, original preservation, subprocess interruption,
+fixed-capacity retained bytes, foreign-resource preservation and first/secondary
+cleanup failures. Windows POSIX mode observations are explicitly modeled.
+
+The final local controls passed on Windows with existing PHP 8.4.24 and Python
+3.14.7; no packages were installed:
+
+| Local control | Result |
+| --- | --- |
+| New DB-only Python adapter | 20 tests PASS; engine/Linux/SQL facts explicitly modeled |
+| New DB-only PHP adapter | 45 assertions PASS; modeled PDO/grants, real builder/store bytes |
+| Complete bootstrap / ledger recovery Python suites | 35 / 14 tests PASS |
+| Checkpoint / snapshot / restoration / eligibility Python suites | 13 / 23 / 16 / 25 tests PASS |
+| Bootstrap / checkpoint / snapshot / restoration / eligibility PHP fixtures | 37 / 46 / 43 / 42 / 99 assertions PASS |
+| M6E source scope | PASS across working/index/HEAD; immutable sources and 77 definitions preserved |
+| Changed PHP / new Python syntax | 8 PHP lints / 5 Python AST parses PASS |
+| Launcher smoke | `--help` PASS; no native interface executed |
+| Documentation links, diff whitespace, Git object integrity | PASS |
+| Tested / staged / committed identity | Exact changed-path blob equality required and recorded at commit |
+
+Local development initially exposed an incomplete modeled committed-release query
+and an obsolete global-definition-order assertion after the build extraction.
+Both were corrected, then the affected checks passed. Those local development
+failures are not native observations. The final concurrency control also rejects
+partial row visibility without presuming one MySQL scheduling order.
+
+Logs, command
+arrays, exit codes, elapsed times and digests are retained outside Git in the desktop
+visualization workspace under `db-only-adapter`. No local result is MySQL/Linux
+acceptance. The complete bootstrap suite is required because shared build/account
+paths changed; it is not replaced by the new adapter controls.
+
+### Actual launcher interfaces
+
+Run only from the separately transferred, reviewed immutable export after the
+relevant future authorization. `--help` is the only interface exercised as a local
+launcher smoke check. The other commands below were **not executed** here.
+
+```text
+/usr/bin/python3 -I -B tests/WebsitePlatformM6EDBOnly.py --inspect-host
+/usr/bin/python3 -I -B tests/WebsitePlatformM6EDBOnly.py --inventory REVIEWED_SHA
+/usr/bin/python3 -I -B tests/WebsitePlatformM6EDBOnly.py --inspect /absolute/protected-request.json
+/usr/bin/python3 -I -B tests/WebsitePlatformM6EDBOnly.py --execute /absolute/protected-request.json
+/usr/bin/python3 -I -B tests/WebsitePlatformM6EDBOnly.py --status FRESH_RUN_ID
+/usr/bin/python3 -I -B tests/WebsitePlatformM6EDBOnly.py --cleanup FRESH_RUN_ID
+```
+
+`--inspect-host` reads host/operator/mount-capacity/service state without contacting
+the engine. `--inventory` reads the immutable source only. `--inspect` additionally
+checks exact source, review/image bindings and cached images, contacting the socket
+only after the existing user service is measured active/running. None creates
+directories, state/evidence, containers, networks or volumes, pulls images, starts
+Docker or activates an inactive Docker socket.
+The socket-activation unit must be absent or inactive, even when the daemon is
+running, so a daemon-exit race cannot turn inspection into socket activation.
+Current image runtime capabilities
+remain unverified until explicitly authorized restricted-container probes execute.
+
+`--execute` is the mutation interface: preparation, the one selected campaign,
+capture and exact cleanup. It accepts no arbitrary command, network, path, schema,
+DSN, account, image tag or resource override. It requires the existing rootless
+operator; it never grants sudo or Docker access, and contains no engine start/stop
+or image-pull/build command. Read-only host and image checks do not authorize it.
+
+The protected request is a regular, single-link, UID1000 mode0600 JSON file, at most
+64 KiB. Exact keys are:
+
+```json
+{
+  "profile": "m6e-db-only-v1",
+  "source_sha": "REPLACE_WITH_EXACT_REVIEWED_40_HEX_SHA",
+  "source_inventory_sha256": "REPLACE_WITH_INVENTORY_64_HEX_DIGEST",
+  "runtime_image": "sha256:REPLACE_WITH_APPROVED_64_HEX_IMAGE_ID",
+  "mysql_image": "sha256:REPLACE_WITH_APPROVED_64_HEX_IMAGE_ID",
+  "run_id": "REPLACE_WITH_FRESH_RANDOM_32_HEX_ID",
+  "case": "positive",
+  "review_receipt_sha256": "REPLACE_WITH_EXACT_HEAD_REVIEW_RECEIPT_64_HEX_DIGEST",
+  "limits": "REPLACE_WITH_EXACT_LIMITS_OBJECT_FROM_WebsitePlatformM6EDBOnlyContract.py"
+}
+```
+
+The placeholder object intentionally rejects. Copy the exact `LIMITS` dictionary,
+without overrides. The operator must separately verify the current exact-head
+completed review and bind its retained receipt digest; the launcher does not
+authenticate GitHub or turn a digest into approval. New findings or source changes
+require review and a new source-bound package.
+
+The immutable export is exactly:
+`/mnt/ubo_stage_testdata/codex-validation/checkouts/m6e-db-only/<reviewed_sha>`.
+It must contain only tracked files and real detached Git metadata, with no
+`private/config/env.php`, ignored files, symlinks, hardlinks, alternates, hooks,
+remote credentials, external includes or pointer to the working staging checkout.
+Its owner is UID/GID 1000; directories are 0555 and files 0444 (0555 for executable
+files), with read/traverse for the restricted container identities. `.git/HEAD`
+contains the exact SHA plus newline.
+Permitted metadata is config/HEAD/index/optional shallow and ordinary loose or
+pack/index/reverse-index object files. The exact `.git/config` bytes are:
+
+```text
+[core]
+	repositoryformatversion = 0
+	filemode = true
+	bare = false
+	logallrefupdates = false
+```
+
+Create this as a **new export**, not by cleaning or rewriting an existing checkout.
+The source-inventory digest covers every tracked file; export inventory also rejects
+any ignored/untracked ordinary file. Actual SHA, clean status and inventory are
+rechecked in the runtime; each PHP child runs the original M6C source verifier.
+
+### Required current checks and separate future authorizations
+
+The retained M6D controller was inspected as historical evidence, never executed.
+Its `host` phase creates state and is not a readiness-inspection command. Its
+historical runtime image
+`sha256:88208948cc5dbeff44ddd9f0094d922f9e15350cf38c1004884f6f7e99f5c85e`
+and MySQL image
+`sha256:7c07d11b694dcc7e2ef3de845075eca1a8b39868f85f519f938b54c432edc1cb`
+are references only. Do not assume they exist or satisfy this adapter. The runtime
+needs Linux Python3, PHP/PDO MySQL/DOM/posix and the genuine builder's extensions,
+Git, OpenSSL, readable actual machine/boot IDs and the required rootless mappings.
+MySQL needs MySQL8.4, mysql CLI, standard shell/coreutils/timeout and mysql UID/GID999.
+Different image account layouts fail closed and require separately reviewed image
+preparation; the launcher does not install or change them. Both images must support
+read-only roots, the fixed tmpfs paths, real cgroup enforcement and the proposed
+shared loopback namespace. These are current execution blockers, not local-code
+implementation blockers.
+
+The following approvals remain **separate and ungranted by this desktop task**:
+
+1. Host access to `ubo-stage-app` as the existing `codex-validation` operator and
+   read-only inventory, including an actual live staging SHA observation if wanted.
+2. Use of the existing rootless engine/client at
+   `/usr/bin/docker --config /run/user/1000/ubo-m6c-client --host unix:///run/user/1000/docker.sock`.
+3. Engine start/stop if needed, by an already authorized operator with the observed
+   initial state recorded and restored where safe. The launcher requires it already
+   active and leaves it active; no unrelated workload may be stopped.
+4. Transfer/preparation of the exact immutable reviewed source export and protected
+   request, wholly outside `/var/www/ubo-repo` and application data/configuration.
+5. Image acquisition/build **only if current checks require it**, with exact resulting
+   IDs and capabilities reviewed. No tag fallback or automatic pull is provided.
+6. Fresh owned containers/private network namespace, bounded tmpfs mounts and the
+   preallocated retained-evidence file. No host network, published port, unbounded
+   volume or privileged host setup is authorized implicitly.
+7. Disposable-instance-only migrations 001–025, synthetic CA/certificates, accounts
+   and fixture data. A separate schema on the working database is prohibited.
+8. The named bounded native case(s), capture and exact owned cleanup. Start with a
+   separate positive run; approve fresh negative runs individually or as an explicit
+   enumerated campaign. Eighteen retained 32 MiB files total at most 576 MiB; free-space
+   floors are still checked for each run.
+
+### Evidence, cleanup and recovery
+
+Each run records intentions before container creation, then exact container IDs,
+image/config/source/run labels, actual cgroup/mount/user/PID/namespace measurements
+and server/account identity. Sanitized immutable component publications are copied
+before destructive cleanup into
+`/mnt/ubo_stage_testdata/codex-validation/evidence/m6e-db-only-<run_id>.evidence`.
+Private synthetic rows, credentials and TLS keys remain in bounded container tmpfs.
+Source export, historical images/client config and the retained file are preserved.
+
+Cleanup rereads exact IDs and complete ownership/config bindings, removes MySQL then
+the runtime, and confirms absence. A lost create acknowledgement is recovered only
+from the recorded exact-name intent plus matching complete configuration; a lost
+remove acknowledgement is resolved by successful exact-ID absence inventory.
+Foreign, replaced or uncertain resources are preserved with INCOMPLETE cleanup.
+There is no prune, wildcard deletion, host process matching or generic SQL DROP.
+The runtime and MySQL also carry independent fixed expiry watchdogs; expiry never
+renews evidence, and the bounded TERM/KILL grace is only emergency process cleanup.
+
+`--status` reads retained records without engine access or writes. `--cleanup` uses
+the original retained request and exact identities, with a 120-second reserve; it
+does not require spare capacity, cached images or the original source mount to be
+available merely to remove proven owned resources. Use the reviewed launcher code.
+It rejects a concurrently held writer lock. Inactive engine use still needs separate
+start authorization. Torn/unknown retained records, missing admission, changed
+identity or exhausted record capacity require manual ownership review; do not
+overwrite evidence or adopt/delete uncertain objects. Do not retry an expired
+campaign or restoration in place. Any subsequent validation is a new run.
+
+Nothing here changes staging Apache/configuration, the working database, production,
+deployment backups, operational lifecycle admission or PR merge status. The task
+ends at local validation, one adapter commit/push and exact-head review handoff.
+
 ## Failed-observer evidence controls following a996c96
 
 **LOCAL CORRECTION / NATIVE MYSQL UNEXECUTED / NO ADMISSION.** The starting branch,

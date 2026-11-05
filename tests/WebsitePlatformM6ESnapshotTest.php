@@ -148,9 +148,11 @@ try {
     });
     $check(count($built)===2&&$f->builds===2,'original A+B fixture still completes');
     foreach($built as $r)$check(m6eReleaseSummary($r['row'],$r['job'],$r['producer'],$f->store->verifyRelease($r['job'],$r['producer']))===$r['summary'],'original artifact bytes preserved');
-    $text=file_get_contents(__DIR__.'/support/WebsitePlatformM6ENativeSetup.php');
+    $method=new ReflectionFunction('m6eBuild');$lines=file(__DIR__.'/support/WebsitePlatformM6ENativeSetup.php');
+    $text=implode('',array_slice($lines,$method->getStartLine()-1,$method->getEndLine()-$method->getStartLine()+1));
     $check(strpos($text,'m6eNativeCheckpoint($db,$config,$a,$first);')<strpos($text,'m6eNativeSnapshot($db,$a,$first);')
-        &&strpos($text,'m6eNativeSnapshot($db,$a,$first);')<strpos($text,'$next=SiteRevisionManager::createRevision'),'synchronous native pre-B ordering');
+        &&strpos($text,'m6eNativeSnapshot($db,$a,$first);')<strpos($text,'$second=m6eBuildB($db,$built);')
+        &&strpos($text,'$built=m6eBuildA($db,$config);')<strpos($text,'m6eNativeCheckpoint($db,$config,$a,$first);'),'synchronous native pre-B ordering');
     if(($argv[1]??'')==='--bundle')echo CanonicalJson::encode($bundle)."\n"; // Private parent/child pipe only, never test logs.
     else echo "M6E snapshot: $checks assertions PASS (SQL boundary/metadata model; real A/B artifact bytes; native SQL UNEXECUTED).\n";
 } finally {WebsitePlatformM6CFixture::cleanup();}

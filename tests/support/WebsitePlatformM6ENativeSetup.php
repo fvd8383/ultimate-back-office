@@ -35,7 +35,7 @@ function m6eSchema(array $a):void {
     echo json_encode($result,JSON_THROW_ON_ERROR)."\n";
 }
 /** Actual schema orchestration, with explicit test-only I/O seams; never a production admission path. */
-function m6eSchemaData(PDO $db,array $a,callable $write,callable $migrate):array {
+function m6eSchemaData(PDO $db,array $a,callable $write,callable $migrate,?callable $accountCreated=null):array {
     $name='ubo_m6e_'.$a['run_id'];$foreign=$name.'_foreign';
     m6eNeed(str_starts_with((string)$db->query('SELECT VERSION()')->fetchColumn(),'8.4.'),'mysql_version');
     $uuid=$db->query('SELECT @@server_uuid')->fetchColumn();
@@ -59,6 +59,7 @@ function m6eSchemaData(PDO $db,array $a,callable $write,callable $migrate):array
         // independent authority account retains SELECT on this schema only.
         if($role==='writer')$db->exec('GRANT PROCESS ON *.* TO '.$account);
         $accounts[$role]=['username'=>$user,'password'=>$password];
+        if($accountCreated!==null)$accountCreated($role,$accounts[$role]);
     }
     $admin=bin2hex(random_bytes(32));$db->exec("ALTER USER 'root'@'localhost' IDENTIFIED BY ".$db->quote($admin));
     $write('/run/ubo-m6e-fixture/admin.json',json_encode(['password'=>$admin],JSON_THROW_ON_ERROR),0,0600);
@@ -124,13 +125,12 @@ function m6ePristine(PDO $db,int $site,int $target):void {
     $s=$db->prepare('SELECT COUNT(*) FROM site_deployments WHERE site_id=?');$s->execute([$site]);
     m6eNeed((int)$s->fetchColumn()===0,'no_publisher_operations');
 }
-function m6eBuild(array $a):void {
-    m6eNeed(posix_geteuid()===2000,'build_worker');
+/** Genuine A construction, shared by the VM wrapper and separately admitted DB-only driver. */
+function m6eBuildA(PDO $db,array $config):array {
     require_once __DIR__.'/WebsitePlatformM6CNativeFixture.php';
     require_once __DIR__.'/WebsitePlatformM6CSupplementPdf.php';
     require_once dirname(__DIR__,2).'/private/classes/SiteDeploymentContract.php';
-    $db=Database::connection();$db->exec("SET SESSION time_zone='+00:00'");
-    $config=m6eBuildConfig($a);$pdfAsset=0;
+    $db->exec("SET SESSION time_zone='+00:00'");$pdfAsset=0;
     // Synthetic approvals/data setup only, not protected installed-worker acceptance.
     $f=m6nFixture($db,$config,static function(PDO $db,array $config,array $f)use(&$pdfAsset):void {
         $pdf=M6CSupplementPdf::bytes();$path=$config['legacy_upload_root'].'/approved.pdf';
@@ -146,10 +146,11 @@ function m6eBuild(array $a):void {
         $db->prepare("UPDATE site_revisions SET lifecycle_status='internally_approved' WHERE id=?")->execute([$f['revision_id']]);
     });
     $first=m6eFinishBuild($db,$f['job_id']);
-    require_once __DIR__.'/WebsitePlatformM6ECheckpoint.php';
-    m6eNativeCheckpoint($db,$config,$a,$first);
-    require_once __DIR__.'/WebsitePlatformM6ESnapshot.php';
-    m6eNativeSnapshot($db,$a,$first);
+    return ['fixture'=>$f,'first'=>$first,'pdf_asset'=>$pdfAsset];
+}
+/** Caller must finish its checkpoint/snapshot verification before entering B construction. */
+function m6eBuildB(PDO $db,array $built):int {
+    $f=$built['fixture'];$pdfAsset=$built['pdf_asset'];
     $original=SiteBuildStore::one($db,'SELECT * FROM site_revisions WHERE id=:id',['id'=>$f['revision_id']]);
     $next=SiteRevisionManager::createRevision($f['requester'],['site_id'=>$f['site_id'],'based_on_revision_id'=>$f['revision_id'],
         'snapshot_schema_version'=>1,'facts_snapshot_json'=>$original['facts_snapshot_json'],
@@ -167,7 +168,20 @@ function m6eBuild(array $a):void {
     $hash=(string)$db->query('SELECT snapshot_hash FROM site_revisions WHERE id='.(int)$revision)->fetchColumn();
     $request=SiteBuildService::requestBuild($f['requester'],['site_id'=>$f['site_id'],'revision_id'=>$revision,
         'expected_snapshot_hash'=>$hash,'build_profile'=>SiteBuildContract::PROFILE]);
-    $second=m6eFinishBuild($db,(int)$request['id']);
+    return m6eFinishBuild($db,(int)$request['id']);
+}
+function m6eBuild(array $a):void {
+    m6eNeed(posix_geteuid()===2000,'build_worker');
+    require_once __DIR__.'/WebsitePlatformM6CNativeFixture.php';
+    require_once __DIR__.'/WebsitePlatformM6CSupplementPdf.php';
+    require_once dirname(__DIR__,2).'/private/classes/SiteDeploymentContract.php';
+    $db=Database::connection();$config=m6eBuildConfig($a);$built=m6eBuildA($db,$config);
+    $f=$built['fixture'];$first=$built['first'];
+    require_once __DIR__.'/WebsitePlatformM6ECheckpoint.php';
+    m6eNativeCheckpoint($db,$config,$a,$first);
+    require_once __DIR__.'/WebsitePlatformM6ESnapshot.php';
+    m6eNativeSnapshot($db,$a,$first);
+    $second=m6eBuildB($db,$built);
     $site=SiteBuildStore::one($db,'SELECT * FROM sites WHERE id=:id',['id'=>$f['site_id']]);
     $target=m6nInsert($db,'site_deployment_targets',['site_id'=>$f['site_id'],'environment'=>'staging','publisher_key'=>'apache-digitalocean-v1',
         'binding_key'=>'m6e-fixture','binding_version'=>1,'enabled'=>1,'updated_at'=>SiteBuildStore::now($db)]);

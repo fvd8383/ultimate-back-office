@@ -15,6 +15,139 @@ second parent; native-tested `7cdbbeef639…` is an ancestor of that reviewed he
 Its native PASS belongs only to `7cdbbeef`, never this implementation or the merge.
 Historical failures and pre-merge reports are not rewritten or rerun.
 
+## DB-only native adapter following 7235797
+
+**IMPLEMENTED LOCALLY / NATIVE EXECUTION UNEXECUTED / DB-ONLY COMPONENT VALIDATION.**
+This increment started at clean `72357971d57b8f74b1b9cb8a9dfa28edc37fec27` on
+`codex/sprint-8.8-m6e-apache-publisher`. Live GitHub inspection confirmed PR #131
+OPEN DRAFT, the exact-head automated review completed with no findings, all 14
+review threads resolved, and remote main `303b073658d7eb08e6086237a70dd4d285dc121c`.
+That remote-main observation is not a live staging SHA observation. No SSH,
+container engine, image acquisition, service change or real SQL was executed.
+
+The new [operator](../tests/WebsitePlatformM6EDBOnly.py) implements a separate
+`m6e-db-only-v1` contract. Its
+[contract/storage policy](../tests/support/WebsitePlatformM6EDBOnlyContract.py),
+[runtime supervisor](../tests/support/WebsitePlatformM6EDBOnlyRuntime.py),
+[campaign](../tests/support/WebsitePlatformM6EDBOnlyCampaign.py),
+[PDO child](../tests/support/WebsitePlatformM6EDBOnlyChild.php), and
+[fixed fault controls](../tests/support/WebsitePlatformM6EDBOnlyFaults.php) are
+fixture code. They do not invoke a full-host wrapper or fabricate bootstrap,
+systemd, hostname, kernel-command-line, installed-worker or publisher receipts.
+Every result remains `admission=UNIMPLEMENTED`, `native_admission=BLOCKED`, and
+`deployment_authority=NONE`. All six commissioning MISSING classifications remain
+unchanged. Closed M6C/M6D code, migrations 001–025 and the 77 definitions are unchanged.
+
+### Shared mechanisms and sequence
+
+The existing native A/B construction is split into `m6eBuildA()` and `m6eBuildB()`.
+Both retain the original genuine M6C dependencies and `m6eFinishBuild()`; the VM
+wrapper still captures its checkpoint/snapshot between A and B, then constructs
+its existing serving/foreign-asset fixture. The DB-only driver uses the two build
+functions without creating the VM's deployment target. The snapshot ordering
+regression now checks that wrapper's calls rather than global definition order.
+
+`m6eSchemaData()` gains an optional structured account-credential callback, avoiding
+evaluation or parsing of generated application configuration. Its existing output
+behavior is unchanged when the callback is absent. `m6eRestoreCreate()` gains a
+credential-writer callable with its original protected writer as the default.
+`m6eEligibilityAccount()` extracts the existing prepare/seal SQL operations; the
+VM wrapper retains its original bootstrap, cgroup, parent and process-idle checks.
+The DB-only entry checks its own actual namespace and uses the same idle-process
+and account predicates. No original gate, equality, grant or rollback predicate is
+weakened. No shared bootstrap admission or process/publication primitive is changed.
+
+The authored positive sequence is: real committed A; a fresh worker SQL session's
+`m6eCaptureCheckpoint()`/`m6eCheckpointObserve()` and sealed artifact export;
+`m6eSnapshotSchema()`/`m6eCaptureSnapshot()` on the independent restricted reader;
+independent Python snapshot validation; genuine B build; original A+B artifact and
+asset-set comparison; `m6eFinalAIneligible()` on the completed original fixture;
+`m6eRestoreDestination()` and `m6eRestoreData()` in the separate lifecycle schema;
+writer exit/account sealing; independent `m6eRestoreRead()` and Python restoration
+comparison; independent before-observer; `m6eEligibilityTransaction()` with the
+unchanged `lockDeploymentEligibility(..., false)`; confirmed rollback and account
+seal; independent after-observer; final original database/artifact/source checks;
+evidence capture and exact owned cleanup. A and B **builds** are fixture behavior.
+Neither release is deployed. No deployment request, claim, lease/fence, activation,
+failure commit or settlement is called.
+
+The completed original database and sealed A+B store remain intact during
+restoration and eligibility. Negative database mutations target only that run's
+destination, except the explicitly scoped pre-B competing-writer/grant controls.
+Artifact drift uses an owned copy of the original sealed store. Snapshot corruption
+uses a serialized copy; it does not replace the protected positive capture.
+
+The corrected PHP observer and Python diagnostic recomputation are reused.
+Private raw observations remain in bounded tmpfs. Immutable retained diagnostics
+contain only fixed identities, expected/observed digests, counts, progress and
+allowlisted failure classifications. An unavailable observation produces an
+INCOMPLETE marker. The first failure precedes publication and cleanup; capture,
+account-seal and resource-cleanup failures remain separate. An interrupted SQL
+connection retains an unconfirmed transaction outcome even when an independent
+observer later sees unchanged data.
+
+### Namespace, connections and resources
+
+The candidate topology is authored, **not verified on the droplet**. A restricted
+runtime container owns a `--network none` namespace; the separately owned MySQL
+container joins that exact container ID. Actual network namespace equality and
+loopback-only interfaces must be measured before initialization. Both containers
+must differ from host user, mount, network and PID namespaces; their PID namespaces
+must differ from each other. There are no published ports, host networking,
+privileged containers, Docker-socket mounts or application-data mounts. The only
+host bind is the exact immutable source export, read-only. Docker documents the
+[container network mode](https://docs.docker.com/engine/network/#container-networks);
+actual rootless-engine/image compatibility remains a future prerequisite.
+
+The supervisor/observers use **namespace UID/GID 0 mapped to operator UID/GID1000**,
+never host root. The supervisor receives only CHOWN, DAC_OVERRIDE, SETUID, SETGID
+and KILL after dropping all capabilities. Builder UID/GID2000, snapshot UID/GID2001,
+and restoration/eligibility UID/GID2107 children must measure zero effective,
+permitted, inheritable and ambient capabilities and NoNewPrivs. Observers and the
+instance administrator share the trusted namespace-root supervisor boundary but
+use distinct SQL accounts. The builder remains the original required UID2000.
+
+Every PDO connection has a fixed 127.0.0.1:3306 DSN, certificate verification with
+the synthetic IP-SAN CA, TLS-cipher observation, MySQL 8.4, NONE role and measured
+server/account identity. There is no host/schema/account fallback or operational
+configuration factory. Credentials are random and protected in per-UID private
+directories; the snapshot process also receives the source worker credential for
+the required separate locking observation session. The canonical source constructor
+is reused, with source-schema underscore patterns narrowed to literal grants.
+The destination writer retains its exact restoration rights. Source/destination
+observers have SELECT only. Eligibility retains SELECT on exactly the existing 24
+tables and lifecycle-schema-only LOCK TABLES, REQUIRE SSL and MAX_USER_CONNECTIONS1,
+without DML. READ WRITE is required for the original locking gate, not DML authority.
+The global snapshot read lock can reach only this newly created MySQL instance.
+
+| Resource | Enforced ceiling |
+| --- | --- |
+| Runtime, including memory-backed files | 1 CPU, 512 MiB, no extra swap, 32 PIDs; PHP 256 MiB |
+| MySQL, including memory-backed files | 1 CPU, 1536 MiB, no extra swap, 128 PIDs; 128 MiB buffer pool |
+| MySQL datadir / tmp / run / TLS | 512 / 64 / 16 / 1 MiB tmpfs |
+| Runtime work+artifacts / private control / evidence / tmp | 128 / 32 / 16 / 16 MiB tmpfs |
+| Retained evidence | One preallocated 32 MiB file per fresh run; 256 write-once 128 KiB slots |
+| Campaign / cleanup reserve | 1200 seconds total, including a separate 120-second reserve |
+| Snapshot / restoration / eligibility | 45 / 240 / 120 seconds; no evidence-expiry renewal |
+
+Docker inspect flags are insufficient. Actual cgroup-v2 memory/swap/PID/CPU limits,
+tmpfs types, size options and statvfs capacities are checked before SQL setup.
+[Rootless cgroup limits require cgroup v2 and systemd](https://docs.docker.com/engine/security/rootless/tips/),
+and [tmpfs usage counts against container memory](https://docs.docker.com/engine/storage/tmpfs).
+Unsupported measurements, images or filesystem allocation fail closed. There is
+no unbounded volume or privileged quota fallback. The historical memory/free-space
+floors remain prerequisites; they are not storage quotas.
+
+The host retained file is exclusively created at mode0600, preallocated with
+`posix_fallocate`, fsynced with its parent, and bound by device/inode. Fixed-offset
+write-once hash-chained records cannot grow it; RLIMIT_FSIZE independently bounds
+the operator's files. It has no growing sidecar logs. An exclusive writer lock
+prevents concurrent execute/recovery mutation. Status reads only. Torn records,
+replacement, full capacity and uncertain ownership reject further mutation and
+preserve evidence for review. No power-loss durability acceptance is claimed.
+
+See [local results, native cases and the future execution package](sprint-8.8-m6e-isolated-validation.md#db-only-adapter-validation-and-future-execution-package).
+
 ## Failed-observer evidence correction following a996c96
 
 Review thread `PRRT_kwDOS02IKM6z2qay` identified an evidence-ordering defect, not an

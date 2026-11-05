@@ -221,6 +221,26 @@ function m6eEligibilityObserve(array $inputs,string $phase,array $process,callab
         'first_failure'=>'eligibility_observer_'.$stage,'secondary'=>$secondary]);
     return ['result'=>'OBSERVED'];
 }
+/** Shared SQL account operations; each launcher independently admits its operator/process owner. */
+function m6eEligibilityAccount(PDO $admin,array $inputs,bool $prepare,callable $write):array {
+    $d=$inputs['request']['destination'];$accounts=m6eEligibilityAccounts($admin,$inputs);
+    $account="'".M6E_ELIGIBILITY_USER."'@'127.0.0.1'";
+    if($prepare){
+        m6eNeed(m6eSnapshotRows($admin,'SELECT User FROM mysql.user WHERE User=?',[M6E_ELIGIBILITY_USER])===[],'eligibility_account_exists');
+        $secret=bin2hex(random_bytes(32));$admin->exec('CREATE USER '.$account.' IDENTIFIED BY '.$admin->quote($secret).' REQUIRE SSL WITH MAX_USER_CONNECTIONS 1');
+        $admin->exec('GRANT LOCK TABLES ON `'.str_replace('_','\\_',$d['schema']).'`.* TO '.$account);
+        foreach(M6E_ELIGIBILITY_TABLES as $table)$admin->exec('GRANT SELECT ON '.m6eSnapshotName($d['schema']).'.'.m6eSnapshotName($table).' TO '.$account);
+        $write(['username'=>M6E_ELIGIBILITY_USER,'password'=>$secret]);
+        return ['restoration_accounts'=>$accounts,'eligibility_account'=>M6E_ELIGIBILITY_USER.'@127.0.0.1','created'=>'EXCLUSIVE'];
+    }
+    $admin->exec('ALTER USER '.$account.' ACCOUNT LOCK');
+    m6eNeed((int)m6eSnapshotScalar($admin,"SELECT COUNT(*) FROM information_schema.PROCESSLIST WHERE USER='".M6E_ELIGIBILITY_USER."'")===0,'eligibility_session_active');
+    $grants=array_map(static fn($v)=>array_values($v)[0],m6eSnapshotRows($admin,'SHOW GRANTS FOR '.$account));m6eEligibilityGrants($grants,$d['schema']);
+    $policy=m6eSnapshotRows($admin,"SELECT account_locked, ssl_type, max_user_connections FROM mysql.user WHERE User=? AND Host='127.0.0.1'",[M6E_ELIGIBILITY_USER]);
+    m6eNeed($policy===[['account_locked'=>'Y','ssl_type'=>'ANY','max_user_connections'=>'1']],'eligibility_account_policy');
+    return ['account'=>M6E_ELIGIBILITY_USER.'@127.0.0.1','locked'=>true,'grants_sha256'=>CanonicalJson::hash($grants),
+        'sessions'=>0,'restorer_processes'=>0,'restoration_accounts'=>$accounts];
+}
 function m6eEligibilityNative(string $mode):array {
     $a=m6eBootstrap();m6eNeed(posix_geteuid()===($mode==='--run'?M6E_RESTORE_UID:0),'eligibility_native_uid');
     $inputs=m6eEligibilityInputs($a);$r=$inputs['eligibility'];$d=$inputs['request']['destination'];
@@ -230,23 +250,8 @@ function m6eEligibilityNative(string $mode):array {
     m6eNeed($cgroup==='0::/system.slice/ubo-m6e-bootstrap.service'&&$owner['cgroup']===[$cgroup]
         &&posix_getppid()===$owner['pid'],'eligibility_process_owner');
     if($mode==='--prepare'||$mode==='--seal'){
-        m6eEligibilityIdle();$admin=m6eRestoreConnect($a,$inputs,'admin');$accounts=m6eEligibilityAccounts($admin,$inputs);
-        $account="'".M6E_ELIGIBILITY_USER."'@'127.0.0.1'";
-        if($mode==='--prepare'){
-            m6eNeed(m6eSnapshotRows($admin,'SELECT User FROM mysql.user WHERE User=?',[M6E_ELIGIBILITY_USER])===[],'eligibility_account_exists');
-            $secret=bin2hex(random_bytes(32));$admin->exec('CREATE USER '.$account.' IDENTIFIED BY '.$admin->quote($secret).' REQUIRE SSL WITH MAX_USER_CONNECTIONS 1');
-            $admin->exec('GRANT LOCK TABLES ON `'.str_replace('_','\\_',$d['schema']).'`.* TO '.$account);
-            foreach(M6E_ELIGIBILITY_TABLES as $table)$admin->exec('GRANT SELECT ON '.m6eSnapshotName($d['schema']).'.'.m6eSnapshotName($table).' TO '.$account);
-            m6eEligibilityWrite($a,'credentials.json',['username'=>M6E_ELIGIBILITY_USER,'password'=>$secret]);
-            return ['restoration_accounts'=>$accounts,'eligibility_account'=>M6E_ELIGIBILITY_USER.'@127.0.0.1','created'=>'EXCLUSIVE'];
-        }
-        $admin->exec('ALTER USER '.$account.' ACCOUNT LOCK');
-        m6eNeed((int)m6eSnapshotScalar($admin,"SELECT COUNT(*) FROM information_schema.PROCESSLIST WHERE USER='".M6E_ELIGIBILITY_USER."'")===0,'eligibility_session_active');
-        $grants=array_map(static fn($v)=>array_values($v)[0],m6eSnapshotRows($admin,'SHOW GRANTS FOR '.$account));m6eEligibilityGrants($grants,$d['schema']);
-        $policy=m6eSnapshotRows($admin,"SELECT account_locked, ssl_type, max_user_connections FROM mysql.user WHERE User=? AND Host='127.0.0.1'",[M6E_ELIGIBILITY_USER]);
-        m6eNeed($policy===[['account_locked'=>'Y','ssl_type'=>'ANY','max_user_connections'=>'1']],'eligibility_account_policy');
-        return ['account'=>M6E_ELIGIBILITY_USER.'@127.0.0.1','locked'=>true,'grants_sha256'=>CanonicalJson::hash($grants),
-            'sessions'=>0,'restorer_processes'=>0,'restoration_accounts'=>$accounts];
+        m6eEligibilityIdle();$admin=m6eRestoreConnect($a,$inputs,'admin');
+        return m6eEligibilityAccount($admin,$inputs,$mode==='--prepare',static fn(array $v)=>m6eEligibilityWrite($a,'credentials.json',$v));
     }
     if($mode==='--run'){
         $outcome=['result'=>'INCOMPLETE','phase'=>'connection','first_failure'=>null,'secondary'=>[],

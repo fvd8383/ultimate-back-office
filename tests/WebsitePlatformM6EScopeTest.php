@@ -4,6 +4,9 @@ require_once __DIR__.'/support/WebsitePlatformM6CNativeProcess.php';
 /** Current M6E guard; closed M6C/M6D policies are never broadened. */
 $base='303b073658d7eb08e6086237a70dd4d285dc121c';$assertions=0;
 $allowed=[
+    'tests/WebsitePlatformM6EDBOnly.py','tests/WebsitePlatformM6EDBOnlyTest.py','tests/WebsitePlatformM6EDBOnlyTest.php',
+    'tests/support/WebsitePlatformM6EDBOnlyContract.py','tests/support/WebsitePlatformM6EDBOnlyRuntime.py',
+    'tests/support/WebsitePlatformM6EDBOnlyCampaign.py','tests/support/WebsitePlatformM6EDBOnlyChild.php','tests/support/WebsitePlatformM6EDBOnlyFaults.php',
     'tests/support/WebsitePlatformM6EEligibility.php','tests/support/WebsitePlatformM6EEligibility.py',
     'tests/support/WebsitePlatformM6EEligibilityModel.py','tests/WebsitePlatformM6EEligibilityTest.php','tests/WebsitePlatformM6EEligibilityTest.py',
     'tests/support/WebsitePlatformM6ERestoration.php','tests/support/WebsitePlatformM6ERestoration.py',
