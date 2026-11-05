@@ -5,6 +5,105 @@ installation, server preparation, Linux/Apache execution, SQL, service operation
 working-staging activation or deployment. This document is the bounded later path,
 not a claim that a host contract exists. M6D’s closed native gate is not reopened.
 
+## User-service environment controls following eb773736
+
+**LOCAL CONTROLLED VALIDATION ONLY / NATIVE UNEXECUTED.** Starting repository,
+branch, clean worktree and exact head
+`eb773736e30cc8034ff51c1b878d9030c46f2306` were verified. PR #131 was OPEN DRAFT;
+the automated review was completed for that exact SHA, with no unresolved findings.
+The reported preparation had passed source inventory and exact image compatibility,
+then failed launcher inspection because the sanitized user-service child lacked
+connection variables. Direct session queries had worked. Docker was restored to
+inactive/dead, disabled; no native campaign or SQL ran. These historical host
+observations remain distinct from the local controls below.
+
+The baseline reproduction kept the actual `engine_active()` -> `run()` ->
+`Owner.capture()` -> `subprocess.Popen()` path and replaced only the unavailable
+service executable with a harmless local child. The Popen environment and the
+child both contained exactly HOME, LANG and PATH: parent runtime/bus variables
+were absent. The parent remained unchanged and the real child was reaped.
+Reproduction and current logs are retained outside Git under
+`user-service-environment` in the desktop visualization workspace.
+
+Fifteen new focused controls execute actual command construction, identity/path
+predicates, response parsing, inspection entrypoints, bounded capture and cleanup.
+Linux account/path/socket facts and service/engine replies are explicit local
+models. At the Popen seam, the tests assert the exact fixed argv and the original
+minimal environment, model `/usr/bin/env`'s literal assignments, then launch a real
+harmless Python child. That child rejects any environment beyond the expected
+three variables plus the two service-only additions. No actual systemctl, bus,
+Docker client, engine or SQL connection is executed by these controls.
+
+Coverage includes missing and hostile parent connection values (TCP, abstract,
+autolaunch, arbitrary Unix and multiple addresses), secret/loader/PYTHONPATH and
+Docker/Git canaries, unchanged parent environments on success/failure, identity
+rejection before path selection, unsafe or missing directories/sockets, both fixed
+service queries, exact property parsing, error exits, owned timeout termination,
+output bounds and child reaping. Inactive `--inspect-host` and request `--inspect`
+perform zero Docker calls; images remain UNVERIFIED. Active socket activation and
+invalid PID/delegation/socket ownership fail. Active request inspection permits
+only the existing info and two image-inspect commands. `--inventory` remains
+source-only and requires no operator/user-service connection. The documented
+[private-manager route and fallback containment](sprint-8.8-m6e-local-implementation.md#user-service-connection-correction-following-eb773736)
+do not require a separate session-bus socket.
+
+Validation uses existing Python 3.14.7 and PHP 8.4.24:
+
+| Local control | Result |
+| --- | --- |
+| Complete DB-only Python suite | 57 tests PASS, including the 15 new environment/service controls |
+| Focused environment/service suite | 15 tests PASS separately |
+| Current M6E source scope | 374 assertions PASS; closed sources, 25 migrations and 77 definitions preserved |
+| Changed Python syntax | 2 AST parses PASS |
+| Local documentation links/anchors, whitespace, Git integrity | PASS |
+| Tested/index/committed identity | Exact four-path Git blob equality checked against the saved tested manifest |
+
+The initial focused output-limit control exceeded Windows' command-line length
+before its harmless child could start. The fixture now generates the oversized
+stdout inside that child; the bounded owner rejects and reaps it. This was a local
+test-fixture correction, not a service or host observation.
+
+The separate DB-only PHP, bootstrap, snapshot, publication, ledger-recovery and
+other native/full-host suites were **not rerun** for this correction. Existing
+modeled PHP snapshot fixtures invoked internally by the complete DB-only Python
+suite did run; that does not constitute a new standalone PHP-suite result. No
+packages, SSH, staging/production access, real service/bus operations, engines,
+containers, image acquisition, SQL, configuration changes, activation, operational
+admission, deployment, settlement, host receipt or merge occurred.
+
+### Future staging reinspection — NOT EXECUTED
+
+The original immutable export remains bound to the old source:
+`/mnt/ubo_stage_testdata/codex-validation/checkouts/m6e-db-only/eb773736e30cc8034ff51c1b878d9030c46f2306`.
+Its original partial-preparation evidence remains at
+`/mnt/ubo_stage_testdata/codex-validation/evidence/m6e-db-only-preparation-eb773736-20261105T025336Z-9ee6e0ff`.
+Neither location was accessed or altered during this correction. Its protected
+`positive-request.json` must not be relabeled or edited to describe new source.
+
+After the newly committed SHA receives a completed exact-head review, a separately
+authorized preparation must create a **new** immutable export for that reviewed
+SHA, compute its new source-inventory digest, retain the new exact-head review
+receipt bytes/digest, and create a new protected request with a fresh run ID and
+those source/review bindings. Preserve all original partial-preparation evidence.
+Prior image checks remain historical evidence and do not require a rebuild;
+recheck both exact image identities during the later authorized preparation.
+
+First run corrected `--inspect-host` with Docker still inactive, together with
+`--inventory <new reviewed SHA>` from the new export. Both must pass before any
+separately authorized temporary engine start for request-based `--inspect`.
+That later inspection must revalidate the actual runtime/private-manager metadata,
+connection, PID/delegation/socket policy, source/request and image bindings. The
+current local tests do not establish native connection repair or cgroup admission.
+Temporary engine availability and its restoration require their own authorized
+preparation scope. This handoff grants no native `--execute` authority.
+
+One focused commit/push and one duplicate-checked exact-new-head automated review
+request are the local endpoint. PR #131 remains OPEN DRAFT; prior resolved findings
+are not reopened or given duplicate replies. New SHA, review-request/status and
+tested/index/commit identities are retained in the external handoff and review
+request. Native database execution remains **UNEXECUTED**; all six commissioning
+classifications remain **MISSING**.
+
 ## Snapshot concurrency ordering controls following 0cb0087
 
 **LOCAL CONTROLLED VALIDATION ONLY / NATIVE UNEXECUTED.** Baseline repository,

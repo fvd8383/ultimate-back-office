@@ -15,6 +15,85 @@ second parent; native-tested `7cdbbeef639…` is an ancestor of that reviewed he
 Its native PASS belongs only to `7cdbbeef`, never this implementation or the merge.
 Historical failures and pre-merge reports are not rewritten or rerun.
 
+## User-service connection correction following eb773736
+
+**LOCAL CORRECTION / NATIVE UNEXECUTED / NO ADMISSION.** This increment started at
+clean `eb773736e30cc8034ff51c1b878d9030c46f2306` on the existing M6E branch. PR #131
+was OPEN DRAFT with a completed exact-head review and no unresolved findings.
+The subsequent authorized preparation reported successful source export/inventory
+and static compatibility of both exact candidate images on `ubo-stage-app`, as
+`codex-validation` UID/GID1000. Direct session `systemctl --user` queries succeeded,
+but launcher `--inspect-host` and `--inspect` failed at the user-service query.
+Docker was restored to inactive/dead, disabled; no containers, SQL or native
+campaign ran. Those are retained, reported host observations, not new execution
+or evidence of database, image, cgroup or application failure.
+
+The local reproduction followed actual `engine_active()` -> `run()` ->
+`Owner.capture()` -> `subprocess.Popen()`. At that boundary the shared owner
+supplied only `PATH=/usr/bin:/bin`, `LANG=C`, `HOME=/nonexistent`. A real harmless
+local child confirmed that parent `XDG_RUNTIME_DIR` and `DBUS_SESSION_BUS_ADDRESS`
+were absent. Exporting them in the SSH shell therefore could not repair the
+launcher. Only the unavailable executable/host facts were modeled; the shared
+owner, capture pipes and child cleanup were real.
+
+The [operator](../tests/WebsitePlatformM6EDBOnly.py) now constructs only the existing
+`systemctl --user show` queries for `docker.service` and `docker.socket`, with their
+fixed property lists. It first requires Linux host `ubo-stage-app`, account
+`codex-validation`, and real/effective UID **and** GID1000. Each query then validates
+canonical, non-symlink metadata owned by UID/GID1000: `/run/user/1000` directory
+mode0700; its `systemd` directory mode0700 or0755; and the existing
+`systemd/private` Unix socket mode0700 with one link. Missing, substituted,
+wrong-owner, unsafe-mode or non-socket paths fail before spawning. Nothing creates
+a runtime directory, manager or bus.
+
+The connection route is the private user manager. In systemd v255,
+[`show` requests the manager connection](https://raw.githubusercontent.com/systemd/systemd/v255/src/systemctl/systemctl-show.c);
+the [local manager transport](https://raw.githubusercontent.com/systemd/systemd/v255/src/systemctl/systemctl-util.c)
+uses [`XDG_RUNTIME_DIR/systemd/private`](https://raw.githubusercontent.com/systemd/systemd/v255/src/shared/bus-util.c).
+The [manager creates that private socket under umask0077](https://raw.githubusercontent.com/systemd/systemd/v255/src/core/dbus.c).
+The operator passes a fixed argv prefix, without a shell:
+
+```text
+/usr/bin/env
+XDG_RUNTIME_DIR=/run/user/1000
+DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/systemd/private
+/usr/bin/systemctl --user show <fixed unit> --property=<fixed properties>
+```
+
+The explicit bus address is a fallback containment measure: older systemd can try
+the default user bus after its private connection fails. Pinning that address to
+the **same validated private endpoint** prevents diversion to `/run/user/1000/bus`,
+an inherited address or autolaunch. It is not a claim that the private manager is
+a session-bus daemon or that such a fallback succeeds. Connection or protocol
+failure remains failure. A separate session-bus socket is neither used nor
+required. This route is supported by source inspection and local command controls;
+its behavior on the staging host remains unverified for the corrected source.
+
+`WebsitePlatformM6EProcess.py` and `Owner.capture()` are unchanged. Only those two
+query commands receive the fixed additions; Docker, source-inventory and other
+children retain the original three-variable environment. No global environment
+mutation, inherited loader/Python/Docker/Git override, generic passthrough, shell,
+user switching, service operation or activation fallback is added. The existing
+owner still applies the ten-second query limit, overall deadline, 1 MiB stdout /
+16 KiB stderr bounds and owned-child cleanup. Raw stderr is not retained.
+
+Exact property parsing rejects missing, duplicated, unknown or malformed fields;
+connection errors cannot become ENGINE INACTIVE. Only a valid inactive/dead or
+failed/failed service with PID0 returns the non-running result, with images
+UNVERIFIED and no Docker socket contact. Active services still require a running
+owned PID, delegation and the fixed rootless Docker socket. The socket unit must
+be absent or inactive; contradictory not-found/active output is rejected. Exit1
+is accepted only for the exact not-found/inactive socket-unit response. Active
+request inspection retains its existing read-only info/image checks and all
+source, image, request and resource predicates.
+
+Only this operator, its direct Python controls and the two M6E documents change.
+Snapshot, restoration, eligibility, SQL, publisher, full-host admission and shared
+process-owner semantics remain unchanged. See the
+[local results and source-bound future reinspection](sprint-8.8-m6e-isolated-validation.md#user-service-environment-controls-following-eb773736).
+Native database execution remains **UNEXECUTED**; all six commissioning
+classifications remain **MISSING**.
+
 ## Snapshot concurrency failure ordering following 0cb0087
 
 **LOCAL CORRECTION / NATIVE UNEXECUTED / NO ADMISSION.** The clean starting head was

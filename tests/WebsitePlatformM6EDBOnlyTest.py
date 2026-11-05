@@ -4,7 +4,7 @@ import contextlib
 import io
 import importlib.util
 import os
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 import sys
 import subprocess
 import tempfile
@@ -297,9 +297,9 @@ class Evidence(unittest.TestCase):
 
 class Ownership(unittest.TestCase):
     def test_active_socket_activation_unit_rejects_before_engine_contact(self):
-        replies=[dict(stdout=b'ActiveState=active\nSubState=running\nMainPID=123\nDelegate=yes\n'),
-                 dict(stdout=b'LoadState=loaded\nActiveState=active\n')]
-        with mock.patch.object(operator,'run',side_effect=replies),self.assertRaisesRegex(ValueError,'db_only_socket_activation'):
+        replies=[dict(ActiveState='active',SubState='running',MainPID='123',Delegate='yes'),
+                 dict(LoadState='loaded',ActiveState='active')]
+        with mock.patch.object(operator,'user_service_query',side_effect=replies),self.assertRaisesRegex(ValueError,'db_only_socket_activation'):
             operator.engine_active(None)
 
     def test_readonly_inspection_never_contacts_inactive_engine_or_creates_state(self):
@@ -318,7 +318,7 @@ class Ownership(unittest.TestCase):
             stack.enter_context(mock.patch.dict(sys.modules,{'pwd':SimpleNamespace(getpwuid=lambda uid:SimpleNamespace(pw_name='codex-validation'))}))
             stack.enter_context(mock.patch.object(operator.sys,'platform','linux'))
             stack.enter_context(mock.patch.object(operator,'Path',PathModel))
-            for name,value in [('getuid',lambda:1000),('geteuid',lambda:1000),('uname',lambda:SimpleNamespace(nodename='ubo-stage-app')),
+            for name,value in [('getuid',lambda:1000),('geteuid',lambda:1000),('getgid',lambda:1000),('getegid',lambda:1000),('uname',lambda:SimpleNamespace(nodename='ubo-stage-app')),
                 ('sched_getaffinity',lambda pid:{0,1,2,3}),('statvfs',lambda p:SimpleNamespace(f_bavail=20*1024**3,f_frsize=1)),
                 ('readlink',lambda p:p.rsplit('/',1)[1]+':[10]')]:
                 stack.enter_context(mock.patch.object(operator.os,name,value,create=True))
@@ -397,6 +397,252 @@ class Ownership(unittest.TestCase):
         self.assertEqual(campaign.competing_rows(notes(['M6E bounded competing writer','M6E same transaction'])),'AFTER_WRITER_COMMIT')
         for values in ([],['M6E bounded competing writer'],['M6E DB-only baseline','M6E same transaction']):
             with self.assertRaisesRegex(ValueError,'db_only_competing_atomic_values'):campaign.competing_rows(notes(values))
+
+
+class UserServiceEnvironment(unittest.TestCase):
+    MINIMAL=dict(PATH='/usr/bin:/bin',LANG='C',HOME='/nonexistent')
+    ADDITIONS=dict(XDG_RUNTIME_DIR='/run/user/1000',DBUS_SESSION_BUS_ADDRESS='unix:path=/run/user/1000/systemd/private')
+    CANARIES=dict(PRIVATE_SENTINEL='PRIVATE_SECRET',LD_PRELOAD='PRIVATE_LOADER',LD_LIBRARY_PATH='PRIVATE_LIBRARY',
+        PYTHONPATH='PRIVATE_PYTHON',PYTHONHOME='PRIVATE_HOME',DOCKER_HOST='tcp://untrusted:2375',DOCKER_CONTEXT='foreign',
+        DOCKER_CONFIG='/foreign/docker',GIT_DIR='/foreign/git',GIT_CONFIG_GLOBAL='/foreign/config',GIT_CONFIG_COUNT='1',
+        SYSTEMCTL_FORCE_BUS='1',SYSTEMD_BUS_ADDRESS='tcp:host=untrusted,port=1')
+    INACTIVE=b'ActiveState=inactive\nSubState=dead\nMainPID=0\nDelegate=yes\n'
+    ACTIVE=b'ActiveState=active\nSubState=running\nMainPID=123\nDelegate=yes\n'
+    SOCKET=b'LoadState=not-found\nActiveState=inactive\n'
+    CHILD='''import json,os,sys,time
+expected=json.loads(sys.argv[1]);actual=dict(os.environ)
+# Python may coerce LANG=C on POSIX; that runtime-created locale is not inherited.
+if os.name!='nt' and actual.get('LC_CTYPE')=='C.UTF-8':actual.pop('LC_CTYPE')
+if actual!=expected:sys.exit(97)
+time.sleep(float(sys.argv[5]))
+sys.stdout.buffer.write(bytes.fromhex(sys.argv[2]));sys.stderr.buffer.write(bytes.fromhex(sys.argv[3]))
+if len(sys.argv)>6:sys.stdout.buffer.write(b'x'*int(sys.argv[6]))
+sys.exit(int(sys.argv[4]))
+'''
+
+    @contextlib.contextmanager
+    def host(self,identity=None,changes=None):
+        """Only unavailable Linux identity/path facts are modeled; no actual manager or bus is queried."""
+        facts=dict(uid=1000,euid=1000,gid=1000,egid=1000,account='codex-validation',host='ubo-stage-app',platform='linux')
+        facts.update(identity or {});changes=changes or {};reads=[];original_path=operator.Path
+        export=c.EXPORTS+'/'+request()['source_sha'];inventory={'fixture.php':dict(sha256='b'*64)}
+        req=request()|dict(source_inventory_sha256=digest(canonical(inventory)))
+        def metadata(name):
+            reads.append(name)
+            if name in changes and changes[name] is None:raise FileNotFoundError('PRIVATE_MISSING')
+            if name in ('/run/user/1000','/run/user/1000/systemd'):mode=0o40700 if name.endswith('1000') else 0o40755
+            elif name in ('/run/user/1000/systemd/private','/run/user/1000/docker.sock'):mode=0o140700
+            elif name=='/proc/123':mode=0o40555
+            elif name in (c.BASE,c.EVIDENCE,c.EXPORTS):mode=0o40700
+            elif name==export:mode=0o40555
+            elif name=='/':mode=0o40755
+            else:raise AssertionError('unmodeled metadata path')
+            values=dict(st_mode=mode,st_uid=1000,st_gid=1000,st_nlink=1,st_dev=1 if name=='/' else 2,st_ino=42)
+            values.update({k:v for k,v in changes.get(name,{}).items() if k!='resolved'})
+            return SimpleNamespace(**values)
+        class HostPath:
+            def __init__(self,value):self.value=str(value)
+            def __truediv__(self,part):return HostPath(self.value+'/'+str(part))
+            def __str__(self):return self.value
+            def __eq__(self,other):return isinstance(other,HostPath) and self.value==other.value
+            def lstat(self):return metadata(self.value)
+            stat=lstat
+            def resolve(self):return HostPath((changes.get(self.value) or {}).get('resolved',self.value))
+            @property
+            def parents(self):return [HostPath(str(p)) for p in PurePosixPath(self.value).parents]
+            def rglob(self,pattern):test.assertEqual(self.value,export);return []
+            def read_text(self):test.assertEqual(self.value,'/proc/meminfo');return 'MemAvailable: 8000000 kB\n'
+        test=self
+        def path(value):
+            value=str(value)
+            if value==operator.__file__:return HostPath(export+'/tests/WebsitePlatformM6EDBOnly.py')
+            return HostPath(value) if value.startswith('/') else original_path(value)
+        with contextlib.ExitStack() as stack:
+            stack.enter_context(mock.patch.dict(sys.modules,{'pwd':SimpleNamespace(getpwuid=lambda uid:SimpleNamespace(pw_name=facts['account']))}))
+            stack.enter_context(mock.patch.object(operator.sys,'platform',facts['platform']))
+            stack.enter_context(mock.patch.object(operator,'Path',side_effect=path))
+            for name in ('uid','euid','gid','egid'):
+                stack.enter_context(mock.patch.object(operator.os,'get'+name,lambda key=name:facts[key],create=True))
+            for name,value in [('uname',lambda:SimpleNamespace(nodename=facts['host'])),('sched_getaffinity',lambda pid:{0,1,2,3}),
+                ('statvfs',lambda p:SimpleNamespace(f_bavail=20*1024**3,f_frsize=1)),('readlink',lambda p:p.rsplit('/',1)[1]+':[10]')]:
+                stack.enter_context(mock.patch.object(operator.os,name,value,create=True))
+            stack.enter_context(mock.patch.object(operator,'source_inventory',return_value=inventory))
+            stack.enter_context(mock.patch.object(operator,'load_request',return_value=req))
+            yield reads,req
+
+    @contextlib.contextmanager
+    def children(self,replies=None,active=False,delay=0,extra_stdout=0):
+        """Model env/systemctl executables at Popen; keep the actual Owner, pipes, limits and real local children."""
+        records=[];original=subprocess.Popen;replies=replies or {};test=self
+        def popen(command,**kwargs):
+            test.assertEqual(kwargs['env'],self.MINIMAL);test.assertFalse(kwargs.get('shell',False))
+            additions={};args=None
+            if command[0]=='/usr/bin/env':
+                test.assertEqual(command[:3],['/usr/bin/env',*['='.join(pair) for pair in self.ADDITIONS.items()]])
+                additions=dict(part.split('=',1) for part in command[1:3]);args=command[3:]
+                test.assertEqual(args[:3],['/usr/bin/systemctl','--user','show'])
+                unit=args[3];test.assertIn(unit,operator.USER_SERVICE_PROPERTIES)
+                test.assertEqual(args[4:],["--property="+','.join(operator.USER_SERVICE_PROPERTIES[unit])])
+                out,err,exit_=replies.get(unit,(self.ACTIVE if active and unit=='docker.service' else self.INACTIVE if unit=='docker.service' else self.SOCKET,b'',0))
+            else:
+                test.assertEqual(command[:len(c.CLIENT)],c.CLIENT);args=command[len(c.CLIENT):]
+                req=request()
+                if args==['info','--format','{{json .}}']:value=dict(CgroupVersion='2',CgroupDriver='systemd',SecurityOptions=['name=rootless'])
+                else:
+                    test.assertEqual(args[:2],['image','inspect']);test.assertIn(args[2],(req['runtime_image'],req['mysql_image']))
+                    value=[dict(Id=args[2],Os='linux',Architecture='amd64',Config=dict(Volumes={}))]
+                out,err,exit_=canonical(value),b'',0
+            records.append(dict(command=command.copy(),environment=kwargs['env'].copy(),additions=additions))
+            # Windows has no /usr/bin/env or systemctl. Apply only the verified literal env assignments,
+            # then require the real harmless child to observe that exact environment before returning its model response.
+            child_env={**kwargs['env'],**additions};kwargs={**kwargs,'env':child_env}
+            return original([sys.executable,'-I','-B','-c',self.CHILD,canonical(child_env).decode(),out.hex(),err.hex(),str(exit_),str(delay),str(extra_stdout)],**kwargs)
+        with mock.patch.object(subprocess,'Popen',side_effect=popen):yield records
+
+    def test_original_owner_and_nonservice_run_omit_parent_connection_and_secret_variables(self):
+        parent={**self.CANARIES,**self.ADDITIONS}
+        with mock.patch.dict(os.environ,parent):
+            before=dict(os.environ);owner=Owner(time.monotonic()+10)
+            try:
+                result=operator.run(owner,[sys.executable,'-I','-B','-c',self.CHILD,canonical(self.MINIMAL).decode(),b'{}\n'.hex(),'','0','0'])
+                self.assertEqual(result['stdout'],b'{}\n');self.assertTrue(owner.context[0]['reaped'])
+            finally:owner.cleanup()
+            self.assertEqual(dict(os.environ),before)
+
+    def test_fixed_private_route_ignores_missing_and_hostile_parent_connection_values(self):
+        for bus in (None,'tcp:host=untrusted,port=1','unix:abstract=foreign','autolaunch:',
+                    'unix:path=/foreign/bus','unix:path=/foreign/a;unix:path=/foreign/b'):
+            with self.subTest(bus=bus),mock.patch.dict(os.environ,self.CANARIES,clear=True):
+                if bus is not None:os.environ.update(XDG_RUNTIME_DIR='/foreign/runtime',DBUS_SESSION_BUS_ADDRESS=bus)
+                before=dict(os.environ);owner=Owner(time.monotonic()+10)
+                try:
+                    with self.host() as (reads,req),self.children() as records:
+                        self.assertFalse(operator.engine_active(owner)[0]);self.assertEqual(len(records),1)
+                        self.assertEqual(records[0]['additions'],self.ADDITIONS);self.assertNotIn('/run/user/1000/bus',reads)
+                    self.assertTrue(owner.context[0]['reaped']);self.assertEqual(dict(os.environ),before)
+                finally:owner.cleanup()
+
+    def test_parent_is_unchanged_on_service_query_failure_and_stderr_is_not_exposed(self):
+        with mock.patch.dict(os.environ,{**self.CANARIES,**self.ADDITIONS}):
+            before=dict(os.environ);owner=Owner(time.monotonic()+10)
+            try:
+                with self.host(),self.children({'docker.service':(self.INACTIVE,b'PRIVATE_STDERR',1)}),self.assertRaisesRegex(ValueError,'^db_only_user_service_query$'):
+                    operator.engine_active(owner)
+                self.assertEqual(dict(os.environ),before);self.assertTrue(owner.context[0]['reaped'])
+            finally:owner.cleanup()
+
+    def test_operator_identity_precedes_runtime_path_selection(self):
+        for key,value in [('uid',0),('euid',0),('gid',1001),('egid',1001),('account','foreign'),('host','foreign'),('platform','win32')]:
+            with self.subTest(key=key),self.host(identity={key:value}) as (reads,req),mock.patch.object(Owner,'capture') as capture:
+                with self.assertRaisesRegex(ValueError,'db_only_host_operator'):operator.user_service_command('docker.service')
+                self.assertEqual(reads,[]);capture.assert_not_called()
+
+    def test_unsafe_or_missing_endpoint_metadata_rejects_before_spawn(self):
+        runtime='/run/user/1000';manager=runtime+'/systemd';socket=manager+'/private'
+        cases=[(runtime,dict(st_uid=0)),(runtime,dict(st_gid=1001)),(runtime,dict(st_mode=0o40755)),
+            (runtime,dict(resolved='/foreign/runtime')),(runtime,dict(st_mode=0o120700)),
+            (manager,dict(st_mode=0o40777)),(manager,dict(st_uid=0)),(manager,dict(resolved='/foreign/manager')),
+            (socket,dict(st_uid=0)),(socket,dict(st_gid=1001)),(socket,dict(st_mode=0o140777)),
+            (socket,dict(st_mode=0o100700)),(socket,dict(st_nlink=2)),(socket,dict(resolved='/foreign/socket')),
+            (runtime,None),(manager,None),(socket,None)]
+        for path,value in cases:
+            with self.subTest(path=path,value=value),self.host(changes={path:value}),mock.patch.object(Owner,'capture') as capture:
+                with self.assertRaisesRegex(ValueError,'db_only_user_service_endpoint'):operator.user_service_command('docker.service')
+                capture.assert_not_called()
+
+    def test_only_existing_fixed_show_queries_are_constructible(self):
+        for unit in ('foreign.service','start','docker.service --host=foreign','docker.service;start','docker.socket/../foreign'):
+            with self.subTest(unit=unit),mock.patch.object(operator,'host_operator') as identity:
+                with self.assertRaisesRegex(ValueError,'db_only_user_service_unit'):operator.user_service_command(unit)
+                identity.assert_not_called()
+
+    def test_both_service_queries_use_bounded_owner_and_private_endpoint(self):
+        owner=Owner(time.monotonic()+20);deadline=owner.deadline
+        try:
+            with self.host(),self.children(active=True) as records,mock.patch.object(operator,'run',wraps=operator.run) as run:
+                self.assertTrue(operator.engine_active(owner)[0]);self.assertEqual(len(records),2)
+                self.assertEqual([call.args[2] for call in run.call_args_list],[10,10])
+                self.assertEqual([row['additions'] for row in records],[self.ADDITIONS]*2)
+            self.assertEqual(owner.deadline,deadline);self.assertTrue(all(row['reaped'] for row in owner.context))
+        finally:owner.cleanup()
+
+    def test_inactive_and_active_inspection_entrypoints_share_connection_and_api_policy(self):
+        for active in (False,True):
+            for source in (False,True):
+                with self.subTest(active=active,request=source),self.host(),self.children(active=active) as records,contextlib.redirect_stdout(io.StringIO()) as output:
+                    args=['--inspect','/modeled/protected-request.json'] if source else ['--inspect-host']
+                    self.assertEqual(operator.main(args),0);value=decode(output.getvalue().encode())
+                    service=[r for r in records if r['command'][0]=='/usr/bin/env'];docker=[r for r in records if r['command'][0]==c.CLIENT[0]]
+                    self.assertEqual(len(service),2 if active else 1);self.assertEqual(len(docker),3 if active and source else 0)
+                    for row in docker:self.assertEqual(row['environment'],self.MINIMAL);self.assertEqual(row['additions'],{})
+                    if not active:self.assertEqual(value['images'],'UNVERIFIED');self.assertEqual(value['result'],'ENGINE INACTIVE; IMAGE AVAILABILITY UNVERIFIED')
+                    self.assertNotIn('PRIVATE_',output.getvalue());self.assertEqual(value['deployment_authority'],'NONE')
+
+    def test_socket_activation_is_rejected_even_with_inconsistent_not_found_state(self):
+        for loaded in ('loaded','not-found'):
+            owner=Owner(time.monotonic()+10)
+            try:
+                with self.host() as (reads,req),self.children({'docker.socket':(('LoadState='+loaded+'\nActiveState=active\n').encode(),b'',0)},active=True) as records:
+                    with self.assertRaisesRegex(ValueError,'db_only_socket_activation'):operator.host_readiness(owner,req)
+                    self.assertEqual(len(records),2);self.assertTrue(all(r['command'][0]=='/usr/bin/env' for r in records))
+            finally:owner.cleanup()
+
+    def test_active_engine_still_requires_owned_pid_delegation_and_docker_socket(self):
+        for changes,reply in [({'/proc/123':dict(st_uid=0)},self.ACTIVE),
+            ({'/run/user/1000/docker.sock':dict(st_uid=0)},self.ACTIVE),
+            ({'/run/user/1000/docker.sock':dict(st_mode=0o100600)},self.ACTIVE),({},self.ACTIVE.replace(b'Delegate=yes',b'Delegate=no'))]:
+            owner=Owner(time.monotonic()+10)
+            try:
+                with self.host(changes=changes),self.children({'docker.service':(reply,b'',0)},active=True),self.assertRaises(ValueError):operator.engine_active(owner)
+            finally:owner.cleanup()
+
+    def test_service_errors_and_malformed_responses_never_become_inactive(self):
+        cases=[(b'',b'',0),(self.INACTIVE+b'ActiveState=inactive\n',b'',0),(self.INACTIVE.replace(b'Delegate=yes\n',b''),b'',0),
+            (self.INACTIVE+b'Other=private\n',b'',0),(b'\xff',b'',0),(b'garbage',b'PRIVATE_ERROR',1),
+            (self.INACTIVE,b'PRIVATE_ERROR',1),(self.INACTIVE,b'',2),(self.ACTIVE.replace(b'MainPID=123',b'MainPID=bad'),b'',0),
+            (self.INACTIVE.replace(b'ActiveState=inactive',b'ActiveState=unknown'),b'',0),
+            (self.INACTIVE.replace(b'MainPID=0',b'MainPID=123'),b'',0)]
+        for reply in cases:
+            owner=Owner(time.monotonic()+10)
+            try:
+                with self.subTest(exit=reply[2]),self.host() as (reads,req),self.children({'docker.service':reply}) as records:
+                    with self.assertRaises(ValueError) as caught:operator.host_readiness(owner,req)
+                    self.assertNotIn('PRIVATE_',str(caught.exception));self.assertEqual(len(records),1)
+            finally:owner.cleanup()
+
+    def test_missing_socket_unit_exit_is_distinct_from_connection_error(self):
+        for response,accepted in [(self.SOCKET,True),(b'LoadState=loaded\nActiveState=inactive\n',False),(b'',False)]:
+            owner=Owner(time.monotonic()+10)
+            try:
+                with self.host(),self.children({'docker.socket':(response,b'',1)},active=True):
+                    if accepted:self.assertTrue(operator.engine_active(owner)[0])
+                    else:
+                        with self.assertRaises(ValueError):operator.engine_active(owner)
+            finally:owner.cleanup()
+
+    def test_query_timeout_keeps_owned_child_reaping_and_parent_isolation(self):
+        with mock.patch.dict(os.environ,{**self.CANARIES,**self.ADDITIONS}):
+            before=dict(os.environ);owner=Owner(time.monotonic()+.3)
+            try:
+                with self.host(),self.children(delay=5),self.assertRaises(Failure):operator.engine_active(owner)
+                self.assertTrue(owner.context[0]['reaped']);self.assertTrue(owner.context[0]['termination_requested'])
+                self.assertEqual(dict(os.environ),before)
+            finally:owner.cleanup()
+
+    def test_service_query_preserves_existing_output_bound(self):
+        owner=Owner(time.monotonic()+10)
+        try:
+            with self.host(),self.children(extra_stdout=1048577),self.assertRaises(Failure):operator.engine_active(owner)
+            self.assertTrue(owner.context[0]['reaped'])
+        finally:owner.cleanup()
+
+    def test_inventory_entrypoint_needs_no_operator_or_user_service(self):
+        with self.host(identity=dict(uid=999,account='foreign')) as (reads,req),\
+             mock.patch.object(operator,'user_service_command',side_effect=AssertionError('inventory contacted user manager')) as query,\
+             contextlib.redirect_stdout(io.StringIO()) as output:
+            self.assertEqual(operator.main(['--inventory',req['source_sha']]),0)
+            self.assertEqual(decode(output.getvalue().encode())['source_inventory_sha256'],req['source_inventory_sha256'])
+            query.assert_not_called();self.assertEqual(reads,[])
 
 
 class SnapshotDiagnostics(unittest.TestCase):

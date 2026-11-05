@@ -34,14 +34,59 @@ def load_request(path):
     return c.request(decode(raw))
 
 
+USER_SERVICE_PROPERTIES = {'docker.service': ('ActiveState','SubState','MainPID','Delegate'),
+                           'docker.socket': ('LoadState','ActiveState')}
+
+
+def host_operator():
+    need(sys.platform=='linux','db_only_host_operator')
+    import pwd
+    need(os.getuid()==os.geteuid()==os.getgid()==os.getegid()==1000
+         and pwd.getpwuid(1000).pw_name=='codex-validation' and os.uname().nodename=='ubo-stage-app','db_only_host_operator')
+
+
+def user_service_command(unit):
+    """Only the two fixed read-only queries, through this operator's existing private manager socket."""
+    need(unit in USER_SERVICE_PROPERTIES,'db_only_user_service_unit');host_operator()
+    try:
+        for name,modes,socket in [('/run/user/1000',(0o700,),False),
+                                  ('/run/user/1000/systemd',(0o700,0o755),False),
+                                  ('/run/user/1000/systemd/private',(0o700,),True)]:
+            p=Path(name);s=p.lstat()
+            need(p.resolve()==p and s.st_uid==s.st_gid==1000 and stat.S_IMODE(s.st_mode) in modes
+                 and (stat.S_ISSOCK(s.st_mode) and s.st_nlink==1 if socket else stat.S_ISDIR(s.st_mode)),
+                 'db_only_user_service_endpoint')
+    except (OSError,RuntimeError):raise ValueError('db_only_user_service_endpoint') from None
+    # `show` uses the private manager via XDG_RUNTIME_DIR. Pin older systemd's
+    # default-user-bus fallback to that SAME endpoint; never redirect to /bus or autolaunch.
+    return ['/usr/bin/env','XDG_RUNTIME_DIR=/run/user/1000',
+            'DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/systemd/private',
+            '/usr/bin/systemctl','--user','show',unit,'--property='+','.join(USER_SERVICE_PROPERTIES[unit])]
+
+
+def user_service_query(owner,unit):
+    result=run(owner,user_service_command(unit),10,allowed=(0,1))
+    try:
+        rows=[line.split('=',1) for line in result['stdout'].decode().splitlines()]
+        fields=dict(rows)
+    except (UnicodeError,ValueError):raise ValueError('db_only_user_service_response') from None
+    need(len(rows)==len(fields)==len(USER_SERVICE_PROPERTIES[unit]) and set(fields)==set(USER_SERVICE_PROPERTIES[unit]),
+         'db_only_user_service_response')
+    need(result['exit']==0 or unit=='docker.socket' and fields==dict(LoadState='not-found',ActiveState='inactive'),
+         'db_only_user_service_query')
+    return fields
+
+
 def engine_active(owner):
-    result=run(owner,['/usr/bin/systemctl','--user','show','docker.service','--property=ActiveState,SubState,MainPID,Delegate'],10)
-    fields=dict(x.split('=',1) for x in result['stdout'].decode().splitlines() if '=' in x)
-    if fields.get('ActiveState')!='active':return False,fields
-    need(fields.get('SubState')=='running' and fields.get('Delegate')=='yes' and int(fields.get('MainPID','0'))>0,'db_only_engine_service')
-    socket_unit=run(owner,['/usr/bin/systemctl','--user','show','docker.socket','--property=LoadState,ActiveState'],10,allowed=(0,1))
-    socket_fields=dict(x.split('=',1) for x in socket_unit['stdout'].decode().splitlines() if '=' in x)
-    need(socket_fields.get('LoadState')=='not-found' or socket_fields.get('ActiveState')=='inactive','db_only_socket_activation')
+    fields=user_service_query(owner,'docker.service')
+    need(fields['ActiveState'] in ('active','inactive','failed') and fields['Delegate'] in ('yes','no')
+         and re.fullmatch('[0-9]{1,10}',fields['MainPID']) is not None and int(fields['MainPID'])<2**31,'db_only_engine_service')
+    if fields['ActiveState']!='active':
+        need(fields['MainPID']=='0' and fields['SubState']==('dead' if fields['ActiveState']=='inactive' else 'failed'),'db_only_engine_service')
+        return False,fields
+    need(fields['SubState']=='running' and fields['Delegate']=='yes' and int(fields['MainPID'])>0,'db_only_engine_service')
+    socket_fields=user_service_query(owner,'docker.socket')
+    need(socket_fields['LoadState'] in ('not-found','loaded','masked') and socket_fields['ActiveState']=='inactive','db_only_socket_activation')
     need(Path('/proc/'+fields['MainPID']).stat().st_uid==1000,'db_only_engine_operator')
     socket=Path('/run/user/1000/docker.sock').lstat()
     need(stat.S_ISSOCK(socket.st_mode) and socket.st_uid==1000,'db_only_engine_socket')
@@ -50,9 +95,7 @@ def engine_active(owner):
 
 def host_readiness(owner,req,source=True):
     """No directory creation, evidence writes, daemon start or socket use while inactive."""
-    import pwd
-    need(sys.platform=='linux' and os.getuid()==os.geteuid()==1000 and pwd.getpwuid(1000).pw_name=='codex-validation'
-         and os.uname().nodename=='ubo-stage-app','db_only_host_operator')
+    host_operator()
     paths=[Path(c.BASE),Path(c.EVIDENCE)]+([Path(c.EXPORTS)] if source else [])
     for p in paths:
         s=p.lstat();need(stat.S_ISDIR(s.st_mode) and p.resolve()==p and s.st_uid==1000 and stat.S_IMODE(s.st_mode)==0o700,'db_only_host_roots')
