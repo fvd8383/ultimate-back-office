@@ -137,6 +137,22 @@ import shlex
 MYSQL_START = 'set -eu\nremaining=$(($1 - $(date +%s)))\ntest "$remaining" -gt 0\ntest "$remaining" -le 1200\nexec timeout -s TERM -k 10 "$remaining" /bin/sh -c '+shlex.quote(MYSQL_BODY)
 
 
+RUNTIME_CAPABILITIES = ('CHOWN', 'DAC_OVERRIDE', 'SETUID', 'SETGID', 'KILL')
+
+
+def capability_additions(value):
+    """Compare Docker's optional CAP_ spelling without changing inspection evidence."""
+    if value is None:return []
+    need(type(value) is list and len(value)<=len(RUNTIME_CAPABILITIES), 'db_only_caps')
+    normalized=[]
+    for name in value:
+        need(type(name) is str, 'db_only_caps')
+        if name.startswith('CAP_'):name=name[4:]
+        need(name in RUNTIME_CAPABILITIES and name not in normalized, 'db_only_caps')
+        normalized.append(name)
+    return sorted(normalized)
+
+
 def container(value, req, role, runtime_id=None, expires_at=1):
     """Inspect exact owned IDs before use/removal, never names alone or a label-only match."""
     request(req); need(role in ('runtime', 'mysql'), 'db_only_role')
@@ -150,8 +166,8 @@ def container(value, req, role, runtime_id=None, expires_at=1):
          ('none' if role == 'runtime' else 'container:'+runtime_id), 'db_only_container_isolation')
     need(h['Memory'] == h['MemorySwap'] == LIMITS[role+'_memory'] and h['NanoCpus'] == LIMITS['cpu']
          and h['PidsLimit'] == LIMITS[role+'_pids'], 'db_only_container_resources')
-    need(h['CapDrop'] == ['ALL'] and sorted(h.get('CapAdd') or []) ==
-         (sorted(['CHOWN', 'DAC_OVERRIDE', 'SETUID', 'SETGID', 'KILL']) if role == 'runtime' else []), 'db_only_caps')
+    need(h['CapDrop'] == ['ALL'] and capability_additions(h.get('CapAdd')) ==
+         (sorted(RUNTIME_CAPABILITIES) if role == 'runtime' else []), 'db_only_caps')
     need(h['SecurityOpt'] == ['no-new-privileges'] and not h.get('PortBindings')
          and not h.get('Devices') and not h.get('VolumesFrom') and not h.get('Binds')
          and h['PidMode'] == '' and h.get('UsernsMode', '') == ''

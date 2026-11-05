@@ -15,6 +15,78 @@ second parent; native-tested `7cdbbeef639…` is an ancestor of that reviewed he
 Its native PASS belongs only to `7cdbbeef`, never this implementation or the merge.
 Historical failures and pre-merge reports are not rewritten or rerun.
 
+## Capability comparison correction following ffd6249
+
+**LOCAL CORRECTION / REPORTED NATIVE ATTEMPT INCOMPLETE / DATABASE NOT REACHED.**
+The starting branch was clean at `ffd624935dfac779b8239a133d947b84f60149a1`;
+PR #131 was OPEN DRAFT with its exact-head review completed and all 16 existing
+review threads resolved. Those unrelated threads remain closed.
+
+The subsequently reported authorized operator attempt used run
+`79c5dbe793ba1266171c0f83378c1cfd` and exited1 before runtime startup. Docker's
+inspection listed `CAP_CHOWN`, `CAP_DAC_OVERRIDE`, `CAP_KILL`, `CAP_SETGID`,
+`CAP_SETUID`; the actual validator compared these directly against unprefixed
+names and raised `db_only_caps`. The same predicate blocked cleanup. The retained
+runtime was last observed created, never started, PID0, network=none; MySQL and
+every database stage were **NOT REACHED**. Docker was subsequently restored
+inactive. These are historical reported observations, not new host measurements.
+The run is **USED / INCOMPLETE**, never available for retry or resume.
+
+Before editing, actual `container()` accepted the unprefixed control and rejected
+the prefixed configuration. Actual `Operator.create()` retained a create intent
+after its modeled engine returned the ID, but failed before recording `created`
+or issuing start. Both `Operator.cleanup()` and `status_or_cleanup()` reproduced
+the rejection using real local retained files. Available evidence was a sanitized
+local inspection projection: the adapter preserves its copied values but is
+explicitly **reconstructed**, not the complete original Docker response. The
+local five-record archive is likewise a model, not the original native binary.
+Baseline copies/logs are retained separately from corrected results.
+
+The [contract](../tests/support/WebsitePlatformM6EDBOnlyContract.py) now normalizes
+only `CapAdd` at the comparison boundary. Each entry must be a string matching an
+approved uppercase name, optionally preceded by exactly one `CAP_`. The bounded
+list must contain each of CHOWN, DAC_OVERRIDE, SETUID, SETGID and KILL exactly once
+for runtime, independent of order. MySQL accepts only null or an empty list for
+no additions. Scalars, objects, arbitrary falsey values, non-string entries,
+extra/missing names, duplicates after normalization, repeated prefixes, lowercase,
+whitespace and unapproved names (including ALL/CAP_ALL) reject. `CapDrop` remains
+exactly `["ALL"]`. Normalization builds a separate list and never alters the
+inspection object or the original evidence values.
+
+Creation arguments are unchanged. All container ID/name, role/image/request,
+original source mount, read-only, program/expiry, namespace/rootless identity,
+network, exposure, resource/storage/time, no-new-privileges, restart and log
+predicates remain unchanged. Actual native capability masks are still runtime227
+and MySQL0; restricted PHP identities and their checks are unchanged. Accepting
+a Docker spelling is not evidence of kernel enforcement or operational admission.
+
+No operator change is needed. Its existing cleanup interface loads the original
+saved request and expiry, uses `host_readiness(..., source=False)`, and independently
+bounds cleanup to 120 seconds. Thus a newly reviewed implementation can validate
+the old configuration without substituting its new SHA into the failed request,
+labels, source mount or deadline. A create-intent-only recovery has no durable
+runtime ID at the evidence-export step, so it does not attempt export; cleanup
+then resolves the exact intent and validates the complete configuration. If a
+never-started runtime already has a durable ID, the existing read-only evidence
+attempt fails and records `recovery-capture-incomplete`, then cleanup continues.
+It never starts a container to manufacture absent component results.
+
+The [regression controls](../tests/WebsitePlatformM6EDBOnlyTest.py) exercise actual
+admission through its next start stage with modeled engine responses, and actual
+cleanup through real archives. They verify changed configuration/foreign resource
+rejection, durably recorded ID checks, preserved historical slots and hash chain,
+expiry binding, no cleanup start/create/run/SQL, and exact-ID absence. Successful
+recovery appends records; the archive's whole-file hash changes while the original
+INCOMPLETE records remain intact. The intent-only interface does not take an
+expected-ID argument, so later recovery must independently verify the full
+reported ID before invoking it; name/label equality alone is insufficient.
+
+Only this contract, its direct Python tests and the two existing M6E documents
+change. No SSH, staging/production access, actual engine/container/service or SQL
+operation occurred during this correction. See the
+[local results and cleanup-only handoff](sprint-8.8-m6e-isolated-validation.md#capability-comparison-controls-following-ffd6249).
+All six full M6E commissioning classifications remain **MISSING**.
+
 ## User-service connection correction following eb773736
 
 **LOCAL CORRECTION / NATIVE UNEXECUTED / NO ADMISSION.** This increment started at

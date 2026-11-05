@@ -1,9 +1,160 @@
 # Sprint 8.8 M6E — Isolated Linux/Apache validation
 
-**PARTIALLY IMPLEMENTED / NATIVE NOT EXECUTED.** The Windows implementation task does not authorize
+**PARTIALLY IMPLEMENTED / NATIVE DATABASE NOT REACHED.** The reported DB-only
+operator attempt failed before runtime startup; its preserved result is INCOMPLETE.
+The local correction task does not authorize
 installation, server preparation, Linux/Apache execution, SQL, service operations,
 working-staging activation or deployment. This document is the bounded later path,
 not a claim that a host contract exists. M6D’s closed native gate is not reopened.
+
+## Capability comparison controls following ffd6249
+
+**LOCAL CONTROLLED VALIDATION ONLY / PRESERVED USED RUN / NO CLEANUP EXECUTION.**
+Clean branch/head `ffd624935dfac779b8239a133d947b84f60149a1` and OPEN DRAFT PR #131
+were verified before editing, including the completed exact-head review and 16
+resolved threads. The [implementation account](sprint-8.8-m6e-local-implementation.md#capability-comparison-correction-following-ffd6249)
+describes the reported native pre-start failure and the strict comparison change.
+Previous sections below retain their historical results and authorization limits.
+
+The unchanged baseline reproduced unprefixed PASS, prefixed `db_only_caps`,
+create-intent-only state after the modeled create returned an ID, and refusal by
+actual operator cleanup and `status_or_cleanup()`. No start occurred. The fixture
+adapts the retained local sanitized inspection projection; it is **not** the
+original full Docker payload. The original saved request was read locally without
+modification. Constructed local archives are explicit models, not copies of the
+original 32 MiB native archive or claims about its digest. Baseline and corrected
+results are separate directories under the desktop visualization workspace's
+`m6e-capability-correction-20261105T231348573Z` evidence folder.
+
+Corrected controls use real comparison, operator/entrypoint orchestration and
+retained-file encoding, fsync, readback and chain validation. Docker/engine replies,
+Linux metadata, rootless namespaces and kernel masks are modeled; POSIX0600 is
+modeled on Windows. Existing complete-suite controls use real bounded harmless
+local Python/PHP children. No actual Docker/service executable, SQL or native
+probe is used. All 120 permutations of each unprefixed, prefixed and mixed runtime
+spelling pass without changing inspection bytes. MySQL null/empty additions pass;
+malformed collections/names and every policy widening fail. Admission reaches
+the existing start stage only in the model. Cleanup preserves foreign resources,
+rejects changed ownership/configuration and recorded-ID substitution, and requires
+successful exact-ID absence after modeled removal.
+
+The retained-projection recovery separately verifies the actual reported ID,
+original request digest, source mount, command and expiry. In a real local model
+archive the original five slots remain byte-for-byte identical, including headers,
+record hashes, padding and chain links. Four records are appended:
+`recovered-create`, `remove-intent`, `removed`, `recovery-cleanup-complete`.
+The local whole-file digest changes from
+`9686659574227b62c7934ce1fe4669bfa1fb54176f8b18178d74e20b434510dc` to
+`6c6d7c2e8439bada449c7d16f262e8b80c00f8bd284aafb644691d4e8b0c80ba`.
+These two hashes describe only that constructed local archive, not staging.
+The original `final` record remains INCOMPLETE; a later cleanup-complete record
+does not turn the failed campaign into a component PASS or grant authority.
+
+Validation used existing Python 3.14.7 and PHP 8.4.24:
+
+| Local control | Result |
+| --- | --- |
+| Complete DB-only Python suite | 71 tests PASS, 321.730s; includes all 14 new controls |
+| Focused capability/admission/cleanup/recovery and retained integrity | 17 tests PASS (14 new controls plus 3 retained integrity controls), 149.997s |
+| Current M6E scope | 374 assertions PASS; closed sources, 25 migrations and 77 definitions preserved |
+| Changed Python syntax, documentation links, whitespace, Git integrity | 2 AST parses and 58 local links/anchors PASS; whitespace and Git integrity PASS |
+| Tested/index/committed identity | Exact four-path Git blob equality required and checked against the saved tested manifest |
+
+The first complete sandbox run executed 71 tests in 215.260s and reported four
+failures and 62 errors. Windows denied the existing hard-link publication
+operations (`WinError 5`), causing missing-publication and downstream assertion
+failures. The diagnostic run and failed complete log are preserved separately.
+The two diagnostic controls then passed with normal local filesystem permissions
+(3.488s), followed by the complete 71-test PASS above on the same unchanged code.
+No permission or publication check is bypassed in the implementation or tests.
+
+Standalone DB-only PHP, bootstrap, snapshot, publication, ledger-recovery and
+native/full-host suites are not part of this rerun. Modeled PHP fixtures invoked
+internally by the complete Python suite remain distinct from a standalone result.
+Shared process ownership, M6C/M6D sources and closed acceptance are unchanged.
+All six full M6E commissioning classifications remain **MISSING**.
+
+### Cleanup-only recovery handoff — NOT EXECUTED
+
+This is a preparation handoff for later **explicit cleanup authorization**. It
+does not authorize a temporary engine start, removal, retry or new test now.
+
+1. **Reviewed recovery source.** Complete the new correction's exact-head review,
+   retain its receipt, and create a new immutable export of that reviewed commit
+   with verified inventory. The recovery implementation SHA is separate from
+   failed-run source `ffd624935dfac779b8239a133d947b84f60149a1`. Preserve the old
+   export, saved request, historical reports and native archive. The corrected
+   `--inventory`/`--inspect-host` checks can precede any authorized engine start.
+   Request-based `--inspect` is source-bound and must not be pointed at the old
+   request from the new export as a substitute for the cleanup interface.
+2. **Archive before append.** Independently verify the original protected,
+   single-link, 32 MiB archive, its five records and hash chain at
+   `/mnt/ubo_stage_testdata/codex-validation/evidence/m6e-db-only-79c5dbe793ba1266171c0f83378c1cfd.evidence`.
+   Its reported pre-recovery SHA256 is
+   `d83daf9620ea5c25fad0c77afff0548eac4ddc6f04b24dac9bb3c11038570d48`.
+   Verify that digest **before** opening cleanup for append; retain original
+   record/slot hashes. Stop on discrepancy. Record the new whole-file digest
+   afterward and prove the original prefix/chain is unchanged; the old whole-file
+   digest cannot describe the extended archive.
+3. **Original ownership/configuration.** Run ID is
+   `79c5dbe793ba1266171c0f83378c1cfd`; runtime name is
+   `ubo-m6e-db-79c5dbe793ba1266171c0f83378c1cfd-runtime`; full ID is
+   `1fffc01079352836fca557fcb1406cd11fe6ecbe18c543f9b364772d1411f6a7`.
+   Independently confirm this exact ID before calling cleanup because the durable
+   history contains an intent, not a `created` ID, and the interface has no
+   expected-ID argument. Stop if replaced or if full configuration differs.
+   The original request digest/label is
+   `7322ce3489fe3f0e0db70f36c8e9cea1fd4c0bb735f0629b6f9182aec589479a`,
+   source inventory is
+   `a6a75aee0aa0d63658a7560a9fc2cce5151e5ddd87e6055c122a907f2ed2339d`,
+   and original review digest is
+   `e32fcb07547d656675504cff306c37b47f560fb20d456e440e7c5c1b7e20f49d`.
+   Runtime image is
+   `sha256:88208948cc5dbeff44ddd9f0094d922f9e15350cf38c1004884f6f7e99f5c85e`;
+   MySQL image remains the original request's
+   `sha256:7c07d11b694dcc7e2ef3de845075eca1a8b39868f85f519f938b54c432edc1cb`.
+   Original read-only source is
+   `/mnt/ubo_stage_testdata/codex-validation/checkouts/m6e-db-only/ffd624935dfac779b8239a133d947b84f60149a1`
+   mounted at `/opt/ubo-m6e-db-only`. Entrypoint `/usr/bin/python3` and command
+   `-I -B /opt/ubo-m6e-db-only/tests/support/WebsitePlatformM6EDBOnlyRuntime.py --hold 1793920593`
+   retain the original expiry. Labels, role, user0:0, network=none, exact capability
+   and complete resource/exposure/mount policies must still match. Never replace
+   these original bindings with the correction SHA or a renewed deadline.
+4. **Temporary engine availability.** First observe the host/account, fixed
+   rootless endpoint, service/socket states and absence of unrelated active work.
+   With later explicit authorization, temporarily start only the approved user
+   Docker service; install restoration handling before the start. Verify the
+   existing delegation/socket/identity policy. Keep the socket activation unit
+   inactive and restore the original inactive/dead, disabled engine state on
+   success or failure. Do not change enablement, start any container, pull/build
+   images or run a component/native probe. Preserve failures if restoration fails.
+5. **Reviewed cleanup interface.** From the new verified immutable export, as the
+   authorized `codex-validation` UID/GID1000, the locally verified command is:
+
+   ```text
+   /usr/bin/python3 -I -B /mnt/ubo_stage_testdata/codex-validation/checkouts/m6e-db-only/<NEW_REVIEWED_SHA>/tests/WebsitePlatformM6EDBOnly.py --cleanup 79c5dbe793ba1266171c0f83378c1cfd
+   ```
+
+   Replace the placeholder only with the completed-review correction SHA. Cleanup
+   loads the **original** request from the archive, retains expiry1793920593 and
+   applies its separate 120-second cleanup budget. It does not renew execution.
+   Create-intent-only recovery issues no component export. If an interrupted
+   recovery has already durably recorded an ID, the existing evidence-index read
+   may fail because the container never started; preserve the resulting
+   `recovery-capture-incomplete` diagnostic (its sanitized error is generic) and
+   the accurate NOT REACHED/unavailable outcome. Never start it for evidence.
+6. **Independent absence.** In addition to the launcher's successful full-ID
+   inventory check, independently confirm that exact ID and exact name are absent,
+   no MySQL resource for this run appeared, and foreign resources remain unchanged.
+   Then restore and independently verify engine inactivity. An inspect error alone
+   does not prove absence.
+7. **Preserve failure.** Retain the original five native records and INCOMPLETE
+   result. Record cleanup as appended recovery evidence with a new archive digest;
+   it does not establish database execution, kernel enforcement or native PASS.
+8. **Any later positive run.** Separate explicit test authorization requires fresh
+   reviewed-SHA export/inventory/review bindings, a new protected request and a new
+   run ID, full admission checks and a new evidence archive. The old run is USED.
+   This cleanup handoff grants no retry, resume, `--execute` or operational authority.
 
 ## User-service environment controls following eb773736
 

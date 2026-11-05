@@ -3,6 +3,7 @@ import copy
 import contextlib
 import io
 import importlib.util
+import itertools
 import os
 from pathlib import Path, PurePosixPath
 import sys
@@ -129,6 +130,72 @@ class Contract(unittest.TestCase):
             preparation.admit_facts(config,dict(platform='linux',uid=0,container='docker'))
 
 
+class Capabilities(unittest.TestCase):
+    """Actual comparison boundary; Docker inspection and kernel measurements are models."""
+    names=['CHOWN','DAC_OVERRIDE','SETUID','SETGID','KILL']
+
+    def test_valid_spellings_and_every_order_preserve_inspection(self):
+        req=request()
+        for names in (self.names,['CAP_'+n for n in self.names],
+                      [n if i%2 else 'CAP_'+n for i,n in enumerate(self.names)]):
+            for ordered in itertools.permutations(names):
+                value=container(req,'runtime');value['HostConfig']['CapAdd']=list(ordered);before=canonical(value)
+                with self.subTest(names=ordered):self.assertEqual(c.container(value,req,'runtime'),value['Id'])
+                self.assertEqual(canonical(value),before)
+
+    def test_mysql_accepts_only_null_or_empty_list(self):
+        req=request()
+        for additions in (None,[]):
+            value=container(req,'mysql');value['HostConfig']['CapAdd']=additions;before=canonical(value)
+            self.assertEqual(c.container(value,req,'mysql','1'*64),value['Id']);self.assertEqual(canonical(value),before)
+        for additions in (False,True,0,1,0.0,'','CHOWN',{},(),['CHOWN'],['CAP_CHOWN']):
+            value=container(req,'mysql');value['HostConfig']['CapAdd']=additions
+            with self.subTest(additions=additions),self.assertRaisesRegex(ValueError,'db_only_caps'):
+                c.container(value,req,'mysql','1'*64)
+
+    def test_missing_extra_and_normalized_duplicates_reject(self):
+        req=request()
+        for i,name in enumerate(self.names):
+            others=self.names[:i]+self.names[i+1:]
+            for additions in (others, self.names+[name], others+[others[0]],
+                              others+['CAP_'+others[0]], self.names+['CAP_'+name]):
+                value=container(req,'runtime');value['HostConfig']['CapAdd']=additions;before=canonical(value)
+                with self.subTest(additions=additions),self.assertRaisesRegex(ValueError,'db_only_caps'):
+                    c.container(value,req,'runtime')
+                self.assertEqual(canonical(value),before)
+
+    def test_malformed_names_types_and_oversized_collections_reject(self):
+        req=request()
+        bad_names=['ALL','CAP_ALL','SYS_ADMIN','CAP_SYS_ADMIN','NET_ADMIN','CAP_NET_RAW',
+            'CAP_CAP_CHOWN','',' ',' CHOWN','CHOWN ','CHOWN\n','chown','cap_CHOWN','CAP_chown',
+            'CAP-CHOWN','CAP_','CHOWN\x00',None,False,0,{},[],['CHOWN']]
+        bad_collections=[None,[],False,True,0,1,0.0,'',{},'CHOWN',tuple(self.names),['CHOWN']*10000]
+        bad_collections += [[name]+self.names[1:] for name in bad_names]
+        for additions in bad_collections:
+            value=container(req,'runtime');value['HostConfig']['CapAdd']=additions
+            with self.subTest(additions=repr(additions)[:100]),self.assertRaisesRegex(ValueError,'db_only_caps'):
+                c.container(value,req,'runtime')
+
+    def test_capdrop_all_is_exact_and_creation_spelling_unchanged(self):
+        req=request()
+        for role in ('runtime','mysql'):
+            argv=c.create_args(req,role,'1'*64)
+            self.assertEqual([argv[i+1] for i,a in enumerate(argv) if a=='--cap-drop'],['ALL'])
+            self.assertEqual([argv[i+1] for i,a in enumerate(argv) if a=='--cap-add'],self.names if role=='runtime' else [])
+            for drops in (None,[],['CAP_ALL'],['all'],['ALL','ALL'],['ALL','CHOWN'],'ALL',{}):
+                value=container(req,role);value['HostConfig']['CapDrop']=drops
+                with self.subTest(role=role,drops=drops),self.assertRaisesRegex(ValueError,'db_only_caps'):
+                    c.container(value,req,role,'1'*64)
+
+    def test_native_effective_masks_are_still_exact(self):
+        for role,expected in (('runtime',227),('mysql',0)):
+            value=measurement(role);self.assertEqual(c.measurements(value,role,HOST_NS)['capabilities'],expected)
+            for mask in ({0,1,226,227,228,2**21,2**64-1}-{expected}):
+                value['capabilities']=mask
+                with self.subTest(role=role,mask=mask),self.assertRaisesRegex(ValueError,'db_only_measured_caps_network'):
+                    c.measurements(value,role,HOST_NS)
+
+
 class Retention(unittest.TestCase):
     def setUp(self):
         self.temp=tempfile.TemporaryDirectory(prefix='m6e-db-only-control-');self.path=Path(self.temp.name)/'evidence'
@@ -171,6 +238,196 @@ class Retention(unittest.TestCase):
                 self.path.rename(self.path.with_suffix('.original'));self.path.write_bytes(b'foreign')
             with self.assertRaises(ValueError):store.append(dict(should_not_write=True))
         finally:store.close()
+
+
+class CapabilityRecovery(unittest.TestCase):
+    """Real orchestration/archive bytes; reconstructed original bindings and modeled engine.
+
+    These fixtures are NOT the original raw native inspect payload or binary archive.
+    The saved request/configuration values reproduce the retained sanitized diagnosis.
+    """
+    setUp=Retention.setUp
+    tearDown=Retention.tearDown
+    expiry=1793920593
+    cid='1fffc01079352836fca557fcb1406cd11fe6ecbe18c543f9b364772d1411f6a7'
+
+    def original(self):
+        req=request()|dict(source_sha='ffd624935dfac779b8239a133d947b84f60149a1',
+            source_inventory_sha256='a6a75aee0aa0d63658a7560a9fc2cce5151e5ddd87e6055c122a907f2ed2339d',
+            runtime_image='sha256:88208948cc5dbeff44ddd9f0094d922f9e15350cf38c1004884f6f7e99f5c85e',
+            mysql_image='sha256:7c07d11b694dcc7e2ef3de845075eca1a8b39868f85f519f938b54c432edc1cb',
+            run_id='79c5dbe793ba1266171c0f83378c1cfd',
+            review_receipt_sha256='e32fcb07547d656675504cff306c37b47f560fb20d456e440e7c5c1b7e20f49d')
+        self.assertEqual(digest(canonical(req)),'7322ce3489fe3f0e0db70f36c8e9cea1fd4c0bb735f0629b6f9182aec589479a')
+        value=container(req,'runtime');value['Id']=self.cid;value['Config']['Cmd'][-1]=str(self.expiry)
+        value['HostConfig']['CapAdd']=['CAP_CHOWN','CAP_DAC_OVERRIDE','CAP_KILL','CAP_SETGID','CAP_SETUID']
+        value['State']=dict(Status='created',Running=False,Pid=0)
+        return req,value
+
+    @contextlib.contextmanager
+    def lane(self,recorded=False):
+        req,value=self.original();rh=digest(canonical(req))
+        rows=[dict(kind='admission',request=req,request_sha256=rh,at=1793919394,expires_at=self.expiry),
+            dict(kind='create-intent',role='runtime',name=c.names(req)['runtime'],request_sha256=rh,at=1793919395)]
+        if recorded:rows.append(dict(kind='created',role='runtime',id=self.cid,identity=digest(canonical(value)),request_sha256=rh,at=1793919395))
+        rows += [dict(kind='before-host-cleanup',result='INCOMPLETE',first_failure=dict(type='ValueError',code='validation_failed'),request_sha256=rh,at=1793919396),
+            dict(kind='cleanup-incomplete',failures=[dict(role='runtime',type='ValueError',code='validation_failed')],request_sha256=rh,at=1793919397),
+            dict(kind='final',result='INCOMPLETE',first_failure=dict(type='ValueError',code='validation_failed'),
+                secondary=[dict(kind='cleanup',type='ValueError',code='validation_failed')],
+                engine_state='LEFT_ACTIVE_AS_OBSERVED',request_sha256=rh,at=1793919398,**c.AUTHORITY)]
+        with tempfile.TemporaryDirectory(dir=self.temp.name,prefix='recovery-') as directory:
+            root=Path(directory);path=root/('m6e-db-only-'+req['run_id']+'.evidence')
+            store=c.Retained(path,create=True)
+            try:
+                for row in rows:store.append(row)
+            finally:store.close()
+            state=SimpleNamespace(req=req,value=value,path=path,rows=rows,before=path.read_bytes(),calls=[],removed=[],present=True,
+                foreign={'9'*64:dict(Name='/foreign',State='created')},budgets=[])
+            def ready(owner,saved,source=True):
+                self.assertFalse(source);self.assertEqual(saved,req)
+                budget=owner.deadline-time.monotonic();self.assertGreater(budget,0);self.assertLessEqual(budget,120);state.budgets.append(budget)
+                return dict(engine=dict(ActiveState='active'))
+            def engine(owner,args,**kwargs):
+                state.calls.append(args)
+                if args[0]=='inspect':
+                    self.assertIn(args[1],(c.names(req)['runtime'],self.cid))
+                    return dict(exit=0 if state.present else 1,stdout=canonical([state.value]) if state.present else b'')
+                if args[0]=='rm':
+                    self.assertEqual(args,['rm','--force',self.cid]);state.removed.append(args[-1]);state.present=False
+                    return dict(exit=0,stdout=b'')
+                if args[0]=='ps':
+                    self.assertEqual(args,['ps','-a','--no-trunc','--filter','id='+self.cid,'--format','{{.ID}}'])
+                    return dict(exit=0,stdout=self.cid.encode() if state.present else b'')
+                if args[0]=='exec':
+                    self.assertTrue(recorded);self.assertEqual(args[2],self.cid);self.assertEqual(args[-1],'--evidence-index')
+                    return dict(exit=1,stdout=b'')  # Never started: no component results exist.
+                raise AssertionError('Forbidden/unmodeled recovery command '+str(args))
+            with mock.patch.object(c,'EVIDENCE',str(root)),mock.patch.object(operator,'host_readiness',side_effect=ready),\
+                 mock.patch.object(operator,'engine',side_effect=engine),mock.patch.object(operator.time,'time',return_value=self.expiry+3600):
+                yield state
+            after=path.read_bytes();self.assertEqual(after[:len(rows)*c.SLOT],state.before[:len(rows)*c.SLOT])
+            saved=c.Retained(path,readonly=True)
+            try:self.assertEqual(saved.records[:len(rows)],rows)
+            finally:saved.close()
+            self.assertEqual(state.foreign,{'9'*64:dict(Name='/foreign',State='created')})
+
+    def records(self,state):
+        saved=c.Retained(state.path,readonly=True)
+        try:return saved.records
+        finally:saved.close()
+
+    def test_valid_admission_reaches_existing_start_stage(self):
+        req=request()
+        for additions in (Capabilities.names,['CAP_'+n for n in reversed(Capabilities.names)],
+                          ['CAP_CHOWN','DAC_OVERRIDE','CAP_SETUID','SETGID','CAP_KILL']):
+            # A fresh real store per spelling; no engine or service subprocess is invoked.
+            with tempfile.TemporaryDirectory(dir=self.temp.name) as directory:
+                store=c.Retained(Path(directory)/'evidence',create=True);owner=Owner(time.monotonic()+120);calls=[];values={}
+                op=operator.Operator(req,store,owner)
+                def engine(owner,args,**kwargs):
+                    calls.append(args)
+                    if args[0]=='create':
+                        role='runtime' if req['runtime_image'] in args else 'mysql';v=container(req,role)
+                        v['HostConfig']['CapAdd']=list(additions) if role=='runtime' else None;values[v['Id']]=v
+                        return dict(exit=0,stdout=v['Id'].encode())
+                    if args[0]=='inspect':return dict(exit=0,stdout=canonical([values[args[1]]]))
+                    self.assertEqual(args[0],'start');return dict(exit=0,stdout=b'')
+                try:
+                    with mock.patch.object(operator,'engine',side_effect=engine):
+                        self.assertEqual(op.create('runtime'),'1'*64);self.assertEqual(op.create('mysql'),'2'*64)
+                    self.assertEqual([a for a in calls if a[0]=='start'],[['start','1'*64],['start','2'*64]])
+                    self.assertEqual([r['kind'] for r in store.records],['create-intent','created']*2)
+                    for r in store.records:
+                        if r['kind']=='created':self.assertEqual(r['identity'],digest(canonical(values[r['id']])))
+                finally:store.close();owner.cleanup()
+
+    def test_create_intent_only_cross_version_cleanup_preserves_history(self):
+        with self.lane() as state:
+            original=canonical(state.value);output=io.StringIO()
+            with contextlib.redirect_stdout(output):self.assertEqual(operator.main(['--status',state.req['run_id']]),0)
+            self.assertEqual(decode(output.getvalue().encode())['last']['result'],'INCOMPLETE')
+            self.assertEqual(state.path.read_bytes(),state.before);self.assertEqual(state.calls,[])
+            self.assertEqual(operator.main(['--cleanup',state.req['run_id']]),0)
+            rows=self.records(state);self.assertEqual([r['kind'] for r in rows[5:]],
+                ['recovered-create','remove-intent','removed','recovery-cleanup-complete'])
+            self.assertEqual(state.removed,[self.cid]);self.assertFalse(state.present);self.assertEqual(len(state.budgets),1)
+            self.assertEqual(canonical(state.value),original);self.assertNotEqual(digest(state.path.read_bytes()),digest(state.before))
+            self.assertTrue(all(a[0] in ('inspect','rm','ps') for a in state.calls))
+            self.assertTrue(all(r['request_sha256']==digest(canonical(state.req)) for r in rows))
+            self.assertEqual(rows[0]['expires_at'],self.expiry);self.assertEqual(rows[4]['result'],'INCOMPLETE')
+            for key,value in c.AUTHORITY.items():self.assertEqual(rows[-1][key],value)
+
+    def test_recorded_never_started_runtime_keeps_unavailable_evidence(self):
+        with self.lane(recorded=True) as state:
+            self.assertEqual(operator.status_or_cleanup(state.req['run_id'],True),0)
+            rows=self.records(state);capture=next(r for r in rows if r['kind']=='recovery-capture-incomplete')
+            self.assertEqual(capture['failure']['type'],'ValueError');self.assertEqual(state.removed,[self.cid])
+            self.assertEqual(sum(a[0]=='exec' for a in state.calls),1)
+            self.assertFalse(any(r['kind']=='component-evidence' for r in rows))
+            self.assertFalse(any(a[0] in ('start','create','run') for a in state.calls))
+            self.assertEqual(rows[len(state.rows)-1]['result'],'INCOMPLETE')
+
+    def test_wrong_durably_recorded_id_is_never_adopted(self):
+        with self.lane(recorded=True) as state:
+            state.value['Id']='8'*64
+            with self.assertRaisesRegex(ValueError,'db_only_owned_cleanup_incomplete'):
+                operator.status_or_cleanup(state.req['run_id'],True)
+            self.assertEqual(state.removed,[]);self.assertTrue(state.present)
+            self.assertTrue(all(a[0]=='inspect' for a in state.calls))
+            self.assertEqual(self.records(state)[-1]['kind'],'cleanup-incomplete')
+
+    def test_full_configuration_and_privilege_guards_preserve_foreign_resources(self):
+        mutations=[(('Id',),'not-an-id'),(('Name',),'/foreign'),(('Image',),'sha256:'+'8'*64),
+            (('Config','Labels',c.LABEL),'8'*32),(('Config','Labels',c.LABEL+'.request'),'8'*64),
+            (('Config','Entrypoint'),['/bin/sh']),(('Config','Cmd'),['foreign-program']),
+            (('Config','Cmd',4),str(self.expiry+1)),
+            (('Config','User'),'1000:1000'),(('Mounts',0,'Source'),c.EXPORTS+'/'+'8'*40),
+            (('Mounts',0,'Destination'),'/foreign'),(('Mounts',0,'RW'),True),(('Mounts',),[dict(Type='volume')])]
+        mutations += [(('HostConfig',key),bad) for key,bad in [
+            ('ReadonlyRootfs',False),('Privileged',True),('NetworkMode','host'),('Memory',0),('MemorySwap',-1),
+            ('NanoCpus',2*c.LIMITS['cpu']),('PidsLimit',0),('CapDrop',['CAP_ALL']),
+            ('CapAdd',['CAP_SYS_ADMIN']),('CapAdd',['CAP_CHOWN']*5),('SecurityOpt',[]),
+            ('PortBindings',{'80/tcp':[{}]}),('Devices',[{}]),('VolumesFrom',['foreign']),('Binds',['/var/run/docker.sock:/sock']),
+            ('PidMode','host'),('UsernsMode','host'),('RestartPolicy',dict(Name='always')),('LogConfig',dict(Type='json-file')),
+            ('Tmpfs',{}),('Tmpfs',{p:'rw,size=1' for p in c.mount_limits('runtime')})]]
+        for path,bad in mutations:
+            with self.subTest(path=path,bad=bad),self.lane() as state:
+                target=state.value
+                for key in path[:-1]:target=target[key]
+                target[path[-1]]=bad
+                with self.assertRaisesRegex(ValueError,'db_only_owned_cleanup_incomplete'):
+                    operator.status_or_cleanup(state.req['run_id'],True)
+                self.assertEqual(state.removed,[]);self.assertTrue(state.present)
+                self.assertTrue(all(a[0]=='inspect' for a in state.calls))
+
+    def test_configuration_rechecked_after_name_resolution(self):
+        with self.lane() as state:
+            engine=operator.engine.side_effect
+            def changed(owner,args,**kwargs):
+                if args==['inspect',self.cid]:state.value['HostConfig']['Privileged']=True
+                return engine(owner,args,**kwargs)
+            with mock.patch.object(operator,'engine',side_effect=changed),self.assertRaisesRegex(ValueError,'db_only_owned_cleanup_incomplete'):
+                operator.status_or_cleanup(state.req['run_id'],True)
+            self.assertEqual(state.removed,[]);self.assertTrue(state.present)
+
+    def test_inactive_engine_cannot_trigger_recovery_or_append(self):
+        with self.lane() as state:
+            with mock.patch.object(operator,'host_readiness',return_value=dict(engine=dict(ActiveState='inactive'))),\
+                 self.assertRaisesRegex(ValueError,'db_only_cleanup_engine_inactive'):
+                operator.status_or_cleanup(state.req['run_id'],True)
+            self.assertEqual(state.calls,[]);self.assertEqual(state.path.read_bytes(),state.before)
+
+    def test_removal_requires_independent_exact_id_absence(self):
+        with self.lane() as state:
+            engine=operator.engine.side_effect
+            def remaining(owner,args,**kwargs):
+                result=engine(owner,args,**kwargs)
+                if args[0]=='ps':result['stdout']=self.cid.encode()
+                return result
+            with mock.patch.object(operator,'engine',side_effect=remaining),self.assertRaisesRegex(ValueError,'db_only_owned_cleanup_incomplete'):
+                operator.status_or_cleanup(state.req['run_id'],True)
+            self.assertEqual(self.records(state)[-1]['kind'],'cleanup-incomplete')
+            self.assertFalse(any(r['kind']=='removed' for r in self.records(state)))
 
 
 class Evidence(unittest.TestCase):
