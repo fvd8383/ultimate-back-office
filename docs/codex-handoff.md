@@ -2,7 +2,7 @@
 
 Current M6: **IN PROGRESS**. **M6A — ARCHITECTURE REVIEWED / MERGED** (PR #125).
 **M6B — COMPLETE / STAGING PASS / FORMALLY CLOSED**. **M6C — COMPLETE / ISOLATED NATIVE GATES PASS / FORMALLY CLOSED**;
-**M6D — NATIVE V3 PASS AT 7cdbbeef / SCOPE RECONCILED LOCALLY / FINAL REVIEW AND MERGE PENDING**; **M6E–M6G — NOT STARTED**. **PR #126 — MERGED** at
+**M6D — COMPLETE / DB-ONLY NATIVE V3 PASS / FORMALLY CLOSED**; **M6E — PARTIALLY IMPLEMENTED / REVIEW REQUIRED**; **M6F–M6G — NOT STARTED**. **PR #126 — MERGED** at
 `f466fc1cdbfb53325a1db11445736bdc5ea7c6f4`, the operator-reported deployed baseline.
 **Migration 025 — APPLIED TO WORKING STAGING**, once on October 17, 2026.
 The [M6B closeout](sprint-8.8-m6b-closeout.md) separates the earlier native PASS,
@@ -31,8 +31,10 @@ PR #129 merged at `1134c65c5f6cdfea804d634fad73e2d8a354d065`; the
 makes M6C formal closure effective. The [M6D source-specific acceptance record](sprint-8.8-m6d-native-acceptance.md)
 records native v3 PASS at `7cdbbeef`: 29 cases, 146 subcases, 22 ordering observations,
 five transport legs, five authoritative observations and 790 assertions; all cleanup PASS.
-The current scope guard is reconciled locally; the later test/documentation head is
-not itself natively executed. Final review, merge and formal closeout remain pending.
+The [final M6D closeout receipt](https://github.com/fvd8383/ultimate-back-office/pull/130#issuecomment-6563165702) records merge `303b073` and formal closure.
+Native PASS remains attributed to `7cdbbeef`; neither the merge nor this M6E branch
+was natively executed. The [M6E implementation record](sprint-8.8-m6e-local-implementation.md)
+separates local executed tests from authored, unexecuted Linux/Apache gates.
 This local reconciliation performed no native SQL, host preparation, deployment or browser work. The last operator-reported deployed
 application remains `f466fc1…`; both backup copies/receipts are retained and restore
 remains NOT EXECUTED.
@@ -51,8 +53,9 @@ remains NOT EXECUTED.
 | M6A | ARCHITECTURE REVIEWED / MERGED |
 | M6B | COMPLETE / STAGING PASS / FORMALLY CLOSED |
 | M6C | COMPLETE / ISOLATED NATIVE GATES PASS / FORMALLY CLOSED |
-| M6D | NATIVE V3 PASS AT 7cdbbeef / SCOPE RECONCILED LOCALLY / FINAL REVIEW AND MERGE PENDING |
-| M6E–M6G | NOT STARTED |
+| M6D | COMPLETE / DB-ONLY NATIVE V3 PASS / FORMALLY CLOSED |
+| M6E | PARTIALLY IMPLEMENTED / REVIEW REQUIRED |
+| M6F–M6G | NOT STARTED |
 | M6 | IN PROGRESS |
 | Production | UNAUTHORIZED / NOT DEPLOYED |
 

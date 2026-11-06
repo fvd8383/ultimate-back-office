@@ -1,11 +1,11 @@
 # Sprint 8.8 M6D — Local implementation
 
-Status: **NATIVE V3 PASS AT 7cdbbeef / SCOPE RECONCILED LOCALLY / FINAL REVIEW AND MERGE PENDING**. Baseline: `1134c65c5f6cdfea804d634fad73e2d8a354d065`.
+Status: **M6D — COMPLETE / DB-ONLY NATIVE V3 PASS / FORMALLY CLOSED**. Baseline: `1134c65c5f6cdfea804d634fad73e2d8a354d065`.
 Branch: `codex/sprint-8.8-m6d-deployment-authority`.
 
 M6C is COMPLETE / ISOLATED NATIVE GATES PASS / FORMALLY CLOSED under the
 [final owner receipt](https://github.com/fvd8383/ultimate-back-office/pull/129#issuecomment-6549478529).
-M6B remains formally closed, M6 remains IN PROGRESS, and M6E–M6G remain NOT STARTED.
+M6B remains formally closed, M6 remains IN PROGRESS, and M6E is PARTIALLY IMPLEMENTED / REVIEW REQUIRED; M6F–M6G remain NOT STARTED.
 
 ## Current acceptance — 2026-11-01
 
@@ -16,7 +16,10 @@ and all cleanup layers PASS. The two Linux transaction suites separately passed 
 assertions and five lints. This scope-policy/documentation head is not natively executed;
 all application/native behavior remains equivalent to that fixed tested source.
 The current guard and focused negative controls pass locally; historical scope failure
-remains FAILED at its old policy, not waived. Final review, merge and formal closure are pending.
+remains FAILED at its old policy, not waived. The [final M6D closeout receipt](https://github.com/fvd8383/ultimate-back-office/pull/130#issuecomment-6563165702)
+records the later reviewed-head merge `303b073` and formal closure. This status update
+does not rerun or reattribute the native gate. Current M6E changes use a separate
+[implementation/scope record](sprint-8.8-m6e-local-implementation.md).
 
 The correction/authoring sections below are historical snapshots at their named SHAs.
 Their NOT EXECUTED/pending statements describe those checkpoints and are superseded

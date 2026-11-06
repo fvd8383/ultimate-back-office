@@ -1,8 +1,10 @@
 # Sprint 8.8 M6D — Source-specific native v3 acceptance
 
-2026-11-01: **NATIVE V3 PASS AT 7cdbbeef / SCOPE RECONCILED LOCALLY / FINAL REVIEW AND MERGE PENDING**.
-Formal M6D closure is pending;
-M6C remains formally closed, M6 remains in progress, and M6E–M6G remain not started.
+Current status: **M6D — COMPLETE / DB-ONLY NATIVE V3 PASS / FORMALLY CLOSED** under the
+[final M6D closeout receipt](https://github.com/fvd8383/ultimate-back-office/pull/130#issuecomment-6563165702). Native PASS remains at `7cdbbeef`;
+merge `303b073` and the M6E branch are not natively executed. M6E is partially
+implemented locally; M6F–M6G remain not started. The acceptance evidence below is the
+retained source-specific pre-merge record; historical failures are unchanged.
 
 ## Tested source and original evidence
 

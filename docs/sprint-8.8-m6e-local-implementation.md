@@ -1,0 +1,2548 @@
+# Sprint 8.8 M6E — Local Apache publisher implementation
+
+Status: **PARTIALLY IMPLEMENTED / REVIEW REQUIRED**. Operational publishing remains
+disabled without the verified installed host contract. M6 remains IN PROGRESS;
+M6F–M6G remain NOT STARTED. No M6E native, Apache, TLS or browser acceptance is claimed.
+
+Baseline: `303b073658d7eb08e6086237a70dd4d285dc121c`; branch
+`codex/sprint-8.8-m6e-apache-publisher`. Remote main matched the baseline before branch
+creation, with no existing M6E branch/PR. The retained M6D branch and detached merge
+verification worktree were preserved. The baseline has reviewed M6D `2dc88e439…` as its
+second parent; native-tested `7cdbbeef639…` is an ancestor of that reviewed head.
+
+**M6D — COMPLETE / DB-ONLY NATIVE V3 PASS / FORMALLY CLOSED** under the
+[final closeout receipt](https://github.com/fvd8383/ultimate-back-office/pull/130#issuecomment-6563165702).
+Its native PASS belongs only to `7cdbbeef`, never this implementation or the merge.
+Historical failures and pre-merge reports are not rewritten or rerun.
+
+## Startup and measurement diagnostics following a000097
+
+**LOCAL DIAGNOSTIC CORRECTION / NATIVE CAUSE UNPROVEN / DATABASE NOT REACHED.**
+The starting worktree was clean at `a0000975024a554016dcfe8dcf34998cdfe66bb8` on
+the existing branch. PR #131 was OPEN DRAFT, its exact-head review completed
+without findings, and all 16 review threads resolved. This task accesses only
+local files and GitHub; it does not access staging or execute an engine/service,
+container, SQL or native probe.
+
+The reported native attempt `37c9719d9e3cad85c9fcebd26b62a943` exited1 after
+9.225959 seconds. The locally available report and sanitized records identify
+runtime `68fa46015089e62fd56e2a8e59dc140c88f1a390ead19bd9df600ae72ab6360f`
+and this seven-record sequence: `admission`, `create-intent`, `created`,
+`before-host-cleanup`, `remove-intent`, `removed`, `final`. The primary was
+`ValueError / validation_failed`; `component-capture` failed separately. Cleanup,
+engine restoration and preservation were reported complete. SQL and all database
+stages were NOT REACHED. The run is USED and needs no retry, resume or cleanup.
+
+`created` follows configuration/ID verification and **precedes** Docker start.
+The source's next operation attempts start, but the retained native records do
+not contain that command's exit, an explicit measurement invocation, its bounded
+response, or typed pre-removal container State. Successful removal cannot supply
+those missing facts. The shell's temporary daemon-start acknowledgement is not
+the container-start acknowledgement. A bounded journal category projection
+reports container-not-running later during capture; its namespace/missing-file
+categories do not establish the initiating cause. No specific image, kernel,
+capability, mount or host-policy defect is proved by this evidence.
+
+Local verification checked the actual report, raw/canonical request and retained
+review bytes against their hashes. Re-encoding all 14 complete note projections
+also reproduced their source hashes. The original 32 MiB native archive is not
+present locally: its reported hash and host-side chain verification are not
+independent local archive verification. See the
+[exact evidence bindings and local controls](sprint-8.8-m6e-isolated-validation.md#startup-and-measurement-diagnostic-controls-following-a000097).
+
+Before editing, six controlled paths through the actual operator, shared owner,
+real harmless local children and retained files produced the same generic first
+failure and seven-record sequence: rejected start, acknowledged start followed
+by modeled early exit, failed measurement command, generic runtime response,
+invalid duplicate-key output, and a failed measurement helper response. Separately,
+actual `measure()` read memory and swap before a failing PID-limit conversion;
+the old exception discarded those completed values. These reproduce diagnostic
+loss, not the historical native cause.
+
+The [operator](../tests/WebsitePlatformM6EDBOnly.py) now adds versioned
+`startup-diagnostic` records in the existing protected retained file. Each binds
+the original source, run, canonical request, runtime role and verified full ID
+(null before identity is known). Attempted and last-confirmed stages distinguish
+creation, identity verification, start, measurement identity/invocation, decoding,
+schema validation and the unchanged kernel predicate. A confirmed start stage
+means a successful **client command return**, not a running container process.
+
+Only fixed `runtime-create`, `runtime-start` and `runtime-measure` operation identifiers are used.
+The existing `engine()`/`run()`/`Owner.capture()` path is unchanged; a narrow caller
+retains returned exit and available owner-observed signal/reaping facts before
+asserting exit zero. Timeout, output-bound, reap and capture failures have finite
+classifications. Capture exceptions leave discarded byte counts unavailable.
+If reaping never observes an exit, the owner's initial signal zero is also
+projected as unavailable; it is not a measured signal result.
+No command strings, stdout samples or stderr bodies enter these records.
+
+The initiating failure is saved before diagnostic publication, state observation,
+component export or cleanup. A failure-only read of the exact recorded container
+must pass the complete existing ownership/configuration validator and saved-ID
+comparison before projecting typed Status, Running, Pid, ExitCode, OOMKilled and
+start/finish timestamps. This is an observation, not a readiness gate. Failure,
+substitution or invalid field types yield UNAVAILABLE with a separate
+`state-inspection` failure. There is no name-only adoption or start/restart/retry
+for diagnosis. State.Error, Config.Env, complete inspection data and logs are
+never exported.
+
+The [runtime](../tests/support/WebsitePlatformM6EDBOnlyRuntime.py) preserves a
+finite phase/check for process metadata, cgroup files, namespaces, mount parsing,
+filesystem measurements, source mount/stat and interfaces. Completed observations
+pass a bounded privacy schema; unread/failed values are explicitly null. A
+structured failure includes only the existing sanitized exception classification
+and an actual integer errno in0–4095 when available. It is always
+`DIAGNOSTIC_ONLY`. A diagnostic returned with exit0 still fails; nonzero commands
+may have their one available bounded response decoded, never retried or accepted
+as measurements. Interpreter/import failures before the entrypoint remain outside
+its catch boundary and depend on operator command/state evidence.
+
+Strict response schemas reject unknown fields, arbitrary strings, malformed or
+oversized output before a `runtime-measurement` record is written. Numeric
+observations that violate native policy remain retainable, then fail the original
+`measurements()` predicate. Successful measurement values and all admission
+predicates remain intact. Diagnostics are capped at16 KiB inside existing64 KiB
+measurement output,128 KiB slots and32 MiB retained storage. Existing deadlines,
+120-second cleanup reserve, images, capabilities/masks, identities, network,
+mounts and all resource limits are unchanged. Shared `safe_error()` and
+`Owner.capture()` are unchanged.
+
+Diagnostic publication, component export and cleanup failures remain distinct
+secondaries and cannot replace an earlier failure. A diagnostic capture failure
+on an otherwise successful path fails closed and still attempts owned cleanup.
+Operator evidence does not depend on a functioning runtime evidence-index helper.
+Immutable append/readback and exact deletion predicates are retained; unavailable
+or torn evidence is never reported as complete or permission for broader cleanup.
+No snapshot, restoration, eligibility, migration, closed M6C/M6D or full-host
+authority code changes. All six M6E commissioning classifications remain MISSING.
+
+## Capability comparison correction following ffd6249
+
+**LOCAL CORRECTION / REPORTED NATIVE ATTEMPT INCOMPLETE / DATABASE NOT REACHED.**
+The starting branch was clean at `ffd624935dfac779b8239a133d947b84f60149a1`;
+PR #131 was OPEN DRAFT with its exact-head review completed and all 16 existing
+review threads resolved. Those unrelated threads remain closed.
+
+The subsequently reported authorized operator attempt used run
+`79c5dbe793ba1266171c0f83378c1cfd` and exited1 before runtime startup. Docker's
+inspection listed `CAP_CHOWN`, `CAP_DAC_OVERRIDE`, `CAP_KILL`, `CAP_SETGID`,
+`CAP_SETUID`; the actual validator compared these directly against unprefixed
+names and raised `db_only_caps`. The same predicate blocked cleanup. The retained
+runtime was last observed created, never started, PID0, network=none; MySQL and
+every database stage were **NOT REACHED**. Docker was subsequently restored
+inactive. These are historical reported observations, not new host measurements.
+The run is **USED / INCOMPLETE**, never available for retry or resume.
+
+Before editing, actual `container()` accepted the unprefixed control and rejected
+the prefixed configuration. Actual `Operator.create()` retained a create intent
+after its modeled engine returned the ID, but failed before recording `created`
+or issuing start. Both `Operator.cleanup()` and `status_or_cleanup()` reproduced
+the rejection using real local retained files. Available evidence was a sanitized
+local inspection projection: the adapter preserves its copied values but is
+explicitly **reconstructed**, not the complete original Docker response. The
+local five-record archive is likewise a model, not the original native binary.
+Baseline copies/logs are retained separately from corrected results.
+
+The [contract](../tests/support/WebsitePlatformM6EDBOnlyContract.py) now normalizes
+only `CapAdd` at the comparison boundary. Each entry must be a string matching an
+approved uppercase name, optionally preceded by exactly one `CAP_`. The bounded
+list must contain each of CHOWN, DAC_OVERRIDE, SETUID, SETGID and KILL exactly once
+for runtime, independent of order. MySQL accepts only null or an empty list for
+no additions. Scalars, objects, arbitrary falsey values, non-string entries,
+extra/missing names, duplicates after normalization, repeated prefixes, lowercase,
+whitespace and unapproved names (including ALL/CAP_ALL) reject. `CapDrop` remains
+exactly `["ALL"]`. Normalization builds a separate list and never alters the
+inspection object or the original evidence values.
+
+Creation arguments are unchanged. All container ID/name, role/image/request,
+original source mount, read-only, program/expiry, namespace/rootless identity,
+network, exposure, resource/storage/time, no-new-privileges, restart and log
+predicates remain unchanged. Actual native capability masks are still runtime227
+and MySQL0; restricted PHP identities and their checks are unchanged. Accepting
+a Docker spelling is not evidence of kernel enforcement or operational admission.
+
+No operator change is needed. Its existing cleanup interface loads the original
+saved request and expiry, uses `host_readiness(..., source=False)`, and independently
+bounds cleanup to 120 seconds. Thus a newly reviewed implementation can validate
+the old configuration without substituting its new SHA into the failed request,
+labels, source mount or deadline. A create-intent-only recovery has no durable
+runtime ID at the evidence-export step, so it does not attempt export; cleanup
+then resolves the exact intent and validates the complete configuration. If a
+never-started runtime already has a durable ID, the existing read-only evidence
+attempt fails and records `recovery-capture-incomplete`, then cleanup continues.
+It never starts a container to manufacture absent component results.
+
+The [regression controls](../tests/WebsitePlatformM6EDBOnlyTest.py) exercise actual
+admission through its next start stage with modeled engine responses, and actual
+cleanup through real archives. They verify changed configuration/foreign resource
+rejection, durably recorded ID checks, preserved historical slots and hash chain,
+expiry binding, no cleanup start/create/run/SQL, and exact-ID absence. Successful
+recovery appends records; the archive's whole-file hash changes while the original
+INCOMPLETE records remain intact. The intent-only interface does not take an
+expected-ID argument, so later recovery must independently verify the full
+reported ID before invoking it; name/label equality alone is insufficient.
+
+Only this contract, its direct Python tests and the two existing M6E documents
+change. No SSH, staging/production access, actual engine/container/service or SQL
+operation occurred during this correction. See the
+[local results and cleanup-only handoff](sprint-8.8-m6e-isolated-validation.md#capability-comparison-controls-following-ffd6249).
+All six full M6E commissioning classifications remain **MISSING**.
+
+## User-service connection correction following eb773736
+
+**LOCAL CORRECTION / NATIVE UNEXECUTED / NO ADMISSION.** This increment started at
+clean `eb773736e30cc8034ff51c1b878d9030c46f2306` on the existing M6E branch. PR #131
+was OPEN DRAFT with a completed exact-head review and no unresolved findings.
+The subsequent authorized preparation reported successful source export/inventory
+and static compatibility of both exact candidate images on `ubo-stage-app`, as
+`codex-validation` UID/GID1000. Direct session `systemctl --user` queries succeeded,
+but launcher `--inspect-host` and `--inspect` failed at the user-service query.
+Docker was restored to inactive/dead, disabled; no containers, SQL or native
+campaign ran. Those are retained, reported host observations, not new execution
+or evidence of database, image, cgroup or application failure.
+
+The local reproduction followed actual `engine_active()` -> `run()` ->
+`Owner.capture()` -> `subprocess.Popen()`. At that boundary the shared owner
+supplied only `PATH=/usr/bin:/bin`, `LANG=C`, `HOME=/nonexistent`. A real harmless
+local child confirmed that parent `XDG_RUNTIME_DIR` and `DBUS_SESSION_BUS_ADDRESS`
+were absent. Exporting them in the SSH shell therefore could not repair the
+launcher. Only the unavailable executable/host facts were modeled; the shared
+owner, capture pipes and child cleanup were real.
+
+The [operator](../tests/WebsitePlatformM6EDBOnly.py) now constructs only the existing
+`systemctl --user show` queries for `docker.service` and `docker.socket`, with their
+fixed property lists. It first requires Linux host `ubo-stage-app`, account
+`codex-validation`, and real/effective UID **and** GID1000. Each query then validates
+canonical, non-symlink metadata owned by UID/GID1000: `/run/user/1000` directory
+mode0700; its `systemd` directory mode0700 or0755; and the existing
+`systemd/private` Unix socket mode0700 with one link. Missing, substituted,
+wrong-owner, unsafe-mode or non-socket paths fail before spawning. Nothing creates
+a runtime directory, manager or bus.
+
+The connection route is the private user manager. In systemd v255,
+[`show` requests the manager connection](https://raw.githubusercontent.com/systemd/systemd/v255/src/systemctl/systemctl-show.c);
+the [local manager transport](https://raw.githubusercontent.com/systemd/systemd/v255/src/systemctl/systemctl-util.c)
+uses [`XDG_RUNTIME_DIR/systemd/private`](https://raw.githubusercontent.com/systemd/systemd/v255/src/shared/bus-util.c).
+The [manager creates that private socket under umask0077](https://raw.githubusercontent.com/systemd/systemd/v255/src/core/dbus.c).
+The operator passes a fixed argv prefix, without a shell:
+
+```text
+/usr/bin/env
+XDG_RUNTIME_DIR=/run/user/1000
+DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/systemd/private
+/usr/bin/systemctl --user show <fixed unit> --property=<fixed properties>
+```
+
+The explicit bus address is a fallback containment measure: older systemd can try
+the default user bus after its private connection fails. Pinning that address to
+the **same validated private endpoint** prevents diversion to `/run/user/1000/bus`,
+an inherited address or autolaunch. It is not a claim that the private manager is
+a session-bus daemon or that such a fallback succeeds. Connection or protocol
+failure remains failure. A separate session-bus socket is neither used nor
+required. This route is supported by source inspection and local command controls;
+its behavior on the staging host remains unverified for the corrected source.
+
+`WebsitePlatformM6EProcess.py` and `Owner.capture()` are unchanged. Only those two
+query commands receive the fixed additions; Docker, source-inventory and other
+children retain the original three-variable environment. No global environment
+mutation, inherited loader/Python/Docker/Git override, generic passthrough, shell,
+user switching, service operation or activation fallback is added. The existing
+owner still applies the ten-second query limit, overall deadline, 1 MiB stdout /
+16 KiB stderr bounds and owned-child cleanup. Raw stderr is not retained.
+
+Exact property parsing rejects missing, duplicated, unknown or malformed fields;
+connection errors cannot become ENGINE INACTIVE. Only a valid inactive/dead or
+failed/failed service with PID0 returns the non-running result, with images
+UNVERIFIED and no Docker socket contact. Active services still require a running
+owned PID, delegation and the fixed rootless Docker socket. The socket unit must
+be absent or inactive; contradictory not-found/active output is rejected. Exit1
+is accepted only for the exact not-found/inactive socket-unit response. Active
+request inspection retains its existing read-only info/image checks and all
+source, image, request and resource predicates.
+
+Only this operator, its direct Python controls and the two M6E documents change.
+Snapshot, restoration, eligibility, SQL, publisher, full-host admission and shared
+process-owner semantics remain unchanged. See the
+[local results and source-bound future reinspection](sprint-8.8-m6e-isolated-validation.md#user-service-environment-controls-following-eb773736).
+Native database execution remains **UNEXECUTED**; all six commissioning
+classifications remain **MISSING**.
+
+## Snapshot concurrency failure ordering following 0cb0087
+
+**LOCAL CORRECTION / NATIVE UNEXECUTED / NO ADMISSION.** The clean starting head was
+`0cb008778efaecfeb3bef960b5b3624f8eeff6e1` on the existing M6E branch. PR #131 was
+OPEN DRAFT with unresolved review
+[4475770993](https://github.com/fvd8383/ultimate-back-office/pull/131#discussion_r4475770993).
+Both the snapshot-session barrier and writer-join cases reproduced against the
+unchanged implementation using actual `capture_snapshot()`, `Background`, process
+ownership, runtime failure/diagnostic collection, campaign finalization and retained
+export. A pipe-read event established that the real bounded local reader child was
+alive before the controlled failure; synchronization did not depend on sleeps or
+allocator timing. SQL and container/namespace identities remained modeled.
+
+Before correction, cleanup began with `rt.first=None`. The initiating exception
+propagated unchanged, but reader interruption populated the first-failure slot with
+`db_only_snapshot_unconfirmed`; the outer campaign recorded the initiating failure
+as secondary. The same incorrect ordering survived immutable publication, modeled
+container removal and readback from the real retained archive.
+
+`capture_snapshot()` now records its caught exception through `Runtime.failure()`
+as `snapshot-concurrency` before reader cleanup starts, then uses a bare rethrow.
+The existing mechanism preserves a genuinely earlier recorded failure. The catch
+also covers writer-release marker creation, writer-commit evidence publication and
+reader join; a reader failure already recorded by its own diagnostic stays primary.
+`snapshot_diagnostic()` now appends its bounded snapshot failure classification when
+the first slot is occupied. Missing output therefore remains explicitly
+`db_only_snapshot_unconfirmed` as secondary, alongside capture/protocol issues and
+actual interruption observations. Available SQL outcomes and cleanup status remain
+unchanged; missing outcomes stay `UNAVAILABLE` with a null record.
+
+A separate deterministic control exposed an adjacent cleanup race: an owned-reap
+exception skipped the existing thread join, permitting immutable reports without
+the pending diagnostic. `Background.cleanup()` now records that cleanup exception,
+attempts the same five-second join even after the exception, retains any join error
+separately as `background-reap`, and rethrows the original cleanup exception. The
+concurrency catch retains the initiating exception through both consequences. No
+new thread, supervisor, retry or deadline extension is introduced; failure to join
+still fails closed and does not imply successful cleanup.
+
+The protected diagnostic, before-cleanup record and final report preserve first and
+secondary failures through the existing export/removal path. Publication failures
+still leave the bounded diagnostic embedded in campaign evidence; resource cleanup
+failures remain UNRESOLVED. No immutable evidence is rewritten. Foreign-resource
+sentinels and the existing exact-identity cleanup policy are preserved.
+
+Only DB-only campaign/runtime code, its direct Python controls and these two M6E
+documents change. Shared bootstrap/snapshot/process code, SQL algorithms/grants,
+launcher interfaces, resource limits and operational authority remain unchanged.
+All six commissioning MISSING classifications remain unchanged. See the
+[executed controls and limitations](sprint-8.8-m6e-isolated-validation.md#snapshot-concurrency-ordering-controls-following-0cb0087).
+
+## Failed DB-only snapshot outcomes following 22183a2
+
+**LOCAL CORRECTION / NATIVE UNEXECUTED / NO ADMISSION.** Review thread
+`PRRT_kwDOS02IKM6z4d3I` reported that the DB-only child discarded a failed
+`m6eCaptureSnapshot()` outcome. At exact baseline
+`22183a237340e8f267e8c5e6189edcbd67a5bf0a`, the actual wrapper branch was exercised
+with the existing modeled PDO and genuine A artifacts. Injected commit, rollback
+and unlock failures reached their intended calls. The shared algorithm produced
+`first_failure=snapshot_commit`, secondary `snapshot_rollback`/`snapshot_unlock`,
+and `transaction_cleanup=UNRESOLVED`. The old child returned only `db_only_child`
+and an empty secondary list; its only published file was `snapshot-session`.
+The actual old supervisor/campaign retained generic failure evidence after modeled
+cleanup, losing all three diagnostic fields. Lock failure similarly lost the
+algorithm's actual `snapshot_lock`/`RELEASED` outcome.
+
+`m6eDbSnapshot()` now contains the actual DB-only wrapper with narrow connection,
+output and process seams for local controls. It begins with an unreached attempt
+and null outcome, calls the unchanged capture algorithm, closes its owned reader
+and source references, and attempts protected `snapshot-outcome.json` publication
+on success and ordinary exception paths. Closing references never changes the
+SQL cleanup status. Raw throwables are discarded so exception trace arguments
+cannot retain either PDO session through publication; a WeakReference control
+verifies this with trace arguments explicitly enabled. The original algorithm outcome is retained verbatim after
+fixed-field validation; wrapper output/close failures are separately classified.
+A publication failure preserves the primary and carries the same sanitized
+record in the nonzero child protocol, including failure after file installation.
+Neither raw exceptions nor snapshot rows enter that record.
+
+Each attempt has one exclusive, source/run/case-bound snapshot invocation. Its
+record also binds the original expiry, actual namespaces, supervisor PID and
+actual child PID/UID/GID. The supervisor reads only the fixed UID2001 outcome
+path, with no-follow open, lstat/fstat/readback identity, single-link, mode0600
+and 8 KiB limits. It reuses `snapshot.outcome_value()` and adds exact DB-only
+invocation/process checks, finite failure enums and bounded secondary lists.
+Stale, malformed, oversized, substituted and incorrectly owned output cannot
+authorize success. Available validated file and protocol records are kept
+separately when post-install publication failure makes their wrapper fields differ.
+
+Both ordinary command completion and the background snapshot child's finally
+path collect diagnostics before propagating capture, protocol or exit failures.
+An early concurrency barrier/writer failure also reaps the owned reader and
+collects its available outcome. Missing output produces `capture=UNAVAILABLE`,
+a null record and actual available process/exit/interruption observations, without
+inventing a SQL failure stage or rollback/unlock acknowledgement.
+
+The protected `snapshot-diagnostic` publication contains the sanitized outcome
+itself. Its receipt is retained; campaign before-cleanup/report evidence also
+contains the bounded diagnostic, preserving it when that separate publication
+fails. The unchanged operator exports component evidence before exact container
+removal. Export/capture/cleanup errors remain separate and non-authorizing; the
+existing uncertain-resource preservation policy is unchanged. Real archive
+round-trip controls additionally required explicit `O_BINARY` on Windows file
+descriptors; this flag is zero on Linux and changes no native storage policy.
+
+The shared snapshot algorithm/validator, full-host wrappers, process owner,
+publication primitive, bootstrap admission, SQL grants, storage ceilings and
+deadlines are unchanged. No new native case or operational capability is added.
+All six commissioning MISSING classifications remain unchanged. See the
+[executed controls and limits](sprint-8.8-m6e-isolated-validation.md#failed-snapshot-outcome-correction-following-22183a2).
+
+## DB-only native adapter following 7235797
+
+**IMPLEMENTED LOCALLY / NATIVE EXECUTION UNEXECUTED / DB-ONLY COMPONENT VALIDATION.**
+This increment started at clean `72357971d57b8f74b1b9cb8a9dfa28edc37fec27` on
+`codex/sprint-8.8-m6e-apache-publisher`. Live GitHub inspection confirmed PR #131
+OPEN DRAFT, the exact-head automated review completed with no findings, all 14
+review threads resolved, and remote main `303b073658d7eb08e6086237a70dd4d285dc121c`.
+That remote-main observation is not a live staging SHA observation. No SSH,
+container engine, image acquisition, service change or real SQL was executed.
+
+The new [operator](../tests/WebsitePlatformM6EDBOnly.py) implements a separate
+`m6e-db-only-v1` contract. Its
+[contract/storage policy](../tests/support/WebsitePlatformM6EDBOnlyContract.py),
+[runtime supervisor](../tests/support/WebsitePlatformM6EDBOnlyRuntime.py),
+[campaign](../tests/support/WebsitePlatformM6EDBOnlyCampaign.py),
+[PDO child](../tests/support/WebsitePlatformM6EDBOnlyChild.php), and
+[fixed fault controls](../tests/support/WebsitePlatformM6EDBOnlyFaults.php) are
+fixture code. They do not invoke a full-host wrapper or fabricate bootstrap,
+systemd, hostname, kernel-command-line, installed-worker or publisher receipts.
+Every result remains `admission=UNIMPLEMENTED`, `native_admission=BLOCKED`, and
+`deployment_authority=NONE`. All six commissioning MISSING classifications remain
+unchanged. Closed M6C/M6D code, migrations 001–025 and the 77 definitions are unchanged.
+
+### Shared mechanisms and sequence
+
+The existing native A/B construction is split into `m6eBuildA()` and `m6eBuildB()`.
+Both retain the original genuine M6C dependencies and `m6eFinishBuild()`; the VM
+wrapper still captures its checkpoint/snapshot between A and B, then constructs
+its existing serving/foreign-asset fixture. The DB-only driver uses the two build
+functions without creating the VM's deployment target. The snapshot ordering
+regression now checks that wrapper's calls rather than global definition order.
+
+`m6eSchemaData()` gains an optional structured account-credential callback, avoiding
+evaluation or parsing of generated application configuration. Its existing output
+behavior is unchanged when the callback is absent. `m6eRestoreCreate()` gains a
+credential-writer callable with its original protected writer as the default.
+`m6eEligibilityAccount()` extracts the existing prepare/seal SQL operations; the
+VM wrapper retains its original bootstrap, cgroup, parent and process-idle checks.
+The DB-only entry checks its own actual namespace and uses the same idle-process
+and account predicates. No original gate, equality, grant or rollback predicate is
+weakened. No shared bootstrap admission or process/publication primitive is changed.
+
+The authored positive sequence is: real committed A; a fresh worker SQL session's
+`m6eCaptureCheckpoint()`/`m6eCheckpointObserve()` and sealed artifact export;
+`m6eSnapshotSchema()`/`m6eCaptureSnapshot()` on the independent restricted reader;
+independent Python snapshot validation; genuine B build; original A+B artifact and
+asset-set comparison; `m6eFinalAIneligible()` on the completed original fixture;
+`m6eRestoreDestination()` and `m6eRestoreData()` in the separate lifecycle schema;
+writer exit/account sealing; independent `m6eRestoreRead()` and Python restoration
+comparison; independent before-observer; `m6eEligibilityTransaction()` with the
+unchanged `lockDeploymentEligibility(..., false)`; confirmed rollback and account
+seal; independent after-observer; final original database/artifact/source checks;
+evidence capture and exact owned cleanup. A and B **builds** are fixture behavior.
+Neither release is deployed. No deployment request, claim, lease/fence, activation,
+failure commit or settlement is called.
+
+The completed original database and sealed A+B store remain intact during
+restoration and eligibility. Negative database mutations target only that run's
+destination, except the explicitly scoped pre-B competing-writer/grant controls.
+Artifact drift uses an owned copy of the original sealed store. Snapshot corruption
+uses a serialized copy; it does not replace the protected positive capture.
+
+The corrected PHP observer and Python diagnostic recomputation are reused.
+Private raw observations remain in bounded tmpfs. Immutable retained diagnostics
+contain only fixed identities, expected/observed digests, counts, progress and
+allowlisted failure classifications. An unavailable observation produces an
+INCOMPLETE marker. The first failure precedes publication and cleanup; capture,
+account-seal and resource-cleanup failures remain separate. An interrupted SQL
+connection retains an unconfirmed transaction outcome even when an independent
+observer later sees unchanged data.
+
+### Namespace, connections and resources
+
+The candidate topology is authored, **not verified on the droplet**. A restricted
+runtime container owns a `--network none` namespace; the separately owned MySQL
+container joins that exact container ID. Actual network namespace equality and
+loopback-only interfaces must be measured before initialization. Both containers
+must differ from host user, mount, network and PID namespaces; their PID namespaces
+must differ from each other. There are no published ports, host networking,
+privileged containers, Docker-socket mounts or application-data mounts. The only
+host bind is the exact immutable source export, read-only. Docker documents the
+[container network mode](https://docs.docker.com/engine/network/#container-networks);
+actual rootless-engine/image compatibility remains a future prerequisite.
+
+The supervisor/observers use **namespace UID/GID 0 mapped to operator UID/GID1000**,
+never host root. The supervisor receives only CHOWN, DAC_OVERRIDE, SETUID, SETGID
+and KILL after dropping all capabilities. Builder UID/GID2000, snapshot UID/GID2001,
+and restoration/eligibility UID/GID2107 children must measure zero effective,
+permitted, inheritable and ambient capabilities and NoNewPrivs. Observers and the
+instance administrator share the trusted namespace-root supervisor boundary but
+use distinct SQL accounts. The builder remains the original required UID2000.
+
+Every PDO connection has a fixed 127.0.0.1:3306 DSN, certificate verification with
+the synthetic IP-SAN CA, TLS-cipher observation, MySQL 8.4, NONE role and measured
+server/account identity. There is no host/schema/account fallback or operational
+configuration factory. Credentials are random and protected in per-UID private
+directories; the snapshot process also receives the source worker credential for
+the required separate locking observation session. The canonical source constructor
+is reused, with source-schema underscore patterns narrowed to literal grants.
+The destination writer retains its exact restoration rights. Source/destination
+observers have SELECT only. Eligibility retains SELECT on exactly the existing 24
+tables and lifecycle-schema-only LOCK TABLES, REQUIRE SSL and MAX_USER_CONNECTIONS1,
+without DML. READ WRITE is required for the original locking gate, not DML authority.
+The global snapshot read lock can reach only this newly created MySQL instance.
+
+| Resource | Enforced ceiling |
+| --- | --- |
+| Runtime, including memory-backed files | 1 CPU, 512 MiB, no extra swap, 32 PIDs; PHP 256 MiB |
+| MySQL, including memory-backed files | 1 CPU, 1536 MiB, no extra swap, 128 PIDs; 128 MiB buffer pool |
+| MySQL datadir / tmp / run / TLS | 512 / 64 / 16 / 1 MiB tmpfs |
+| Runtime work+artifacts / private control / evidence / tmp | 128 / 32 / 16 / 16 MiB tmpfs |
+| Retained evidence | One preallocated 32 MiB file per fresh run; 256 write-once 128 KiB slots |
+| Campaign / cleanup reserve | 1200 seconds total, including a separate 120-second reserve |
+| Snapshot / restoration / eligibility | 45 / 240 / 120 seconds; no evidence-expiry renewal |
+
+Docker inspect flags are insufficient. Actual cgroup-v2 memory/swap/PID/CPU limits,
+tmpfs types, size options and statvfs capacities are checked before SQL setup.
+[Rootless cgroup limits require cgroup v2 and systemd](https://docs.docker.com/engine/security/rootless/tips/),
+and [tmpfs usage counts against container memory](https://docs.docker.com/engine/storage/tmpfs).
+Unsupported measurements, images or filesystem allocation fail closed. There is
+no unbounded volume or privileged quota fallback. The historical memory/free-space
+floors remain prerequisites; they are not storage quotas.
+
+The host retained file is exclusively created at mode0600, preallocated with
+`posix_fallocate`, fsynced with its parent, and bound by device/inode. Fixed-offset
+write-once hash-chained records cannot grow it; RLIMIT_FSIZE independently bounds
+the operator's files. It has no growing sidecar logs. An exclusive writer lock
+prevents concurrent execute/recovery mutation. Status reads only. Torn records,
+replacement, full capacity and uncertain ownership reject further mutation and
+preserve evidence for review. No power-loss durability acceptance is claimed.
+
+See [local results, native cases and the future execution package](sprint-8.8-m6e-isolated-validation.md#db-only-adapter-validation-and-future-execution-package).
+
+## Failed-observer evidence correction following a996c96
+
+Review thread `PRRT_kwDOS02IKM6z2qay` identified an evidence-ordering defect, not an
+eligibility-policy defect. At clean `a996c96c637b475ed6ec336dbdf777e6d4f4a3c8`, the
+PHP observer had obtained schema, table and artifact measurements but rejected
+drift before writing them. A local execution of its extracted predicate confirmed
+that no observation was retained. The actual Python controlled bootstrap, with
+the after-observer's `notes` rows changed from one to zero, rejected with
+`restore_exact_database`, then removed its private observation. The retained
+eligibility failure records contained neither expected nor observed table digests;
+they contained only the generic safe error classification. These reproductions
+used local models, not native MySQL.
+
+The PHP observer now collects the unchanged readers' results through a narrow
+callable seam used by both its production entry and local tests. It holds a pending
+drift/read failure while capturing a private observation envelope and a bounded
+diagnostic, then propagates rejection. Schema/data results already returned by the
+read helper survive a later artifact-verification failure. Failed or unreached
+readers have null observed measurements and explicit progress states; values are
+never inferred from expected inputs. The existing atomic database-read helper's
+unreturned partial state is not claimed as a completed observation.
+
+The Python coordinator verifies the producer file's recorded identity and digest,
+current request/phase, observer PID/owner and database identity. It independently
+recomputes expected/observed measurements using protected checkpoint, snapshot and
+schema inputs. It publishes separate immutable `eligibility-observer-before` and
+`eligibility-observer-after` evidence before allowing rejection to propagate into
+bootstrap teardown. Receipts containing the publication name, byte count and digest
+remain in the eligibility result and pre-cleanup record. Readiness inspection also
+checks these retained bytes. It never re-identifies a substituted observation.
+
+Each diagnostic contains fixed binding/process/progress fields, whole-schema/data/
+artifact digest pairs, and per-table schema/data digests and actual row counts for
+the fixed 90-table inventory. Affected tables and categories are allowlisted. The
+summary limit is 64 KiB; the existing private observation limit is 4 MiB and row
+limits remain 2,048 per table / 8,192 total. Raw rows, DDL, artifact contents,
+credentials, connection strings and exception messages are not retained in the
+diagnostic. Malformed, missing, oversized or wrongly bound output produces an
+INCOMPLETE capture marker, never fabricated measurements or successful evidence.
+
+The original failure is recorded before diagnostic publication. Capture/publication,
+account-sealing and teardown errors remain secondary and distinguishable. If evidence
+publication fails, required safe cleanup still runs; uncertain resource identities
+remain subject to the existing preservation rules. Before/after records are never
+overwritten. Every diagnostic says `DIAGNOSTIC_ONLY`, `admission=UNIMPLEMENTED`,
+`native_admission=BLOCKED`, and `deployment_authority=NONE`.
+
+No grant, source gate, transaction/rollback, writer sealing, commissioning order,
+deadline/watchdog, closed service, migration or native readiness policy changes.
+All six commissioning MISSING classifications remain unchanged. Native execution,
+deployment request/claim, lease allocation, activation, failure commit, settlement
+and host receipts remain unperformed and unauthorized. See the
+[correction validation record](sprint-8.8-m6e-isolated-validation.md#failed-observer-evidence-controls-following-a996c96).
+
+## Independent eligibility preflight following 2e1f19a
+
+**PREFLIGHT AUTHORED LOCALLY / MODELED EXECUTION ONLY / NATIVE SQL UNEXECUTED.**
+Operational lifecycle admission is **NOT AUTHORIZED**. Deployment request/claim,
+publisher activation, genuine A failure and publisher settlement are **NOT EXECUTED**.
+The increment started at clean `2e1f19aabaac646ba510b456e08a4c718d0aa13c` on the
+expected M6E branch. GitHub confirmed the completed exact-head review with no
+findings, no unresolved threads, PR #131 OPEN DRAFT, and main still at
+`303b073658d7eb08e6086237a70dd4d285dc121c`.
+
+The supported boundary is the unchanged
+`SiteRevisionManager::lockDeploymentEligibility($connection, $release, false)`.
+It accepts the explicitly supplied destination connection, requires its owning
+transaction, and invokes the existing site/revision/business/module, asset,
+composition and approval owners. The `false` argument keeps ordinary publish
+freshness and approval requirements; it does not select the historical-restore
+bypass. `SiteDeploymentService::subject` uses this same source gate, but its
+surrounding target, runtime and grant behavior is not invoked by this preflight.
+No deployment runtime is booted or application connection factory substituted.
+
+This gate retains its original `FOR UPDATE` and `FOR SHARE` reads. MySQL 8.4
+[requires SELECT plus UPDATE, DELETE or LOCK TABLES for FOR UPDATE](https://dev.mysql.com/doc/refman/8.4/en/innodb-locking-reads.html).
+The new fixed `m6e_lifecycle_eligibility@127.0.0.1` identity therefore receives
+SELECT on exactly the 24 audited source/identity/absence tables listed in
+`WebsitePlatformM6EEligibility.php`, and LOCK TABLES on only
+`ubo_m6e_lifecycle_<original_run_id>`. MySQL defines
+[LOCK TABLES at database scope](https://dev.mysql.com/doc/refman/8.4/en/privileges-provided.html),
+so there is no table-scoped version of that non-DML privilege. There are no
+INSERT/UPDATE/DELETE, DDL, global, role, GRANT OPTION or application grants.
+The account requires TLS and permits at most one concurrent connection. Exact
+SHOW GRANTS comparisons reject extra rights or a broader schema pattern. Native
+grant formatting, effective permissions and denial probes remain unexecuted.
+
+The transaction is explicitly REPEATABLE READ and READ WRITE. SELECT-only and
+READ ONLY sessions are not treated as adequate locking-gate boundaries. It
+performs no application DML and always ends through a confirmed ROLLBACK; there
+is no eligibility COMMIT path. An already-open caller transaction is rejected
+without rolling it back. Open, failed or unknown rollback outcomes are INCOMPLETE,
+including a lost acknowledgement after a modeled rollback actually occurred.
+LOCK TABLES itself could block reads in this disposable schema; the fixed entry
+does not execute explicit table-lock statements, and its process/deadline bounds
+remain necessary. Native locking/access-mode behavior still requires validation.
+
+`WebsitePlatformM6EEligibility.py` runs once inside the existing bootstrap
+supervisor after independent restoration verification, before bootstrap READY.
+It rechecks source/run/machine/boot binding, the original checkpoint/snapshot,
+owned private inputs and the restoration publication. Root verifies that the
+restoration SQL worker remains locked with zero connections and that no UID 2107
+restoration process remains. The existing restorer Unix identity runs the new
+bounded child using only its separate eligibility SQL credentials. No new service,
+OS identity, database target, lease, fence or operational capability is introduced.
+
+A fresh SELECT-only observer first compares all 90 restored tables and definitions
+against the protected snapshot and checks the original sealed M6C artifacts.
+The eligibility child then reads the original release, invokes the real unchanged
+gate and compares its full source/approval result, completed build job, producer
+and release to the original checkpoint. It rejects every newer revision, requires
+the original null publication pointer, and requires all five deployment tables
+to be empty. Zero targets, together with the unchanged independently compared
+schema, satisfies the existing single-target-per-site/environment constraint.
+No target is reserved to make this check pass.
+
+After confirmed rollback and child exit, root locks the eligibility account,
+checks its exact grants/TLS/connection limit, zero SQL sessions and absence of
+restorer processes. A second fresh SELECT-only observer rereads the entire
+restored database and revalidates the same original sealed artifacts. The before,
+eligibility and after connection IDs must differ. Original-database digests,
+protected capture inputs, restoration verification and pinned source are checked
+again before evidence publication. Worker or descriptor success alone is never
+accepted as a substitute for the gate and independent observations.
+
+Protected preflight evidence binds the exact source commit and audited source
+file digests, original fixture identity, destination schema/server, checkpoint,
+snapshot/schema and restoration-verification/observation digests, unique invocation,
+expiry, supervisor PID/cgroup/invocation, child PID/UID/GID, SQL session/grants,
+confirmed rollback, original A/business/association/approval/build/producer/release
+identities, independent observer hashes, zero effects and cleanup. Private observation
+files hold complete row comparisons; new retained records contain bounded
+identities/counts/hashes and safe diagnostics. The invocation is one-use: an existing
+preflight record rejects a second run, even after failure. Replaced files, stale
+bindings, changed source, forged publications or uncertain cleanup reject inspection.
+
+The phase has a 120-second budget within the unchanged 600-second bootstrap and
+existing watchdog lifetime. Transaction/observer children have 65-second supervision,
+60-second checked execution deadlines and five-second SQL waits. Private observation
+files retain the 4 MiB limit. Insufficient remaining lifetime or partial output is
+an error, never a ready result. First failure and secondary cleanup diagnostics
+survive. Preparation, transaction and observer evidence are preserved before the
+existing whole-owned-fixture teardown; cleanup never converts INCOMPLETE into success.
+Eligibility-account sealing and transaction/process cleanup are distinct from the
+later recorded removal of the owned disposable MySQL instance and private namespace.
+
+Successful evidence says `ELIGIBILITY PREFLIGHT VERIFIED`, `deployment_authority=NONE`,
+`admission=UNIMPLEMENTED` and `native_admission=BLOCKED`. It cannot satisfy a deployment
+request or lease contract. Historical checkpoint/snapshot/restoration admission fields
+are not rewritten. All six commissioning MISSING classifications remain unchanged.
+See the [executed local controls and remaining native obligations](sprint-8.8-m6e-isolated-validation.md#eligibility-preflight-controls-following-2e1f19a).
+Genuine A failure and settlement still require separately authorized native proof,
+an independent operational-admission contract and the existing protected deployment,
+failure-commit and publisher-settlement boundaries; none is authorized here.
+
+## Isolated pre-B restoration following ccaa23b
+
+**RESTORATION IMPLEMENTED LOCALLY / NATIVE MYSQL UNEXECUTED / LIFECYCLE ADMISSION
+UNIMPLEMENTED.** Work started at clean `ccaa23b6c6aaa1ab2177e60f988d3a2d1d8cb22a`.
+GitHub confirmed the expected branch, PR #131 OPEN DRAFT, all 13 review threads
+resolved, a completed exact-head review without findings, and main still at
+`303b073658d7eb08e6086237a70dd4d285dc121c`. Historical checkpoint/snapshot descriptors
+and their serialized `UNIMPLEMENTED` fields are not rewritten.
+
+Architecture review found a fixture-only approach without changing migrations
+001–025, snapshot identities or closed M6C/M6D services. The captured 90 tables
+include column values, original PK/FK relationships and full `SHOW CREATE TABLE`
+text, including AUTO_INCREMENT counters. Restoration executes only the pinned
+canonical migrations through the existing migration helper. Captured DDL is
+compared, never executed. The migrations' fixed database-scoped repair SQL is
+unchanged; there is no caller-supplied SQL or schema argument.
+
+`WebsitePlatformM6ERestoration.py` runs inside the existing 600-second bootstrap
+supervisor after the original A+B builder and protected pre-B snapshot publication,
+before bootstrap READY. It imports the captured pre-B rows, not later original
+database rows. No deployment is executed and no original artifact is rebuilt.
+The original application/authority configuration remains bound to its original
+fixture. Bootstrap readiness is not lifecycle admission or host commissioning.
+
+The exact destination `ubo_m6e_lifecycle_<original_run_id>` and its private roots,
+`/run/ubo-m6e-lifecycle/<run>` and `/var/lib/ubo-m6e-lifecycle/<run>`, come from the
+admitted original checkpoint. The schema and both restoration SQL accounts must
+be absent before creation. There is no overwrite, adoption, fallback or resumed
+import. Preparation uses only the owned MySQL socket and exact server UUID; all
+steps retain source/run/machine/boot binding. The original fixed database default
+`utf8mb4_unicode_ci` is checked by fresh source and destination observations.
+
+A separate Unix `m6e-restorer` UID/GID 2107 receives protected restoration inputs
+and credentials. Its SQL identity `m6e_lifecycle_worker@127.0.0.1` has only
+destination-scoped SELECT/INSERT/UPDATE/DELETE/CREATE/DROP/REFERENCES/INDEX/ALTER,
+with escaped schema underscores. There are no global privileges, inherited roles,
+general application credentials or production connection in this worker. The
+independent SQL identity `m6e_lifecycle_observer@127.0.0.1` has only SELECT on that
+destination. Both require the exact schema/server/account, MySQL 8.4 and TLS.
+After the bounded writer exits, root checks its grants, locks its account, and
+checks that no writer connection remains. The root coordinator then runs a
+separate verification process using the SELECT-only observer SQL credentials.
+This is SQL privilege separation; native installed-identity proof is outstanding.
+
+Restoration separates schema DDL, transactional data import, counter DDL and
+verification. Canonical migrations create the schema; all 90 definitions must
+match the protected baseline before data work. One transaction deletes every
+destination seed row and checks every table is empty before insertion. This
+explicitly reconciles migration seeds such as modules, roles, plans, pricing
+cohorts and component registries instead of inserting over their initial IDs.
+
+Prepared INSERTs retain original IDs and every stored column. Hex values become
+binary data or explicitly converted utf8mb4/ascii strings; NULL stays NULL.
+UTC, explicit temporal/decimal values and `NO_AUTO_VALUE_ON_ZERO` prevent default
+or ID substitution. Generated columns are excluded from INSERT and independently
+compared after recomputation. Warnings, duplicates, lost transactions and exceeded
+bounds reject. After confirmed COMMIT, original AUTO_INCREMENT counters are set
+as separate DDL, including the implicit initial counter. DDL failure never claims
+a data rollback or a ready schema.
+
+The cyclic graph requires destination-session foreign-key checks to be relaxed
+for seed deletion/import. Re-enabling this setting does **not** validate rows:
+the independent observer runs anti-joins for every FK, including composite tuples
+and nullable cycles. It rereads all 90 tables under a fresh read-only transaction,
+checks exact definitions/full DDL/counters, ordered rows, column values, PKs and
+counts, and compares the complete result against the original protected snapshot.
+Python separately validates original checkpoint/snapshot integrity and compares
+the observer's data; writer success is never independent proof. Exact comparison
+preserves original associations, approvals, source hashes, producer and release
+references, absence of B and zero targets/deployments/attempts/health records.
+The unchanged M6C store separately verifies A's original sealed files, producer
+journal, manifest and artifact hashes. Complete read-only original-database
+observations before and after restoration detect changes outside the destination.
+
+The transaction design follows MySQL 8.4's
+[foreign-key rules](https://dev.mysql.com/doc/refman/8.4/en/create-table-foreign-keys.html)
+and [implicit DDL commits](https://dev.mysql.com/doc/refman/8.4/en/implicit-commit.html).
+Actual engine enforcement, defaults/generated expressions, temporal/JSON/binary
+round trips, schema/catalog identity and privilege separation remain native tests.
+
+Original snapshot limits remain: 2,048 rows/table, 8,192 rows total, 256 KiB/cell,
+1 MiB logical values and 4 MiB snapshot files. Restoration has a 240-second phase
+budget inside the unchanged bootstrap/watchdog limits; reader/writer children
+have 125-second supervision and a 120-second checked deadline, with five-second
+SQL lock/read limits and a 4 MiB private observation bound. Insufficient remaining
+lifetime or any exceeded bound fails closed without partial-success fallback.
+
+The existing ledger records preparation before destination creation and owns all
+fixed input, credential and partial-output paths. Writes/readback bind owner,
+mode, device/inode and digest; writer output and its directory become root-private
+after exit. Private row bytes stay in removable private files; retained verification
+contains identities, counts and hashes. Safe native diagnostics preserve primary
+and secondary failures. Unknown COMMIT, interrupted DDL/DML, missing observations
+or uncertain evidence publication leave restoration INCOMPLETE and block READY.
+
+There is no standalone DROP/resume/retry path. Failed bootstrap uses existing
+supervised teardown: preserve restoration evidence, stop recorded processes,
+then remove the inode-bound owned resources, including the whole disposable
+MySQL datadir and restoration namespaces. This also ends the original disposable
+fixture; original-data preservation is checked before teardown. Uncertain
+destination state is recorded rather than adopted or silently retried. Process,
+ownership or cleanup errors retain unresolved resources and watchdog coverage.
+Cleanup cannot convert failed restoration into success. Expiry, any fixture failure,
+changed bindings or removed/replaced resources cannot satisfy live verification.
+Historical evidence remains outside removed roots.
+
+See the [local restoration results](sprint-8.8-m6e-isolated-validation.md#isolated-restoration-controls-following-ccaa23b).
+Independent lifecycle admission remains the next implementation prerequisite,
+following separately authorized isolated MySQL validation. No deployment request,
+claim, operational lease/fence, activation, A failure commit, publisher settlement,
+release-B execution, host receipt or publisher enablement is added. All six MISSING
+classifications below remain unchanged. No native SQL, staging SSH/droplet or
+production access, new droplet, operational deployment or PR merge occurred.
+
+## Pre-B database snapshot following 891f26a
+
+**CAPTURE CONTRACT IMPLEMENTED LOCALLY / NATIVE SQL UNEXECUTED / RESTORE AND
+LIFECYCLE ADMISSION UNIMPLEMENTED.** The increment starts from clean
+`891f26a3d195150791ba053f83aefa7eedfcd320` on the expected branch. GitHub main was
+`303b073658d7eb08e6086237a70dd4d285dc121c`; PR #131 was OPEN DRAFT. Its exact-head
+Codex summary was completed with no findings, and all 13 review threads were
+resolved. The historical source-checkpoint section below records the preceding
+increment; its descriptor remains unchanged and still says
+`database_snapshot=UNIMPLEMENTED`. The new separate contract does not promote that
+descriptor, a commissioning gate, or host admission to native PASS.
+
+The existing MySQL 8.4/PDO tools support the design without a new dependency or
+closed-service change. `WebsitePlatformM6ESnapshot.php` runs synchronously after
+`m6eNativeCheckpoint` and before the existing B `createRevision` call. A must have
+committed its completed M6C build. The builder pauses until capture, durable
+file readback, independent Python verification, a final unchanged source check,
+and the outcome record complete. A failed step throws and prevents this builder
+from creating B. The original A+B output, IDs, approvals, source/artifact hashes,
+single staging target (created after both builds), and final A denial remain.
+
+The scope is **every row in every one of the 90 base tables** of exactly
+`ubo_m6e_<original-run>`, including empty deployment/target/attempt/health/approval
+tables. The reviewed [profile inventory](../tests/support/WebsitePlatformM6ESnapshotProfile.json)
+is exhaustive: application identity/business/module and seeded registry tables;
+site, association, brief, revision, page/section/theme and asset rows; approvals
+and events; jobs, execution producers, releases and validations; plus all other
+tables from immutable migrations 001–025. Full-schema capture avoids omitting
+ancestor approvals, requester/owner relations, composite references or cyclic
+build references. The foreign canary schema, MySQL grant/system tables, other
+schemas, artifact files and an operational lifecycle schema are outside the SQL
+data scope. Original sealed files continue to be verified by the source checkpoint.
+
+Schema preparation additionally creates a dedicated `m6e_snapshot@127.0.0.1`
+account with SELECT on the escaped exact fixture schema and only the global
+`FLUSH_TABLES` privilege needed to hold this **disposable instance's** read lock.
+It has no DML/DDL, FILE, PROCESS, inherited role or cross-schema SELECT authority.
+Its separate root-owned 0640 worker-readable credential file is never a report.
+Reader admission requires exact schema/server UUID/account, a distinct connection
+ID from the builder, TLS, MySQL 8.4 and the exact permitted grants. There is no
+credential, schema or host fallback.
+
+The unchanged locking eligibility gate runs on the ordinary builder session,
+before and after SQL capture, and again after independent file verification.
+It never runs in the read-only reader transaction. The observations must equal
+the original checkpoint. The reader obtains `FLUSH TABLES WITH READ LOCK`, checks
+the schema against the protected post-migration/pre-DML baseline, then starts
+**one** `START TRANSACTION WITH CONSISTENT SNAPSHOT, READ ONLY` at explicit session
+`REPEATABLE READ`. It verifies isolation/read-only settings, transaction presence
+and absence of start warnings. All row counts, size measurements and row reads
+use that same transaction and nonlocking SELECTs. The existing nonlocking
+composition validator also binds the captured source to the original composition
+hash. Original site/revision/approval/job/producer/release rows are crosschecked.
+The read lock remains held until successful transaction closure, excluding DDL
+and concurrent table writes; rollback/unlock failures fail closed. The reader
+connection closes before file verification and on failure. The final builder
+observation rejects B/source changes during file verification.
+
+These choices follow the MySQL 8.4 contracts for
+[consistent transactions](https://dev.mysql.com/doc/refman/8.4/en/commit.html),
+[InnoDB consistent reads](https://dev.mysql.com/doc/refman/8.4/en/innodb-consistent-read.html)
+and [global read locks](https://dev.mysql.com/doc/refman/8.4/en/flush.html).
+They are an authored mechanism, not desktop proof of native isolation.
+
+The logical encoding is SQL `HEX(CAST(column AS BINARY))` with JSON null retained
+as null, ordered by the original primary key. No ID remapping, value coercion,
+approval rewriting, generated-column omission or artifact rebuilding occurs.
+Full `SHOW CREATE TABLE` definitions are retained. The protected baseline binds
+column order, PK/FK metadata, schema definitions and SHA-256 identities of all 25
+source migrations to source SHA/run/machine/boot/server/schema. Definition equality
+excludes only the changing table AUTO_INCREMENT option; the capture retains the
+full original definition including that counter. Future restoration must verify
+the same definitions and generated values; these files contain no restore API.
+
+Limits: 2,048 rows/table, 8,192 rows total, 256 KiB/cell, 1 MiB of logical values,
+4 MiB serialized snapshot, 1 MiB schema baseline, 45-second checked capture
+deadline, five-second SQL execution/metadata-lock limits, 15-second verifier
+child and the existing 180-second builder/600-second preparation supervision.
+The fixture expiry/watchdog still bounds the entire lifetime. Exceeding a bound
+rejects; there is no partial-dump fallback.
+
+The private payload, verification and outcome leaves are
+`worker/pre-b-database.json`, `worker/pre-b-database-verification.json` and
+`worker/pre-b-database-outcome.json` under the existing fixture control root.
+The ledger registers every leaf before starting the builder, including partial
+outputs. Creation is exclusive; file/directory synchronization, readback,
+no-follow reads, exact device/inode checks and subsequent root 0600 protection
+bind the files to their sole producer. The independent Python verifier checks
+complete inventory, schema/migration identity, PK uniqueness, FK closure, row
+counts/digests, original checkpoint/relational bindings, expiry and closed
+authority fields. Its record binds the payload's device/inode as well as digest.
+Bootstrap verifies it again and archives **only the verification metadata**;
+snapshot row bytes never enter command output, public diagnostics, Git or review
+comments. SQL first-failure and rollback/unlock secondary outcomes are retained
+in protected diagnostics. Ordinary ledger teardown removes payload, records,
+schema baseline and credentials; the retained teardown receipt binds cleanup
+resource states to the verification receipt. Failed cleanup remains unresolved.
+
+Local results and limitations are in the
+[snapshot validation record](sprint-8.8-m6e-isolated-validation.md#pre-b-snapshot-controls-following-891f26a).
+Only 15 fixture/test/document files change. No migration, closed M6C/M6D service,
+approval/fence/lease predicate, publisher journal policy or historical acceptance
+record changes. Native execution, working-staging SQL, SSH, restoration,
+deployment requests/execution, host receipts and PR merge were not authorized or
+performed. Restoration into the separately bound lifecycle fixture, independent
+destination verification and lifecycle admission remain the next prerequisite.
+
+All six commissioning blockers remain unchanged:
+
+| Gate | MISSING classification |
+| --- | --- |
+| Apache | `retained-release-static-responses` |
+| Assets | `two-release-transfer-retention-conflict` |
+| Runtime | `supervised-helper-lock-fence` |
+| Health | `candidate-active-fault-restoration` |
+| Recovery | `retained-state-interruption-authority-recovery` |
+| Provisioning | `owned-uncertain-reload-reconciliation` |
+
+## Pre-B source checkpoint following 8b38ace
+
+**CHECKPOINT IMPLEMENTED LOCALLY / NATIVE SQL UNEXECUTED / DATABASE SNAPSHOT,
+RESTORE AND LIFECYCLE ADMISSION UNIMPLEMENTED.** This increment starts at
+`8b38aceedff338a108aedfed544f81b78c7c2e50` on the existing clean branch and OPEN
+DRAFT PR #131. Remote main was verified at `303b073658d7eb08e6086237a70dd4d285dc121c`.
+The evidence below supplements, without reattributing, the historical results.
+
+The exact native capture point is in `m6eBuild`, immediately after
+`m6eFinishBuild($db, $f['job_id'])` returns from A's committed
+`SiteBuildService::completeBuildSuccess`, before the call to
+`SiteRevisionManager::createRevision` for B. No staging target exists at that
+point: the original builder creates its single target after both builds.
+The completed native fixture contains a newer material, internally approved B
+revision. The unchanged `SiteRevisionManager::lockDeploymentEligibility(...,
+false)` therefore rejects a fresh A deployment. The existing local two-release
+helper instead changes revision 100 between builds; its final A denial is source
+hash drift. Controls cover both cases, including the actual request owner against
+fake PDO, without treating those models as native SQL.
+
+`WebsitePlatformM6ECheckpoint.php` opens a separate fixed TLS MySQL session using
+the original worker account and verifies distinct connection IDs, exact server
+UUID, account and `ubo_m6e_<run>` schema. It requires the builder to be outside a
+transaction, so its second session must observe committed A rows. Two committed,
+locked observations bracket the original M6C verifier/exporter. Each invokes the
+unchanged M6D source gate with `restore=false`, including current customer and
+internal approvals, association/business eligibility, rights, composition and
+newer-revision checks. Artifact I/O occurs outside SQL transactions. The complete
+observed values must match; no SQL mutation occurs in capture.
+
+The private descriptor retains the original site/revision/source references,
+snapshot hash, business and association, effective approval IDs and rows (including
+an inherited customer approval where applicable), completed job and original
+execution producer, release ID/key, manifest bytes, every verified public-file
+digest/size/MIME and source asset metadata. It binds these to run/source/machine/
+boot identity, expiry, capture point, source-file hashes and schema/server/account.
+The original job's business/association and the sealed manifest's revision/hash/
+build identity are crosschecked. It requires no newer revisions, a null published
+pointer and zero rows across all deployment target, operation, attempt, approval
+and health-check tables. Zero targets also rules out active pointers and fences.
+This is observed source evidence, not an eligibility grant or authority receipt.
+
+Bootstrap registers ownership of the fixed worker leaf
+`/run/ubo-m6e-fixture/worker/pre-b-source.json` before starting the builder. The
+worker exclusively writes, synchronizes and reads it back before B creation.
+After the original two-build command succeeds, bootstrap identifies and protects
+the leaf, checks its content against the original A summary and measured source,
+then publishes `pre-b-source.json` in the existing private evidence directory.
+The immutable bootstrap observation binds that archive's hash. Missing, stale,
+duplicate-key, changed, ambiguous or incomplete inputs reject; a file alone is
+insufficient. Ready verification also requires the owned leaf, archive,
+bootstrap publication, unfailed ready phase and armed watchdog. An interrupted
+write or uncertain archive acknowledgement cannot reach ready. Teardown retains
+historical evidence but invalidates live checkpoint readiness; normal ownership
+cleanup also covers partial capture files.
+
+The original native two-release output schema, A/B identities, artifact bytes,
+asset comparisons, single staging target, gate order and cleanup remain intact.
+Native inspection additionally runs the unchanged source gate and requires A's
+final rejection. No original revision, approval, hash or artifact is rewritten to
+make A eligible after B. The local helper's optional after-A callback leaves its
+default two-build behavior unchanged.
+
+The descriptor defines a **future**, distinct `ubo_m6e_lifecycle_<run>` schema,
+`/run/ubo-m6e-lifecycle/<run>` control root, `/var/lib/ubo-m6e-lifecycle/<run>`
+storage root and separate `m6e_lifecycle_worker`/`m6e_lifecycle_observer` identities.
+None is created by this increment. A consistent pre-B database snapshot and
+restore/reconstruction contract is **unimplemented**. The descriptor cannot
+restore relational state and is not a substitute for a transactionally consistent
+snapshot. The future contract must preserve the full FK/approval/source closure,
+original A IDs and artifact bytes, independently verify its destination schema
+and read back artifacts, admit only that schema with no fallback to the original
+or any other schema, and rerun unchanged eligibility before requesting deployment.
+Migration 025's unique `(site_id, environment)` target contract is unchanged;
+the separate schema may create its single target only after verified restoration.
+
+Only 11 files change: the two M6E documents; native setup, bootstrap and local
+commissioning fixture helpers; the two new checkpoint helpers and two checkpoint
+test files; bootstrap model controls; and the M6E exact-path scope test. No closed
+M6C/M6D source, migration, public entrypoint, component authority or receipt policy
+changes. See the [current validation record](sprint-8.8-m6e-isolated-validation.md#pre-b-checkpoint-local-controls-following-8b38ace)
+for executed counts and the remaining native boundary.
+
+All six commissioning MISSING classifications remain: Apache, assets, runtime,
+health, recovery and provisioning. No host receipt or deployment was issued.
+Before genuine A failure/settlement, implement and natively verify consistent
+pre-B restoration and lifecycle admission, then obtain genuine M6D request/claim
+authority in that separate fixture. A must reach an authoritative terminal
+failure and verified helper settlement with the same operation/attempt/fence
+before any later B admission. The existing synthetic A-only stage component
+cannot supply that prerequisite.
+
+## Apache commissioning integration following 90d891c
+
+**APACHE SERVING/ACCESS — IMPLEMENTED LOCALLY / NATIVE UNEXECUTED.** Starting
+SHA: `90d891c8bb99a51d24c26ebf99d8e6a67cbc0a0f`, verified with the exact existing
+branch and a clean worktree. PR #131 was OPEN DRAFT at that SHA. This section
+supersedes earlier Apache implementation-gap descriptions only; historical test
+results remain attributed to their original sources.
+
+The established order is apache, filesystem, ownership, assets, runtime, health,
+recovery and provisioning. The existing assets producer creates and removes its
+release-A component inside its own later probe. Apache therefore cannot use that
+component, its removed files, or an invented earlier assets result. The bounded
+solution is a **distinct Apache-owned A observation** in the original commission
+service. No gate moves and no artifact ownership is transferred between producers.
+
+[CommissionApache.py](../tests/support/WebsitePlatformM6ECommissionApache.py) uses
+the existing source, transfer, Publisher.stage, observer, private serving and cleanup
+primitives. Its fixed component-apache-a control/data namespaces, command identities,
+plan and immutable evidence names are separate from component-a. Its separate
+component-apache-https resource tree reuses the existing fixed private endpoint
+`127.0.0.4:8443`; it introduces no public listener, installation or public entrypoint.
+The later assets component starts only after Apache cleanup has completed. The
+internal PHP/Python child modes select only these two fixed namespaces, not arbitrary
+roots, releases, commands or deployment targets.
+
+The Apache probe retains its module, unavailable-endpoint and unauthorized-client
+baseline, then independently reads the original two-release source bundle. Before
+starting the helper, the A worker observation must equal that bundle's exact
+original A manifest, artifact and producer. The actual exporter/receiver and publisher
+stage A into its own immutable candidate and asset pool. Authority remains synthetic,
+stage-only and exact-request-bound. Fence 1, phase 1 and the unsettled component
+journal remain until removal of the complete owned namespace; no activation,
+settlement, deployment row, target pointer or original journal mutation is added.
+
+The shared component lifecycle now exposes observation, immutable checkpoint and
+finish boundaries. Standalone A and assets still use the existing immediate runner.
+Apache defers finish until the unchanged collector's cleanup callback, so both its
+own checkpoint and the gate's before-restore checkpoint exist while the reader is
+alive. The existing configtest must succeed before reader startup. GET/HEAD cover
+every original public file, with MIME, length, SHA-256, security headers and CSP;
+existing real PHP/CGI/SSI/private canaries must be denied, alongside method,
+Host/SNI/trust/client-authentication, listing, MultiViews, fallback and route checks.
+The original independent artifact inventory hash and separate before/after serving
+resource identities remain mandatory.
+
+The immutable `m6e-commission-apache-serving-v1` record binds the original commissioning
+identity, source-bundle digest, exact component plan, source/producer measurements,
+configtest, reader, HTTP summaries, resource inventory and original operational state
+to the full before-cleanup capture. The existing Apache gate gains one digest field,
+`apache_sha256`. Offline validation reopens those immutable evidence bytes and checks
+the original capture plus the linked successful termination/cleanup record. It never
+reads a removed candidate or consumes the assets producer's observation. Failed or
+partial diagnostics cannot satisfy these checks. No receipt schema changes.
+
+The original 90-second component deadline also bounds the collector's independent
+inspection while the reader remains alive. Cleanup restores only the original
+absolute supervisor deadline; it does not refresh admission, the 420-second service,
+the 1,200-second watchdog or the 120-second cleanup reserve. Capture failures,
+uncertain reader exits, changed/missing resources, inode substitutions and incomplete
+cleanup preserve the first failure and retain LIMITED/INCOMPLETE outcomes. The final
+original environment observation still checks database state, source artifacts,
+operational pools, pointers and journal.
+
+Exact changed-file inventory for this increment (15 files):
+
+- New: `tests/support/WebsitePlatformM6ECommissionApache.py` and
+  `tests/WebsitePlatformM6ECommissionApacheTest.py`.
+- Commissioning: `tests/support/WebsitePlatformM6ECommissionProbes.py`,
+  `tests/support/WebsitePlatformM6ECommissionEvidence.py`,
+  `tests/support/WebsitePlatformM6ECommissionChild.php`,
+  `tests/WebsitePlatformM6ECommissionControlTest.py`.
+- Shared component boundaries and local fixtures:
+  `tests/support/WebsitePlatformM6EComponent.py`,
+  `tests/support/WebsitePlatformM6EComponentHost.py`,
+  `tests/support/WebsitePlatformM6EComponentChild.py`,
+  `tests/support/WebsitePlatformM6EComponent.php`,
+  `tests/support/WebsitePlatformM6EComponentLocal.php`,
+  `tests/WebsitePlatformM6EComponentTest.py`.
+- Scope: `tests/WebsitePlatformM6EScopeTest.php` (two exact new paths).
+- This document and `docs/sprint-8.8-m6e-isolated-validation.md`.
+
+Production executables/templates, closed M6C/M6D contracts, migrations, all eight
+gate names, native-readiness predicates, host admission and publication policy are
+unchanged. The Apache `retained-release-static-responses` MISSING classification
+is deliberately retained pending native evidence. The other five incomplete
+producers remain unchanged. **No operational receipt may be issued.**
+The [executed local validation and remaining native obligations](sprint-8.8-m6e-isolated-validation.md#apache-commissioning-local-controls-following-90d891c)
+separate Windows models from native proof. Final commit identity, exact tested/index/
+committed hashes and the one review handoff are recorded outside Git in
+`m6e-apache-commission/SUMMARY.txt`; the commit cannot contain its own resulting SHA.
+
+M6C/M6D remain FORMALLY CLOSED; M6E PARTIALLY IMPLEMENTED / REVIEW REQUIRED;
+M6F/M6G NOT STARTED; all six commissioning gates OPEN PENDING NATIVE EVIDENCE;
+production UNAUTHORIZED. No server, SSH, sudo, native bootstrap/Apache/systemd,
+real SQL, deployment, operational receipt, public activation or merge was performed.
+
+## Supervised standalone A and required configtest following 71b1839
+
+Starting SHA: `71b1839ee3390ea7e4c4c2bfdba258c6e38ea6d0`, verified on the
+existing clean `codex/sprint-8.8-m6e-apache-publisher` branch. PR #131 was OPEN
+DRAFT; its exact-head automated review completed without findings. The ending
+SHA is the single commit introducing this section. Its full SHA and exact
+tested/working/index/committed hashes are recorded after commit in the external
+`m6e-entry-configtest/SUMMARY.txt` and the exact-head PR review request: a commit
+cannot embed its own resulting SHA.
+
+The fixed public request is `WebsitePlatformM6EPreparation.py --component-a`.
+[ComponentEntry.py](../tests/support/WebsitePlatformM6EComponentEntry.py) dispatches
+only `ubo-m6e-component-a.service`; its protected `--component-a-owned` mode is
+not exposed by Preparation. Bootstrap owns the fixed source-pinned unit, and the
+existing watchdog stops it before acquiring the lifecycle lock. The service uses
+the existing 420-second envelope and control-group termination. The component
+still has 90 seconds, the original watchdog 1,200 seconds and cleanup reserve
+120 seconds. Neither dispatch nor execution restarts the timer or admission.
+
+Both entry functions acquire the original lifecycle lock and reload the original
+ledger. Before dispatch, READY/pristine inspection, original immutable bootstrap
+publication/handoff, source inventories, configuration, tools/modules, VM/boot,
+expiry and original database/target/journal checks must pass. Dispatch records
+intent before systemctl, then binds the observed MainPID, invocation and cgroup
+while the service waits on that lock. Protected execution checks the exact
+fragment bytes/path, absence of drop-ins, cgroup, MainPID, systemd InvocationID
+and process INVOCATION_ID against the admitted request and completed dispatch
+command. The internal component runner also checks supervisor admission before
+creating its component record or resources. Repeated, conflicting and direct
+unsupervised execution rejects. The original commissioning route retains its
+separate supervisor admission and eight-gate policy.
+
+This route calls the existing Component.run lifecycle directly, without collecting
+eight producers. It uses original release A, its PHP/Python transfer and
+Publisher.stage, synthetic stage-only authority, fence 1 and unsettled journal.
+Independent artifact and candidate HTTPS observations, original observer inventory
+binding, immutable capture before stopping the reader, quiescence and exact owned
+cleanup remain required. The original operational target is checked after success
+and failure. Unknown or changed resources remain LIMITED. Historical READY
+publications and commissioning observations are never rewritten.
+
+After creating and verifying the owned private config, ComponentHost executes
+the fixed pinned `/usr/sbin/apache2 -t -f <owned-component-apache.conf>` with an
+argv array. Its command intent is durable before execution. The ten-second
+configtest is subordinate to the absolute component/service/watchdog deadlines;
+stdout is bounded to 2 MiB and stderr to 16 KiB by the existing process owner.
+Evidence retains sanitized classifications, hashes and process metadata, never
+raw diagnostics. Exit zero, a reaped matching command/process and unchanged
+device/inode/type/UID/GID/mode/link-count/content identity are required immediately
+before reader spawn. Missing/changed command ownership, timeout, output overflow,
+unknown exit or config mutation prevents Apache startup. Failed configtest can
+remove only unchanged explicitly owned resources after proven process quiescence;
+uncertain startup or changed identity remains LIMITED.
+
+The immutable `m6e-supervised-component-a-v1` execution result binds the original
+admission and hashes of the component before-cleanup, owned-before-remove and
+result records. Success means **ORIGINAL A VERIFIED AND REMOVED** only. It does
+not award an Apache gate PASS, issue a host receipt, accept an installed workflow,
+activate anything publicly or establish full native acceptance. Windows native
+service/UID/Apache/TLS behavior remains explicitly modeled.
+
+Exact changed files for this increment:
+
+- `tests/support/WebsitePlatformM6EComponentEntry.py` (new fixed entrypoint).
+- `tests/WebsitePlatformM6EComponentEntryTest.py` (new focused controls).
+- `tests/support/WebsitePlatformM6EPreparation.py`,
+  `tests/support/WebsitePlatformM6EBootstrapPlan.py`,
+  `tests/support/WebsitePlatformM6EBootstrapHost.py`,
+  `tests/support/WebsitePlatformM6EBootstrap.py` (routing, owned unit, supervisor
+  observation and watchdog cgroup quiescence).
+- `tests/support/WebsitePlatformM6EComponent.py`,
+  `tests/support/WebsitePlatformM6EComponentHost.py`,
+  `tests/WebsitePlatformM6EComponentTest.py` (admission, configtest and local adapters).
+- `tests/WebsitePlatformM6EScopeTest.php` (two exact new M6E paths only).
+- This document and `docs/sprint-8.8-m6e-isolated-validation.md`.
+
+Production publisher/admission, live Apache templates, deployment services,
+requirements, receipt schema, all migrations and closed M6C/M6D contracts are
+unchanged. The [validation record](sprint-8.8-m6e-isolated-validation.md#standalone-a-and-configtest-local-controls)
+contains executed counts and native prerequisites. All six commissioning blockers
+remain open: apache, assets, runtime, health, recovery and provisioning. Native
+execution requires separately authorized disposable-host preparation and explicit
+fixture-local MySQL/SQL authorization; no synthetic database can satisfy that
+future requirement. No native execution or host preparation was authorized here.
+
+## A-only private candidate serving following 18b4900
+
+Source HEAD: `18b4900ebad62c511587c4bb4498000460cf5129`; PR #131 was OPEN DRAFT,
+with its completed exact-head review reporting no major findings. The introducing
+commit is the implementation identity; its full new SHA, exact source/index/commit
+inventories and one review handoff are recorded after commit in the external
+`m6e-candidate-https/SUMMARY.txt`. A commit cannot contain its own resulting SHA.
+
+This bounded increment extends A's existing original PHP-to-Python transfer and
+immutable stage. Fence 1 remains at phase 1, unsettled. There is no release B,
+activation, current pointer, deployment success or settlement. The original
+operational database/target/journal observations must remain unchanged.
+
+[ComponentHost.py](../tests/support/WebsitePlatformM6EComponentHost.py) owns a
+separate `/var/lib/ubo-m6e-fixture/component-https-<run-id>` namespace. Its config,
+canary directories/files, runtime directory and generated PID file have ledger
+intent before creation; process intent precedes spawn. Resources stay outside the
+original component inventory. The original observer hash is never replaced.
+The new fixed listener is `127.0.0.4:8443`, using `candidate.m6e.invalid` and the
+existing admitted certificate paths without copying keys. It points directly to
+A's staged candidate and retained asset pool. The normal fixture bindings remain
+unchanged. There are no operational Apache, service, account or routing changes.
+
+The complete candidate policy is rendered from the unchanged reviewed Apache
+template. Only that candidate vhost is included. The dedicated config pins the
+already admitted module inventory, adds fixture-only AuthMerging And so Location
+authorization also preserves preceding directory/file denials, and requires client
+TLS authentication, exact Host and SNI, and supplies the same static policy to a separate alias containing real
+harmless PHP/CGI/SSI, dotfile, private, metadata, journal, source, proxy and listing
+canaries (the harmless CGI script is 0755). Their independent identities, modes
+and contents are checked. Existing
+canaries require 403; missing-file 404 alone is not handler-disable evidence.
+
+[CommissionServing.py](../tests/support/WebsitePlatformM6ECommissionServing.py)
+adds a single-manifest CandidateChecks adapter using the existing response, file
+and denial predicates. Every original public file is checked by GET and HEAD;
+index, marker, CSS, PNG and PDF must match original length, MIME and SHA-256,
+with no-store/noindex, CSP, frame, referrer, content-type and permissions policies.
+Negative requests cover methods, unauthorized clients, Host/SNI/trust/client-cert
+failures, traversal, private paths, executable handlers, listings, MultiViews and
+fallback routes. Bounded evidence contains counters and hashes, not response bodies,
+private headers, credentials or certificate contents.
+
+[Apache.py](../tests/support/WebsitePlatformM6EApache.py) shares its TLS client
+implementation with a fixed component endpoint; existing operational endpoint
+validation remains exact. [ComponentChild.py](../tests/support/WebsitePlatformM6EComponentChild.py)
+authors a worker-UID HTTP client child supervised within the original absolute
+90-second component budget, plus independent before/after serving resource walks.
+The native path checks the Apache reader's real/effective/saved/filesystem UID and
+GID, supplementary groups and zero effective/permitted capabilities before and
+after HTTP. A slow socket/TLS read cannot outlive the parent's deadline unobserved.
+The existing
+420-second commission bound, higher watchdog and cleanup reserve are unchanged.
+
+[Component.py](../tests/support/WebsitePlatformM6EComponent.py) orders stage, original
+observer, serving, independent after-serving verification and immutable capture
+before reader shutdown. Cleanup requires the original artifact inventory, complete
+matching serving inventories and tracked process quiescence. The existing ledger
+and per-object cleanup checks are reused, including inode/type/owner/mode/link-count
+checks and static content hashes. Only Apache's own PID file may disappear after
+verified normal shutdown. Unknown exits, missing/malformed observations, extra or
+replaced resources and failed capture retain LIMITED/INCOMPLETE. The first serving
+failure remains primary; after-serving, capture and cleanup failures are separate.
+
+[ComponentModel.py](../tests/support/WebsitePlatformM6EComponentModel.py) and
+[component controls](../tests/WebsitePlatformM6EComponentTest.py) use real private
+original files, real processes, the original transfer/staging/observer code and a
+separate reader holding a retained PNG descriptor until shutdown. Windows HTTP,
+TLS, Apache policy, UID/mode, Unix socket and Unix filesystem semantics remain
+explicit models. They do not establish any native acceptance result.
+
+The full component suite passes 22 tests (58 subtests, 464 assertion calls); the
+final five candidate controls pass 24 subtests / 181 assertion calls, and the
+existing serving suite passes 12 tests. The positive case observes 55 requests,
+seven original files and 20 serving resources. [Executed results and limitations](sprint-8.8-m6e-isolated-validation.md#a-only-candidate-serving-local-evidence-and-native-boundary)
+include durations, fault outcomes, scope, syntax and documentation checks.
+
+Native Linux/Apache is **AUTHORED / UNEXECUTED**. M6C/M6D remain **FORMALLY CLOSED**;
+M6E is **PARTIALLY IMPLEMENTED / REVIEW REQUIRED**; M6F/M6G are **NOT STARTED**;
+production is **UNAUTHORIZED**. All six commissioning MISSING entries remain.
+The next increment is separately authorized native execution of this A-only
+boundary on the admitted disposable fixture, including actual config/TLS/identity,
+reader quiescence and cleanup evidence. It does not authorize a second release
+or the next commissioning producer.
+
+## Component review corrections following 8916b25
+
+The exact-head review of 8916b25 completed **with two P2 findings**:
+[ancestor access](https://github.com/fvd8383/ultimate-back-office/pull/131#discussion_r4447829150)
+and [generated inode adoption](https://github.com/fvd8383/ultimate-back-office/pull/131#discussion_r4447829161).
+Both corrections are confined to component test support; production changes are zero.
+
+The root-owned component-data ancestor now uses 0755 in both creation and the exact
+inventory policy. The control ancestor remains 0711, served remains helper:apache
+0750 and journal remains helper:helper 0700. Source, served-file, journal and IPC
+restrictions are unchanged. Search permission alone on 0711 did not permit the
+unchanged Tree constructor's O_RDONLY | O_DIRECTORY opens. The local adapter now
+runs that actual constructor with explicit UID/mode checks rather than bypassing
+it with __new__. The checks distinguish parent traversal, directory reading and
+access to protected child files. Windows models are not native UID enforcement.
+
+The independent observer retains its original canonical inventory SHA-256. Once
+processes are quiescent, owned() captures the full current namespace and requires
+that exact hash before adopting generated output or publishing removal ownership.
+Paths, device/inode, type, UID/GID/mode, link counts and validated link targets are
+bound. Missing/malformed observer measurements and different inventories reject.
+A failed observer cannot authorize cleanup of staged output. Early partial
+construction/transfer retains the existing strict ownership behavior; unknown
+scratch remains LIMITED and no observer hash is fabricated.
+
+The restricted control ancestor need not be made listable: the observer stats its
+fixed root-owned child names and enumerates helper-owned IPC. The operator's full
+walk must match the earlier hash. Unknown control-root entries therefore reject,
+and directory-walk errors no longer silently omit entries. The data subtree is
+fully enumerated by both observers.
+
+Cleanup seeds each tree's ledger children from the already bound inventory before
+capture_tree(), preserving the original expected identities. Capture/release then
+reject replacement, omission or extra children instead of establishing a later
+baseline. A narrow filesystem wrapper also compares full file identity at the
+ledger's unlink boundary, including link count; directories retain all immutable
+identity fields while their link counts may fall as owned children are removed.
+The existing ledger deletion algorithm and per-object checks remain unchanged.
+The original observer evidence and first failure survive LIMITED/INCOMPLETE results.
+
+Before correction, the actual local lifecycle accepted an identical-byte,
+different-inode index.html substitution after observation, deleted it and reported
+STAGED_AND_REMOVED / REMOVED. The corrected case rejects before any deletion and
+retains the replacement and journal. Deterministic races during tree capture and
+after deletion inventory are rejected, and a hardlink introduced at the final
+removal boundary is retained. The old inode is held outside the component tree in
+controls so the negative does not depend on allocator reuse or an extra-path error.
+
+Successful cleanup still discards fence 1 only with the complete isolated namespace
+after child quiescence; it never rewinds a live or operational journal. Original
+bootstrap state remains untouched. All six MISSING entries and production default
+denial remain. M6C/M6D stay FORMALLY CLOSED; native Linux validation, release B,
+Apache/HTTPS, retention and remaining commissioning producers are still outstanding.
+
+## Isolated release-A component lifecycle following cd4af965
+
+The component staging lifecycle is implemented in test support. Its native Linux
+path is **AUTHORED / UNEXECUTED**. This is not an operational deployment or a
+commissioning gate. The exact starting head was
+`cd4af96520f443ccbd6438b15f78364960ceb3c6`; its completed review had no findings.
+M6C/M6D remain FORMALLY CLOSED. All six MISSING entries remain unchanged.
+
+[Component.py](../tests/support/WebsitePlatformM6EComponent.py) owns the one-attempt
+lifecycle, invoked from the existing assets probe after its unchanged baseline and
+source checks. [ComponentHost.py](../tests/support/WebsitePlatformM6EComponentHost.py)
+uses the existing ledger and original commissioning/watchdog budgets: 90 seconds
+inside the 420-second service, with the original cleanup reserve. There is no
+stage retry. Native process intent precedes spawn; each child waits on its private
+stdin until its real PID is durable. Linux pidfds address the owned children;
+remaining process-group/session members prevent namespace removal. No unit,
+watchdog, account, operational socket template or publisher entry changes.
+
+Only the original bootstrap release A is staged. The worker UID 2000 rechecks
+original release/job/producer rows, the sealed store and the reviewed exporter,
+then repeats source inspection before sending actual UBT1 bytes. The helper UID
+2102 accepts one private Unix connection, checks SO_PEERCRED UID and the exact
+operator-supplied worker PID before dispatch, and uses the original receiver,
+Publisher, Tree, fence and no-overwrite primitives. The component authority is
+explicitly synthetic, expiry/run/namespace/release/request bound and stage-only.
+It is absent from operational entry points and creates no deployment lease,
+success row or database target pointer. No SitePublisherSession is opened.
+
+The roots are fixed to the admitted run:
+
+- /run/ubo-m6e-fixture/component-a-<run>: protected plan and helper-owned IPC.
+- /var/lib/ubo-m6e-fixture/component-a-<run>: separate helper-owned served pool,
+  staging scratch, lock and journal.
+
+All root, scratch-container, socket and candidate intent is ledgered before its
+producer can act. The component may create its own candidate; it never creates
+current or changes operational pointers. Its journal reaches fence 1/phase 1 and
+is discarded only with the entire independently owned namespace after quiescence.
+The original target is checked before staging, after staging and after cleanup:
+empty pools, pristine journal, absent current/candidate/receipt and unchanged
+read-only worker/database inspection. No fence is rewound.
+
+A third, independently launched observer acquires the lock and reopens the actual
+files. It checks the original retained manifest, release identity, every public
+file's MIME/size/digest/bytes, approved PDF, retained pool objects, exact native
+UID/GID/modes/link counts and closed namespace inventory. Helper success alone is
+insufficient. Worker write denial and helper direct-source denial are separate
+observations. Source, receiver, helper, acknowledgement and observer evidence are
+retained separately under the component profile, never converted into a gate PASS.
+
+The first immutable capture precedes child termination and includes resource
+intent/identities, journal digest/fence/phase, process status and the first failure.
+A second immutable capture records quiescent ownership before removal. Cleanup
+rechecks identities, removes only the exact owned candidate and complete owned
+trees, and preserves unknown, foreign, replaced or interrupted scratch as
+LIMITED/INCOMPLETE. The existing watchdog stops the commissioning cgroup; an
+unreleased component producer tree is intentionally not adopted by generic
+bootstrap cleanup. Its unknown producer leaves that cleanup LIMITED.
+
+The actual cold PHP include graph exposed a commissioning inventory dependency:
+its earlier single-verifier allowlist rejected CommissionServing/NativeSetup.
+The test-only inventory now accepts exactly those two worker files plus
+Component.php, hashes their protected bytes, and still rejects arbitrary support
+paths, wrong owners/modes and changed pins. No production host admission changed.
+
+Local controls use this same runner and actual distinct PHP/Python processes with
+original M6C release-A bytes. Windows UID/permissions, Unix sockets, dirfd,
+renameat2, symlink metadata, flock and directory durability are explicit adapters;
+private loopback TCP transports the actual reviewed protocol. They are not Linux
+identity or durability proof. The local fixture's optional A-only mode preserves
+the existing two-release default. Remaining work includes release B, private
+HTTPS/Apache responses, retention/conflict validation, supervised runtime authority,
+health, recovery and provisioning. No receipt or full native acceptance is issued.
+
+## Serving-source runtime dependency correction following 50c4356
+
+The exact-head review of 50c4356 completed **with finding
+[4447201891](https://github.com/fvd8383/ultimate-back-office/pull/131#discussion_r4447201891)**.
+A fresh PHP process with no autoloader or M6C fixture reproduced
+`TypeError: Failed to create closure from callable: class "SiteBuildRuntime" not found`
+after directly including CommissionServing.php. The local fixture's earlier runtime
+include had masked this dependency. NativeSetup.php alone had the same omission.
+
+NativeSetup now explicitly requires SiteBuildRuntime.php. Its small m6eArtifactStore
+function retains the real `Closure::fromCallable([SiteBuildRuntime::class,'guard'])`
+and is shared by m6eObserveRelease and commissioning source inspection. This removes
+reliance on the native build/inspect fixture's incidental include as well. Loading
+the class does not call fromTrustedCli or grant publishing authority. Production
+runtime/store/guard semantics and commissioning admission are unchanged.
+
+The new cold-process regression exercises both actual entry graphs and that shared
+store constructor, with no fixture preload, autoloader, SQL or operational writes.
+All six commissioning MISSING entries remain. Native staged-fixture/authority/
+ownership/serving work, installed workflow and full Linux acceptance remain pending.
+
+## Shared Apache/assets observations following ce2d154 — incomplete producers
+
+This slice adds executable source inspection and shared serving predicates. It does
+**not complete either native producer**. Both MISSING entries remain. No fixture
+aliases, transfer sockets, services or operational receipts are created by the new
+native source-inspection path. The exact ce2d154 review completed without findings;
+that disposition does not apply to this subsequent source change.
+
+[CommissionServing.php](../tests/support/WebsitePlatformM6ECommissionServing.php)
+uses the original worker identity, the bootstrap's existing two-release handoff,
+original build/producer rows, LocalSiteArtifactStore and SitePublisherArtifactExport.
+It verifies the original 0700/0600 source, reads original manifest bytes through the
+exporter's checked descriptor, and repeats exporter validation. Native entry remains
+inside the fixed admitted VM/expiry/UID guard; it checks the target is unpublished
+before and after read-only observation. It neither starts a deployment session nor
+renews a deployment lease. The loaded-file inventory includes its dependencies.
+
+Both existing probes now consume this same source observation. Apache retains its
+module and initial-503/unauthorized baseline. Assets retains its empty served-pool
+check. Each independently re-observes the worker sources; their bundle digest must
+match across gates. The existing profile/FIELDS add source release/file/asset/byte
+counts and hashes binding the original manifests, source bundle and shared/changed/
+PDF/foreign identity sets. Measurements are retained before binding predicates;
+failed observations remain diagnostics, never passed evidence. No receipt schema,
+normal host admission, watchdog, ledger or production helper behavior changes.
+
+[CommissionServing.py](../tests/support/WebsitePlatformM6ECommissionServing.py)
+provides shared exact-file/marker, GET/HEAD, MIME/length/digest, security/CSP/cache,
+method, private/dot/executable/traversal, authentication/Host/SNI/trust and binding
+checks. Its default request function is the existing private HTTPS client. Responses
+are summarized before predicates, including header digest and fixed policy matches;
+no response body or arbitrary header text enters diagnostics. Independent retained
+checks invoke the actual helper's verify_served and descriptor-based asset reads.
+These serving methods are **not yet called by native probes against a staged fixture**.
+They do not establish executable-handler denial merely from absent canary paths.
+
+Local controls share one M6C fixture with two actual same-site builds, distinct
+release/job/producer identities, unchanged approved PNG/PDF and changed CSS. The
+existing bootstrap fixture test now uses that factory. No replacement manifest is
+generated. The actual PHP exporter/UBT1 sender feeds the actual Python receiver and
+Publisher.stage, including retained replay with no file transfer or inode changes.
+Authority is an explicit local component DTO, not live database authority. The new
+sender path creates no deployment rows, target success or approval-consumption event.
+Controlled HTTP reads the real immutable files; transport, Unix metadata and pointers
+remain modeled. Foreign identity shares legitimate same-site bytes: a foreign-qualified
+route is denied, while the legitimate bare same-site content hash remains accessible.
+
+**Remaining code gap:** connect these checks to one ledger-owned native serving
+fixture with separately controlled worker/helper/authority processes and private
+sockets, actual stage A/replay/B, durable intent before transient helper paths and
+alias effects, and strict reconciliation of uncertain completion. It must capture
+before restoration, prove original current/candidate absence and unchanged original
+journal/fence, and retain unknown objects as LIMITED. The local model restores alias
+absence, but its component scratch journal changes during real stage and is not
+credited as native pristine-journal evidence. Existing collector primary-error and
+cleanup-failure controls remain in force. No blind cleanup or direct privileged
+source-copy shortcut was added to fill this gap.
+
+The six unchanged MISSING entries are retained-release-static-responses (apache),
+two-release-transfer-retention-conflict (assets), supervised-helper-lock-fence
+(runtime), candidate-active-fault-restoration (health),
+retained-state-interruption-authority-recovery (recovery), and
+owned-uncertain-reload-reconciliation (provisioning). Native receipt issuance stays
+blocked. Installed workflow/full Linux acceptance remain unexecuted. Multi-page and
+B14/B16 browser behavior remains M6G; header checks do not prove browser behavior.
+
+## Commissioning measurement capture correction following bcf64ec
+
+The exact-head review of bcf64ec completed **with two findings**:
+[4446480421](https://github.com/fvd8383/ultimate-back-office/pull/131#discussion_r4446480421)
+(measurements lost before validation failure) and
+[4446480432](https://github.com/fvd8383/ultimate-back-office/pull/131#discussion_r4446480432)
+(host-dependent admission test). This correction does not implement additional
+commissioning gates or change production admission.
+
+Before correction, an actual controlled child returned filesystem
+replacement_rejected=0 to NativeProbes.probe. The strict filesystem predicate rejected
+it, but the original pre-restoration checkpoint contained observations={} and cleanup
+ran. No final gate evidence existed. A separate actual child returned runtime
+measurements and a real PID before the native runtime producer's PHP-pin check failed;
+those measurements and participant context were also absent from its checkpoint.
+Original and corrected reproductions are retained outside Git, without rewriting
+failed evidence or describing the rejected measurements as PASS.
+
+NativeProbes now retains bounded allowlisted measurements before evaluating the
+unchanged predicates. It records attempted/completed/failed stages, obtained child
+PID/role/exit context (including execution or parse failure), and incremental data
+from existing access, HTTP, inventory, journal and configtest collection points.
+The original returned values still feed strict validation. An observed zero remains
+zero; absent fields stay absent. Malformed access sections cannot become valid errnos.
+Unexpected text/objects receive fixed type/error classifications; arbitrary field
+names, paths, response bodies, SQL, credentials and exception messages are not copied.
+Diagnostic copies are separate from valid evidence and cannot authorize a receipt.
+
+The existing collector still publishes its immutable checkpoint before cleanup,
+preserves earlier gate publications and stops before later unexecuted gates. Tests
+exercise cleanup mutation/removal, combined probe/capture/cleanup failure, retained
+ownership and rejection of incomplete diagnostics by the actual offline validators.
+No report schema, evidence predicate, receipt issuer, ledger/watchdog/supervision or
+resource/time ceiling is changed.
+
+The admission controls now use bounded module-local system/OS replacements and
+controlled protected readers. Non-Linux Denied must precede every read; Linux wrong
+UID must read exactly the synthetic configuration and then deny before the receipt;
+missing configuration remains FileNotFoundError before UID evaluation. The existing
+positive actual-parser/private-receipt control remains. No live operational path is
+read, created or changed by these tests.
+
+Executed checks and platform limits are recorded in the isolated-validation section
+and external m6e-measurement-correction/SUMMARY.txt. **M6E remains PARTIALLY
+IMPLEMENTED / REVIEW REQUIRED**. Apache/assets/runtime/health/recovery/provisioning
+still lack the previously listed producers; native receipt issuance stays blocked.
+Filesystem and ownership remain authored/native-unexecuted. Installed workflows,
+COMMIT relay, audit/predicates and full Linux acceptance remain pending. M6C/M6D stay
+formally closed. No server/database/native infrastructure/deployment action occurred.
+
+## Commissioning collector and protected receipt publication — partial
+
+**COMMISSIONING / RECEIPT ISSUER — PARTIALLY IMPLEMENTED LOCALLY. NATIVE
+COMMISSIONING — NOT EXECUTED. INSTALLED WORKFLOW / FULL ACCEPTANCE — PENDING.**
+This change does not complete the requested eight-gate commissioning slice. Two
+native producers are authored end to end; six still need executable steps listed
+below. The native evidence policy rejects those six even if every available
+prerequisite measurement succeeds. No usable operational receipt was created.
+
+The fixed entry is [WebsitePlatformM6ECommission.py](../tests/support/WebsitePlatformM6ECommission.py),
+also routed by the existing preparation CLI. It consumes the immutable bootstrap
+record/publication and protected bootstrap-handoff.json, using their current
+fixture, two-release, foreign-site, tool/module, configuration and identity schemas.
+It does not create run.json, fabricate deployment rows, or issue an initial receipt
+to enable components. The normal protected publishing worker remains inactive.
+
+A fixed ubo-m6e-commission.service owns the operation with TimeoutStartSec=420 and
+the existing process-group/resource restrictions. The existing watchdog now stops
+that service before taking the lifecycle lock. Its 1,200-second absolute lifetime,
+120-second cleanup reserve and bootstrap limits are unchanged. Every stage checks
+the original timer-start monotonic timestamp and admission expiry. No timer restart,
+deadline extension, general configuration-root option or production override exists.
+
+Collection validates source, bootstrap/handoff, configuration, tools/modules,
+identities, ownership, listeners and inactive worker before effects. The historical
+READY record is never rewritten. A dedicated post-commissioning inspection accepts
+released commissioning resources, checks original bindings and independently
+rechecks the unpublished fixture/database state. It does not call pristine
+inspect_ready after commissioning. Repeated commissioning rejects; inspection is
+read-only and cannot refresh a receipt or rerun measurements.
+
+The eight names remain the existing section-18 host-contract names. The following
+is an implementation inventory, **not native PASS evidence**:
+
+| Gate | Executable producer and current limitation |
+| --- | --- |
+| apache | NativeProbes.probe_apache observes the fixed private active/candidate 503 responses, denied unauthenticated TLS request and actual module output. **Incomplete:** retained-release static response, access/handler and final-binding checks are not implemented. |
+| filesystem | CommissionChild.py --filesystem uses actual helper Tree admission at the configured root, narrows its descriptor to owned scratch on that mount, checks local mounts, immutable write/replay/conflict, checked sync calls, no-follow rejection and a real named-inode replacement. A bounded child observes sibling pointer replacement with forced old/new baselines and unknown observations retained. **Authored, unexecuted.** This does not claim kernel-fsync failure or power-loss durability. |
+| ownership | CommissionChild.py --access runs as the actual worker/helper/Apache roles. It observes original worker-private manifest read and 0700/0600 modes, helper/Apache denial, worker served/journal denial, and Apache read/digest plus write denial on a commissioning-owned 0440 public canary inside the configured releases root. No existing permissions are repaired. **Authored, unexecuted.** |
+| assets | Reads and independently rechecks the current two-release/foreign-site fixture and empty served pool. **Incomplete:** actual two-release transfer, retained serving, conflict and foreign/unlisted/traversal negatives. The existing foreign asset shares a same-site digest; its digest alone is not a foreign-path denial test. |
+| runtime | CommissionChild.php --runtime uses the isolated authority configuration, actual PHP/extensions, TLS MySQL identity, native prepare positive/duplicate-parameter negative, UTC observation, SELECT baseline and denied UPDATE/foreign-schema attempts with unchanged state hashes. **Incomplete:** pre-receipt supervised helper properties and lock/fence observations. No old M6D result is credited. |
+| health | Records actual unavailable private HTTPS endpoints and absent pointers. **Incomplete:** actual SiteHttpHealthChecker candidate/active release positives, wrong marker/content, redirect/auth/error/stale cases and owned restoration. Unavailable HTTP is not release-health PASS; no retry budget is increased. |
+| recovery | Records the actual pristine journal/fence and absent pointers. **Incomplete:** retained-state component interruption/health-failure recovery, unavailable/unknown authority blocking and independently verified known-good byte preservation. No backup, successful deployment or compensation is fabricated. |
+| provisioning | Runs the existing fixed Provisioner with actual positive configtest and deliberately invalid pending configuration; preserves live config/journal and records zero reload commands. Pending bytes are captured before removal. **Incomplete:** owned uncertain-reload/reconciliation producer with restored and independently observed final configuration. |
+
+These missing steps need a component transfer/retained-state controller with a
+durable ownership transition protocol for the configured served/journal roots,
+pre-receipt helper supervision, checker fault/restoration orchestration and reload
+reconciliation. The existing NativeBackend expects a different later run.json and
+its commissioning restore method raises an unimplemented error; directly invoking
+it would be circular or unowned. The existing NativeSql child also expects the
+older nested fixture shape. This implementation supplies a narrow current-schema
+runtime producer but does not silently reinterpret those remaining drivers as
+commissioned. Native issuer authorization stays blocked until their producers and
+independent predicates are completed. Full COMMIT-loss relay/audit/installed
+workflows remain separate additional work.
+
+Evidence records retain bounded original observations, actual process/role IDs,
+source/run/machine/boot, protected bootstrap/handoff, final configuration/tool/module,
+root and loaded dependency bindings. The collector uses existing immutable evidence
+publication, captures each result or partial failure before cleanup, preserves the
+first failure and separates later capture/cleanup limitations. Measurements are
+copied once and never completed from expected counts. Controlled-local records
+remain visibly labeled and are rejected by native issuance. Records contain no
+raw SQL values, credentials, keys, bodies or arbitrary exception messages.
+
+The issuer code independently validates finalized gate bytes and their original
+pre-restoration publications before constructing the unchanged seven-field v2
+m6e-host-v2 receipt. Its installed inventory uses actual PHP include observations
+for worker and authority, required entrypoints/configuration and safe file checks,
+with the existing 256-file cap. Nested PHP include paths are preserved by bootstrap
+installation, rather than flattened. Service-template names containing @ cannot be
+entries in the unchanged PHP receipt path grammar; their exact bytes stay pinned
+through the bootstrap record and every final unit recheck. Runtime-loaded PHP files
+are still individually pinned and checked by each consumer.
+
+Expiry is no later than fixture authorization, the original watchdog deadline or
+24 hours. Complete private writes, checked file synchronization, atomic no-replace
+publication and directory synchronization target only the fixed protected receipt
+path. Intents and the complete candidate's bytes/inode are recorded before rename.
+Existing receipts reject. Post-rename/sync/ack failure retains the final object and
+reports uncertainty; read-only reconciliation requires the exact original binding,
+inode, bytes and unexpired issuance. It does not claim to reestablish durability.
+Actual PHP HostContract.load and helper load_config acknowledgements are authored
+without starting a publishing operation; the native path is not reached while
+producers are missing. Authority service execution remains unverified.
+
+Local verification and platform limits are recorded in the corresponding isolated
+validation section and external m6e-commissioning/SUMMARY.txt. Production publisher,
+transfer, helper, authority, health, host-contract schema/admission and canonical
+socket/service examples are unchanged. The reviewed fixture metadata implementation,
+ledger save/recovery, M6C/M6D behavior, migrations and requirement definitions remain
+unchanged. M6E/PR #131 remain partial/draft; M6C/M6D remain formally closed and
+M6F-M6G remain not started. Earlier sections below are historical evidence, not a
+claim that the newly added producers have executed.
+
+## Directory lifetime correction following a5ff864
+
+Review of `a5ff864d56486447e50357833cd3112365f24044` completed with
+[finding 4438243969](https://github.com/fvd8383/ultimate-back-office/pull/131#discussion_r4438243969).
+The reviewer reported Linux full-suite and isolated index-1 partial-clone failures:
+`ModelHost.put()` created parents directly, bypassing metadata initialization, so
+a recycled directory could inherit the pending file's cached regular kind. Inventory
+then applied the regular-file link check. The earlier Windows PASS remains recorded.
+Deterministic local injection reproduced the wrong type and LIMITED cleanup; Windows
+reported one directory link, so its failure occurred later than Linux's reported
+`base_tree_hardlink`. No natural inode reuse or local Linux execution is inferred.
+
+Ordinary file/directory type now comes from real stat; only modeled sockets and
+intentional unsafe-type controls retain explicit overrides. Exclusive file creation
+still initializes fresh modeled ownership/mode from the actual descriptor before
+identification. A small `PrivateFiles.makedirs()` helper initializes each directory
+only after its mkdir succeeds, checks existing parents' actual and modeled directory
+type without changing metadata, and rejects unexpected entries. The constructor and
+`ModelHost.put()` use it, covering clone, TLS, database/artifact and PID fixture output.
+Existing parent modes, rename identity, remaining hardlink names and collisions
+remain intact. No cache-wide clearing, lookup repair or unlink eviction was added.
+
+The finite creation audit preserves unmanaged foreign/replacement/fault fixtures;
+standalone template-copy scratch files have no modeled inode cache. Deterministic
+controls cover regular/socket metadata reused by directories, directory/socket
+metadata reused by files, recursive parents, constructor setup, unsafe existing
+types, collisions and partial clone teardown. Both corrected partial-clone cases
+retain their intended command failure and complete owned cleanup. The actual
+ledger, bootstrap/host/watchdog, admission/cleanup policy, socket templates and
+production code stay byte/mode unchanged. Commissioning, receipts, installed
+workflows, remaining fault scenarios and native acceptance remain pending.
+
+## Controlled filesystem identity correction following 1834f93
+
+Review of `1834f93a101caa4d7e056960472e77f970c4f67e` completed with two fixture
+findings: [stale modeled metadata](https://github.com/fvd8383/ultimate-back-office/pull/131#discussion_r4438173135)
+and [foreign-object identity](https://github.com/fvd8383/ultimate-back-office/pull/131#discussion_r4438173144).
+The reviewer reported both transient teardown subcases failing when a new pending
+file inherited cached socket metadata, and the foreign-inode subcase failing in
+the full suite and three isolated repetitions. The recorded Windows PASS below
+remains historical evidence; it did not establish allocator-independent fixtures.
+These findings concern the test model, not a demonstrated recurrence of the
+previous pending-file implementation defect. The reviewed ledger stays unchanged.
+
+`PrivateFiles.create()` now initializes only the successfully opened exclusive
+creation's actual device/inode entry to modeled root/root, regular, 0600 before
+calling identification, including its injected failure path. It does not clear
+metadata on lookup, collision, rename or unlink. Existing unsafe metadata and
+remaining hardlink names retain their observations. Directory creation already
+initializes after successful mkdir; socket creation assigns its role afterward.
+
+The foreign-file control preallocates its file while the original ledger exists,
+retains the newly installed object under another name, and verifies original,
+created and foreign identities differ before injecting substitution. Foreign bytes
+equal the expected complete ledger; real rename operations preserve a single link.
+The original sync error remains primary and subsequent save must reject the
+unchanged foreign object. This tests distinct-object substitution, not general
+inode-reuse security, crash recovery or power-loss durability.
+
+Deterministic stale-cache injection uses the real exclusive-open descriptor without
+altering stat results or ledger checks. Before correction it reproduced a regular
+file observed as a socket and false `ledger_object_replaced`; after correction it
+reaches the intended empty/prefix/sync boundaries. Normal creation, callback failure,
+collisions, existing unsafe metadata, rename/hardlink behavior and teardown controls
+remain covered. Only the two existing control files and two M6E records change;
+ledger, orchestration/watchdog, socket policy and production code are byte/mode
+preserved. Commissioning and native integration remain pending.
+
+## Pending-ledger recovery following 82aef44
+
+The outstanding [P2 finding 4438049274](https://github.com/fvd8383/ultimate-back-office/pull/131#discussion_r4438049274)
+was reproduced against `82aef4403cf17faa5ff71ec317f568684ef0554a`: both an empty
+new pending file and a real 13-byte prefix survived a failed save, blocked later
+saves and prevented modeled teardown from reaching any service-stop executor.
+A separate directory-sync fault installed complete new bytes but left the cached
+ledger identity stale. Before-fix bytes, hashes and modeled commands are retained
+outside Git with the corrected results in `m6e-ledger-recovery`.
+
+The creation callback now captures descriptor/name identity before writing, without
+recursively journaling the pending ledger. Replacement checks the protected parent,
+exact object, regular type, single link, owner and mode. Pre-replace failure keeps
+the old ledger and removes only this invocation's verified pending object. Original
+write/sync errors survive close/cleanup errors; bounded secondary diagnostics use
+existing sanitized classifications. A post-replace error still fails and records
+its phase and unconfirmed durability. Cached identity changes only after proving
+this invocation's exact created inode and complete expected bytes are installed.
+The version-1 schema remains; `observations.ledger_save_failure` adds only fixed
+stage/installed/durability fields. Failure recording stays in memory until a later
+deliberate save; there is no automatic retry or crash-durability claim.
+
+Thirteen new recovery controls and twelve affected bootstrap lifecycle/capture/
+teardown controls pass. Cleared transient faults allow save, bound reload and the
+real modeled journaled teardown; persistent faults leave cleanup LIMITED and the
+watchdog ARMED. Foreign resources/replacements survive and repeated teardown does
+not repeat destructive effects. Native UID enforcement, directory durability,
+service cleanup, SIGKILL and power-loss recovery remain unexecuted. Production
+executables, corrected socket templates/policy, bootstrap orchestration and
+watchdog limits are unchanged. Commissioning/receipts, installed workflows, fault
+scenarios/COMMIT relay, full audit/predicates and native acceptance remain pending.
+
+## Canonical socket policy following 166765f
+
+The source compatibility issue recorded at `166765f308d5d0d09d4b406939f4711c88a50515`
+is now corrected in both operator-facing socket examples. `Accept=yes` remains;
+explicit `Service=` is removed. The existing matching `ubo-site-authority@.service`
+and `ubo-site-publisher@.service` names select per-connection services, whose socket
+stdin/stdout routing, identities and hardening are unchanged. This follows the
+[systemd 257 contract](https://www.freedesktop.org/software/systemd/man/257/systemd.socket.html);
+compatibility with the actual pinned installed version remains a later native check.
+
+The authority example now explicitly declares `SocketGroup=@PUBLISHER_GROUP@` once
+inside `[Socket]`. Omitting a group would derive the `SocketUser` account's primary
+group, not necessarily root's group. Explicit canonical binding keeps the existing
+fixture helper group without a fixture-only appended directive. Authority 0600,
+publisher root/worker-group 0660, fixed paths, directory policy and connection
+limits are preserved; neither example adds an installation/enablement section.
+
+`fixture_units()` now returns the canonical socket bytes with placeholder
+substitution only. It no longer expects/deletes an incompatible `Service=` line or
+appends `SocketGroup`. A small fixed-template policy checks the exact unit inventory,
+matching service names, expected sections/listener/activation/access/limits and
+rejects duplicate, extra or conflicting directives on canonical and rendered input.
+It rejects continuation syntax and is not a general systemd parser or unit-manager
+validation. Private-copy mutation controls and the existing limited bootstrap
+workflow exercise the real renderer; no socket activation or native configtest ran.
+
+This changes **two installation configuration examples**, two test/support Python
+files and these two M6E records. Production PHP/Python executables, both service
+examples, bootstrap host/inspection, watchdog, ownership ledger, teardown and
+capture-before-cleanup behavior are unchanged. Current scope needs no additions.
+The review of `166765f` published an unrelated P2 pending-ledger-write finding
+[4438049274](https://github.com/fvd8383/ultimate-back-office/pull/131#discussion_r4438049274).
+It was unresolved at that socket correction; the ledger section above supersedes
+that finding's implementation status. The prior head is not claimed clean.
+Bootstrap remains **IMPLEMENTED LOCALLY / NATIVE EXECUTION PENDING** and
+overall M6E remains **PARTIALLY IMPLEMENTED / REVIEW REQUIRED**. Commissioning,
+receipt issuance, protected successful installed workflow, remaining scenarios/
+COMMIT relay, full restore/retention/audit and Linux filesystem/race/identity
+acceptance remain outstanding. M6C/M6D stay formally closed.
+
+## Fixture bootstrap and supervision following 935618a
+
+**FIXTURE BOOTSTRAP/SUPERVISION — IMPLEMENTED LOCALLY, NATIVE EXECUTION PENDING.**
+This bounded slice starts from clean `935618abc7fa6e5b3552f2efb1a6b5a14292f37d`.
+Its exact-head review was read once: completed without findings; all three earlier
+threads remained resolved. Overall M6E is still **PARTIALLY IMPLEMENTED / REVIEW
+REQUIRED**. The older sections below describe the state at their named heads;
+this section supersedes their bootstrap/supervision gaps only.
+
+`WebsitePlatformM6EPreparation.py --prepare-base` now executes the complete fixed
+bootstrap through `WebsitePlatformM6EBootstrap.py`. The existing VM contract,
+component templates and canonical setup are reused. `BootstrapPlan.py` contains
+definitions/rendering, `BootstrapHost.py` the native boundaries and safe command
+journal, and `BootstrapLedger.py` the durable ownership/evidence handling. No
+provider abstraction, software installation or production admission bypass was
+added. Legacy `--prepare` and full native `--run` retain the existing incomplete
+native-readiness barrier; no callable placeholder satisfies it.
+
+Preflight validates the version-2 admission, dedicated VM/run/machine/boot, exact
+read-only source and tracked modes, loopback-only network, fixed accounts/UIDs/GIDs,
+path/unit/drop-in collisions, pinned installed tools/modules, PHP extensions,
+local storage and capacity/cgroup policy. It checks bootstrap source completeness
+and syntax and resolves every fixed template before creating resources. Source
+copying preserves tracked executable bits. Generated application secrets stay in
+a separate root-owned configuration; the ignored installed `env.php` only loads it.
+
+The authored native path creates seven separate non-login accounts, private TLS,
+one fresh MySQL 8.4 instance and `ubo_m6e_<run-id>`, applies canonical migrations
+001–025 once and checks the `247sp` seed. Writer, worker and SELECT-only authority
+credentials have separate role access; the authority receives no foreign-schema
+grant. Safe output binds the server UUID, schema, accounts and setup records.
+Actual M6C service/builder/validator/store calls build two releases of the same site
+with separate jobs, execution producers and manifests, shared PNG/PDF and changed
+CSS, plus a foreign-site asset identity. Artifact roots/files remain worker-owned
+0700/0600. Synthetic approvals are fixture data preparation, not installed protected
+worker acceptance. The target is unpublished, deployment count is zero and the
+helper journal is pristine; no current/candidate link or activation is fabricated.
+
+The fixed systemd bootstrap service owns preparation after client disconnect. Its
+600-second preparation budget is separate from the unchanged acceptance deadline.
+An independent 1,200-second timer invokes the fixed watchdog cleanup service with
+a 120-second cleanup budget. Public teardown also dispatches that service. Only
+MySQL, Apache and the two sockets start; the protected worker is installed inactive.
+The standalone Apache main config loads admitted modules and supplies runtime,
+user/group, MIME and exact private listeners around the reviewed static/mTLS policy.
+Inspection checks source/tool/config/unit bytes, service PID/invocation/cgroup,
+socket type/ownership/mode/unit, role access, listener ownership, actual DB/artifact
+identities, empty served output, pristine journal and absent host receipt. Startup
+and socket presence are never credited as application authorization or TLS gates.
+
+Intent is persisted before partial creation; observed identities and safe command
+IDs/caller/PID/exit/time follow actual invocation. Commands, credentials, raw rows
+and content are not retained in report bodies. Immutable failure and teardown
+snapshots precede restoration; capture errors remain separate and do not suppress
+cleanup or replace the primary failure. Cleanup revalidates namespace and exact
+unit/invocation/object/account ownership, verifies processes are gone and preserves
+unknown/replaced resources as LIMITED. Sealed trees reject new/replaced children;
+partial account removal remains retryable. Successfully released resources are
+never adopted again. The watchdog remains armed through incomplete cleanup; its
+control files are removed last. `/opt/ubo` and the external evidence export remain.
+
+The checked immutable `m6e-fixture-bootstrap-v1` record says only **FIXTURE BOOTSTRAP
+READY / COMMISSIONING NOT EXECUTED / HOST RECEIPT ABSENT / NATIVE ACCEPTANCE NOT
+EXECUTED**. A separate publication receipt binds its bytes. The protected handoff
+contains measured configuration/source/tool/resource/DB/fixture identities for
+future commissioning. Read-only inspection rechecks that handoff and current
+state against the record. Archived READY bytes alone do not authorize later use
+after teardown, expiry or any state change. The full native validator rejects this
+distinct profile.
+
+Local evidence consists of the actual Python orchestration/adapters with real
+private files and modeled Linux/service/UID/SQL boundaries, and PHP controls that
+exercise schema command formation with fake PDO plus actual M6C artifact builds,
+validation and byte/digest cross-checks. The PHP controls use two isolated builder
+fixtures; they do not establish a native same-site SQL run. Final results and exact
+commands are recorded in the validation runbook. Original failures and rechecks
+are retained outside Git in `m6e-bootstrap`; no failure file was overwritten.
+
+Production executable changes in this slice: **zero**. The reviewed observation
+capture/cleanup implementation is unchanged. Current scope adds only six exact
+bootstrap support/test paths; all 25 migrations/pins, 77 requirement definitions,
+M6C/M6D code, historical scope policies and closed reports remain preserved.
+Commissioning/host-receipt issuance, installed protected successful workflow,
+remaining scenarios/COMMIT relay, full Apache restore/retention/command audit/native
+predicates and Linux syscall/race/identity acceptance remain unfinished. No server,
+SQL, migration, native service/configtest, VM, deployment or merge was executed.
+
+## Failed-observation evidence correction following 3475bf4
+
+The review of `3475bf4f7829bc2b1b9342697e6e13f2e22a91e4` completed **with**
+[finding 4437786320](https://github.com/fvd8383/ultimate-back-office/pull/131#discussion_r4437786320).
+All three actual driver functions were reproduced through `dispatch`, `Recorder`,
+`coordinate` and the controlled backend before editing: baseline and fault returned,
+observation threw, cleanup saw the private marker still faulted and no capture file,
+then restoration destroyed that state. The later saved report contained only
+UNREACHED for the reached observation. That earlier behavior was incorrect.
+
+The recorder now starts each observation explicitly, retains immutable copies of
+safe measurements immediately, tracks attempted/last-completed stages and retains
+the first failure. The adapter progress seam records an outcome before a later
+independent read can throw. Started failures produce FAILED partial rows; genuinely
+unstarted observations stay UNREACHED. Earlier complete observations survive a
+later failure. Only evaluated assertions are retained, including a failed check;
+unexecuted planned assertions are not counted.
+
+All three drivers share a required checked disk checkpoint before their per-case
+cleanup. It binds source/run/config/case/observation and contains available events,
+safe failure classification, bounded notes and owned resource/child metadata.
+Snapshots are at most 64 KiB, use distinct no-replace names and keep original bytes.
+Provisioner additionally checkpoints safe pending-file size/hash and actual result
+state before pending-file cleanup. This does not change provisioning decisions or
+add rollback. The coordinator's later capture covers remaining global cleanup; it
+is no longer described as the first capture for an observation already restored.
+
+Capture failure is separately recorded and blocks acceptance. Cleanup still runs.
+A prior case exception remains primary through capture and cleanup failures;
+secondary outcomes remain distinct. Ownership is registered before begin/setup can
+partially succeed. Released resources are not destructively cleaned again; failed
+or explicitly incomplete cleanup stays tracked for bounded final handling, while
+retaining the first cleanup measurement if a final retry releases it. Child diagnostics distinguish
+observed exit before cleanup from requested termination and actual final exit/reap.
+Exception messages/arguments, private handles/paths, bodies and credentials are not
+serialized. A post-publication diagnostic cannot rewrite finalized report bytes.
+
+The v2 report adds explicitly versioned `lifecycle.version=1` diagnostic fields.
+Current integration PASS rows require successful per-observation capture and cleanup
+alongside every existing measurement/assertion requirement. Historical v2 integration
+rows without the lifecycle extension reject explicitly as
+`legacy_observation_lifecycle_missing`; they are not retroactively credited with
+capture. FAILED partial records can be validated diagnostically but never accepted
+as a passed observation. The native predicates, 13 parents, mandatory inventory,
+lane separation and final publication-receipt requirement remain intact.
+
+Focused local validation: **37 integration-control tests PASS**, including the
+parameterized baseline/fault/outcome/independent/assertion/cleanup failures, combined
+capture/cleanup failures, partial construction, multiple observations, real private
+file ordering, pending cleanup, immutable copies, privacy/tampering and owned child
+context and incomplete-cleanup retry. The final run took 28.529 seconds. Original before/after files and hashes
+are retained outside Git in this task's `m6e-evidence-ordering` directory. Unchanged
+helper/transfer/publication suites, historical campaigns and native gates were not
+rerun. Production executable changes: **zero**.
+
+This correction does not complete native integration. Commissioning/receipt issuance,
+fixed supervised entrypoints/watchdog, complete native orchestration, COMMIT relay,
+Apache restore/retention, command audit and native schema/syscall/race obligations
+remain unfinished. `native_readiness()` still blocks them before effects. M6E stays
+**PARTIALLY IMPLEMENTED / REVIEW REQUIRED**; M6C/M6D remain formally closed.
+
+## Integration controls following 065983d5 — partial implementation
+
+Starting source was the clean, exact branch head
+`065983d5a69269bcf8865d902a9a66f050860958`. Its exact-head review was observed once:
+completed, no findings, with both earlier threads resolved. This change does **not**
+achieve the requested complete installed integration handoff. Status remains
+**PARTIALLY IMPLEMENTED / LOCAL CONTROLS PASS / LINUX-APACHE-MYSQL ACCEPTANCE NOT EXECUTED**.
+
+| Existing driver | Implemented code | Mandatory executable work still missing |
+| --- | --- | --- |
+| `apache_private_health_headers` | Named driver loop, positive baselines, actual PHP HTTPS-checker child, independent bounded Python TLS requests, fixed fault mutations, response/hash/header observations and cleanup | VM Apache installation/commissioning, phase-bound two-release inputs, verified restore/retention cleanup and full native inventory predicates |
+| `config_failure_preservation` | Actual provisioning policy with fixed command vectors and protected-file storage; configtest-before-install, failed/unknown reload stays UNKNOWN, separate reconciliation; deterministic executor tests | Completed supervised native configuration/reload fault setup and independent command/syscall audit for routine operations |
+| `worker_helper_authority_integration` | Named driver loop and controlled adapter tests; authored separate-UID permission/protocol child, actual PDO SELECT-only/foreign-schema probes and instrumented worker/barriers | Native scenario backend, fixed installed worker/recovery service orchestration, real COMMIT wire faults, independent barriers/transaction observations, renewal/expiry and 300-second session scheduling |
+
+The three names now dispatch through `WebsitePlatformM6EDrivers.py`; dispatch alone
+is not completion. `WebsitePlatformM6ECoordinator.py` retains all 13 parents and
+initializes every named observation UNREACHED. `native_readiness()` lists absent
+executable methods. Both the integration `--run` path and preparation `--prepare`
+fail before fixture mutation while these dependencies are missing. There is no
+force flag, caller-provided completion boolean, fabricated command-counter file,
+all-PASS gate dictionary, generated host receipt or operational bypass.
+
+`WebsitePlatformM6EPreparation.py` contains guarded disposable-VM preflight,
+ownership intentions, account/private TLS/schema preparation and namespace teardown
+code. It requires a separately supplied VM with preinstalled pinned tools and a
+read-only exact checkout. That code is **not a complete runnable preparation path**:
+commissioning, receipt issuance, installed supervision and watchdog are still
+missing. The readiness barrier deliberately prevents partial construction followed
+by an unwritten operator step. Neither preparation nor any native child was run.
+
+The definitions-only v2 acceptance contract fixes source/run/config/tool/role/
+endpoint/database identities, exact names and evidence lanes. Five measured stages
+are required for every observation: baseline, reached boundary, outcome, independent
+effect and cleanup. Report-supplied assertions cannot override source-defined native
+predicates. Native policies for component/identity observations, manifest/retained
+inventory and command auditing are still missing and explicitly reject acceptance.
+Controlled adapter results cannot be promoted to native acceptance.
+
+The coordinator captures evidence before owned-resource cleanup, preserves the first
+error, retains child/reaping context and publishes original final bytes without
+replacement. Original bytes say publication PENDING; a separate checked publication
+receipt binds their exact hash/length. Missing receipt, bad cleanup, unreached cases
+or any first failure prevents exit zero. Namespace teardown remains separate.
+The 600-second coordinator, 30-second stage and 300-second helper session limits
+were not increased. Native duration has not been measured.
+
+### Narrow reproduced helper correction
+
+A local reproduction showed that successful database COMMIT followed by session
+EOF before `settle` left a completed activation journal permanently blocking the
+next ordinary deployment. The unchanged M6D recovery service intentionally does not
+allocate ordinary recovery for an already completed success. The helper now admits
+a greater execution fence only when fresh independent authority identifies the
+exact successful predecessor, journal phase is completed activation with no intent,
+original deployment/producer match, and the locked current-pointer/retained-byte
+read verifies that exact identity. It does not compensate or infer success from EOF.
+Unknown outcome, wrong producer/owner, pending intent, wrong phase, changed bytes,
+pointer drift and dead authority still reject without journal mutation.
+
+The first reproduction failed at the old fence guard; its output is retained outside
+Git. The final helper suite has 19 passing tests, including the reproduction and
+eight negative subcases. Only `fence` and `Publisher.dispatch` changed executable
+production logic; transfer framing, budgets and publication primitives are preserved.
+
+### Local verification and limits
+
+The focused local campaign uses installed Python/PHP, private files, bounded child
+pipes and the existing synthetic protocol/HTTP/PDO adapters. It does not use MySQL,
+Apache, installed helpers or supervisor services. The new control suite exercises
+the actual three driver functions, actual Provisioner, actual coordinator and
+definitions-only validator, including partial construction, primary/cleanup failure,
+fabricated inventory, self-serving assertions, wrong identity binding and absent
+publication receipt. Linux filesystem details remain explicitly modeled.
+
+Final directly affected results: 26 integration-control tests, 19 helper tests,
+8 publication tests, 20 transfer tests and 5 PHP-to-Python wire tests pass (78 Python
+tests). PHP host/authority/health/protocol suites pass 33/18/43/19 assertions (113).
+All 13 changed Python files parse and all 5 changed PHP files lint. The working
+scope guard passes 172 assertions; staged/committed counts are retained in the
+external handoff. Four relative document links resolve. AST comparison against
+065983d5 confirms that only the two declared helper functions changed executable
+production logic; all three reviewed PHP bridge files are byte-preserved.
+
+Raw per-program results, initial failures, rechecks, interpreter versions, syntax/
+scope/preservation results and complete handoff are retained outside Git in
+`m6e-integration/SUMMARY.txt` under this task's Codex visualization directory. The
+original Windows sandbox hard-link denial and successful authorized local rerun are
+both retained. The 68-program historical campaign and closed native gates were not
+rerun. No server, SSH, infrastructure, SQL, migration, installation, deployment,
+merge or formal closure operation occurred.
+
+## Bounded artifact transfer — current local implementation
+
+Starting source: `659d59d7478df5bc0e42886a796a4e78c910ba23`, clean on the existing
+branch. Its exact-head review completed with no findings; the two earlier review
+threads remain resolved. This task implements the missing bridge in one subsequent
+commit. **ARTIFACT TRANSFER — IMPLEMENTED LOCALLY / NOT YET INSTALLED-VERIFIED**.
+**INSTALLED IDENTITY/HTTP/AUTHORITY ACCEPTANCE — NOT EXECUTED**.
+
+`SitePublisherArtifactExport` is worker-only. Scoped committed reads resolve the
+exact release, site, successful build job and original execution producer (including
+an adopted recovery). The unchanged M6C `verifyRelease` runs before and after export,
+not before every file. The existing service also performs its own verification.
+Only raw `metadata/manifest.json`, raw `metadata/validation.json` and the verified
+public inventory leave the worker. There is no rerender, latest-release lookup,
+archive, full-package base64/JSON, journal/lock/snapshot export or caller path.
+Source paths derive from the verified storage key and fixed protected worker roots.
+Pinned per-file/ancestor dev/inode/owner/mode/link/size/time checks and incremental
+length/digest checks reject replacement, links, foreign ownership, changed bytes,
+missing or extra inventory. Worker directories/files stay 0700/0600; shared M6C
+classes, hashes and transaction behavior are unchanged. Filesystem work and the
+transfer occur outside all SQL transactions.
+
+`SitePublisherSession` retains its seven ordinary version-1 wire operations and
+all six public SitePublisher operations/DTOs. Stage adds a mandatory internal
+`transfer_ready` handshake with `transfer_version=1`, request sequence and a fresh
+128-bit helper-generated transfer ID. The helper authenticates the Unix peer,
+validates the request/binding/lease, independently reads committed authority,
+acquires the existing target lock, persists the fence and requires permitted live
+execution before ready. Recovery never admits transfer. An exact retained release
+returns disposition `retained`; the sender sends no file frames and awaits the
+normal stage receipt. A conflict rejects before ready, without repair. This explicit
+branch also prevents a lost-receipt retry from deadlocking over expected bytes.
+
+Disposition `receive` uses UBT1 frames: four-byte magic, one byte C/D type, four-byte
+unsigned network-order length, then exactly that many bytes. Control JSON carries
+version/transfer ID/request sequence and an exact file index, fixed verified path,
+length and SHA-256. Binary D data never enters JSON command parsing. Manifest is
+first, validation second, then sorted manifest public entries. Each file is checked
+and acknowledged before the next; no pipelining/unbounded queue or resumption.
+The raw manifest hash must equal independent authority before its inventory is
+trusted. An explicit end control binds file count, public bytes, metadata bytes,
+data-frame count and manifest hash. EOF cannot complete a transfer; already queued
+extra frames are rejected. Fragmented/coalesced and partial transport is handled by
+exact reads/writes under an absolute deadline.
+
+| Resource | Fixed bound and accounting |
+| --- | --- |
+| Ordinary request/response | 16,384 / 1,048,576 bytes; not enlarged for packages |
+| Control / binary frame | 4,096 / 65,536 bytes; header length checked before allocation/write |
+| Files | 2,000 total including both metadata files; public count at most 1,998 |
+| Public bytes | 104,857,600 total; HTML 1,048,576/file, marker 1,024, CSS/media/PDF 20,971,520 |
+| Metadata | Manifest 1,048,576 plus validation 16,384; separate from public allowance |
+| Transfer control / framing | At most 16,392,192 control bytes (both directions), 9,664 frames, nine header bytes/frame |
+| Stream allocation | 65,536-byte chunks; manifest up to 1 MiB. Existing M6C/Python verifiers and publication still allocate a bounded individual file up to 20 MiB (read assembly can temporarily double that); never a full package |
+| Helper disk | Receive plus public stage plus asset insertion: at most three public payloads, two manifests and one validation file, with bounded file/directory counts and a 357,711,872-byte free-space admission reserve (allocation units at most 4 KiB). Filesystem metadata/quota/exhaustion remain installed gates; failed writes still deny. Existing retained history is not deleted or credited as free space |
+| Deadline | Stage including export verification, transfer, verification, publication and receipt: at most 30 seconds, further capped by helper lease expiry and the original 300-second session. Ordinary operations remain bounded. No progress reset or timeout extension |
+
+The PHP session renews execution through the existing guarded service mechanism
+before transfer; the renewal commits before external work. The 30-second phase
+needs no periodic extension of the 120-second lease. The helper rechecks authority
+at least at one-second progress intervals, after reception and before publication,
+candidate update and acknowledgement; observer calls have an absolute five-second
+cap and respect the remaining stage budget. Possession never authorizes activation.
+
+Ingress uses a unique exclusive helper-owned 0700 subtree under private served
+`staging`, with 0600 files and pinned no-follow directory descriptors. Bytes remain
+outside asset, candidate and active aliases. Complete received packages pass the
+actual existing `verify_package`, including exact validation bytes, complete
+inventory, public/full hashes and the non-circular marker. Only then can the existing
+corrected stage path publish retained assets/pinned manifests through complete
+private temporaries and atomic no-replace operations. Candidate/current behavior,
+lock lifetime, fence, settlement and unknown-DB-outcome semantics are preserved.
+
+Failure never fabricates a receipt, reconnects, activates or compensates. Cleanup
+verifies the invocation's recorded inode identities and removes only its private
+receive files/directories; secondary failure gets a separate fixed diagnostic and
+cannot replace the first phase/index error. A post-publication error or lost final
+acknowledgement leaves complete installed objects and an unresolved journal; no
+nothing-changed claim or destructive repair. Other private incomplete staging and
+crash leftovers keep their existing semantics. No broad cleanup/prune was added.
+
+The production helper has no source-root configuration, no source Tree/member and
+no direct-source fallback, including startup, inspection, probe, recovery and
+settlement. Existing component source adapters now live only in test subclasses.
+Worker/helper configs and the receipt use version 2 (`m6e-host-v2`); authority config
+also uses version 2. Old incompatible configs fail, while ordinary request version 1
+remains unambiguous through the mandatory stage handshake. Each identity verifies
+its own loaded code/config pins. The helper does not read worker config/application
+credentials or the authority credential file; the worker/authority likewise verify
+their own included files rather than opening another identity's private files.
+Supervision templates deny helper access to original work/sealed roots, worker config
+and credentials, and deny worker access to served/journal roots. No template, receipt,
+account, permissions or service was installed, and no passed receipt was manufactured.
+
+New implementation: `private/classes/SitePublisherArtifactExport.php` and
+`private/classes/SitePublisherTransfer.php`; integration changes are session/runtime,
+host config, helper and identity-specific pin verification. New executable desktop
+regression: `tests/WebsitePlatformM6ETransferTest.py` with the actual PHP transfer
+child. Existing wire/host/helper/filesystem fixtures are updated consistently.
+Exact changed-file inventory and committed hashes are retained in the external SUMMARY.
+
+Local real operations include original M6C builder/validator/store, production
+exporter/session/receiver/publication code, private files, bounded child pipes and
+private loopback protocol tests. Distinct UIDs, Unix permissions/dirfd/renameat2,
+directory/read-only fsync, free-space admission, peer credentials and pointers remain
+explicit Windows models. The original production helper main is exercised with
+modeled host/peer/OS admission to prove inspect/probe/recovery/settlement open only
+served/journal trees. This is not installed admission. Authored separate-identity
+Linux observations are described in the isolated runbook and were syntax-checked
+only. All three broader integration drivers remain INCOMPLETE.
+
+### Focused transfer validation and exact inventory
+
+The final focused run passes 280 PHP behavioral assertions plus the current M6E
+scope guard, and 50 Python tests. Commands, wall times, stdout/stderr, failed runs
+and normalized source hashes are retained outside Git in the task's `SUMMARY.txt`
+and JSON evidence. PHP 8.4.24, Python 3.14.7 and Git 2.56.0.windows.2 were used.
+
+| Program | Observed result | Command wall seconds |
+| --- | --- | ---: |
+| M6E protocol | 19 assertions PASS | 6.004 |
+| M6E host | 33 assertions PASS; default-deny/admission fixtures | 0.409 |
+| M6E authority | 18 assertions PASS; sequential PDO fixtures | 0.304 |
+| M6E health | 43 assertions PASS; synthetic HTTP/TLS | 0.547 |
+| M6D CLI / execution / recovery | 44 / 63 / 60 assertions PASS | 3.489 / 1.026 / 0.626 |
+| Current M6E scope, working files | 146 assertions PASS | 2.830 |
+| Actual PHP/Python transfer | 20 tests PASS | 23.062 |
+| Actual PHP/Python ordinary wire | 5 tests PASS | 7.385 |
+| Immutable publication | 8 tests PASS | 3.584 |
+| Helper | 17 tests PASS | 5.090 |
+
+The initial composite transfer run exceeded its outer runner timeout and reported
+a retained-case fixture-startup deadline error before staging. That failure is kept;
+its cause is not attributed to the host without evidence. The isolated retained case
+then passed, followed by the full transfer suite and a final full run after adding
+receive-directory-open cleanup coverage. Production's 30-second stage bound was
+never extended. Development also exposed obsolete direct-source fixture assumptions,
+Windows stream/dirfd/diagnostic model defects and an owner-test path normalization
+error; those failures and corrections are recorded separately, not credited as PASS.
+No full 68-program campaign, long M6C synthetic launcher, historical closed scope
+check or native/infrastructure gate was run.
+
+This transfer change contains exactly these 22 paths (six new):
+
+```text
+docs/sprint-8.8-m6e-isolated-validation.md
+docs/sprint-8.8-m6e-local-implementation.md
+infrastructure/deployment/site-publisher-host-contract.json.example
+infrastructure/deployment/ubo-site-authority.php
+infrastructure/deployment/ubo-site-publisher@.service.example
+infrastructure/deployment/ubo-site-worker.service.example
+infrastructure/deployment/ubo_site_publish.py
+private/classes/SiteDeploymentRuntime.php
+private/classes/SitePublisherArtifactExport.php [new]
+private/classes/SitePublisherHostContract.php
+private/classes/SitePublisherSession.php
+private/classes/SitePublisherTransfer.php [new]
+tests/WebsitePlatformM6EHelperTest.py
+tests/WebsitePlatformM6EHostTest.php
+tests/WebsitePlatformM6EIsolated.py
+tests/WebsitePlatformM6EScopeTest.php
+tests/WebsitePlatformM6ETransferTest.py [new]
+tests/support/WebsitePlatformM6EFilesystem.py
+tests/support/WebsitePlatformM6EIdentityChild.php [new]
+tests/support/WebsitePlatformM6EIdentityDriver.py [new]
+tests/support/WebsitePlatformM6ETransferChild.php [new]
+tests/support/WebsitePlatformM6EWireChild.php
+```
+
+Changed PHP files are linted and changed Python files AST-parsed without bytecode;
+the authored native entry points are not imported or executed. Documentation links,
+Git inventory and whitespace are checked. Every `Tree` method, including corrected
+atomic publication, is AST-identical to 659d59d; the 13-case isolated inventory is
+unchanged. Shared protected classes, 25 migrations/pins, 77 definitions and closed
+native contracts/reports/policies remain unchanged. Final staged/committed scope and
+exact-head review observations belong to the external evidence receipt.
+
+## Focused PR #131 review correction — historical 659d59d evidence
+
+Starting source: `528b47fefbe2e7bacd4a3b7e8a365de7b4db8aa2`, verified clean on
+the existing branch with the PR still draft. Its completed review had two unresolved
+findings; completion was not a clean review:
+[empty wire payload](https://github.com/fvd8383/ultimate-back-office/pull/131#discussion_r4437330462)
+and [partial permanent objects](https://github.com/fvd8383/ultimate-back-office/pull/131#discussion_r4437330464).
+
+Before editing production code, the actual PHP session wrote `payload: []` for
+inspect/settle into a test-only memory stream (seven-byte writes, five-byte reads).
+The actual Python parser rejected both. Saved original producer bytes also reproduce
+the rejection in a bounded Python child loading the exact prior Git blob. No
+operational inspection/settlement occurred. The separately source-confirmed
+correlation mismatch also reproduces: the actual service-generated `site:<32 hex>`
+ID rejects, while a UUID-shaped correlation positive control parses. This is not a
+third reviewer thread or a claimed native failure.
+
+The PHP session now converts only the intentionally empty payload to an object.
+Nonempty payloads and nested lists/numbers/booleans/nulls/strings retain their types.
+CanonicalJson and shared hashing are unchanged. The Python correlation field now
+accepts precisely the normalized service grammar `[A-Za-z0-9._:-]{1,100}`, without
+trimming or rewriting. Deployment/release UUID validation remains strict. The
+bounded compatibility audit passes actual PHP-produced examples of all seven wire
+operations, including service-produced nullable expectations and recovery context;
+no further producer/parser mismatch was observed. Arrays/null/scalars/extra fields
+for empty payloads, invalid correlation IDs, UUID/identity/shape faults and oversized
+requests still reject. This is parsing evidence, not authority admission.
+
+The original `Tree.write_new` reproduction created the final asset/manifest name,
+wrote a three-byte prefix, then raised a controlled error. Real private files retained
+`bod` instead of the complete synthetic CSS, and `{"f` instead of the complete
+synthetic manifest; the next exact insertion raised FileExistsError. Original and
+partial bytes/digests are retained outside Git. Unix metadata/dirfd behavior was
+explicitly modeled on Windows; the executed writer/reader were production methods.
+
+Only two production files change in this correction: `SitePublisherSession.php` and
+`ubo_site_publish.py`. The new `Tree.publish_immutable` applies only to retained
+assets and pinned manifests. It validates fixed object identity and owned directory
+descriptors, creates a unique exclusive private temporary, handles partial writes,
+verifies full length/digest/type/owner/single-link/device, applies final 0440/group
+or private 0600 permissions, fsyncs and checks close before publishing. It reuses the
+existing Linux `renameat2(RENAME_NOREPLACE)` primitive and syncs both affected
+directories. Asset temporaries stay in private served-filesystem staging; manifest
+temporaries stay in the private journal root. Those filesystems need not be equal.
+
+Exact existing objects and matching no-replace race winners are safely read,
+identity/mode checked and synchronized before reuse. Conflicting/partial objects
+are never overwritten, deleted or repaired. Normal exception cleanup removes only
+the invocation's proven-owned temporary; a secondary cleanup error cannot replace
+the first error. A successful rename followed by sync failure remains an error and
+retains the complete published object. Later exact object replay can verify it;
+activation is not automatically replayed. SIGKILL/power loss does not run finally,
+and private leftovers do not create permanent-name conflicts or authorize pruning.
+
+The actual stage call sites use this primitive. Private incomplete stage writes,
+replaceable state journals and current/candidate replacement retain their separate
+semantics. Target locking, fencing, fresh authority, settlement, limits/timeouts and
+admission were unchanged by that correction. At 659d59d the source-access bridge
+was still missing; the current transfer section above supersedes that gap. The
+three broader integration drivers remain incomplete; M6E remains PARTIALLY
+IMPLEMENTED / REVIEW REQUIRED, with M6C/M6D closed and M6F–M6G not started.
+
+The new publication suite executes the real primitive with real private regular-file
+I/O, fault injection and exact replay checks. Dirfd, Unix ownership/modes/timestamps,
+renameat2, directory sync and read-only-descriptor sync are Windows models. Initial
+test-adapter failures exposed Windows text-mode newline conversion, deferred file
+timestamps and read-only fsync differences; binary I/O and explicit model boundaries
+correct those test adapters without relaxing production Linux checks. The existing
+helper suite now invokes the actual primitive at stage's permanent-object call sites.
+
+Corresponding Linux publication/race/sync/kill observations are authored within the
+existing `stage_storage_fault` case; the top-level inventory and three INCOMPLETE
+driver results are unchanged. That harness was not executed. Native ownership,
+replacement races, filesystem durability, Apache and installed authority acceptance
+remain separate unexecuted obligations. Current focused command/count/exit/duration
+results are recorded below; the initial 68-program campaign remains historical.
+
+## Implemented components and boundaries
+
+| Component | Executable behavior |
+| --- | --- |
+| `ApacheDigitalOceanSitePublisher` | Implements the six unchanged SitePublisher operations and validates existing receipts/observations. No lifecycle, grant, deployment, job, attempt or DB-pointer writes. |
+| `SitePublisherHostContract` | Protected Linux CLI startup, fixed config/receipt locations, root ownership and nonwritable ancestors, versioned staging bindings, distinct UIDs, immutable in-memory resolution, eight evidence-backed host gates, short-lived receipt and installed-file hashes. Unknown platform/config/provider/binding denies before helper/network/artifact work. |
+| `SiteDeploymentRuntime` / factory | Hard-coded `apache-digitalocean-v1` only; startup creates dependencies, `assertReady` performs memory-only checks under locks. Existing M6C `SiteDeploymentArtifacts` and `LocalSiteArtifactStore` perform verification. No fallback, environment override, force switch, public dependency setter or production adapter. |
+| `SitePublisherSession` | Bounded version-1 JSON and mandatory stage-only UBT1 transfer over the same protected local supervisor socket. Lease token stays inside the private channel. Exact sequence/shape/size checking; no commands, paths, credentials or hosts in the protocol. |
+| Python `ubo-site-publish` / `ubo_site_publish.py` | Linux descriptor-relative private receive/retained reads and mutations; no worker source access, regular-file/owner/device/nlink checks, exact manifest/inventory/size/digest checks, exclusive staging, content-addressed site assets, sealed release replay, renameat2 no-replace sealing and sibling symlink replacement. |
+| `SitePublisherAuthority` / `ubo-site-authority.php` | Separate read-only observer of committed operation, original execution, current attempt/lease/token/fence, binding, expected DB pointer and permitted phase. Dedicated protected SELECT-only credential contract; fresh read-only transaction completes before any reply. No real connection executed locally. |
+| `SiteHttpHealthChecker` | Actual curl implementation pins destination and Host/SNI, verifies certificates, uses client TLS credentials, disables proxies/redirect following, and bounds body/header/connect/request/phase work. Tests use synthetic responses because desktop curl/TLS/Apache are not installed/verified. |
+| Apache and systemd examples | Separate active/candidate private TLS vhosts, mTLS plus network access control, static-only handlers, GET/HEAD, exact per-site assets, no-store/security headers, absence 503 and bounded supervisor sessions. Templates only; all unknown host/account/group/certificate values remain placeholders. |
+
+The only existing integration changes are the factory, runtime and two protected CLI
+entry points. **SiteDeploymentService and its six-operation interface are unchanged.**
+CLI startup happens before claiming SQL work; after a claim it binds the trusted lease
+to the session. The contextless `inspectCurrentRelease` consequently uses that already
+bound lease rather than treating target IDs as authorization. Unbound sessions deny.
+No public service dependency injection or state-machine redesign was needed.
+Startup also verifies the fixed application `private/config/env.php` ownership/hash
+and staging APP_ENV before any database connection; application config and client
+private keys must have no other-user permissions. Credentials are never returned
+or added to common installed-source inventories. Artifact work/sealed roots are
+owned by the configured worker, with root-owned ancestors and no group/other writes.
+
+## Helper authority, fence and lock lifetime
+
+The supervised helper holds the real per-target flock from its first operation through
+candidate health, activation, both active checks and DB-result coordination. A cached
+PHP instance is only the transport handle; it does not own the OS lock. A separately
+constructed publisher uses the same runtime session. Another process must acquire the
+actual lock and pass durable fence admission. An equal fence from a different helper
+session fails closed, requiring fresh recovery after a disconnect.
+
+The root-owned supervisor socket restricts clients to the dedicated worker group; the
+helper independently checks its peer UID. The authority socket is publisher-owned 0600
+inside root-owned nonwritable ancestors and is served by a separate fixed systemd
+service. PHP does not assume an undocumented `SO_PEERCRED` struct API. Authority DB
+credentials are in a separate protected file, readable only by the authority account;
+the non-secret config pins their digest. Worker/helper config and every included PHP
+source are pinned by the root-owned receipt. Root/operator integrity is part of the
+trust boundary; evidence digests are attestations, not self-proving host tests.
+
+Lower fences reject; equal fences require the same operation, producer, attempt,
+session and permitted nonregressing phase. An unsettled target accepts a greater fence
+only for recovery of that same original execution. New recovery never stages or
+activates a candidate. Accepted higher fences and switch intent are flushed/fsynced
+before pointer mutation. The journal records before/after identity and settlement.
+Inspection checks both actual link and full retained bytes. Contradictory or ambiguous
+records block, including an indistinguishable interrupted switch between two operation
+identities serving the same release.
+
+The helper independently re-reads authority immediately before switching. The committed
+M6D activation-authorizing transaction remains the authorization point; no claim of
+continuous SQL locking across filesystem work is made. A revoked lease cannot finalize
+success; a new owner still has to acquire the external lock. Sessions last at most
+300 seconds, with absolute 30-second operation/transfer bounds and an independent supervisor hard timeout.
+No SQL transaction spans helper, HTTP or artifact I/O.
+
+After result handling, the CLI requests settlement; the helper resolves the committed
+DB outcome itself. A missing acknowledgement, unavailable authority, nonterminal result
+or unexpected pointer never authorizes rollback. EOF, kill, timeout or cleanup failure
+releases descriptors while the durable unsettled record continues to block ordinary
+work. Recovery uses a fresh lease/token/fence. Primary CLI errors are reported before
+any secondary settlement error; logs contain fixed safe classifications.
+
+## Immutable activation, restore and health
+
+M6C remains the package authority: its unchanged validator/store first verifies the
+sealed source. The helper consumes the existing `ubo-static-site-v1` manifest; it does
+not render, scrape previews or copy operational PHP/configuration. It hashes raw
+canonical manifest bytes, complete public inventory, the distinct marker payload hash
+and all public files. Private metadata is retained outside the served tree. Source
+symlinks/hardlinks/special files, extra inventory, foreign identities and conflicting
+targets deny. Directory descriptors and no-follow opens enforce containment; sealing
+uses Linux `renameat2(RENAME_NOREPLACE)`, not an existence check followed by overwriting
+rename. Files and relevant directories receive checked fsync operations.
+
+Candidate and current are separate relative symlinks to a verified release. Current
+replacement is one same-filesystem rename. No unlink-then-link or in-place served-file
+copy occurs. Same-site content-addressed assets are retained without a prune path.
+Restore uses an already verified known-good release through service authority.
+Compensation requires fresh recovery, a proven uncommitted original result and exact
+candidate CAS; it restores the recorded previous identity. First deployment removes
+only that matching current link, with the service then requiring the separate 503/no
+marker/no-current profile. A helper receipt alone cannot settle safe failure.
+
+One checker call is one observation, without an internal retry loop. M6D owns its two
+separated active checks. Both share the checker’s 30-second active phase budget; each
+request uses at most two seconds to connect and five seconds total. Marker/home/page,
+CSS and referenced home media are checked against independently verified origin
+inventory/digests/MIME/size. Evidence booleans reflect the observations, including TLS,
+destination, redirect, Age/cache and no-store. Response bodies, URLs and credentials
+are not retained. No browser navigation/CSP execution or inert-control execution is
+claimed; those remain M6G.
+
+## Requirement mapping within the existing M6 matrix
+
+This is a component mapping, not a replacement requirement matrix. All 77 original
+definitions remain byte-identical under the M6E scope guard.
+
+| Existing requirements | Components / evidence | Remaining obligation |
+| --- | --- | --- |
+| D01, D07, D18, R01–R05 | Publisher/helper, M6C artifact child, helper tests | Linux descriptor/rename/mode/fsync and real Apache retention/restore |
+| D02/D03/D06/D14, operational admission and isolation | Host/runtime/factory/CLI, host/protocol/authority tests, existing M6D regressions | Installed identities, protected source/runtime, real supervisor/socket permissions |
+| C01–C06, C08–C13, D05/D11–D13/D17 | Durable helper session/fence/intent, read-only observer, modeled authority/COMMIT/kill/storage tests | Installed worker–helper–authority integration, native lease/result races, kernel fault and process-death proof |
+| D09/D10/D17, R04/R05 | Actual checker with real M6C bytes and controlled response/clock tests | Real TLS/Apache candidate/active/503 and full restore under faults |
+| D08 | Operator templates; routine publisher has no configtest/reload path | Incomplete isolated provisioning driver; old config/current preservation and uncertain reload proof |
+| B14/B16 served-policy/header allocation | Two private static Apache templates and isolated gate inventory | Real served headers/access/handler policy; integrated browser allocation remains M6G |
+
+## Local validation and current limits
+
+Executed command/version/count/exit/duration inventory is recorded below. Full stdout/stderr and SUMMARY.txt are retained outside Git. The existing
+M6C/M6D scope guards remain historical source-bound checks, not current M6E allowlists.
+Their files, baselines and accepted native evidence are unchanged. The new M6E guard
+compares exact allowed paths against `303b073` in working, index and HEAD views and
+preserves all other baseline blobs/modes, all 25 migrations and all 77 definitions.
+
+The [isolated runbook](sprint-8.8-m6e-isolated-validation.md) distinguishes authored
+Linux component cases from still-incomplete Apache/provisioning/installed-integration
+drivers. The harness returns INCOMPLETE rather than treating those missing cases as
+PASS. This concrete integration gap is why the current milestone is **PARTIALLY
+IMPLEMENTED**, despite executable local publisher/helper/health/authority components.
+The local bounded bridge now replaces the unusable direct-source reader while
+preserving worker-private M6C 0700/0600 modes and separate unprivileged identities.
+Actual installed ownership/runtime/authority gates remain unverified. Local transfer
+success does not prove those gates or complete Apache/provisioning acceptance.
+No production enablement, installation, operational host preparation, live database,
+SSH, public URL, deployment, migration, provider, container, service, backup, system
+restore, prune, merge or formal closure occurred. Fixture website restore tests are
+distinct from operational backup/system restore.
+
+### Executed Windows validation — 2026-11-01, initial 528b47f source
+
+Installed tools: PHP 8.4.24 ZTS, Python 3.14.7 (existing GIMP-bundled
+interpreter), Git 2.56.0.windows.2 and existing Git Bash. No packages installed.
+For every PHP row below the exact command is
+`php -d memory_limit=256M tests/<File>`; Python is the installed interpreter
+with `-X utf8 -B tests/WebsitePlatformM6EHelperTest.py`. Durations are process
+wall seconds. Counts come from executed output; assertion and scenario counts
+are distinct. These are private-file/process and controlled PDO/HTTP/clock
+checks, not real SQL, TLS, Apache or native milestone acceptance.
+
+The initial 68-test batch had 67 exit-zero results and one outer timeout:
+unchanged `WebsitePlatformM6CNativeLauncherTest.php`, 181.840 seconds, no
+assertion failure before termination. That incomplete record is preserved.
+It was rerun with a 1,200-second outer allowance for its many bounded fake-command
+scenarios; the rerun result appears below. No native harness was invoked.
+The latest focused reruns replace earlier counts here; all original logs remain
+outside Git. The initial broad batch, including version probes, took 421.468 seconds.
+
+| File in tests/ | Executed count | Exit | Seconds |
+| --- | --- | --- | --- |
+| `WebsitePlatformM2ApprovalInvariantTest.php` | 95 assertions | 0 | 0.258 |
+| `WebsitePlatformM2DatabaseTest.php` | 69 assertions | 0 | 0.205 |
+| `WebsitePlatformM2ServiceTest.php` | 103 assertions | 0 | 0.260 |
+| `WebsitePlatformM3CompositionTest.php` | 29 assertions | 0 | 0.226 |
+| `WebsitePlatformM3ConfigurationTest.php` | 42 assertions | 0 | 0.226 |
+| `WebsitePlatformM3DatabaseTest.php` | 59 assertions | 0 | 0.244 |
+| `WebsitePlatformM3LegacyHashCompatibilityTest.php` | 13 assertions | 0 | 0.244 |
+| `WebsitePlatformM3MigrationTest.php` | 46 assertions | 0 | 0.544 |
+| `WebsitePlatformM3RegistryTest.php` | 26 assertions | 0 | 0.232 |
+| `WebsitePlatformM3RendererTest.php` | 34 assertions | 0 | 0.220 |
+| `WebsitePlatformM3ReviewGateTest.php` | 84 assertions | 0 | 0.361 |
+| `WebsitePlatformM3ServiceBehaviorTest.php` | 27 assertions | 0 | 0.314 |
+| `WebsitePlatformM4ADatabaseContractTest.php` | 35 assertions | 0 | 0.236 |
+| `WebsitePlatformM4AServiceBehaviorTest.php` | 87 assertions | 0 | 0.320 |
+| `WebsitePlatformM4AServiceTest.php` | 31 assertions | 0 | 0.292 |
+| `WebsitePlatformM4BBehaviorTest.php` | 170 assertions | 0 | 0.604 |
+| `WebsitePlatformM4BViewTest.php` | 37 assertions | 0 | 0.429 |
+| `WebsitePlatformM4CBehaviorTest.php` | 37 assertions | 0 | 0.367 |
+| `WebsitePlatformM4CViewTest.php` | 21 assertions | 0 | 0.331 |
+| `WebsitePlatformM5ABehaviorTest.php` | 103 assertions | 0 | 0.517 |
+| `WebsitePlatformM5AViewTest.php` | 40 assertions | 0 | 0.362 |
+| `WebsitePlatformM5BBehaviorTest.php` | 258 assertions | 0 | 1.353 |
+| `WebsitePlatformM5BInputSessionTest.php` | 72 assertions | 0 | 0.329 |
+| `WebsitePlatformM5BViewRouteTest.php` | 118 assertions | 0 | 0.728 |
+| `WebsitePlatformM5CViewTest.php` | 314 assertions | 0 | 0.534 |
+| `WebsitePlatformM6CAdmissionTest.php` | 58 assertions | 0 | 2.458 |
+| `WebsitePlatformM6CArtifactTest.php` | 45 assertions | 0 | 1.411 |
+| `WebsitePlatformM6CBoundsTest.php` | 29 assertions | 0 | 0.515 |
+| `WebsitePlatformM6CCliProcessTest.php` | 383 assertions | 0 | 17.828 |
+| `WebsitePlatformM6CCliTest.php` | 207 assertions | 0 | 14.643 |
+| `WebsitePlatformM6CExecutionTest.php` | 216 assertions | 0 | 3.306 |
+| `WebsitePlatformM6CIntegrationTest.php` | 54 assertions | 0 | 3.787 |
+| `WebsitePlatformM6CJournalProcessTest.php` | 33 assertions | 0 | 3.066 |
+| `WebsitePlatformM6CJournalReceiptTest.php` | 84 assertions | 0 | 0.212 |
+| `WebsitePlatformM6CJournalSelectionTest.php` | 39 assertions | 0 | 8.824 |
+| `WebsitePlatformM6CJournalTest.php` | 130 assertions | 0 | 0.697 |
+| `WebsitePlatformM6CNativeDiagnosticsTest.php` | 95 assertions; 41 scenarios | 0 | 3.046 |
+| `WebsitePlatformM6CNativeGitSourceTest.php` | 113 assertions; 49 scenarios | 0 | 18.970 |
+| `WebsitePlatformM6CNativeInputTest.php` | 28 assertions | 0 | 0.579 |
+| `WebsitePlatformM6CNativeLauncherTest.php` | 7410 assertions; 104 scenarios | 0 | 745.413 |
+| `WebsitePlatformM6CNativeObservationTest.php` | 273 assertions; 103 scenarios | 0 | 10.076 |
+| `WebsitePlatformM6CNativeSetupTest.php` | 751 assertions; 62 scenarios | 0 | 0.828 |
+| `WebsitePlatformM6CRecoveryTest.php` | 135 assertions | 0 | 6.114 |
+| `WebsitePlatformM6CSecurityTest.php` | 91 assertions | 0 | 1.130 |
+| `WebsitePlatformM6CStoredInputTest.php` | 95 assertions | 0 | 1.474 |
+| `WebsitePlatformM6CSupplementProtocolTest.php` | 236 assertions | 0 | 8.070 |
+| `WebsitePlatformM6CSupplementSelectionTest.php` | 41 assertions | 0 | 9.443 |
+| `WebsitePlatformM6CSupplementServiceTest.php` | 103 assertions | 0 | 3.809 |
+| `WebsitePlatformM6CSupplementWireTest.php` | 4591 assertions; 562 scenarios | 0 | 0.234 |
+| `WebsitePlatformM6DArtifactTest.php` | 4 assertions | 0 | 0.676 |
+| `WebsitePlatformM6DAuthorityTest.php` | 96 assertions | 0 | 1.095 |
+| `WebsitePlatformM6DCliTest.php` | 44 assertions | 0 | 4.508 |
+| `WebsitePlatformM6DExecutionTest.php` | 63 assertions | 0 | 1.592 |
+| `WebsitePlatformM6DNativeControlTest.php` | 1081 assertions | 0 | 0.480 |
+| `WebsitePlatformM6DNativeHarnessTest.php` | 179 assertions | 0 | 5.913 |
+| `WebsitePlatformM6DNativeSchemaTest.php` | 230 assertions | 0 | 0.530 |
+| `WebsitePlatformM6DNativeWireTest.php` | 471 assertions | 0 | 4.420 |
+| `WebsitePlatformM6DQueueTest.php` | 90 assertions | 0 | 1.986 |
+| `WebsitePlatformM6DRecoveryTest.php` | 60 assertions | 0 | 0.916 |
+| `WebsitePlatformM6DRequestTest.php` | 70 assertions | 0 | 1.049 |
+| `WebsitePlatformM6DScopePolicyTest.php` | 27 assertions | 0 | 69.629 |
+| `WebsitePlatformM6DTransactionTest.php` | 97 assertions | 0 | 0.717 |
+| `WebsitePlatformM6EAuthorityTest.php` | 18 assertions | 0 | 0.393 |
+| `WebsitePlatformM6EHealthTest.php` | 43 assertions | 0 | 0.766 |
+| `WebsitePlatformM6EHelperTest.py` | 17 tests | 0 | 5.480 |
+| `WebsitePlatformM6EHostTest.php` | 31 assertions | 0 | 0.364 |
+| `WebsitePlatformM6EProtocolTest.php` | 19 assertions | 0 | 4.038 |
+| `WebsitePlatformTransactionTest.php` | 773 assertions | 0 | 0.515 |
+
+`WebsitePlatformM6CSecurityTest.php` reports one of two local link cases executed;
+that is not a skipped Linux acceptance PASS. Older test output that says native
+verification is pending remains historical text; closed M6D native PASS is still
+attributed only to 7cdbbeef and its final receipt.
+
+Expected stderr was inspected: injected database-operation/read failures contain
+only RuntimeException, PDOException or LogicException classifications; the Git
+source negative emits one fixed build-dependency RuntimeException classification.
+Python unittest writes its normal per-case/OK output to stderr. These are retained
+as expected fault diagnostics, not silently discarded. New focused PHP tests
+have empty stderr. Initial development fixture cleanup failed at Windows path
+length limits; the helper fixture now uses extended paths and all 17 cases finish
+with cleanup. The timed-out launcher's private temporary root is retained as
+incomplete-run diagnostics, not reported as cleaned.
+
+The unchanged historical scope checks were also executed on this new M6E tree:
+`WebsitePlatformM6CScopeTest.php` exits 255 at its frozen executable inventory;
+`WebsitePlatformM6DScopeTest.php` exits 255 at the first M6E path outside its
+historical allowlist. Neither check was edited, hidden or credited as PASS.
+The separate historical M6D scope-policy fixture controls pass (27 assertions,
+21 controls, exact fixture cleanup), as recorded above.
+
+The current `WebsitePlatformM6EScopeTest.php` passed before staging with 58
+assertions against working/index/HEAD and the exact 303b073 baseline. Post-staging
+and committed views are recorded in the external SUMMARY after commit.
+All 17 new/modified PHP files pass `php -l`; all four new Python sources
+(including the extensionless launcher and authored isolated harness) parse with
+the installed Python AST compiler without execution. The combined config example
+parses as JSON. Documentation checks cover seven documents, 119 relative links,
+paired fences and all 77 unchanged requirement rows; link anchors are not claimed
+verified by that checker. `git diff --check` passes. Apache/systemd templates were
+not configtested, installed or started.
+
+### Executed focused review-correction validation
+
+Installed PHP 8.4.24 ZTS, Python 3.14.7 and Git 2.56.0.windows.2. Eleven
+focused programs exit zero: 278 PHP behavior assertions plus the current scope
+guard, and 30 Python unittest cases (with additional subtests). These are local
+fixture results, not native acceptance. All PHP commands are
+`php -d memory_limit=256M tests/<File>`; Python commands use the existing interpreter
+with `-I -B tests/<File>`. The table records measured process wall time.
+
+| File | Actual count | Exit | Seconds |
+| --- | --- | --- | --- |
+| `WebsitePlatformM6EProtocolTest.php` | 19 assertions | 0 | 4.063 |
+| `WebsitePlatformM6EHostTest.php` | 31 assertions | 0 | 0.430 |
+| `WebsitePlatformM6EAuthorityTest.php` | 18 assertions | 0 | 0.482 |
+| `WebsitePlatformM6EHealthTest.php` | 43 assertions | 0 | 0.801 |
+| `WebsitePlatformM6DCliTest.php` | 44 assertions | 0 | 3.810 |
+| `WebsitePlatformM6DExecutionTest.php` | 63 assertions | 0 | 1.140 |
+| `WebsitePlatformM6DRecoveryTest.php` | 60 assertions | 0 | 0.618 |
+| `WebsitePlatformM6EScopeTest.php` | 132 assertions | 0 | 2.381 |
+| `WebsitePlatformM6EWireTest.py` | 5 unittest cases | 0 | 7.183 |
+| `WebsitePlatformM6EPublicationTest.py` | 8 unittest cases | 0 | 3.443 |
+| `WebsitePlatformM6EHelperTest.py` | 17 unittest cases | 0 | 4.447 |
+
+The wire audit uses 11 actual PHP-produced valid examples across seven operations,
+plus a serializer-only mixed-type example that intentionally fails the protocol
+shape. Invalid empty payloads, correlations, UUIDs/identities/shapes and size limits
+are tested separately. Actual memory-stream writes/reads are deliberately partial.
+The publication negatives verify the injected fault was reached after a valid
+publication baseline; complete prior objects and pointer sentinels are unchanged.
+
+Expected stderr consists of Python unittest progress/OK and six fixed PDOException
+classification lines from existing injected M6D execution/recovery failures. New PHP
+suites have empty stderr. No unexplained output is ignored. The prior 68-program
+campaign, 7,410-assertion synthetic launcher and closed M6C/M6D scope guards were
+not rerun. Their historical failures/timeouts remain recorded above.
+
+Changed PHP files pass `php -l`; changed Python files parse with the installed
+interpreter's AST compiler without executing the Linux harness or creating bytecode.
+Documentation links/fences, exact working/staged/committed scope and preservation
+checks are retained with commands/timings in the external SUMMARY. Original failure
+observations and corrected test runs are separate evidence files.

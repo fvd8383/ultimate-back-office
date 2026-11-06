@@ -2,7 +2,7 @@
 
 Current M6: **IN PROGRESS**. **M6A — ARCHITECTURE REVIEWED / MERGED** (PR #125).
 **M6B — COMPLETE / STAGING PASS / FORMALLY CLOSED**. **M6C — COMPLETE / ISOLATED NATIVE GATES PASS / FORMALLY CLOSED**;
-**M6D — NATIVE V3 PASS AT 7cdbbeef / SCOPE RECONCILED LOCALLY / FINAL REVIEW AND MERGE PENDING**; **M6E–M6G — NOT STARTED**. **PR #126 — MERGED** at
+**M6D — COMPLETE / DB-ONLY NATIVE V3 PASS / FORMALLY CLOSED**; **M6E — PARTIALLY IMPLEMENTED / REVIEW REQUIRED**; **M6F–M6G — NOT STARTED**. **PR #126 — MERGED** at
 `f466fc1cdbfb53325a1db11445736bdc5ea7c6f4`, the operator-reported deployed baseline.
 **Migration 025 — APPLIED TO WORKING STAGING**, once on October 17, 2026.
 The [M6B closeout](sprint-8.8-m6b-closeout.md) separates the earlier native PASS,
@@ -31,8 +31,10 @@ PR #129 merged at `1134c65c5f6cdfea804d634fad73e2d8a354d065`; the
 makes M6C formal closure effective. The [M6D source-specific acceptance record](sprint-8.8-m6d-native-acceptance.md)
 records native v3 PASS at `7cdbbeef`: 29 cases, 146 subcases, 22 ordering observations,
 five transport legs, five authoritative observations and 790 assertions; all cleanup PASS.
-The current scope guard is reconciled locally; the later test/documentation head is
-not itself natively executed. Final review, merge and formal closeout remain pending.
+The [final M6D closeout receipt](https://github.com/fvd8383/ultimate-back-office/pull/130#issuecomment-6563165702) records merge `303b073` and formal closure.
+Native PASS remains attributed to `7cdbbeef`; neither the merge nor this M6E branch
+was natively executed. The [M6E implementation record](sprint-8.8-m6e-local-implementation.md)
+separates local executed tests from authored, unexecuted Linux/Apache gates.
 This local reconciliation performed no native SQL, host preparation, deployment or browser work. The last operator-reported deployed
 application remains `f466fc1…`; both backup copies/receipts are retained and restore
 remains NOT EXECUTED.
@@ -72,7 +74,8 @@ authenticated smoke separately; this M6C documentation closeout deploys/migrates
 Names and contracts below originated as reviewed M6A proposals. The M6B record
 identifies the implemented persistence slice; M6C artifact implementation is merged in PR #128
 and formally closed. M6D deployment services have [source-specific native v3 PASS](sprint-8.8-m6d-native-acceptance.md),
-with scope reconciled locally and final review/merge/formal closeout pending; operational publishers and UI controls remain unimplemented. Actual host capabilities require the future gate in section
+with formal closure recorded in the final receipt. M6E has a partial local publisher implementation;
+operational publishing remains disabled and UI controls remain unimplemented. Actual host capabilities require the future gate in section
 18. No customer DNS, Host-to-site resolution, LeadHub ingestion, domain conversion,
 EMD launch, or legacy runtime cutover is added to M6. Those remain M7/M8.
 
@@ -1689,10 +1692,17 @@ application; limited authenticated smoke passed and formal closeout was accepted
 M6C has [core, journal and supplemental native PASS](sprint-8.8-m6c-native-acceptance.md),
 with G1–G4 and documented limits owner-accepted and B14/B16 future allocation approved.
 The [M6C closeout](sprint-8.8-m6c-closeout.md) is effective under PR #129 and the final owner
-receipt. M6D has NATIVE V3 PASS AT 7cdbbeef / SCOPE RECONCILED LOCALLY / FINAL REVIEW AND MERGE PENDING;
-M6E–M6G are NOT STARTED. The [M6B closeout](sprint-8.8-m6b-closeout.md) records
+receipt. M6D has COMPLETE / DB-ONLY NATIVE V3 PASS / FORMALLY CLOSED;
+M6E is PARTIALLY IMPLEMENTED / REVIEW REQUIRED; M6F–M6G are NOT STARTED. The [M6B closeout](sprint-8.8-m6b-closeout.md) records
 evidence and limitations. The table preserves reviewed scope and future gates, not
 a claim that all 77 planned acceptance cases are complete. M6B formal closure is accepted.
+
+The [M6E local implementation](sprint-8.8-m6e-local-implementation.md) maps the existing
+D/R/C and B14/B16 portions to the publisher, helper, protected binding, authority
+observer and HTTP checker. Its local tests are separate from the
+[authored isolated validation](sprint-8.8-m6e-isolated-validation.md), whose Apache,
+provisioning and installed integration drivers remain incomplete. Operational and
+production publishing remain denied; none of the 77 definitions is replaced.
 
 | Milestone | Scope and expected files/classes | Migration | Local exit gate | Staging exit gate | Depends on |
 | --- | --- | --- | --- | --- | --- |
