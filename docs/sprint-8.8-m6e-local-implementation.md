@@ -15,6 +15,107 @@ second parent; native-tested `7cdbbeef639…` is an ancestor of that reviewed he
 Its native PASS belongs only to `7cdbbeef`, never this implementation or the merge.
 Historical failures and pre-merge reports are not rewritten or rerun.
 
+## Startup and measurement diagnostics following a000097
+
+**LOCAL DIAGNOSTIC CORRECTION / NATIVE CAUSE UNPROVEN / DATABASE NOT REACHED.**
+The starting worktree was clean at `a0000975024a554016dcfe8dcf34998cdfe66bb8` on
+the existing branch. PR #131 was OPEN DRAFT, its exact-head review completed
+without findings, and all 16 review threads resolved. This task accesses only
+local files and GitHub; it does not access staging or execute an engine/service,
+container, SQL or native probe.
+
+The reported native attempt `37c9719d9e3cad85c9fcebd26b62a943` exited1 after
+9.225959 seconds. The locally available report and sanitized records identify
+runtime `68fa46015089e62fd56e2a8e59dc140c88f1a390ead19bd9df600ae72ab6360f`
+and this seven-record sequence: `admission`, `create-intent`, `created`,
+`before-host-cleanup`, `remove-intent`, `removed`, `final`. The primary was
+`ValueError / validation_failed`; `component-capture` failed separately. Cleanup,
+engine restoration and preservation were reported complete. SQL and all database
+stages were NOT REACHED. The run is USED and needs no retry, resume or cleanup.
+
+`created` follows configuration/ID verification and **precedes** Docker start.
+The source's next operation attempts start, but the retained native records do
+not contain that command's exit, an explicit measurement invocation, its bounded
+response, or typed pre-removal container State. Successful removal cannot supply
+those missing facts. The shell's temporary daemon-start acknowledgement is not
+the container-start acknowledgement. A bounded journal category projection
+reports container-not-running later during capture; its namespace/missing-file
+categories do not establish the initiating cause. No specific image, kernel,
+capability, mount or host-policy defect is proved by this evidence.
+
+Local verification checked the actual report, raw/canonical request and retained
+review bytes against their hashes. Re-encoding all 14 complete note projections
+also reproduced their source hashes. The original 32 MiB native archive is not
+present locally: its reported hash and host-side chain verification are not
+independent local archive verification. See the
+[exact evidence bindings and local controls](sprint-8.8-m6e-isolated-validation.md#startup-and-measurement-diagnostic-controls-following-a000097).
+
+Before editing, six controlled paths through the actual operator, shared owner,
+real harmless local children and retained files produced the same generic first
+failure and seven-record sequence: rejected start, acknowledged start followed
+by modeled early exit, failed measurement command, generic runtime response,
+invalid duplicate-key output, and a failed measurement helper response. Separately,
+actual `measure()` read memory and swap before a failing PID-limit conversion;
+the old exception discarded those completed values. These reproduce diagnostic
+loss, not the historical native cause.
+
+The [operator](../tests/WebsitePlatformM6EDBOnly.py) now adds versioned
+`startup-diagnostic` records in the existing protected retained file. Each binds
+the original source, run, canonical request, runtime role and verified full ID
+(null before identity is known). Attempted and last-confirmed stages distinguish
+creation, identity verification, start, measurement identity/invocation, decoding,
+schema validation and the unchanged kernel predicate. A confirmed start stage
+means a successful **client command return**, not a running container process.
+
+Only fixed `runtime-create`, `runtime-start` and `runtime-measure` operation identifiers are used.
+The existing `engine()`/`run()`/`Owner.capture()` path is unchanged; a narrow caller
+retains returned exit and available owner-observed signal/reaping facts before
+asserting exit zero. Timeout, output-bound, reap and capture failures have finite
+classifications. Capture exceptions leave discarded byte counts unavailable.
+If reaping never observes an exit, the owner's initial signal zero is also
+projected as unavailable; it is not a measured signal result.
+No command strings, stdout samples or stderr bodies enter these records.
+
+The initiating failure is saved before diagnostic publication, state observation,
+component export or cleanup. A failure-only read of the exact recorded container
+must pass the complete existing ownership/configuration validator and saved-ID
+comparison before projecting typed Status, Running, Pid, ExitCode, OOMKilled and
+start/finish timestamps. This is an observation, not a readiness gate. Failure,
+substitution or invalid field types yield UNAVAILABLE with a separate
+`state-inspection` failure. There is no name-only adoption or start/restart/retry
+for diagnosis. State.Error, Config.Env, complete inspection data and logs are
+never exported.
+
+The [runtime](../tests/support/WebsitePlatformM6EDBOnlyRuntime.py) preserves a
+finite phase/check for process metadata, cgroup files, namespaces, mount parsing,
+filesystem measurements, source mount/stat and interfaces. Completed observations
+pass a bounded privacy schema; unread/failed values are explicitly null. A
+structured failure includes only the existing sanitized exception classification
+and an actual integer errno in0–4095 when available. It is always
+`DIAGNOSTIC_ONLY`. A diagnostic returned with exit0 still fails; nonzero commands
+may have their one available bounded response decoded, never retried or accepted
+as measurements. Interpreter/import failures before the entrypoint remain outside
+its catch boundary and depend on operator command/state evidence.
+
+Strict response schemas reject unknown fields, arbitrary strings, malformed or
+oversized output before a `runtime-measurement` record is written. Numeric
+observations that violate native policy remain retainable, then fail the original
+`measurements()` predicate. Successful measurement values and all admission
+predicates remain intact. Diagnostics are capped at16 KiB inside existing64 KiB
+measurement output,128 KiB slots and32 MiB retained storage. Existing deadlines,
+120-second cleanup reserve, images, capabilities/masks, identities, network,
+mounts and all resource limits are unchanged. Shared `safe_error()` and
+`Owner.capture()` are unchanged.
+
+Diagnostic publication, component export and cleanup failures remain distinct
+secondaries and cannot replace an earlier failure. A diagnostic capture failure
+on an otherwise successful path fails closed and still attempts owned cleanup.
+Operator evidence does not depend on a functioning runtime evidence-index helper.
+Immutable append/readback and exact deletion predicates are retained; unavailable
+or torn evidence is never reported as complete or permission for broader cleanup.
+No snapshot, restoration, eligibility, migration, closed M6C/M6D or full-host
+authority code changes. All six M6E commissioning classifications remain MISSING.
+
 ## Capability comparison correction following ffd6249
 
 **LOCAL CORRECTION / REPORTED NATIVE ATTEMPT INCOMPLETE / DATABASE NOT REACHED.**

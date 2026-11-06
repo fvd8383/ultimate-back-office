@@ -48,38 +48,56 @@ def source_inventory(root, sha, owner):
     return rows
 
 
+class MeasurementFailure(ValueError):
+    def __init__(self, diagnostic):
+        super().__init__('db_only_measurement_failed')
+        self.diagnostic=c.measurement_diagnostic(diagnostic)
+
+
 def measure(role):
-    """Read actual Linux namespace, cgroup and mount state; no changes and no SQL."""
-    need(sys.platform == 'linux', 'db_only_linux')
-    proc = Path('/proc/self'); status = dict(line.split(':', 1) for line in (proc/'status').read_text().splitlines() if ':' in line)
-    cg = Path('/sys/fs/cgroup')
-    mounts = []
-    for line in (proc/'mountinfo').read_text().splitlines():
-        left, right = line.split(' - ', 1); a = left.split(); b = right.split()
-        mounts.append(dict(path=a[4], type=b[0], options=a[5].split(',')+b[2].split(',')))
-    storage = {}
-    for path in c.mount_limits(role):
-        found = [m for m in mounts if m['path'] == path]; need(len(found) == 1, 'db_only_mount_measurement')
-        m = found[0]; sizes = [x[5:] for x in m['options'] if x.startswith('size=')]; need(len(sizes) == 1, 'db_only_size_option')
-        size = sizes[0]; scale = {'k': 1024, 'm': 1024**2, 'g': 1024**3}
-        size = int(size[:-1])*scale[size[-1].lower()] if size[-1].lower() in scale else int(size)
-        fs = os.statvfs(path)
-        storage[path] = dict(type=m['type'], options=sorted(set(m['options'])), bytes=fs.f_blocks*fs.f_frsize,
-                             size_option=size, dev=os.stat(path).st_dev, ino=os.stat(path).st_ino)
-    source = [m for m in mounts if m['path'] == c.SOURCE]
-    source_stat=Path(c.SOURCE).stat() if role=='runtime' else None
-    return dict(uid=os.geteuid(), gid=os.getegid(), pid=os.getpid(), owner_pid=os.getppid(),
-                start_ticks=int((proc/'stat').read_text().rsplit(')', 1)[1].split()[19]),
-                uid_map=[list(map(int, x.split())) for x in (proc/'uid_map').read_text().splitlines()],
-                gid_map=[list(map(int, x.split())) for x in (proc/'gid_map').read_text().splitlines()],
-                namespaces={n:os.readlink(proc/'ns'/n) for n in ('user', 'net', 'mnt', 'pid')},
-                memory_max=int((cg/'memory.max').read_text()), swap_max=int((cg/'memory.swap.max').read_text()),
-                pids_max=int((cg/'pids.max').read_text()), cpu_max=list(map(int, (cg/'cpu.max').read_text().split())),
-                no_new_privs=int(status['NoNewPrivs']), capabilities=int(status['CapEff'].strip(),16), storage=storage,
-                interfaces=sorted(p.name for p in Path('/sys/class/net').iterdir()),
-                source_root=None if source_stat is None else dict(dev=source_stat.st_dev,ino=source_stat.st_ino,
-                    uid=source_stat.st_uid,gid=source_stat.st_gid,mode=stat.S_IMODE(source_stat.st_mode)),
-                source_readonly=len(source)==1 and 'ro' in source[0]['options'])
+    """Same actual readings; preserve only completed, schema-checked observations."""
+    values=dict.fromkeys(c.MEASUREMENT_FIELDS);phase,check='platform','linux'
+    def remember(key,value):
+        nonlocal values
+        candidate={**values,key:value};c.measurement_values(candidate,partial=True);values=candidate
+    try:
+        need(sys.platform=='linux' and role=='runtime','db_only_linux')
+        proc=Path('/proc/self');cg=Path('/sys/fs/cgroup')
+        phase,check='process','identity'
+        for key,read in [('uid',os.geteuid),('gid',os.getegid),('pid',os.getpid),('owner_pid',os.getppid)]:remember(key,read())
+        check='status';status=dict(line.split(':',1) for line in (proc/'status').read_text().splitlines() if ':' in line)
+        remember('no_new_privs',int(status['NoNewPrivs']));remember('capabilities',int(status['CapEff'].strip(),16))
+        check='stat';remember('start_ticks',int((proc/'stat').read_text().rsplit(')',1)[1].split()[19]))
+        for field in ('uid_map','gid_map'):
+            check=field.replace('_','-');remember(field,[list(map(int,x.split())) for x in (proc/field).read_text().splitlines()])
+        for check,field,name in [('memory','memory_max','memory.max'),('swap','swap_max','memory.swap.max'),('pids','pids_max','pids.max'),('cpu','cpu_max','cpu.max')]:
+            phase='cgroup';raw=(cg/name).read_text();remember(field,list(map(int,raw.split())) if field=='cpu_max' else int(raw))
+        for check in ('user','net','mnt','pid'):
+            phase='namespace';ns=dict.fromkeys(('user','net','mnt','pid')) if values['namespaces'] is None else values['namespaces'].copy()
+            ns[check]=os.readlink(proc/'ns'/check);remember('namespaces',ns)
+        phase,check='mount','read';raw=(proc/'mountinfo').read_text()
+        check='parse';mounts=[]
+        for line in raw.splitlines():
+            left,right=line.split(' - ',1);a=left.split();b=right.split()
+            mounts.append(dict(path=a[4],type=b[0],options=a[5].split(',')+b[2].split(',')))
+        for check,path in zip(('control','work','evidence','tmp'),c.mount_limits(role)):
+            phase='filesystem';found=[m for m in mounts if m['path']==path];need(len(found)==1,'db_only_mount_measurement')
+            m=found[0];sizes=[x[5:] for x in m['options'] if x.startswith('size=')];need(len(sizes)==1,'db_only_size_option')
+            size=sizes[0];scale={'k':1024,'m':1024**2,'g':1024**3}
+            size=int(size[:-1])*scale[size[-1].lower()] if size[-1].lower() in scale else int(size)
+            fs=os.statvfs(path);s=os.stat(path)
+            storage=dict.fromkeys(c.mount_limits(role)) if values['storage'] is None else values['storage'].copy()
+            storage[path]=dict(type=m['type'],options=sorted(set(m['options'])),bytes=fs.f_blocks*fs.f_frsize,size_option=size,dev=s.st_dev,ino=s.st_ino)
+            remember('storage',storage)
+        phase,check='source','mount';source=[m for m in mounts if m['path']==c.SOURCE]
+        remember('source_readonly',len(source)==1 and 'ro' in source[0]['options'])
+        check='stat';s=Path(c.SOURCE).stat()
+        remember('source_root',dict(dev=s.st_dev,ino=s.st_ino,uid=s.st_uid,gid=s.st_gid,mode=stat.S_IMODE(s.st_mode)))
+        phase,check='interfaces','read';remember('interfaces',sorted(p.name for p in Path('/sys/class/net').iterdir()))
+        return c.measurement_values(values)
+    except Exception as error:
+        raise MeasurementFailure(dict(profile=c.PROFILE+'-measurement-diagnostic-v1',result='DIAGNOSTIC_ONLY',
+            phase=phase,check=check,error=c.diagnostic_error(error),measurements=values,**c.AUTHORITY)) from None
 
 
 def file_identity(path):
@@ -312,8 +330,21 @@ def main(argv):
     return campaign(config)
 
 
-if __name__=='__main__':
-    try:sys.exit(main(sys.argv[1:]))
-    except Exception:
-        # Never print argv, configuration, SQL, secret material, paths or raw exception text.
-        print(canonical(dict(profile=c.PROFILE,result='INCOMPLETE',failure='db_only_runtime',**c.AUTHORITY)).decode());sys.exit(1)
+def entrypoint(argv):
+    """Import/interpreter failures precede this boundary; operator facts cover them."""
+    try:return main(argv)
+    except MeasurementFailure as error:
+        print(canonical(error.diagnostic).decode());return 1
+    except Exception as error:
+        if argv==['--measure']:
+            value=c.measurement_diagnostic(dict(profile=c.PROFILE+'-measurement-diagnostic-v1',result='DIAGNOSTIC_ONLY',
+                phase='entrypoint',check='measure',error=c.diagnostic_error(error),measurements=dict.fromkeys(c.MEASUREMENT_FIELDS),**c.AUTHORITY))
+        else:
+            # The finite phase is selected here, never from an exception message or argv body.
+            phase=next((name for name in ('hold','tls','campaign','evidence-index','evidence-read') if argv and argv[0]=='--'+name),'arguments')
+            value=dict(profile=c.PROFILE,result='INCOMPLETE',failure='db_only_runtime',
+                diagnostic=dict(result='DIAGNOSTIC_ONLY',phase=phase,error=c.diagnostic_error(error)),**c.AUTHORITY)
+        print(canonical(value).decode());return 1
+
+
+if __name__=='__main__':sys.exit(entrypoint(sys.argv[1:]))

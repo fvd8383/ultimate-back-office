@@ -1,11 +1,157 @@
 # Sprint 8.8 M6E — Isolated Linux/Apache validation
 
 **PARTIALLY IMPLEMENTED / NATIVE DATABASE NOT REACHED.** The reported DB-only
-operator attempt failed before runtime startup; its preserved result is INCOMPLETE.
+operator attempts remain INCOMPLETE. The latest reached verified runtime creation,
+then failed before a kernel measurement was retained; successful startup is unproven.
 The local correction task does not authorize
 installation, server preparation, Linux/Apache execution, SQL, service operations,
 working-staging activation or deployment. This document is the bounded later path,
 not a claim that a host contract exists. M6D’s closed native gate is not reopened.
+
+## Startup and measurement diagnostic controls following a000097
+
+**LOCAL CONTROLLED VALIDATION / TWO PRESERVED USED RUNS / NO NATIVE EXECUTION.**
+The [implementation and privacy boundary](sprint-8.8-m6e-local-implementation.md#startup-and-measurement-diagnostics-following-a000097)
+describes this correction. Historical sections below retain their original scope
+and results; their old future cleanup handoff is not a new instruction to clean
+either completed run again.
+
+### Historical facts and independently checked local bytes
+
+The available local report is `positive-run-report.txt` in desktop evidence folder
+`m6e-db-only-positive-a000097-20261106T000015143Z-5466fb4e`. Its SHA256 is
+`31276aa1ee4c1722b3540a990c1ec0eba2de988601aa2b424f8ce25e6e507599`.
+The report, request, review record and complete projections were read and checked
+locally; nothing was fetched from staging.
+
+| Binding | Value |
+| --- | --- |
+| Native source | `a0000975024a554016dcfe8dcf34998cdfe66bb8` |
+| Source inventory | `9a73c4f7ac9661ba631d9ed1c874d8ae2dc924b864807ace6b5ba4d365e9abe4` |
+| Run | `37c9719d9e3cad85c9fcebd26b62a943` |
+| Raw request SHA256 | `01d7290ce1ba2db075ff0b00233d781b87763e133e0e4a37092bf76939d6bd5f` |
+| Canonical request SHA256 | `5b07c6fa775521ba343c1e2003b49a16230c766b99d09a035df4c6e6ee2b5c4e` |
+| Same-source review record SHA256 | `1c25e52f7ddf42ca40fe8e4d4dc782f55abdb2fa34ac1b4c9379ffb7d79c5d66` |
+| Reported seven-record native archive SHA256 | `b4af13c3b2a0525adc569e35a960aae6e276daa2d4b95704763d266bb5a13d59` |
+| Verified-creation runtime ID | `68fa46015089e62fd56e2a8e59dc140c88f1a390ead19bd9df600ae72ab6360f` |
+
+The archive remains at
+`/mnt/ubo_stage_testdata/codex-validation/evidence/m6e-db-only-37c9719d9e3cad85c9fcebd26b62a943.evidence`.
+Its original binary is absent locally. Agreement among the local projection,
+execution summary and final receipt verifies consistency of that reported digest,
+not a fresh computation over the original native archive. The copied projection
+equals the local safe-retrieval output byte-for-byte. Canonical re-encoding of all
+14 complete retained-note projections matches their recorded source SHA256s.
+
+The report records one execution, exit1 in9.225959s, a generic primary failure,
+separate component-capture failure, exact owned removal and restored inactive
+engine. `created` precedes container start in source. Start is the next operation,
+but its returned exit, whether measurement was invoked, its response and actual
+pre-removal State are absent. Engine start is separately reported successful and
+cannot establish container start. Native runtime masks, enforced limits and SQL
+remain unverified. This correction does not guess the missing cause.
+
+The earlier run `79c5dbe793ba1266171c0f83378c1cfd` also remains USED/INCOMPLETE,
+with completed recovery. Its **current reported nine-record** archive digest is
+`24c7d59137095cd51e5e57e02ff349344e4de6e7e8adceb71b85e0bbdea34253`.
+The older five-record `d83daf...` digest below is historical, not its current hash.
+Neither failed run, request, export or cleanup record was modified by this task.
+
+### Controlled reproductions and regression coverage
+
+Baseline source copies and six pre-change operator reproductions are retained in
+desktop evidence folder `m6e-startup-diagnostics-20261106T002728911Z`. Every control
+uses actual local operator/owner/retention code; all Docker replies and Linux facts
+are explicit models. Harmless bounded Python children replace the engine at the
+capture boundary. No Docker, systemctl, SQL or native fixture executes. Actual
+baseline `measure()` separately demonstrates completed memory/swap reads lost on
+a later conversion exception. None proves the native initiating cause.
+
+Corrected controls cover start rejection, early holder exit after acknowledgement,
+measurement failure with a running process, structured diagnostics (including a
+misleading exit0), malformed/truncated/duplicate/oversized/secret-bearing output,
+partial reads/conversions, unchanged predicate rejection, unavailable/substituted
+state, diagnostic publication, component export and combined cleanup failures.
+They also preserve an earlier failure and the successful existing operator path.
+Creation rejection, spawn failure and unobserved child exits keep unknown IDs,
+exits and signals unavailable rather than adopting initialized owner values.
+Private files and real owner pipe/child handling are used; timeout synchronization
+uses a blocked event with the existing deadline, not sleeps/retry-until-green.
+
+Principal controls read the original retained file during modeled removal and
+verify its immutable prefix afterward. They assert bindings, actual modeled
+command/state distinctions, unavailable values, retained primary/secondary order,
+foreign-resource preservation, zero retries/later SQL after failure and absence
+of private canaries, environment arrays and TLS bodies in evidence. New schemas
+reject arbitrary failure messages, phases, field names, mount options and authority
+claims. Existing capability normalization, service-environment, snapshot-outcome
+and concurrency-ordering controls remain required.
+
+Validation used the existing Python 3.14.7 and PHP 8.4.24 installations. The final
+complete run used the frozen Python blobs in `pre-final-test.json`; its wrapper
+elapsed time was 644.076443 seconds (unittest: 642.455 seconds).
+
+| Local validation | Result |
+| --- | --- |
+| Complete affected DB-only Python suite | PASS: 95 tests with `python -I -B tests/WebsitePlatformM6EDBOnlyTest.py -v` |
+| Focused startup/measurement diagnostics | PASS: 22-test development run, four creation/start/privacy controls and one unavailable-signal control; all 24 final startup tests also pass in the complete suite |
+| Retained/publication and failure ordering | PASS: eight standalone publication tests; three retained-store, 12 snapshot-diagnostic and 10 snapshot-ordering tests in the complete suite |
+| Preserved capability and service regressions | PASS: six capability, eight recovery and 15 service-environment tests in the complete suite |
+| Current M6E source scope | PASS: 374 assertions across working/index/HEAD; final staged/committed checks retained externally |
+| Changed syntax, local documentation links, whitespace and Git integrity | PASS: four Python AST parses, 62 local links/anchors, `git diff --check` and precommit `git fsck --full --strict --no-reflogs --no-dangling`; final commit checks retained externally |
+| Tested/index/committed identity | Four tested Python Git blobs are frozen; the six-file final manifest and staged/committed comparisons are retained in the external report so the commit need not claim its own SHA |
+
+The first focused run had one test-fixture failure: an oversized response placed
+in argv exceeded Windows' command-line bound before reaching the owner pipe
+bound. Private fixture files corrected that control; the corrected run passed.
+An initial complete run was deliberately interrupted after a further audit found
+that an unobserved child exit must not export the owner's initialized signal zero.
+The added unavailable-signal control passed, then the final complete 95-test run
+passed on unchanged Python source. The failed/interrupted logs remain retained
+and do not count as passes. Neither issue proves the historical native cause.
+
+Source comparison also verifies 32 unchanged definitions/files, including the
+native contract, creation arguments, limits, retained store, exact ownership and
+cleanup methods, and shared process/sanitization files. All 33 files in the prior
+attempt's local evidence directory retain their original hashes.
+
+Unrelated standalone bootstrap, restoration, eligibility, ledger/recovery,
+PHP/full-host, Apache/TLS/browser and native suites were not rerun: their
+implementations/contracts were unchanged. The affected DB-only suite includes
+its existing PHP snapshot fixtures. Local models do not establish native acceptance.
+
+### Minimal future native diagnostic attempt — NOT EXECUTED
+
+Separate authorization must cover one new **positive DB-only attempt** through
+the existing launcher. There is no diagnostic-only execution switch and no new
+runner. If startup/measurement still fails, the unchanged gate stops the chain
+and retains its diagnostic before cleanup; if it passes, the existing positive
+chain may continue only within that future authorization. Diagnostic improvement
+is not a proven runtime repair.
+
+1. Complete exact-head review, retain the new receipt and prepare a **new** immutable
+   source export with its own inventory; preserve both old exports/requests and
+   the seven-record failed attempt plus nine-record completed recovery archive.
+2. Recheck host/account, live metadata, capacity, inactive service/socket state,
+   exact images and absence of unrelated work under explicit host authorization.
+   Use a fresh protected request/run ID with the new source/inventory/review
+   bindings and unchanged LIMITS. Do not reuse either used run or renew an expiry.
+3. If separately authorized, start the existing rootless engine once with bounded
+   restoration installed first; use only the existing fixed client. From the new
+   export, run `--inspect-host`, `--inventory NEW_REVIEWED_SHA`, then active
+   `--inspect /absolute/new-request.json`; require their actual successful gates.
+4. Invoke exactly once:
+   `/usr/bin/python3 -I -B tests/WebsitePlatformM6EDBOnly.py --execute /absolute/new-request.json`.
+   Preserve command facts, typed owned state, partial runtime diagnostic and
+   unchanged predicate outcomes independently. Do not bypass the failing boundary,
+   retry measurement, restart a stopped runtime or interpret DIAGNOSTIC_ONLY as PASS.
+5. Let ordinary capture/owned cleanup run; independently verify archive integrity,
+   exact resource absence, baseline preservation and restored engine state. Any
+   additional cleanup requires its separately granted scope and complete original
+   ownership checks. Report the actual boundary, not an inferred native cause.
+
+No step in that handoff was executed or authorized by this local correction.
+All six full M6E commissioning classifications remain **MISSING**.
 
 ## Capability comparison controls following ffd6249
 

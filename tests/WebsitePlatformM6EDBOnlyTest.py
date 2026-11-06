@@ -336,7 +336,7 @@ class CapabilityRecovery(unittest.TestCase):
                     with mock.patch.object(operator,'engine',side_effect=engine):
                         self.assertEqual(op.create('runtime'),'1'*64);self.assertEqual(op.create('mysql'),'2'*64)
                     self.assertEqual([a for a in calls if a[0]=='start'],[['start','1'*64],['start','2'*64]])
-                    self.assertEqual([r['kind'] for r in store.records],['create-intent','created']*2)
+                    self.assertEqual([r['kind'] for r in store.records if r['kind']!='startup-diagnostic'],['create-intent','created']*2)
                     for r in store.records:
                         if r['kind']=='created':self.assertEqual(r['identity'],digest(canonical(values[r['id']])))
                 finally:store.close();owner.cleanup()
@@ -1348,6 +1348,338 @@ class SnapshotOrdering(unittest.TestCase):
     def test_cleanup_error_still_joins_diagnostic_before_immutable_capture(self):self.exercise('barrier',cleanup_fail=True)
     def test_cleanup_and_reap_errors_both_survive(self):self.exercise('writer-join',cleanup_fail=True,reap_fail=True)
     def test_successful_concurrent_snapshot(self):self.exercise('success',reader_case='success')
+
+
+class StartupDiagnostics(unittest.TestCase):
+    """Actual operator, Owner pipes/children and retained bytes; all engine/kernel facts modeled."""
+    setUp=Retention.setUp
+    tearDown=Retention.tearDown
+    private='PRIVATE_DIAGNOSTIC_CANARY'
+
+    @contextlib.contextmanager
+    def kernel(self,fail=None,error=None):
+        """Private file reads, never the desktop's /proc or kernel/service interfaces."""
+        with tempfile.TemporaryDirectory(dir=self.temp.name) as directory:
+            root=Path(directory);reads=[]
+            texts={'/proc/self/status':'NoNewPrivs: 1\nCapEff: e3\n',
+                '/proc/self/stat':'1 (model) '+' '.join(['1']*25),
+                '/proc/self/uid_map':'0 1000 1\n1 100000 65536\n','/proc/self/gid_map':'0 1000 1\n1 100000 65536\n',
+                '/sys/fs/cgroup/memory.max':str(c.LIMITS['runtime_memory']),'/sys/fs/cgroup/memory.swap.max':'0',
+                '/sys/fs/cgroup/pids.max':'32','/sys/fs/cgroup/cpu.max':'100000 100000',
+                '/proc/self/mountinfo':'\n'.join('1 0 0:1 / '+p+' rw,nosuid,nodev,noexec - tmpfs tmpfs rw,size='+str(size)
+                    for p,size in c.mount_limits('runtime').items())+'\n2 0 0:2 / '+c.SOURCE+' ro - ext4 /dev/model ro\n'}
+            files={}
+            for i,(name,text) in enumerate(texts.items()):
+                files[name]=root/str(i);files[name].write_text(text)
+            class KernelPath:
+                def __init__(self,path):self.path=str(path)
+                def __truediv__(self,name):return KernelPath(self.path+'/'+name)
+                def read_text(self):
+                    reads.append(self.path)
+                    if self.path==fail:raise error
+                    return files[self.path].read_text()
+                def stat(self):
+                    reads.append(self.path)
+                    if self.path==fail:raise error
+                    return SimpleNamespace(st_dev=123,st_ino=456,st_uid=0,st_gid=0,st_mode=0o40555)
+                def iterdir(self):return [SimpleNamespace(name='lo')]
+            def readlink(p):
+                reads.append(p.path)
+                if p.path==fail:raise error
+                return p.path.rsplit('/',1)[-1]+':[20]'
+            def filesystem(p):
+                reads.append(p)
+                if p==fail:raise error
+                return SimpleNamespace(f_blocks=c.mount_limits('runtime')[p],f_frsize=1)
+            with mock.patch.object(runtime,'Path',KernelPath),mock.patch.object(runtime.sys,'platform','linux'),\
+                 mock.patch.object(runtime.os,'geteuid',return_value=0,create=True),mock.patch.object(runtime.os,'getegid',return_value=0,create=True),\
+                 mock.patch.object(runtime.os,'statvfs',side_effect=filesystem,create=True),mock.patch.object(runtime.os,'readlink',side_effect=readlink),\
+                 mock.patch.object(runtime.os,'stat',return_value=SimpleNamespace(st_dev=123,st_ino=456)),\
+                 mock.patch.object(runtime.stat,'S_IMODE',side_effect=lambda mode:mode&0o7777):
+                yield files,reads
+
+    def partial(self):
+        with self.kernel('/sys/fs/cgroup/pids.max',PermissionError(13,self.private)) as (files,reads):
+            files['/sys/fs/cgroup/memory.max'].write_text('123456');files['/sys/fs/cgroup/memory.swap.max'].write_text('7')
+            out=io.StringIO()
+            with contextlib.redirect_stdout(out):self.assertEqual(runtime.entrypoint(['--measure']),1)
+        value=decode(out.getvalue().encode());self.assertEqual(c.measurement_diagnostic(value),value)
+        self.assertEqual(value['measurements']['memory_max'],123456);self.assertEqual(value['measurements']['swap_max'],7)
+        self.assertIsNone(value['measurements']['pids_max']);self.assertIsNone(value['measurements']['cpu_max'])
+        self.assertEqual((value['phase'],value['check'],value['error']['errno']),('cgroup','pids',13))
+        self.assertNotIn(self.private,out.getvalue());return value
+
+    def exercise(self,case='measure-fail',response=None,response_exit=1,state_fault=None,publication=None,cleanup_fail=False,earlier=False):
+        req=request();objects={};calls=[];removed=[];before_removal=[];seen=dict(measure=False,state=False,published=False)
+        foreign=Path(self.temp.name)/('foreign-'+str(time.monotonic_ns()));foreign.write_bytes(b'keep')
+        with tempfile.TemporaryDirectory(dir=self.temp.name) as directory:
+            root=Path(directory);real_capture=Owner.capture;real_append=c.Retained.append;original_runtime=operator.Operator.runtime
+            def capture(owner,command,seconds=30,stdin=b'',limit=1048576,error_limit=16384,identity=None):
+                self.assertEqual(command[:len(c.CLIENT)],c.CLIENT)  # No actual engine/service executable can escape.
+                args=command[len(c.CLIENT):];calls.append(args);out=b'';err=b'';exit_=0;wait=False
+                if args[0]=='create':
+                    role='runtime' if req['runtime_image'] in args else 'mysql'
+                    if case!='success':self.assertEqual(role,'runtime','later MySQL stage after failure')
+                    v=container(req,role);v['Config']['Cmd']=args[args.index(req[role+'_image'])+1:]
+                    v['Config']['Env']=[self.private];v['State']=dict(Status='created',Running=False,Pid=0,ExitCode=0,OOMKilled=False,
+                        StartedAt='0001-01-01T00:00:00Z',FinishedAt='0001-01-01T00:00:00Z',Error=self.private)
+                    if case=='create-fail':exit_=31;err=self.private.encode()
+                    else:objects[v['Id']]=v;out=v['Id'].encode()
+                elif args[0]=='inspect':
+                    if seen['measure'] and not seen['state'] and state_fault:
+                        seen['state']=True
+                        if state_fault=='unavailable':exit_=1
+                        elif state_fault=='substituted':objects['1'*64]['Id']='9'*64
+                        else:objects['1'*64]['State']['Status']=self.private
+                    if exit_==0:
+                        if args[1] in objects:out=canonical([objects[args[1]]])
+                        else:exit_=1
+                elif args[0]=='start':
+                    if case=='start-fail':exit_=41;err=self.private.encode()
+                    else:objects[args[1]]['State'].update(Status='exited' if case=='early-exit' else 'running',Running=case!='early-exit',
+                        Pid=0 if case=='early-exit' else 123,ExitCode=17 if case=='early-exit' else 0,
+                        StartedAt='2026-11-06T00:00:00.123Z',FinishedAt='2026-11-06T00:00:01Z' if case=='early-exit' else '0001-01-01T00:00:00Z')
+                elif args[0]=='exec':
+                    if '--measure' in args:
+                        self.assertFalse(seen['measure'],'measurement retry');seen['measure']=True
+                        if case=='success':out=canonical(measurement('runtime'))
+                        elif case=='timeout':wait=True
+                        elif case=='spawn-fail':raise FileNotFoundError(2,self.private)
+                        elif response is not None:out=response;exit_=response_exit
+                        else:exit_=23;err=self.private.encode()
+                    elif '--tls' in args:
+                        self.assertEqual(case,'success');out=canonical({name:'SYNTHETIC_PRIVATE_TLS' for name in ('ca.pem','server.pem','server-key.pem')})
+                    elif '--campaign' in args:
+                        self.assertEqual(case,'success');out=canonical(dict(profile=c.PROFILE,result='DB-ONLY COMPONENT VALIDATION PASS'))
+                    elif '--evidence-index' in args:
+                        if case=='success':out=b'[]'
+                        else:exit_=1;err=self.private.encode()
+                    elif '-Nse' in args:self.assertEqual(case,'success');out=b'22222222-2222-4222-8222-222222222222'
+                    else:self.assertEqual(case,'success')  # Modeled TLS/SQL input is never executed or recorded.
+                elif args[0]=='rm':
+                    store=c.Retained(root/('m6e-db-only-'+req['run_id']+'.evidence'),readonly=True)
+                    try:before_removal.append(copy.deepcopy(store.records))
+                    finally:store.close()
+                    if cleanup_fail:exit_=9;err=self.private.encode()
+                    else:removed.append(args[-1]);del objects[args[-1]]
+                else:self.assertEqual(args[0],'ps');out=b''
+                # Private fixture files avoid Windows argv-size limits, so the
+                # oversized-response control actually reaches Owner's pipe bound.
+                outpath=root/('stdout-'+str(len(calls)));errpath=root/('stderr-'+str(len(calls)))
+                outpath.write_bytes(out);errpath.write_bytes(err)
+                child=('import threading;threading.Event().wait(15)' if wait else
+                    'import sys;from pathlib import Path;sys.stdout.buffer.write(Path(sys.argv[1]).read_bytes());sys.stderr.buffer.write(Path(sys.argv[2]).read_bytes());sys.exit(int(sys.argv[3]))')
+                result=real_capture(owner,[sys.executable,'-I','-B','-c',child,str(outpath),str(errpath),str(exit_)],
+                    1 if wait else seconds,limit=limit,error_limit=error_limit)
+                if case=='reap-fail' and '--measure' in args:
+                    # Model unavailable reaping observations after a real harmless
+                    # child. The actual child is already reaped and cannot leak.
+                    owner.context[-1].update(exit=None,signal=0,reaped=False,exit_before_cleanup=None)
+                    raise operator.Failure('child_reap')
+                return result
+            def append(store,row):
+                if row['kind']=='startup-diagnostic':
+                    c.startup_diagnostic(row['value'],req)
+                    target=row['value']['event']=='command' and row['value']['facts']['operation']==publication
+                    if target and not seen['published']:seen['published']=True;raise PermissionError(13,self.private)
+                return real_append(store,row)
+            def invoke(op,args,**kwargs):
+                if earlier and args==['--measure']:
+                    op.failure(OSError(5,self.private));raise ValueError(self.private)
+                return original_runtime(op,args,**kwargs)
+            mysql=measurement('mysql');mysql['namespaces']['pid']='pid:[21]'
+            resource=SimpleNamespace(RLIMIT_FSIZE=1,setrlimit=lambda *args:None)
+            with mock.patch.dict(sys.modules,{'resource':resource}),mock.patch.object(c,'EVIDENCE',directory),\
+                 mock.patch.object(operator,'host_readiness',return_value=dict(images={},host_namespaces=HOST_NS)),\
+                 mock.patch.object(operator,'mysql_probe',return_value=mysql),mock.patch.object(Owner,'capture',new=capture),\
+                 mock.patch.object(c.Retained,'append',new=append),mock.patch.object(operator.Operator,'runtime',new=invoke),contextlib.redirect_stdout(io.StringIO()):
+                exit_=operator.execute(req)
+            store=c.Retained(root/('m6e-db-only-'+req['run_id']+'.evidence'),readonly=True)
+            try:rows=copy.deepcopy(store.records);self.assertEqual(store.read(),rows);store.verify()
+            finally:store.close()
+            self.assertEqual((root/('m6e-db-only-'+req['run_id']+'.evidence')).stat().st_size,c.LIMITS['retained'])
+            for before in before_removal:self.assertEqual(rows[:len(before)],before)
+        self.assertEqual(foreign.read_bytes(),b'keep');self.assertNotIn(self.private,canonical(rows).decode())
+        self.assertNotIn('SYNTHETIC_PRIVATE_TLS',canonical(rows).decode());self.assertNotIn('Config',canonical(rows).decode())
+        self.assertTrue(all(r['request_sha256']==digest(canonical(req)) for r in rows))
+        diag=[r['value'] for r in rows if r['kind']=='startup-diagnostic']
+        for d in diag:c.startup_diagnostic(d,req);self.assertEqual(d['result'],'DIAGNOSTIC_ONLY')
+        if case!='success':
+            self.assertEqual(exit_,1);self.assertEqual(rows[-1]['result'],'INCOMPLETE')
+            self.assertFalse(any(r['kind'] in ('mysql-measurement','database-identity','component-evidence') for r in rows))
+            self.assertFalse(any('--tls' in a or '--campaign' in a for a in calls))
+            first=rows[-1]['first_failure'];self.assertEqual(next(r['first_failure'] for r in rows if r['kind']=='before-host-cleanup'),first)
+            if before_removal:
+                self.assertTrue(any(r['kind']=='startup-diagnostic' and r['value']['event']=='state' for r in before_removal[0]))
+        return SimpleNamespace(rows=rows,diag=diag,calls=calls,removed=removed,objects=objects,exit=exit_,before=before_removal)
+
+    def event(self,state,name):return [d for d in state.diag if d['event']==name]
+
+    def test_start_rejection_retains_actual_exit_and_created_state_before_removal(self):
+        s=self.exercise('start-fail');command=next(d for d in self.event(s,'command') if d['facts']['operation']=='runtime-start')
+        self.assertEqual(command['facts']['exit'],41);self.assertTrue(command['facts']['returned'])
+        self.assertEqual((command['attempted'],command['last_confirmed']),('start','identity'))
+        self.assertEqual(self.event(s,'state')[0]['facts']['value']['Status'],'created')
+        self.assertFalse(any('--measure' in a for a in s.calls));self.assertEqual(s.removed,['1'*64])
+
+    def test_start_acknowledgement_is_distinct_from_holder_exit(self):
+        s=self.exercise('early-exit');commands=[d for d in self.event(s,'command') if d['facts']['operation']!='runtime-create']
+        self.assertEqual([d['facts']['exit'] for d in commands],[0,23])
+        state=self.event(s,'state')[0]['facts']['value'];self.assertEqual((state['Running'],state['ExitCode'],state['Pid']),(False,17,0))
+        self.assertEqual(s.rows[-1]['first_failure']['phase'],'measure')
+
+    def test_create_command_rejection_retains_exit_without_adopting_an_unverified_id(self):
+        s=self.exercise('create-fail');facts=self.event(s,'command')[0]['facts']
+        self.assertEqual((facts['operation'],facts['exit']),('runtime-create',31))
+        self.assertTrue(all(d['binding']['container_id'] is None for d in s.diag))
+        self.assertEqual(self.event(s,'state')[0]['facts'],dict(availability='UNAVAILABLE',value=None,error=None))
+        self.assertFalse(any(a[0] in ('start','exec','rm') for a in s.calls));self.assertEqual(s.objects,{})
+        self.assertEqual(s.rows[-1]['secondary'],[])
+
+    def test_measure_failure_while_running_and_capture_failure_remain_separate(self):
+        s=self.exercise();state=self.event(s,'state')[0]['facts']['value']
+        self.assertTrue(state['Running']);self.assertEqual(state['ExitCode'],0)
+        self.assertEqual(s.rows[-1]['first_failure']['reason'],'command_exit')
+        self.assertEqual([x['kind'] for x in s.rows[-1]['secondary']],['component-capture'])
+        self.assertEqual(self.event(s,'command')[-1]['facts']['stdout_bytes'],0)
+
+    def test_partial_runtime_diagnostic_survives_command_rejection_and_removal(self):
+        value=self.partial();s=self.exercise(response=canonical(value))
+        response=self.event(s,'response')[0]['facts'];self.assertEqual(response['classification'],'DIAGNOSTIC');self.assertEqual(response['diagnostic'],value)
+        self.assertFalse(any(r['kind']=='runtime-measurement' for r in s.rows));self.assertFalse(self.event(s,'predicate'))
+        self.assertEqual(s.rows[-1]['first_failure']['phase'],'measure');self.assertEqual(s.removed,['1'*64])
+
+    def test_diagnostic_with_zero_client_exit_never_becomes_measurement_pass(self):
+        s=self.exercise(response=canonical(self.partial()),response_exit=0)
+        self.assertEqual(s.rows[-1]['first_failure']['reason'],'runtime_diagnostic');self.assertFalse(self.event(s,'predicate'))
+
+    def test_malformed_truncated_and_secret_bearing_responses_are_not_retained(self):
+        secret=measurement('runtime');secret['environment']=[self.private]
+        diagnostic=self.partial();diagnostic['error']['message']=self.private
+        for raw in (b'not-json',b'{"uid":',b'{"uid":0,"uid":1}',canonical(secret),canonical(diagnostic)):
+            with self.subTest(raw=raw[:16]):
+                s=self.exercise(response=raw,response_exit=0)
+                self.assertEqual(self.event(s,'response')[0]['facts']['classification'],'INVALID')
+                self.assertFalse(any(r['kind']=='runtime-measurement' for r in s.rows));self.assertFalse(self.event(s,'predicate'))
+
+    def test_oversized_output_keeps_real_owner_reaping_and_no_raw_payload(self):
+        s=self.exercise(response=(self.private*4000).encode(),response_exit=0)
+        facts=self.event(s,'command')[-1]['facts'];self.assertEqual(facts['capture'],'OUTPUT_BOUND');self.assertFalse(facts['returned'])
+        self.assertIsNone(facts['stdout_bytes']);self.assertTrue(facts['child']['reaped']);self.assertEqual(s.removed,['1'*64])
+
+    def test_timeout_preserves_real_child_exit_signal_and_reaping_facts(self):
+        s=self.exercise('timeout');facts=self.event(s,'command')[-1]['facts']
+        self.assertEqual(facts['capture'],'TIMEOUT');self.assertTrue(facts['timed_out']);self.assertTrue(facts['child']['reaped'])
+        self.assertEqual(facts['exit'],facts['child']['exit']);self.assertEqual(facts['signal'],facts['child']['signal'])
+
+    def test_spawn_failure_has_no_invented_child_exit_signal_or_response(self):
+        s=self.exercise('spawn-fail');facts=self.event(s,'command')[-1]['facts']
+        self.assertEqual(facts['capture'],'CAPTURE_FAILED');self.assertEqual(facts['error']['errno'],2)
+        for field in ('exit','signal','stdout_bytes','stderr_bytes','child','timed_out'):self.assertIsNone(facts[field])
+        self.assertFalse(facts['returned']);self.assertEqual(s.removed,['1'*64])
+
+    def test_unobserved_exit_does_not_turn_owner_initial_signal_into_a_fact(self):
+        s=self.exercise('reap-fail');facts=self.event(s,'command')[-1]['facts']
+        self.assertEqual(facts['capture'],'REAP_FAILED');self.assertFalse(facts['child']['reaped'])
+        self.assertIsNone(facts['exit']);self.assertIsNone(facts['signal']);self.assertIsNone(facts['child']['signal'])
+        self.assertFalse(facts['returned']);self.assertEqual(s.removed,['1'*64])
+
+    def test_complete_but_rejected_measurements_keep_unchanged_predicate(self):
+        value=measurement('runtime');value['capabilities']=228
+        s=self.exercise(response=canonical(value),response_exit=0)
+        self.assertEqual(next(r['value'] for r in s.rows if r['kind']=='runtime-measurement'),value)
+        self.assertEqual(self.event(s,'predicate')[0]['facts']['result'],'FAIL')
+        self.assertEqual(s.rows[-1]['first_failure']['reason'],'measurement_predicate')
+
+    def test_state_inspection_failure_is_unavailable_and_secondary(self):
+        s=self.exercise(state_fault='unavailable');self.assertEqual(self.event(s,'state')[0]['facts']['availability'],'UNAVAILABLE')
+        self.assertIsNone(self.event(s,'state')[0]['facts']['value'])
+        self.assertEqual(s.rows[-1]['first_failure']['reason'],'command_exit')
+        self.assertIn('state-inspection',[x['kind'] for x in s.rows[-1]['secondary']]);self.assertEqual(s.removed,['1'*64])
+
+    def test_substituted_container_is_neither_observed_as_owned_nor_removed(self):
+        s=self.exercise(state_fault='substituted')
+        self.assertEqual(self.event(s,'state')[0]['facts']['availability'],'UNAVAILABLE');self.assertEqual(s.removed,[])
+        self.assertFalse(any(a[0]=='rm' for a in s.calls));self.assertIn('cleanup',[x['kind'] for x in s.rows[-1]['secondary']])
+
+    def test_invalid_state_text_never_enters_evidence(self):
+        s=self.exercise(state_fault='invalid');self.assertEqual(self.event(s,'state')[0]['facts']['availability'],'UNAVAILABLE')
+        self.assertEqual(s.removed,['1'*64])
+
+    def test_diagnostic_publication_failure_preserves_initiating_failure(self):
+        s=self.exercise(publication='runtime-measure')
+        self.assertEqual(s.rows[-1]['first_failure']['reason'],'command_exit')
+        self.assertIn('diagnostic-capture',[x['kind'] for x in s.rows[-1]['secondary']]);self.assertEqual(s.removed,['1'*64])
+
+    def test_publication_failure_after_successful_start_still_cleans_owned_runtime(self):
+        s=self.exercise(publication='runtime-start')
+        self.assertEqual(s.rows[-1]['first_failure']['reason'],'diagnostic_capture')
+        self.assertFalse(any('--measure' in a for a in s.calls));self.assertEqual(s.removed,['1'*64])
+
+    def test_cleanup_and_capture_failures_do_not_replace_primary(self):
+        s=self.exercise(publication='runtime-measure',cleanup_fail=True)
+        self.assertEqual(s.rows[-1]['first_failure']['reason'],'command_exit')
+        self.assertEqual(set(x['kind'] for x in s.rows[-1]['secondary']),{'diagnostic-capture','component-capture','cleanup'})
+        self.assertEqual(s.removed,[]);self.assertEqual(len(s.before),1)
+
+    def test_genuinely_earlier_failure_is_not_replaced_by_propagation_or_capture(self):
+        s=self.exercise(earlier=True);self.assertEqual(s.rows[-1]['first_failure']['errno'],5)
+        self.assertEqual(s.rows[-1]['first_failure']['type'],'OSError');self.assertEqual(s.removed,['1'*64])
+
+    def test_successful_existing_operator_path_and_measurement_values_remain(self):
+        s=self.exercise('success');self.assertEqual(s.exit,0);self.assertEqual(s.rows[-1]['result'],'DB-ONLY COMPONENT VALIDATION PASS')
+        self.assertIsNone(s.rows[-1]['first_failure']);self.assertEqual(s.rows[-1]['secondary'],[])
+        self.assertEqual(s.removed,['2'*64,'1'*64]);self.assertEqual(self.event(s,'predicate')[0]['facts']['result'],'PASS')
+        self.assertEqual(next(r['value'] for r in s.rows if r['kind']=='runtime-measurement'),measurement('runtime'))
+        self.assertEqual(sum('--measure' in a for a in s.calls),1)
+
+    def test_actual_measurement_reads_and_successful_entrypoint_contract(self):
+        with self.kernel():
+            out=io.StringIO()
+            with contextlib.redirect_stdout(out):self.assertEqual(runtime.entrypoint(['--measure']),0)
+        value=decode(out.getvalue().encode());c.measurements(value,'runtime',HOST_NS);c.measurement_values(value)
+        self.assertNotIn('profile',value);self.assertEqual(value['memory_max'],c.LIMITS['runtime_memory'])
+
+    def test_distinct_read_conversion_namespace_mount_filesystem_and_source_failures(self):
+        cases=[('/sys/fs/cgroup/memory.max',FileNotFoundError(2,self.private),'cgroup','memory'),
+               ('/proc/self/ns/net',PermissionError(13,self.private),'namespace','net'),
+               ('/proc/self/mountinfo',OSError(5,self.private),'mount','read'),
+               ('/work',OSError(28,self.private),'filesystem','work'),
+               (c.SOURCE,PermissionError(13,self.private),'source','stat')]
+        for path,error,phase,check in cases:
+            with self.subTest(path=path),self.kernel(path,error):
+                with self.assertRaises(runtime.MeasurementFailure) as caught:runtime.measure('runtime')
+                value=caught.exception.diagnostic;c.measurement_diagnostic(value)
+                self.assertEqual((value['phase'],value['check'],value['error']['errno']),(phase,check,error.errno))
+                self.assertNotIn(self.private,canonical(value).decode())
+        for path,text,phase,check in [('/sys/fs/cgroup/pids.max',self.private,'cgroup','pids'),('/proc/self/mountinfo',self.private,'mount','parse')]:
+            with self.subTest(path=path),self.kernel() as (files,reads):
+                files[path].write_text(text)
+                with self.assertRaises(runtime.MeasurementFailure) as caught:runtime.measure('runtime')
+                value=caught.exception.diagnostic;self.assertEqual((value['phase'],value['check']),(phase,check));self.assertIsNone(value['error']['errno'])
+                self.assertEqual(value['measurements']['memory_max'],c.LIMITS['runtime_memory']);self.assertNotIn(self.private,canonical(value).decode())
+
+    def test_entrypoint_classifies_only_trusted_operations_without_exception_text(self):
+        for args in (['--measure'],['--hold','PRIVATE_ARG'],['--unknown',self.private]):
+            with mock.patch.object(runtime,'main',side_effect=RuntimeError(self.private)),contextlib.redirect_stdout(io.StringIO()) as out:
+                self.assertEqual(runtime.entrypoint(args),1)
+            raw=out.getvalue();self.assertNotIn(self.private,raw);self.assertNotIn('PRIVATE_ARG',raw)
+            if args==['--measure']:self.assertEqual(c.measurement_diagnostic(decode(raw.encode()))['phase'],'entrypoint')
+            else:self.assertEqual(decode(raw.encode())['diagnostic']['result'],'DIAGNOSTIC_ONLY')
+
+    def test_diagnostic_vocabulary_and_values_reject_privacy_and_authority_widening(self):
+        value=self.partial()
+        for key,bad in [('result','PASS'),('phase',self.private),('check',self.private),('deployment_authority','YES')]:
+            candidate=copy.deepcopy(value);candidate[key]=bad
+            with self.subTest(key=key),self.assertRaises(ValueError):c.measurement_diagnostic(candidate)
+        for key,bad in [('type',self.private),('code',self.private),('errno',True),('errno',999999)]:
+            candidate=copy.deepcopy(value);candidate['error'][key]=bad
+            with self.subTest(key=key),self.assertRaises(ValueError):c.measurement_diagnostic(candidate)
+        candidate=measurement('runtime');candidate['storage']['/work']['options'].append(self.private)
+        with self.assertRaises(ValueError):c.measurement_values(candidate)
+        with self.assertRaises(ValueError):c.measurement_values(value['measurements'])
+        with self.assertRaises((ValueError,KeyError)):full_plan.admission(value)
+        with self.assertRaises((ValueError,KeyError)):full_acceptance.validate(value,{},native=True)
 
 
 if __name__=='__main__':unittest.main()

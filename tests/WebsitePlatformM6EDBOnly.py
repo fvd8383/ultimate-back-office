@@ -4,12 +4,13 @@ import os
 from pathlib import Path
 import re
 import stat
+from subprocess import TimeoutExpired
 import sys
 import time
 
 sys.path.insert(0,str(Path(__file__).resolve().parent/'support'))
 from WebsitePlatformM6EAcceptance import canonical, decode, digest, need, safe_error
-from WebsitePlatformM6EProcess import Owner
+from WebsitePlatformM6EProcess import Owner, Failure
 import WebsitePlatformM6EDBOnlyContract as c
 from WebsitePlatformM6EDBOnlyRuntime import source_inventory
 
@@ -170,9 +171,105 @@ def mysql_probe(owner,cid):
 class Operator:
     def __init__(self,req,store,owner):
         self.req=c.request(req);self.store=store;self.owner=owner;self.ids={};self.intents=set();self.first=None;self.secondary=[];self.expires_at=1
+        self.phase='create';self.confirmed=None;self.startup_done=False
 
     def record(self,kind,**value):
         self.store.append(dict(kind=kind,request_sha256=digest(canonical(self.req)),at=int(time.time()),**value))
+
+    def failure(self,error,reason='operation_failed'):
+        # Called BEFORE observation/publication/cleanup can introduce another failure.
+        if self.first is None:
+            self.first=(dict(**c.diagnostic_error(error),phase=self.phase,last_confirmed=self.confirmed,reason=reason)
+                        if not self.startup_done else safe_error(error))
+
+    def diagnostic(self,event,**facts):
+        try:
+            value=c.startup_diagnostic(dict(profile=c.PROFILE+'-startup-diagnostic-v1',result='DIAGNOSTIC_ONLY',
+                binding=dict(source_sha=self.req['source_sha'],run_id=self.req['run_id'],request_sha256=digest(canonical(self.req)),
+                    role='runtime',container_id=self.ids.get('runtime')),
+                attempted=self.phase,last_confirmed=self.confirmed,event=event,facts=facts,**c.AUTHORITY),self.req)
+            self.record('startup-diagnostic',value=value)
+        except BaseException as error:
+            self.secondary.append(dict(kind='diagnostic-capture',phase=self.phase,**c.diagnostic_error(error)))
+            if self.first is None:
+                self.failure(error,'diagnostic_capture');raise
+            # The initiating failure still escapes; diagnostics must not suppress cleanup.
+
+    def stage(self,phase,complete=False):
+        need(phase in c.STARTUP_STAGES,'db_only_startup_stage');self.phase=phase
+        if complete:self.confirmed=phase
+        self.diagnostic('stage',transition='CONFIRMED' if complete else 'ATTEMPTED')
+
+    def startup_command(self,operation,args,seconds=20,limit=1048576):
+        """Observe the existing engine call before its exit assertion discards facts."""
+        stages={'runtime-create':'create','runtime-start':'start','runtime-measure':'measure'}
+        need(operation in stages,'db_only_startup_operation');self.stage(stages[operation])
+        start=len(self.owner.context);value=None;error=None;capture='RETURNED';child=None
+        try:
+            # Accept command return codes here only so they can be recorded. The same
+            # exit-zero requirement is enforced below, before any next native stage.
+            value=engine(self.owner,args,seconds=seconds,limit=limit,allowed=range(-2**31,2**32))
+            if value['exit']!=0:error=ValueError('db_only_operator_command');self.failure(error,'command_exit')
+        except BaseException as caught:
+            error=caught;self.failure(error,'command_capture')
+            capture=({'child_timeout':'TIMEOUT','child_output_bound':'OUTPUT_BOUND','child_reap':'REAP_FAILED',
+                      'coordinator_deadline':'DEADLINE_EXPIRED'}.get(error.code,'CAPTURE_FAILED')
+                     if isinstance(error,Failure) and type(error.code) is str else 'TIMEOUT' if isinstance(error,TimeoutExpired) else 'CAPTURE_FAILED')
+        try:
+            children=self.owner.snapshot()['children'][start:];need(len(children)<=1,'db_only_command_child_count')
+            if children:
+                child={k:children[0][k] for k in ('pid','exit','signal','reaped','termination_requested','exit_before_cleanup')}
+                # Owner initializes signal to zero before observing an exit. That
+                # initial value is not a signal observation when reaping failed.
+                if child['exit'] is None:child['signal']=None
+        except BaseException as caught:
+            self.secondary.append(dict(kind='diagnostic-capture',phase=self.phase,**c.diagnostic_error(caught)))
+            if error is None:error=caught;self.failure(error,'diagnostic_capture')
+        if value is not None and value['exit']==0 and error is None:self.confirmed=self.phase
+        self.diagnostic('command',operation=operation,capture=capture,returned=value is not None,
+            exit=value['exit'] if value is not None else None if child is None else child['exit'],
+            signal=None if child is None else child['signal'],timed_out=capture=='TIMEOUT' if capture!='CAPTURE_FAILED' else None,
+            stdout_bytes=None if value is None else len(value['stdout']),stderr_bytes=None if value is None else len(value.get('stderr',b'')),
+            child=child,error=None if error is None else c.diagnostic_error(error))
+        # A nonzero measure command may still have a bounded diagnostic response.
+        # Inspect that response once; it can never authorize predicate evaluation.
+        if error is not None and (value is None or operation!='runtime-measure' or value['exit']==0):raise error
+        return value
+
+    def measure_runtime(self,host_namespaces):
+        result=self.runtime(['--measure'],diagnostic=True,limit=65536)
+        try:
+            self.stage('decode');value=decode(result['stdout']);self.stage('decode',True)
+            self.stage('schema')
+            is_diagnostic=type(value) is dict and value.get('profile')==c.PROFILE+'-measurement-diagnostic-v1'
+            if is_diagnostic:c.measurement_diagnostic(value)
+            else:c.measurement_values(value)
+            self.stage('schema',True)
+        except BaseException as error:
+            self.failure(error,'response_invalid');self.diagnostic('response',classification='INVALID',diagnostic=None);raise
+        if is_diagnostic:
+            error=ValueError('db_only_runtime_measurement_diagnostic');self.failure(error,'runtime_diagnostic')
+            self.diagnostic('response',classification='DIAGNOSTIC',diagnostic=value);raise error
+        self.diagnostic('response',classification='MEASUREMENT',diagnostic=None)
+        need(result['exit']==0,'db_only_operator_command')
+        try:self.record('runtime-measurement',value=value)
+        except BaseException as error:
+            self.failure(error,'diagnostic_capture');self.secondary.append(dict(kind='diagnostic-capture',phase=self.phase,**c.diagnostic_error(error)));raise
+        self.stage('predicate')
+        try:c.measurements(value,'runtime',host_namespaces)
+        except BaseException as error:
+            self.failure(error,'measurement_predicate');self.diagnostic('predicate',result='FAIL',error=c.diagnostic_error(error));raise
+        self.confirmed='predicate';self.diagnostic('predicate',result='PASS',error=None);self.startup_done=True
+        return value
+
+    def startup_failure_evidence(self):
+        self.diagnostic('failure',first_failure=self.first)
+        state=None;error=None
+        if 'runtime' in self.ids:
+            try:state=c.container_state(self.inspect('runtime',self.ids['runtime']))
+            except BaseException as caught:
+                error=c.diagnostic_error(caught);self.secondary.append(dict(kind='state-inspection',**error))
+        self.diagnostic('state',availability='OBSERVED' if state is not None else 'UNAVAILABLE',value=state,error=error)
 
     def inspect(self,role,identifier):
         rows=decode(engine(self.owner,['inspect',identifier],allowed=(0,1))['stdout'] or b'[]')
@@ -183,15 +280,24 @@ class Operator:
 
     def create(self,role):
         self.record('create-intent',role=role,name=c.names(self.req)[role]);self.intents.add(role)
-        r=engine(self.owner,c.create_args(self.req,role,self.ids.get('runtime'),self.expires_at),seconds=30)
+        args=c.create_args(self.req,role,self.ids.get('runtime'),self.expires_at)
+        r=(self.startup_command('runtime-create',args,seconds=30) if role=='runtime' else engine(self.owner,args,seconds=30))
         cid=r['stdout'].decode().strip();need(re.fullmatch('[a-f0-9]{64}',cid),'db_only_create_receipt')
+        if role=='runtime':self.stage('identity')
         value=self.inspect(role,cid);self.ids[role]=cid;self.record('created',role=role,id=cid,identity=digest(canonical(value)))
-        engine(self.owner,['start',cid],seconds=20)
+        if role=='runtime':
+            self.stage('identity',True);self.startup_command('runtime-start',['start',cid])
+        else:engine(self.owner,['start',cid],seconds=20)
         return cid
 
-    def runtime(self,args,**kwargs):
-        cid=self.ids['runtime'];self.inspect('runtime',cid)
-        return engine(self.owner,['exec','-i',cid,'/usr/bin/python3','-I','-B',c.SOURCE+'/tests/support/WebsitePlatformM6EDBOnlyRuntime.py',*args],**kwargs)
+    def runtime(self,args,diagnostic=False,**kwargs):
+        cid=self.ids['runtime']
+        if diagnostic:need(args==['--measure'],'db_only_measure_command');self.stage('measure-identity')
+        self.inspect('runtime',cid)
+        command=['exec','-i',cid,'/usr/bin/python3','-I','-B',c.SOURCE+'/tests/support/WebsitePlatformM6EDBOnlyRuntime.py',*args]
+        if diagnostic:
+            self.stage('measure-identity',True);return self.startup_command('runtime-measure',command,**kwargs)
+        return engine(self.owner,command,**kwargs)
 
     def evidence(self):
         """Copy only fixed-schema, sanitized component publications into the bounded retained file."""
@@ -250,8 +356,7 @@ def execute(req):
     try:
         op.record('admission',request=req,readiness=ready,expires_at=expires)
         runtime=op.create('runtime')
-        measured=decode(op.runtime(['--measure'],limit=65536)['stdout']);op.record('runtime-measurement',value=measured)
-        c.measurements(measured,'runtime',ready['host_namespaces'])
+        measured=op.measure_runtime(ready['host_namespaces'])
         tls=decode(op.runtime(['--tls'],seconds=60,limit=16384)['stdout'])
         need(set(tls)=={'ca.pem','server.pem','server-key.pem'},'db_only_tls_protocol')
         mysql=op.create('mysql');sqlmeasure=mysql_probe(owner,mysql);op.record('mysql-measurement',value=sqlmeasure)
@@ -279,12 +384,15 @@ def execute(req):
         v=decode(r['stdout']);need(v.get('profile')==c.PROFILE and v.get('result') in ('INCOMPLETE','DB-ONLY COMPONENT VALIDATION PASS','EXPECTED INJECTED FAILURE OBSERVED'),'db_only_campaign_protocol')
         result=v['result'];need((r['exit']==0)==(result!='INCOMPLETE'),'db_only_campaign_exit')
     except BaseException as e:
-        op.first=dict(**safe_error(e));result='INCOMPLETE'
+        op.failure(e);result='INCOMPLETE'
     finally:
         # Expiry is never renewed. Cleanup reserve is separately bounded and cannot run new cases.
         owner.deadline=min(overall,time.monotonic()+c.LIMITS['cleanup_seconds'])
         try:op.record('before-host-cleanup',result=result,first_failure=op.first)
         except BaseException as e:op.secondary.append(dict(kind='capture',**safe_error(e)));result='INCOMPLETE'
+        if op.first is not None and not op.startup_done:
+            try:op.startup_failure_evidence()
+            except BaseException as e:op.secondary.append(dict(kind='diagnostic-capture',**c.diagnostic_error(e)));result='INCOMPLETE'
         try:op.evidence()
         except BaseException as e:op.secondary.append(dict(kind='component-capture',**safe_error(e)));result='INCOMPLETE'
         try:op.cleanup()

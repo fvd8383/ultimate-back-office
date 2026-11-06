@@ -7,7 +7,7 @@ import re
 import stat
 import struct
 
-from WebsitePlatformM6EAcceptance import canonical, decode, digest, need, keys
+from WebsitePlatformM6EAcceptance import canonical, decode, digest, need, keys, integer, safe_error
 
 PROFILE = 'm6e-db-only-v1'
 SOURCE = '/opt/ubo-m6e-db-only'
@@ -207,6 +207,160 @@ def measurements(v, role, host_namespaces):
     need(v['source_readonly'] is True if role == 'runtime' else True, 'db_only_actual_source_mount')
     if role=='runtime':
         root=v['source_root'];need(root['uid']==root['gid']==0 and root['mode']==0o555 and root['ino']>0,'db_only_source_inode_owner')
+    return v
+
+
+# Diagnostic schemas are deliberately separate from measurement acceptance. No
+# exception text, engine stderr, arbitrary field name or command is a vocabulary.
+DIAGNOSTIC_BYTES = 16384
+MEASUREMENT_FIELDS = ('uid','gid','pid','owner_pid','start_ticks','uid_map','gid_map',
+    'namespaces','memory_max','swap_max','pids_max','cpu_max','no_new_privs',
+    'capabilities','interfaces','storage','source_root','source_readonly')
+MEASUREMENT_REQUIRED = set(MEASUREMENT_FIELDS)-{'pid','owner_pid','start_ticks'}
+MEASUREMENT_CHECKS = {
+    'platform': ('linux',), 'process': ('identity','status','stat','uid-map','gid-map'),
+    'cgroup': ('memory','swap','pids','cpu'), 'namespace': ('user','net','mnt','pid'),
+    'mount': ('read','parse'), 'filesystem': ('control','work','evidence','tmp'),
+    'source': ('mount','stat'), 'interfaces': ('read',), 'entrypoint': ('measure',)}
+STARTUP_STAGES = ('create','identity','start','measure-identity','measure','decode','schema','predicate')
+STARTUP_REASONS = ('operation_failed','command_exit','command_capture','response_invalid',
+                   'runtime_diagnostic','measurement_predicate','diagnostic_capture')
+ERROR_TYPES = ('Failure','ValueError','OSError','PermissionError','FileExistsError','FileNotFoundError',
+    'TimeoutError','AssertionError','RuntimeError','TypeError','KeyError','Exception')
+ERROR_CODES = ('control_failure','validation_failed','assertion_failed','timeout','operation_failed')
+
+
+def diagnostic_error(error):
+    value=safe_error(error)
+    if type(error) is FileNotFoundError:value['type']='FileNotFoundError'
+    number=getattr(error,'errno',None) if isinstance(error,OSError) else None
+    value['errno']=number if type(number) is int and 0<=number<=4095 else None
+    return value
+
+
+def diagnostic_error_value(v):
+    keys(v,('type','code','errno'))
+    need(v['type'] in ERROR_TYPES and v['code'] in ERROR_CODES,'db_only_diagnostic_error')
+    if v['errno'] is not None:integer(v['errno'],0,4095)
+    return v
+
+
+def measurement_values(v, partial=False):
+    """Privacy/schema check only; native measurements() still decides acceptance.
+
+    Null means unavailable, never a configured value or a fabricated zero. Numeric
+    observations may fail native policy and still be safely retained for diagnosis.
+    """
+    need(type(v) is dict and set(v)<=set(MEASUREMENT_FIELDS),'db_only_measurement_fields')
+    need(set(v)==set(MEASUREMENT_FIELDS) if partial else MEASUREMENT_REQUIRED<=set(v),'db_only_measurement_fields')
+    for key,value in v.items():
+        if value is None:
+            need(partial,'db_only_measurement_unavailable');continue
+        if key in ('uid','gid','pid','owner_pid','start_ticks','memory_max','swap_max','pids_max','no_new_privs','capabilities'):
+            integer(value,0,2**64-1)
+        elif key in ('uid_map','gid_map'):
+            need(type(value) is list and len(value)<=16,'db_only_map_shape')
+            for row in value:
+                need(type(row) is list and len(row)==3,'db_only_map_shape')
+                for n in row:integer(n,0,2**64-1)
+        elif key=='cpu_max':
+            need(type(value) is list and len(value)==2,'db_only_cpu_shape')
+            for n in value:integer(n,0,2**64-1)
+        elif key=='namespaces':
+            keys(value,('user','net','mnt','pid'))
+            for name,identity in value.items():
+                need(partial and identity is None or type(identity) is str and re.fullmatch(name+r':\[[0-9]{1,20}\]',identity),'db_only_namespace_shape')
+        elif key=='interfaces':
+            # Never echo arbitrary interface names from an untrusted response.
+            need(type(value) is list and len(value)<=16 and all(n in ('lo','eth0') for n in value),'db_only_interface_shape')
+        elif key=='storage':
+            keys(value,mount_limits('runtime'))
+            for m in value.values():
+                if partial and m is None:continue
+                need(type(m) is dict and {'type','bytes','size_option','options'}<=set(m)<=
+                     {'type','bytes','size_option','options','dev','ino'},'db_only_storage_shape')
+                need(m['type'] in ('tmpfs','overlay','ext4','xfs','ramfs'),'db_only_filesystem_type')
+                for k in set(m)-{'type','options'}:integer(m[k],0,2**64-1)
+                need(type(m['options']) is list and len(m['options'])<=32,'db_only_mount_options')
+                for option in m['options']:
+                    need(type(option) is str and (option in ('rw','ro','nosuid','suid','nodev','dev','noexec','exec',
+                         'relatime','strictatime','noatime','nodiratime','sync','async','inode64','inode32') or
+                         re.fullmatch(r'(?:size|nr_inodes)=[0-9]{1,20}[kmg]?|(?:uid|gid)=[0-9]{1,10}|mode=[0-7]{3,4}',option)),
+                         'db_only_mount_option')
+        elif key=='source_root':
+            keys(value,('dev','ino','uid','gid','mode'))
+            for n in value.values():integer(n,0,2**64-1)
+        else:need(type(value) is bool,'db_only_source_readonly_shape')
+    need(len(canonical(v))<=DIAGNOSTIC_BYTES,'db_only_measurement_bound');return v
+
+
+def measurement_diagnostic(v):
+    keys(v,('profile','result','phase','check','error','measurements',*AUTHORITY))
+    need(v['profile']==PROFILE+'-measurement-diagnostic-v1' and v['result']=='DIAGNOSTIC_ONLY','db_only_measurement_diagnostic')
+    need(v['phase'] in MEASUREMENT_CHECKS and v['check'] in MEASUREMENT_CHECKS[v['phase']],'db_only_measurement_phase')
+    diagnostic_error_value(v['error']);measurement_values(v['measurements'],partial=True)
+    need(all(v[k]==value for k,value in AUTHORITY.items()) and len(canonical(v))<=DIAGNOSTIC_BYTES,'db_only_diagnostic_authority_bound')
+    return v
+
+
+def container_state(value):
+    """Called only AFTER complete configuration and saved full-ID verification."""
+    fields=('Status','Running','Pid','ExitCode','OOMKilled','StartedAt','FinishedAt')
+    state=value['State'];out={k:state[k] for k in fields}
+    need(out['Status'] in ('created','running','paused','restarting','removing','exited','dead'),'db_only_state_status')
+    need(type(out['Running']) is bool and type(out['OOMKilled']) is bool,'db_only_state_boolean')
+    integer(out['Pid'],0,2**31-1);integer(out['ExitCode'],-2**31,2**32-1)
+    for key in ('StartedAt','FinishedAt'):
+        need(type(out[key]) is str and re.fullmatch(r'[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\.[0-9]{1,9})?Z',out[key]),'db_only_state_timestamp')
+    return out
+
+
+def startup_failure(v):
+    keys(v,('type','code','errno','phase','last_confirmed','reason'))
+    diagnostic_error_value({k:v[k] for k in ('type','code','errno')})
+    need(v['phase'] in STARTUP_STAGES and v['last_confirmed'] in (None,*STARTUP_STAGES)
+         and v['reason'] in STARTUP_REASONS,'db_only_startup_failure');return v
+
+
+def startup_diagnostic(v, req):
+    keys(v,('profile','result','binding','attempted','last_confirmed','event','facts',*AUTHORITY))
+    need(v['profile']==PROFILE+'-startup-diagnostic-v1' and v['result']=='DIAGNOSTIC_ONLY','db_only_startup_diagnostic')
+    b=v['binding'];keys(b,('source_sha','run_id','request_sha256','role','container_id'))
+    need(b['source_sha']==req['source_sha'] and b['run_id']==req['run_id'] and b['request_sha256']==digest(canonical(req))
+         and b['role']=='runtime' and (b['container_id'] is None or type(b['container_id']) is str and re.fullmatch('[a-f0-9]{64}',b['container_id'])), 'db_only_diagnostic_binding')
+    need(v['attempted'] in STARTUP_STAGES and v['last_confirmed'] in (None,*STARTUP_STAGES),'db_only_startup_stage')
+    f=v['facts'];event=v['event']
+    if event=='stage':keys(f,('transition',));need(f['transition'] in ('ATTEMPTED','CONFIRMED'),'db_only_stage_transition')
+    elif event=='command':
+        keys(f,('operation','capture','returned','exit','signal','timed_out','stdout_bytes','stderr_bytes','child','error'))
+        need(f['operation'] in ('runtime-create','runtime-start','runtime-measure') and f['capture'] in
+             ('RETURNED','TIMEOUT','OUTPUT_BOUND','REAP_FAILED','CAPTURE_FAILED','DEADLINE_EXPIRED'),'db_only_command_operation')
+        need(type(f['returned']) is bool and (f['timed_out'] is None or type(f['timed_out']) is bool),'db_only_command_boolean')
+        for k in ('exit','signal','stdout_bytes','stderr_bytes'):
+            if f[k] is not None:integer(f[k],-2**31 if k=='exit' else 0,2**32-1)
+        if f['child'] is not None:
+            keys(f['child'],('pid','exit','signal','reaped','termination_requested','exit_before_cleanup'))
+            integer(f['child']['pid'],1,2**31-1)
+            if f['child']['signal'] is not None:integer(f['child']['signal'],0,2**32-1)
+            for k in ('exit','exit_before_cleanup'):
+                if f['child'][k] is not None:integer(f['child'][k],-2**31,2**32-1)
+            for k in ('reaped','termination_requested'):need(type(f['child'][k]) is bool,'db_only_child_boolean')
+        if f['error'] is not None:diagnostic_error_value(f['error'])
+    elif event=='state':
+        keys(f,('availability','value','error'));need(f['availability'] in ('OBSERVED','UNAVAILABLE'),'db_only_state_availability')
+        if f['availability']=='OBSERVED':need(container_state({'State':f['value']})==f['value'] and f['error'] is None,'db_only_observed_state')
+        else:
+            need(f['value'] is None,'db_only_unavailable_state')
+            if f['error'] is not None:diagnostic_error_value(f['error'])
+    elif event=='response':
+        keys(f,('classification','diagnostic'));need(f['classification'] in ('MEASUREMENT','DIAGNOSTIC','INVALID'),'db_only_response_class')
+        if f['classification']=='DIAGNOSTIC':measurement_diagnostic(f['diagnostic'])
+        else:need(f['diagnostic'] is None,'db_only_response_body')
+    elif event=='predicate':
+        keys(f,('result','error'));need(f['result'] in ('PASS','FAIL'),'db_only_predicate_result')
+        if f['error'] is not None:diagnostic_error_value(f['error'])
+    else:need(event=='failure','db_only_startup_event');keys(f,('first_failure',));startup_failure(f['first_failure'])
+    need(all(v[k]==value for k,value in AUTHORITY.items()) and len(canonical(v))<=DIAGNOSTIC_BYTES,'db_only_startup_bound')
     return v
 
 
